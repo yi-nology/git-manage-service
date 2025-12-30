@@ -1,0 +1,13 @@
+# Binaries
+git-sync-tool
+
+# Database
+git_sync.db
+
+# OS
+.DS_Store
+
+# Test Data (Git Repos)
+test/origin/
+test/ky/
+test/local/
