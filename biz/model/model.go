@@ -7,12 +7,17 @@ import (
 )
 
 type Repo struct {
-	ID        uint           `gorm:"primaryKey" json:"id"`
-	Name      string         `gorm:"uniqueIndex" json:"name"`
-	Path      string         `json:"path"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID          uint           `gorm:"primaryKey" json:"id"`
+	Name        string         `gorm:"uniqueIndex" json:"name"`
+	Path        string         `json:"path"`
+	RemoteURL   string         `json:"remote_url"`
+	AuthType    string         `json:"auth_type"`   // ssh, http, none
+	AuthKey     string         `json:"auth_key"`    // SSH Key Path or Username
+	AuthSecret  string         `json:"auth_secret"` // Passphrase or Password
+	Environment string         `json:"environment"` // dev, test, prod
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 type SyncTask struct {

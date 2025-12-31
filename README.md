@@ -1,6 +1,6 @@
-# Git Sync Tool
+# Git Manage Service (Git 管理服务)
 
-Git Sync Tool 是一个轻量级的多仓库、多分支自动化同步管理系统。它提供了友好的 Web 界面，支持定时任务、Webhook 触发以及详细的同步日志记录。
+Git Manage Service 是一个轻量级的多仓库、多分支自动化同步管理系统。它提供了友好的 Web 界面，支持定时任务、Webhook 触发以及详细的同步日志记录。
 
 ## 🚀 功能特性
 
@@ -21,8 +21,8 @@ Git Sync Tool 是一个轻量级的多仓库、多分支自动化同步管理系
 ### 1. 编译运行
 ```bash
 go mod tidy
-go build -o git-sync-tool
-./git-sync-tool
+go build -o git-manage-service
+./git-manage-service
 ```
 
 ### 2. 访问界面

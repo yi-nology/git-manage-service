@@ -120,6 +120,150 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/stats/analyze": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stats"
+                ],
+                "summary": "Get code statistics for a branch",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Repo ID",
+                        "name": "repo_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Branch Name",
+                        "name": "branch",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.StatsResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stats/branches": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stats"
+                ],
+                "summary": "List branches for a repository",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Repo ID",
+                        "name": "repo_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stats/commits": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stats"
+                ],
+                "summary": "Get commit history for a branch",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Repo ID",
+                        "name": "repo_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Branch Name",
+                        "name": "branch",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Since (YYYY-MM-DD)",
+                        "name": "since",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Until (YYYY-MM-DD)",
+                        "name": "until",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Commit"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stats/export/csv": {
+            "get": {
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "Stats"
+                ],
+                "summary": "Export statistics as CSV",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Repo ID",
+                        "name": "repo_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Branch Name",
+                        "name": "branch",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/api/sync/history": {
             "get": {
                 "produces": [
@@ -372,6 +516,56 @@ const docTemplate = `{
                 }
             }
         },
+        "model.AuthorStat": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "file_types": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "time_trend": {
+                    "description": "Date -\u003e Lines mapping (e.g. \"2023-01-01\" -\u003e 10)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "total_lines": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Commit": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "hash": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.Repo": {
             "type": "object",
             "properties": {
@@ -389,6 +583,20 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "model.StatsResponse": {
+            "type": "object",
+            "properties": {
+                "authors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AuthorStat"
+                    }
+                },
+                "total_lines": {
+                    "type": "integer"
                 }
             }
         },
@@ -486,8 +694,8 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "Git Sync Tool API",
-	Description:      "API documentation for Git Sync Tool",
+	Title:            "Branch Management Tool API",
+	Description:      "API documentation for Branch Management Tool",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

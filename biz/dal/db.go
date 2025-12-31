@@ -1,8 +1,10 @@
 package dal
 
 import (
-	"github.com/yi-nology/git-sync-tool/biz/model"
 	"log"
+	"os"
+
+	"github.com/yi-nology/git-manage-service/biz/model"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -12,7 +14,11 @@ var DB *gorm.DB
 
 func Init() {
 	var err error
-	DB, err = gorm.Open(sqlite.Open("git_sync.db"), &gorm.Config{})
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "git_sync.db"
+	}
+	DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		log.Fatal("failed to connect database: ", err)
 	}

@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"github.com/yi-nology/git-sync-tool/biz/service"
+	"github.com/yi-nology/git-manage-service/biz/service"
 	"log"
 	"net/http"
 

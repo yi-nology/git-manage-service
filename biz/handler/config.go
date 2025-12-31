@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"github.com/yi-nology/git-sync-tool/biz/config"
+	"github.com/yi-nology/git-manage-service/biz/config"
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"

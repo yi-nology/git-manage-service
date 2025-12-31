@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 
-	"github.com/yi-nology/git-sync-tool/biz/config"
-	"github.com/yi-nology/git-sync-tool/biz/dal"
-	"github.com/yi-nology/git-sync-tool/biz/handler"
-	"github.com/yi-nology/git-sync-tool/biz/middleware"
-	"github.com/yi-nology/git-sync-tool/biz/service"
+	"github.com/yi-nology/git-manage-service/biz/config"
+	"github.com/yi-nology/git-manage-service/biz/dal"
+	"github.com/yi-nology/git-manage-service/biz/handler"
+	"github.com/yi-nology/git-manage-service/biz/middleware"
+	"github.com/yi-nology/git-manage-service/biz/service"
 
-	_ "github.com/yi-nology/git-sync-tool/docs"
+	_ "github.com/yi-nology/git-manage-service/docs"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -17,9 +17,9 @@ import (
 	// swaggerFiles "github.com/swaggo/files"
 )
 
-// @title Git Sync Tool API
+// @title Branch Management Tool API
 // @version 1.0
-// @description API documentation for Git Sync Tool
+// @description API documentation for Branch Management Tool
 
 // @host localhost:8080
 // @BasePath /
@@ -44,12 +44,23 @@ func main() {
 	h.GET("/api/config", handler.GetConfig)
 	h.POST("/api/config", handler.UpdateConfig)
 
+	// System Routes
+	h.GET("/api/system/dirs", handler.ListDirs)
+	h.GET("/api/system/ssh-keys", handler.ListSSHKeys)
+	h.POST("/api/git/test-connection", handler.TestConnection)
+
 	h.POST("/api/sync/tasks", handler.CreateTask)
 	h.GET("/api/sync/tasks", handler.ListTasks)
 	h.GET("/api/sync/tasks/:id", handler.GetTask)
 	h.PUT("/api/sync/tasks/:id", handler.UpdateTask)
 	h.POST("/api/sync/run", handler.RunSync)
 	h.GET("/api/sync/history", handler.ListHistory)
+
+	// Stats Routes
+	h.GET("/api/stats/branches", handler.ListBranches)
+	h.GET("/api/stats/commits", handler.ListCommits)
+	h.GET("/api/stats/analyze", handler.GetStats)
+	h.GET("/api/stats/export/csv", handler.ExportStatsCSV)
 
 	// Webhook
 	h.POST("/api/webhooks/task-sync", middleware.WebhookAuth(), handler.HandleWebhookTrigger)
