@@ -2,18 +2,24 @@ package handler
 
 import (
 	"context"
-	"github.com/yi-nology/git-sync-tool/biz/dal"
-	"github.com/yi-nology/git-sync-tool/biz/model"
-	"github.com/yi-nology/git-sync-tool/biz/service"
 	"strconv"
+
+	"github.com/yi-nology/git-manage-service/biz/dal"
+	"github.com/yi-nology/git-manage-service/biz/model"
+	"github.com/yi-nology/git-manage-service/biz/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 type RegisterRepoReq struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	RemoteURL   string `json:"remote_url"`
+	AuthType    string `json:"auth_type"`
+	AuthKey     string `json:"auth_key"`
+	AuthSecret  string `json:"auth_secret"`
+	Environment string `json:"environment"`
 }
 
 // @Summary Register a new repository
@@ -38,14 +44,45 @@ func RegisterRepo(ctx context.Context, c *app.RequestContext) {
 	}
 
 	repo := model.Repo{
-		Name: req.Name,
-		Path: req.Path,
+		Name:        req.Name,
+		Path:        req.Path,
+		RemoteURL:   req.RemoteURL,
+		AuthType:    req.AuthType,
+		AuthKey:     req.AuthKey,
+		AuthSecret:  req.AuthSecret,
+		Environment: req.Environment,
 	}
 	if err := dal.DB.Create(&repo).Error; err != nil {
 		c.JSON(consts.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 	c.JSON(consts.StatusOK, repo)
+}
+
+type TestConnectionReq struct {
+	URL string `json:"url"`
+}
+
+// @Summary Test remote connection
+// @Tags System
+// @Param request body TestConnectionReq true "Connection info"
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /api/git/test-connection [post]
+func TestConnection(ctx context.Context, c *app.RequestContext) {
+	var req TestConnectionReq
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	gitSvc := service.NewGitService()
+	if err := gitSvc.TestRemoteConnection(req.URL); err != nil {
+		c.JSON(consts.StatusOK, map[string]string{"status": "failed", "error": err.Error()})
+		return
+	}
+
+	c.JSON(consts.StatusOK, map[string]string{"status": "success"})
 }
 
 // @Summary List registered repositories

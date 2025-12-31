@@ -22,6 +22,39 @@ definitions:
       task_id:
         type: integer
     type: object
+  model.AuthorStat:
+    properties:
+      email:
+        type: string
+      file_types:
+        additionalProperties:
+          type: integer
+        type: object
+      name:
+        type: string
+      time_trend:
+        additionalProperties:
+          type: integer
+        description: Date -> Lines mapping (e.g. "2023-01-01" -> 10)
+        type: object
+      total_lines:
+        type: integer
+    type: object
+  model.Commit:
+    properties:
+      author:
+        type: string
+      date:
+        type: string
+      email:
+        type: string
+      hash:
+        type: string
+      message:
+        type: string
+      timestamp:
+        type: integer
+    type: object
   model.Repo:
     properties:
       created_at:
@@ -34,6 +67,15 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  model.StatsResponse:
+    properties:
+      authors:
+        items:
+          $ref: '#/definitions/model.AuthorStat'
+        type: array
+      total_lines:
+        type: integer
     type: object
   model.SyncRun:
     properties:
@@ -94,8 +136,8 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: API documentation for Git Sync Tool
-  title: Git Sync Tool API
+  description: API documentation for Branch Management Tool
+  title: Branch Management Tool API
   version: "1.0"
 paths:
   /api/config:
@@ -166,6 +208,101 @@ paths:
       summary: Register a new repository
       tags:
       - Repositories
+  /api/stats/analyze:
+    get:
+      parameters:
+      - description: Repo ID
+        in: query
+        name: repo_id
+        required: true
+        type: integer
+      - description: Branch Name
+        in: query
+        name: branch
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.StatsResponse'
+      summary: Get code statistics for a branch
+      tags:
+      - Stats
+  /api/stats/branches:
+    get:
+      parameters:
+      - description: Repo ID
+        in: query
+        name: repo_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+      summary: List branches for a repository
+      tags:
+      - Stats
+  /api/stats/commits:
+    get:
+      parameters:
+      - description: Repo ID
+        in: query
+        name: repo_id
+        required: true
+        type: integer
+      - description: Branch Name
+        in: query
+        name: branch
+        required: true
+        type: string
+      - description: Since (YYYY-MM-DD)
+        in: query
+        name: since
+        type: string
+      - description: Until (YYYY-MM-DD)
+        in: query
+        name: until
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Commit'
+            type: array
+      summary: Get commit history for a branch
+      tags:
+      - Stats
+  /api/stats/export/csv:
+    get:
+      parameters:
+      - description: Repo ID
+        in: query
+        name: repo_id
+        required: true
+        type: integer
+      - description: Branch Name
+        in: query
+        name: branch
+        required: true
+        type: string
+      produces:
+      - text/csv
+      responses: {}
+      summary: Export statistics as CSV
+      tags:
+      - Stats
   /api/sync/history:
     get:
       produces:

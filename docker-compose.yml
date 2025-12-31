@@ -1,0 +1,26 @@
+services:
+  app:
+    container_name: git-manage-service
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-my-secret-key}
+      - DB_PATH=/app/data/git_sync.db
+      - TZ=Asia/Shanghai
+    volumes:
+      # Data persistence (Database)
+      - ./data:/app/data
+      # SSH Keys (Read-only access to host keys)
+      # WARNING: Ensure the host path is correct and has permissions
+      - ~/.ssh:/root/.ssh:ro
+      # Git Repositories Storage
+      # Map your host repos directory here
+      - ./repos:/repos
+    networks:
+      - git-sync-net
+
+networks:
+  git-sync-net:
+    driver: bridge

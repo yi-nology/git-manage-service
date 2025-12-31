@@ -1,5 +1,6 @@
 # Binaries
 git-sync-tool
+git-manage-service
 
 # Database
 git_sync.db
@@ -11,3 +12,6 @@ git_sync.db
 test/origin/
 test/ky/
 test/local/
+
+# Environment
+.env

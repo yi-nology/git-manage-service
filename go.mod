@@ -1,4 +1,4 @@
-module github.com/yi-nology/git-sync-tool
+module github.com/yi-nology/git-manage-service
 
 go 1.24.0
 
