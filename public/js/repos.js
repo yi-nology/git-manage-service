@@ -36,6 +36,7 @@ async function loadRepos() {
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-secondary" onclick="openRepoDetailModal(${repo.id})" title="详情"><i class="bi bi-info-circle"></i></button>
                         <button class="btn btn-outline-primary" onclick="openEditRepoModal(${repo.id})" title="编辑"><i class="bi bi-pencil"></i></button>
+                        <a class="btn btn-outline-success" href="branches.html?repo_id=${repo.id}" title="分支管理"><i class="bi bi-diagram-3"></i></a>
                         <a class="btn btn-outline-dark" href="repo_sync.html?repo_key=${repo.key}" title="同步配置"><i class="bi bi-arrow-repeat"></i></a>
                         <button class="btn btn-outline-info" onclick="openRepoHistoryModal('${repo.key}')" title="同步历史"><i class="bi bi-clock-history"></i></button>
                         <button class="btn btn-outline-danger" onclick="deleteRepo(${repo.id})" title="删除"><i class="bi bi-trash"></i></button>
@@ -139,23 +140,32 @@ async function reloadHistoryTable(repoKey) {
         history.forEach(h => {
             const duration = h.end_time ? (new Date(h.end_time) - new Date(h.start_time)) + 'ms' : '-';
             let taskInfo = '-';
-            if (h.Task) {
-                taskInfo = `${h.Task.source_remote}/${h.Task.source_branch} -> ${h.Task.target_remote}`;
+            // Backend returns 'task' (lowercase)
+            const task = h.task || h.Task; 
+            if (task) {
+                taskInfo = `${task.source_remote}/${task.source_branch} -> ${task.target_remote}`;
             }
             
             const tr = document.createElement('tr');
+            
+            // Use dataset for log details to avoid quoting issues
             tr.innerHTML = `
                 <td>${new Date(h.start_time).toLocaleString()}</td>
                 <td class="small">${taskInfo}</td>
                 <td><span class="badge bg-${getStatusColor(h.status)}">${h.status}</span></td>
                 <td>${duration}</td>
-                <td><button class="btn btn-xs btn-link p-0" onclick='showLog(${JSON.stringify(h.details || "")})'>日志</button></td>
+                <td><button class="btn btn-xs btn-link p-0 log-btn">日志</button></td>
                 <td>
                     <button class="btn btn-xs btn-outline-danger" onclick="deleteHistory(${h.id}, '${repoKey}')" title="删除记录">
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
             `;
+            
+            // Attach event listener safely
+            const logBtn = tr.querySelector('.log-btn');
+            logBtn.onclick = () => showLog(h.details || "");
+            
             tbody.appendChild(tr);
         });
     } catch (e) {

@@ -131,5 +131,5 @@ type SyncRun struct {
 	EndTime      time.Time `json:"end_time"`
 
 	// Associations
-	Task SyncTask `gorm:"foreignKey:TaskKey;references:Key" json:"-"`
+	Task SyncTask `gorm:"foreignKey:TaskKey;references:Key" json:"task"`
 }

@@ -1,4 +1,5 @@
-const API_BASE = '/api';
+// API_BASE is defined in request.js
+// const API_BASE = '/api';
 
 function getStatusColor(status) {
     if (status === 'success') return 'success';
