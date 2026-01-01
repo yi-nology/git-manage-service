@@ -51,6 +51,9 @@ COPY --from=builder /app/public ./public
 # Copy swagger docs
 COPY --from=builder /app/docs ./docs
 
+# Copy default config
+COPY --from=builder /app/config.yaml ./config.yaml
+
 # Set environment variables
 ENV GIN_MODE=release \
     PORT=8080 \
