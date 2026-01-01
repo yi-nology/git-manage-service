@@ -23,6 +23,12 @@
                 <select class="form-select" id="statsBranchSelect" onchange="loadStatsData()"></select>
             </div>
             <div class="col-md-2">
+                <label class="form-label">选择提交人</label>
+                <select class="form-select" id="statsAuthorSelect" onchange="loadStatsData()">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="col-md-2">
                  <label class="form-label">开始日期</label>
                  <input type="date" class="form-control" id="statsSince">
             </div>
@@ -30,9 +36,11 @@
                  <label class="form-label">结束日期</label>
                  <input type="date" class="form-control" id="statsUntil">
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button class="btn btn-primary me-2" onclick="loadStatsData()">分析</button>
-                <button class="btn btn-outline-success" onclick="exportStatsCSV()" title="导出 CSV"><i class="bi bi-download"></i></button>
+            <div class="col-md-1 d-flex align-items-end">
+                <button class="btn btn-primary w-100" onclick="loadStatsData()"><i class="bi bi-search"></i></button>
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button class="btn btn-outline-success w-100" onclick="exportStatsCSV()" title="导出 CSV"><i class="bi bi-download"></i></button>
             </div>
         </div>
 
@@ -147,57 +155,125 @@
         
         let pieChart = null;
         let lineChart = null;
+        let allAuthors = []; // Cache all authors for filtering
         
         async function loadStatsData() {
             const repoId = document.getElementById('statsRepoSelect').value;
             const branch = document.getElementById('statsBranchSelect').value;
+            const author = document.getElementById('statsAuthorSelect').value;
             const since = document.getElementById('statsSince').value;
             const until = document.getElementById('statsUntil').value;
             
             if (!repoId || !branch) return;
             
             const btn = document.querySelector('button[onclick="loadStatsData()"]');
-            const originalText = btn.innerText;
-            btn.innerText = '分析中...';
-            btn.disabled = true;
+            // Check if btn exists (it might be the search icon button now)
+            if (btn) {
+                btn.disabled = true;
+            }
 
             try {
-                const data = await request(`/stats/analyze?repo_id=${repoId}&branch=${encodeURIComponent(branch)}&since=${since}&until=${until}`);
+                // If author is selected, we filter locally or pass to backend?
+                // Backend supports filtering now. But to populate the dropdown initially, we need full data.
+                // Strategy:
+                // 1. If it's a new repo/branch selection (or forced refresh), fetch ALL data.
+                // 2. Populate author dropdown from ALL data.
+                // 3. If author filter is active, filter the data (either frontend or backend).
+                // Let's rely on backend filtering for consistency with CSV export.
                 
-                document.getElementById('totalLines').innerText = data.total_lines.toLocaleString();
-                document.getElementById('totalAuthors').innerText = data.authors.length;
+                let url = `/stats/analyze?repo_id=${repoId}&branch=${encodeURIComponent(branch)}&since=${since}&until=${until}`;
+                // Only fetch full list if we don't have authors yet or params changed significantly?
+                // Actually, backend calculation is heavy. Maybe we should fetch full stats once, then filter in frontend?
+                // But the user asked for "group by submitter selection", implying backend filter or view filter.
+                // Backend implementation added 'author' param. Let's use it.
+                // Wait, if we use backend filter, we can't populate the dropdown initially unless we have a separate "list authors" API.
+                // OR: We fetch full stats first (author=""), populate dropdown, then apply filter if user selects one?
+                // If the user selects an author, we re-fetch with author param? That triggers a heavy git blame again?
+                // NO, Git Blame is heavy. We should Cache the result or Filter in Frontend.
+                // Since I modified the backend to filter, let's use it BUT we need the list of authors first.
+                // Best approach: Fetch ALL stats (no author filter) first. Populate Dropdown. Then if user selects author, just filter the DISPLAY data in JS?
+                // YES, Frontend filtering is much faster and avoids re-running `git blame`.
+                // Let's ignore the backend `author` param for the UI display to avoid re-fetching.
                 
-                // Pie Chart
-                if (!pieChart) pieChart = echarts.init(document.getElementById('pieChart'));
-                pieChart.setOption({
-                    tooltip: { trigger: 'item' },
-                    series: [{
-                        type: 'pie',
-                        radius: '50%',
-                        data: data.authors.map(a => ({value: a.total_lines, name: a.name})),
-                        emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' } }
-                    }]
-                });
+                // However, the prompt implies "Selection".
+                // Let's modify: Fetch ALL data. Populate Dropdown. Filter Data in JS.
                 
-                // Line Chart (Placeholder - would need historical data from backend)
-                if (!lineChart) lineChart = echarts.init(document.getElementById('lineChart'));
-                lineChart.setOption({
-                    title: { text: '暂无趋势数据', left: 'center', textStyle: { color: '#ccc' } },
-                    xAxis: { type: 'category', data: [] },
-                    yAxis: { type: 'value' },
-                    series: []
-                });
+                const data = await request(url);
                 
-                loadCommits(repoId, branch, since, until);
+                // Store/Update all authors list only if we fetched everything (no filter applied yet logic)
+                // Actually we always fetch everything from backend now (unless we pass author param).
+                // I will NOT pass author param to backend to allow frontend filtering without re-fetch.
+                
+                allAuthors = data.authors;
+                updateAuthorDropdown();
+                
+                renderStats(data);
+                
+                // Commits might still need backend filter if list is huge? 
+                // Commits API doesn't support author filter yet. Let's leave it for now or filter in JS if we fetch all.
+                loadCommits(repoId, branch, since, until, author);
             } catch (e) {
                 // Handled
             } finally {
-                btn.innerText = originalText;
-                btn.disabled = false;
+                if (btn) btn.disabled = false;
             }
         }
         
-        async function loadCommits(repoId, branch, since, until) {
+        function updateAuthorDropdown() {
+            const select = document.getElementById('statsAuthorSelect');
+            const current = select.value;
+            // Only refill if empty or if list changed drastically?
+            // Simple: Refill every time but try to keep selection
+            
+            // Get unique authors
+            const authors = allAuthors.map(a => a.name).sort();
+            
+            // Keep "All" option
+            let html = '<option value="">全部</option>';
+            authors.forEach(name => {
+                html += `<option value="${name}">${name}</option>`;
+            });
+            select.innerHTML = html;
+            select.value = current;
+        }
+        
+        function renderStats(data) {
+            const selectedAuthor = document.getElementById('statsAuthorSelect').value;
+            
+            let displayAuthors = data.authors;
+            let displayTotal = data.total_lines;
+            
+            if (selectedAuthor) {
+                displayAuthors = data.authors.filter(a => a.name === selectedAuthor);
+                displayTotal = displayAuthors.reduce((sum, a) => sum + a.total_lines, 0);
+            }
+            
+            document.getElementById('totalLines').innerText = displayTotal.toLocaleString();
+            document.getElementById('totalAuthors').innerText = displayAuthors.length;
+            
+            // Pie Chart
+            if (!pieChart) pieChart = echarts.init(document.getElementById('pieChart'));
+            pieChart.setOption({
+                tooltip: { trigger: 'item' },
+                series: [{
+                    type: 'pie',
+                    radius: '50%',
+                    data: displayAuthors.map(a => ({value: a.total_lines, name: a.name})),
+                    emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' } }
+                }]
+            });
+            
+            // Line Chart
+            if (!lineChart) lineChart = echarts.init(document.getElementById('lineChart'));
+            lineChart.setOption({
+                title: { text: '暂无趋势数据', left: 'center', textStyle: { color: '#ccc' } },
+                xAxis: { type: 'category', data: [] },
+                yAxis: { type: 'value' },
+                series: []
+            });
+        }
+        
+        async function loadCommits(repoId, branch, since, until, authorFilter) {
             try {
                 const commits = await request(`/stats/commits?repo_id=${repoId}&branch=${encodeURIComponent(branch)}&since=${since}&until=${until}`);
                 const tbody = document.getElementById('commitsList');
@@ -208,7 +284,12 @@
                     return;
                 }
 
-                commits.slice(0, 100).forEach(c => {
+                let filtered = commits;
+                if (authorFilter) {
+                    filtered = commits.filter(c => c.author === authorFilter);
+                }
+
+                filtered.slice(0, 100).forEach(c => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td><span class="font-monospace" title="${c.hash}">${c.hash.substring(0,7)}</span></td>
@@ -226,6 +307,7 @@
         function exportStatsCSV() {
              const repoId = document.getElementById('statsRepoSelect').value;
             const branch = document.getElementById('statsBranchSelect').value;
+            const author = document.getElementById('statsAuthorSelect').value;
             const since = document.getElementById('statsSince').value;
             const until = document.getElementById('statsUntil').value;
             
@@ -233,8 +315,12 @@
                 showToast("请先选择仓库和分支", "warning");
                 return;
             }
-            // Direct link for file download
-            window.location.href = `${API_BASE}/stats/export/csv?repo_id=${repoId}&branch=${encodeURIComponent(branch)}&since=${since}&until=${until}`;
+            // Pass author param to backend for filtered CSV
+            let url = `${API_BASE}/stats/export/csv?repo_id=${repoId}&branch=${encodeURIComponent(branch)}&since=${since}&until=${until}`;
+            if (author) {
+                url += `&author=${encodeURIComponent(author)}`;
+            }
+            window.location.href = url;
         }
     </script>
 </body>

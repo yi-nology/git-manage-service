@@ -101,6 +101,24 @@ func GetStats(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
+	// Filter by author if requested
+	author := c.Query("author")
+	if author != "" {
+		filtered := []*model.AuthorStat{}
+		for _, a := range stats.Authors {
+			if a.Name == author || a.Email == author {
+				filtered = append(filtered, a)
+			}
+		}
+		stats.Authors = filtered
+		// Recalculate total lines based on filter
+		total := 0
+		for _, a := range filtered {
+			total += a.TotalLines
+		}
+		stats.TotalLines = total
+	}
+
 	response.Success(c, stats)
 }
 
