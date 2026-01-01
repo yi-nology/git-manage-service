@@ -64,7 +64,7 @@ func (s *GitService) GetDiffFiles(path, base, target string) ([]FileDiffStatus, 
 		return nil, err
 	}
 	
-	var files []FileDiffStatus
+	var files = []FileDiffStatus{}
 	lines := strings.Split(out, "\n")
 	for _, line := range lines {
 		if strings.TrimSpace(line) == "" {
