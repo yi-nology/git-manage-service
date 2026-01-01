@@ -72,15 +72,23 @@ func ListRepoBranches(ctx context.Context, c *app.RequestContext) {
 
 	paged := branches[start:end]
 	
-	// Enrich with description (lazy load might be slow if we loop all, but for one page it's ok)
+	// Enrich with description and sync status
+	// We might need to fetch first to ensure status is up to date, but that's slow.
+	// Let's assume background fetch or manual fetch.
+	// Or we can do a quick fetch --all if page=1? No, too slow.
+	
 	for i := range paged {
-		desc, _ := gitSvc.GetBranchDescription(repo.Path, paged[i].Name)
-		// We didn't put Desc in BranchInfo struct yet. 
-		// Let's assume we return it as part of the struct.
-		// Wait, BranchInfo needs a Desc field?
-		// Checking model/branch.go... I didn't add Desc.
-		// I should probably add it or return a map.
-		_ = desc 
+		b := &paged[i]
+		// Description
+		desc, _ := gitSvc.GetBranchDescription(repo.Path, b.Name)
+		_ = desc // Ignored for now as it's not in struct, or add it?
+		
+		// Sync Status
+		if b.Upstream != "" {
+			ahead, behind, _ := gitSvc.GetBranchSyncStatus(repo.Path, b.Name, b.Upstream)
+			b.Ahead = ahead
+			b.Behind = behind
+		}
 	}
 	
 	// Return result with total count
