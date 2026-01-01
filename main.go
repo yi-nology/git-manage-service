@@ -67,6 +67,7 @@ func main() {
 	h.POST("/api/repos/:key/branches", handler.CreateBranch)
 	h.DELETE("/api/repos/:key/branches/:name", handler.DeleteBranch)
 	h.PUT("/api/repos/:key/branches/:name", handler.UpdateBranch)
+	h.POST("/api/repos/:key/branches/:name/checkout", handler.CheckoutBranch) // New Checkout Route
 	h.POST("/api/repos/:key/branches/:name/push", handler.PushBranch)
 	h.POST("/api/repos/:key/branches/:name/pull", handler.PullBranch)
 

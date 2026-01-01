@@ -219,3 +219,35 @@ func UpdateBranch(ctx context.Context, c *app.RequestContext) {
 	})
 	response.Success(c, map[string]string{"message": "updated"})
 }
+
+// @Summary Checkout a branch
+// @Description Switch the working tree to the specified branch.
+// @Tags Branches
+// @Param key path string true "Repo Key"
+// @Param name path string true "Branch Name"
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response "Bad Request or Checkout Failed"
+// @Failure 404 {object} response.Response "Repo not found"
+// @Router /api/repos/{key}/branches/{name}/checkout [post]
+func CheckoutBranch(ctx context.Context, c *app.RequestContext) {
+	key := c.Param("key")
+	branch := c.Param("name")
+
+	var repo model.Repo
+	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+		response.NotFound(c, "repo not found")
+		return
+	}
+
+	gitSvc := service.NewGitService()
+	if err := gitSvc.CheckoutBranch(repo.Path, branch); err != nil {
+		// Provide clear error message about why checkout failed (e.g. dirty worktree)
+		response.BadRequest(c, "Checkout failed: "+err.Error())
+		return
+	}
+
+	service.AuditSvc.Log(c, "CHECKOUT_BRANCH", "repo:"+repo.Key, map[string]string{
+		"branch": branch,
+	})
+	response.Success(c, map[string]string{"message": "checked out " + branch})
+}

@@ -405,6 +405,11 @@ func (s *GitService) TestRemoteConnection(url string) error {
 	return nil
 }
 
+func (s *GitService) CheckoutBranch(path, branch string) error {
+	_, err := s.RunCommand(path, "checkout", branch)
+	return err
+}
+
 // GetStatus returns the git status output
 func (s *GitService) GetStatus(path string) (string, error) {
 	return s.RunCommand(path, "status")
