@@ -20,6 +20,7 @@ func (s *GitService) ListBranchesWithInfo(path string) ([]model.BranchInfo, erro
 		"for-each-ref",
 		"--format=%(refname:short)|%(objectname)|%(authorname)|%(authoremail)|%(committerdate:iso)|%(subject)|%(HEAD)|%(upstream:short)",
 		"refs/heads",
+		"refs/remotes",
 	}
 
 	out, err := s.RunCommand(path, args...)

@@ -1,5 +1,9 @@
 const urlParams = new URLSearchParams(window.location.search);
 const repoKey = urlParams.get('repo_key');
+let currentRepo = null;
+let currentTab = 'local';
+let allBranches = [];
+let repoRemotes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     initToastContainer();
@@ -19,6 +23,17 @@ async function loadRepoInfo() {
             currentRepo = repo;
             // document.getElementById('repo-title').innerText = `${repo.name} - 分支管理`;
             document.title = `${repo.name} - 分支管理`;
+            
+            // Load Remotes for filtering
+            try {
+                const config = await request('/repos/scan', {
+                    method: 'POST',
+                    body: { path: repo.path }
+                });
+                repoRemotes = (config.remotes || []).map(r => r.name);
+                // Refresh branches after loading remotes (if branches loaded first, render might be wrong)
+                if (allBranches.length > 0) renderBranches();
+            } catch(e) { console.error("Failed to load remotes", e); }
         } else {
             // document.getElementById('repo-title').innerText = "仓库未找到";
         }
@@ -30,97 +45,130 @@ async function loadRepoInfo() {
 
 async function loadBranches() {
     const tbody = document.getElementById('branch-list');
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">加载中...</td></tr>';
-
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">加载中...</td></tr>';
+    
     const keyword = document.getElementById('searchInput').value;
     
     try {
-        const res = await request(`/repos/${repoKey}/branches?keyword=${encodeURIComponent(keyword)}`);
-        // Response structure: { total: N, list: [] }
-        const list = res.list || [];
-        const total = res.total || 0;
-        console.log("Branches loaded:", list); // Debug log
+        const res = await request(`/repos/${repoKey}/branches?keyword=${encodeURIComponent(keyword)}&page_size=1000`);
+        allBranches = res.list || [];
+        console.log("Branches loaded:", allBranches.length);
 
-        document.getElementById('total-count').innerText = `共 ${total} 个分支`;
-        tbody.innerHTML = '';
-
-        if (list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">无匹配分支</td></tr>';
-            return;
-        }
-
-        list.forEach(b => {
-            const tr = document.createElement('tr');
-            if (b.is_current) {
-                tr.classList.add('table-success');
-            }
-
-            const dateStr = b.date ? new Date(b.date).toLocaleString() : '-';
-            const shortHash = b.hash ? b.hash.substring(0, 7) : '-';
-            
-            // Sync Status UI
-            let syncStatus = '';
-            let syncBtn = '';
-            if (b.upstream) {
-                if (b.behind > 0) {
-                    syncStatus += `<span class="badge bg-danger me-1" title="落后 ${b.behind} 个提交"><i class="bi bi-arrow-down"></i> ${b.behind}</span>`;
-                    if (b.is_current) {
-                        syncBtn = `<button class="btn btn-warning btn-sm" onclick="syncBranch('${b.name}')" title="同步代码 (Pull --rebase)"><i class="bi bi-cloud-download"></i></button>`;
-                    }
-                }
-                if (b.ahead > 0) {
-                    syncStatus += `<span class="badge bg-success me-1" title="领先 ${b.ahead} 个提交"><i class="bi bi-arrow-up"></i> ${b.ahead}</span>`;
-                }
-                if (b.behind === 0 && b.ahead === 0) {
-                    syncStatus = `<span class="text-success small"><i class="bi bi-check-all"></i> 已同步</span>`;
-                }
-            } else {
-                syncStatus = `<span class="text-muted small">无上游</span>`;
-            }
-
-            tr.innerHTML = `
-                <td>
-                    <span class="${b.is_current ? 'branch-current' : ''}">
-                        ${b.is_current ? '<i class="bi bi-check-circle-fill me-1"></i>' : '<i class="bi bi-git me-1"></i>'}
-                        ${b.name}
-                    </span>
-                </td>
-                <td>
-                    <div class="commit-hash"><i class="bi bi-hash"></i> ${shortHash}</div>
-                    <div class="small text-muted text-truncate" style="max-width: 300px;" title="${b.message}">${b.message}</div>
-                </td>
-                <td>
-                    <div>${b.author}</div>
-                    <div class="small text-muted">${b.author_email}</div>
-                </td>
-                <td class="small">${dateStr}</td>
-                <td>${syncStatus}</td>
-                <td class="text-end">
-                    <div class="btn-group btn-group-sm">
-                        ${syncBtn}
-                        ${!b.is_current ? `<button class="btn btn-outline-success" onclick="checkoutBranch('${b.name}')" title="切换到此分支"><i class="bi bi-check2-circle"></i></button>` : ''}
-                        <button class="btn btn-outline-dark" onclick="openPushModal('${b.name}')" title="推送至远端"><i class="bi bi-cloud-upload"></i></button>
-                        <button class="btn btn-outline-secondary" onclick="openDetail('${b.name}')" title="详情"><i class="bi bi-info-circle"></i></button>
-                        <button class="btn btn-outline-primary" onclick="openRenameModal('${b.name}')" title="重命名/描述"><i class="bi bi-pencil"></i></button>
-                        ${b.is_current ? '' : `<button class="btn btn-outline-danger" onclick="deleteBranch('${b.name}')" title="删除"><i class="bi bi-trash"></i></button>`}
-                    </div>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        renderBranches();
 
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">加载失败: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">加载失败: ${e.message}</td></tr>`;
     }
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    renderBranches();
+}
+
+function renderBranches() {
+    const tbody = document.getElementById('branch-list');
+    tbody.innerHTML = '';
+    
+    let filtered = [];
+    if (currentTab === 'local') {
+        // Local: Not starting with remote/
+        filtered = allBranches.filter(b => !repoRemotes.some(r => b.name.startsWith(r + '/')));
+    } else {
+        // Remote: Starting with remote/
+        filtered = allBranches.filter(b => repoRemotes.some(r => b.name.startsWith(r + '/')));
+    }
+    
+    document.getElementById('total-count').innerText = `共 ${filtered.length} 个分支`;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">无匹配分支</td></tr>';
+        return;
+    }
+
+    filtered.forEach(b => {
+        const tr = document.createElement('tr');
+        if (b.is_current) {
+            tr.classList.add('table-success');
+        }
+
+        const dateStr = b.date ? new Date(b.date).toLocaleString() : '-';
+        const shortHash = b.hash ? b.hash.substring(0, 7) : '-';
+        
+        // Sync Status UI
+        let syncStatus = '';
+        let syncBtn = '';
+        if (b.upstream) {
+            if (b.behind > 0) {
+                syncStatus += `<span class="badge bg-danger me-1" title="落后 ${b.behind} 个提交"><i class="bi bi-arrow-down"></i> ${b.behind}</span>`;
+                if (b.is_current) {
+                    syncBtn = `<button class="btn btn-warning btn-sm" onclick="syncBranch('${b.name}')" title="同步代码 (Pull --rebase)"><i class="bi bi-cloud-download"></i></button>`;
+                }
+            }
+            if (b.ahead > 0) {
+                syncStatus += `<span class="badge bg-success me-1" title="领先 ${b.ahead} 个提交"><i class="bi bi-arrow-up"></i> ${b.ahead}</span>`;
+            }
+            if (b.behind === 0 && b.ahead === 0) {
+                syncStatus = `<span class="text-success small"><i class="bi bi-check-all"></i> 已同步</span>`;
+            }
+        } else {
+            syncStatus = `<span class="text-muted small">无上游</span>`;
+        }
+
+        tr.innerHTML = `
+            <td>
+                <span class="${b.is_current ? 'branch-current' : ''}">
+                    ${b.is_current ? '<i class="bi bi-check-circle-fill me-1"></i>' : '<i class="bi bi-git me-1"></i>'}
+                    ${b.name}
+                </span>
+            </td>
+            <td>
+                <div class="commit-hash"><i class="bi bi-hash"></i> ${shortHash}</div>
+                <div class="small text-muted text-truncate" style="max-width: 300px;" title="${b.message}">${b.message}</div>
+            </td>
+            <td>
+                <div>${b.author}</div>
+                <div class="small text-muted">${b.author_email}</div>
+            </td>
+            <td class="small">${dateStr}</td>
+            <td>${syncStatus}</td>
+            <td class="text-end">
+                <div class="btn-group btn-group-sm">
+                    ${syncBtn}
+                    ${!b.is_current && currentTab === 'local' ? `<button class="btn btn-outline-success" onclick="checkoutBranch('${b.name}')" title="切换到此分支"><i class="bi bi-check2-circle"></i></button>` : ''}
+                    ${currentTab === 'local' ? `<button class="btn btn-outline-dark" onclick="openPushModal('${b.name}')" title="推送至远端"><i class="bi bi-cloud-upload"></i></button>` : ''}
+                    ${currentTab === 'local' ? `<button class="btn btn-outline-secondary" onclick="openDetail('${b.name}')" title="详情"><i class="bi bi-info-circle"></i></button>` : ''}
+                    ${currentTab === 'local' ? `<button class="btn btn-outline-primary" onclick="openRenameModal('${b.name}')" title="重命名/描述"><i class="bi bi-pencil"></i></button>` : ''}
+                    ${currentTab === 'local' && !b.is_current ? `<button class="btn btn-outline-danger" onclick="deleteBranch('${b.name}')" title="删除"><i class="bi bi-trash"></i></button>` : ''}
+                    ${currentTab === 'remote' ? `<button class="btn btn-outline-success" onclick="checkoutRemoteBranch('${b.name}')" title="检出为本地分支"><i class="bi bi-download"></i></button>` : ''}
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 function openComparePage() {
     window.location.href = `compare.html?repo_key=${repoKey}`;
 }
 
-function openCreateModal() {
+function openCreateModal(baseRef) {
     document.getElementById('createForm').reset();
+    if (baseRef) {
+        document.querySelector('#createForm input[name="base_ref"]').value = baseRef;
+        // Suggest name: strip remote prefix
+        const parts = baseRef.split('/');
+        if (parts.length > 1) {
+             document.querySelector('#createForm input[name="name"]').value = parts.slice(1).join('/');
+        }
+    }
     new bootstrap.Modal(document.getElementById('createModal')).show();
+}
+
+function checkoutRemoteBranch(name) {
+    openCreateModal(name);
 }
 
 async function submitCreate() {

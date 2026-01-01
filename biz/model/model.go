@@ -110,7 +110,6 @@ type SyncTask struct {
 	PushOptions   string         `json:"push_options"` // e.g. "--force --no-verify"
 	Cron          string         `json:"cron"`         // e.g. "0 2 * * *"
 	Enabled       bool           `json:"enabled"`
-	WebhookToken  string         `json:"webhook_token"` // For webhook triggering
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`

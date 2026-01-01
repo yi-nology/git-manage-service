@@ -108,9 +108,6 @@ func main() {
 	h.GET("/api/stats/analyze", handler.GetStats)
 	h.GET("/api/stats/export/csv", handler.ExportStatsCSV)
 
-	// Webhook
-	h.POST("/api/webhooks/trigger", handler.HandleWebhookTrigger)
-
 	// Audit Routes
 	h.GET("/api/audit/logs", handler.ListAuditLogs)
 

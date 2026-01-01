@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast("缺少 repo_key 参数", "error");
         return;
     }
-    document.getElementById('repo-link').href = `branches.html?repo_key=${repoKey}`;
+    // document.getElementById('repo-link').href = `branches.html?repo_key=${repoKey}`;
     loadBranches();
 });
 
