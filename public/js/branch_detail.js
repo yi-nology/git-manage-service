@@ -10,9 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     document.getElementById('branch-title').innerHTML = `<i class="bi bi-git"></i> ${branchName}`;
-    document.getElementById('branch-name-crumb').innerText = branchName;
-    document.getElementById('repo-link').href = `branches.html?repo_key=${repoKey}`;
-
+    // Breadcrumbs removed
+    
     loadData();
 });
 

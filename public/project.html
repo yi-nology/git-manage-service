@@ -182,6 +182,9 @@
                 case 'sync':
                     src = `repo_sync.html?repo_key=${repoKey}&hide_nav=true`;
                     break;
+                case 'webhook':
+                    src = `webhook_info.html?repo_key=${repoKey}&hide_nav=true`;
+                    break;
             }
 
             // Always set src for now to ensure it loads. Optimizations can be added later if flickering is an issue.

@@ -535,7 +535,6 @@ func UpdateTask(ctx context.Context, c *app.RequestContext) {
 
 	// Reset webhook token if needed or requested?
 	// For now keep existing or allow update if passed?
-	// task.WebhookToken = req.WebhookToken
 
 	dal.DB.Save(&task)
 	service.CronSvc.UpdateTask(task)

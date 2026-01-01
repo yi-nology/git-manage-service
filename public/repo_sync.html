@@ -43,22 +43,24 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">源 (Source)</label>
-                                <select class="form-select mb-2" name="source_remote" id="sourceRemoteSelect" onchange="updateTaskHint()">
+                                <select class="form-select mb-2" name="source_remote" id="sourceRemoteSelect" onchange="updateTaskHint(); updateBranchOptions('sourceRemoteSelect', 'sourceBranchSelect')">
                                     <!-- Options populated by JS -->
                                 </select>
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text">分支</span>
-                                    <input type="text" class="form-control" name="source_branch" value="main">
+                                    <input type="text" class="form-control" name="source_branch" list="sourceBranchList" placeholder="选择或输入分支">
+                                    <datalist id="sourceBranchList"></datalist>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">目标 (Target)</label>
-                                <select class="form-select mb-2" name="target_remote" id="targetRemoteSelect" onchange="updateTaskHint()">
+                                <select class="form-select mb-2" name="target_remote" id="targetRemoteSelect" onchange="updateTaskHint(); updateBranchOptions('targetRemoteSelect', 'targetBranchList')">
                                     <!-- Options populated by JS -->
                                 </select>
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text">分支</span>
-                                    <input type="text" class="form-control" name="target_branch" value="main">
+                                    <input type="text" class="form-control" name="target_branch" list="targetBranchList" placeholder="选择或输入分支">
+                                    <datalist id="targetBranchList"></datalist>
                                 </div>
                             </div>
                         </div>
@@ -122,36 +124,7 @@
         </div>
     </div>
     
-    <!-- Webhook Info Modal -->
-    <div class="modal fade" id="webhookModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Webhook 详情</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small">使用此 Webhook 触发远程同步任务。请确保在触发时发送 POST 请求。</p>
-                    
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Webhook URL</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control font-monospace small" id="webhookUrlInput" readonly>
-                            <button class="btn btn-outline-secondary" onclick="copyToClipboard(document.getElementById('webhookUrlInput').value)"><i class="bi bi-copy"></i></button>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">cURL 示例</label>
-                        <div class="position-relative">
-                            <pre class="bg-light p-3 border rounded font-monospace small" id="curlExample" style="white-space: pre-wrap; word-break: break-all;"></pre>
-                            <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 border" onclick="copyToClipboard(document.getElementById('curlExample').innerText)" title="复制命令"><i class="bi bi-copy"></i></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Webhook Info Modal Removed -->
 
     <!-- Log Modal -->
     <div class="modal fade" id="logModal" tabindex="-1">
@@ -177,6 +150,7 @@
         const repoKey = urlParams.get('repo_key');
         let currentRepo = null;
         let repoRemotes = [];
+        let repoBranches = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             if (!repoKey) {
@@ -186,7 +160,54 @@
             }
             loadRepoInfo();
             loadTasks();
+            loadBranches();
         });
+
+        async function loadBranches() {
+            try {
+                const res = await request(`/repos/${repoKey}/branches?page_size=1000`); // Increase limit to get all
+                // res is {total: ..., list: [...]}
+                if (res && res.list) {
+                    repoBranches = res.list.map(b => b.name);
+                } else {
+                    repoBranches = [];
+                }
+            } catch (e) {
+                console.error("Failed to load branches", e);
+                repoBranches = [];
+            }
+        }
+        
+        function updateBranchOptions(remoteSelectId, datalistId) {
+            const remote = document.getElementById(remoteSelectId).value;
+            const datalist = document.getElementById(datalistId);
+            
+            if (!datalist) {
+                console.error(`Datalist not found: ${datalistId}`);
+                return;
+            }
+            
+            datalist.innerHTML = '';
+            
+            let filtered = [];
+            if (remote === 'local') {
+                filtered = repoBranches.filter(b => !repoRemotes.some(r => b.startsWith(r + '/')));
+            } else {
+                const prefix = remote + '/';
+                filtered = repoBranches
+                    .filter(b => b.startsWith(prefix))
+                    .map(b => b.substring(prefix.length));
+            }
+            
+            // Deduplicate and Sort
+            filtered = [...new Set(filtered)].sort();
+            
+            filtered.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                datalist.appendChild(opt);
+            });
+        }
 
         async function loadRepoInfo() {
             // Load all repos to find current (or add specific API)
@@ -277,7 +298,7 @@
                 alert("已复制到剪贴板");
             });
         }
-        
+
         function getSyncType(task) {
             if (task.source_remote === 'local') return 'Push';
             if (task.target_remote === 'local') return 'Fetch';
@@ -294,6 +315,9 @@
             document.getElementById('sourceRemoteSelect').value = 'local';
             if (repoRemotes.length > 0) document.getElementById('targetRemoteSelect').value = repoRemotes[0];
             
+            updateBranchOptions('sourceRemoteSelect', 'sourceBranchList');
+            updateBranchOptions('targetRemoteSelect', 'targetBranchList');
+            
             updateTaskHint();
             new bootstrap.Modal(document.getElementById('taskModal')).show();
         }
@@ -309,16 +333,19 @@
             request(`/sync/tasks/${key}`)
                 .then(task => {
                     const form = document.getElementById('taskForm');
-                    form.id.value = task.key; // We use key as ID for update endpoint which uses path param
+                    form.id.value = task.key; 
                     
                     populateRemotes();
                     form.source_remote.value = task.source_remote;
                     form.source_branch.value = task.source_branch;
+                    updateBranchOptions('sourceRemoteSelect', 'sourceBranchList');
+                    
                     form.target_remote.value = task.target_remote;
                     form.target_branch.value = task.target_branch;
+                    updateBranchOptions('targetRemoteSelect', 'targetBranchList');
+                    
                     form.push_options.value = task.push_options;
                     form.cron.value = task.cron;
-                    form.webhook_token.value = task.webhook_token || '';
                     form.enabled.checked = task.enabled;
                     
                     document.getElementById('taskModalTitle').innerText = '编辑同步规则';
@@ -357,7 +384,7 @@
                 target_branch: form.target_branch.value,
                 push_options: form.push_options.value,
                 cron: form.cron.value,
-                webhook_token: form.webhook_token.value,
+                // webhook_token: form.webhook_token.value,
                 enabled: form.enabled.checked
             };
             
