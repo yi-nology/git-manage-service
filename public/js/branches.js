@@ -39,6 +39,7 @@ async function loadBranches() {
         // Response structure: { total: N, list: [] }
         const list = res.list || [];
         const total = res.total || 0;
+        console.log("Branches loaded:", list); // Debug log
 
         document.getElementById('total-count').innerText = `共 ${total} 个分支`;
         tbody.innerHTML = '';
@@ -97,6 +98,7 @@ async function loadBranches() {
                 <td class="text-end">
                     <div class="btn-group btn-group-sm">
                         ${syncBtn}
+                        ${!b.is_current ? `<button class="btn btn-outline-success" onclick="checkoutBranch('${b.name}')" title="切换到此分支"><i class="bi bi-check2-circle"></i></button>` : ''}
                         <button class="btn btn-outline-dark" onclick="openPushModal('${b.name}')" title="推送至远端"><i class="bi bi-cloud-upload"></i></button>
                         <button class="btn btn-outline-secondary" onclick="openDetail('${b.name}')" title="详情"><i class="bi bi-info-circle"></i></button>
                         <button class="btn btn-outline-primary" onclick="openRenameModal('${b.name}')" title="重命名/描述"><i class="bi bi-pencil"></i></button>
@@ -198,6 +200,21 @@ async function deleteBranch(name) {
         loadBranches();
     } catch (e) {
         // handled
+    }
+}
+
+async function checkoutBranch(name) {
+    if (!confirm(`确定要切换到分支 "${name}" 吗？\n请确保当前工作区已提交，否则可能会失败。`)) return;
+
+    try {
+        await request(`/repos/${repoKey}/branches/${encodeURIComponent(name)}/checkout`, {
+            method: 'POST'
+        });
+        showToast(`已切换到 ${name}`, "success");
+        loadBranches();
+    } catch (e) {
+        // Show specific error message from backend (e.g., dirty worktree)
+        showToast("切换失败: " + e.message, "error");
     }
 }
 

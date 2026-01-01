@@ -146,6 +146,22 @@ async function deleteCurrentBranch() {
     }
 }
 
+async function pushRemote() {
+    if (!confirm(`确定要将分支 "${branchName}" 推送到远程 origin 吗？`)) return;
+
+    try {
+        const res = await request(`/repos/${repoKey}/branches/${encodeURIComponent(branchName)}/push`, {
+            method: 'POST',
+            body: JSON.stringify({
+                remotes: ['origin'] // Default to origin
+            })
+        });
+        showToast(res.message, "success");
+    } catch (e) {
+        showToast("推送失败: " + e.message, "error");
+    }
+}
+
 // Submit Changes Logic
 let submitModal = null;
 
