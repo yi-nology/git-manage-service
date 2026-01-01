@@ -48,6 +48,12 @@ func main() {
 	h.PUT("/api/repos/:id", handler.UpdateRepo)
 	h.DELETE("/api/repos/:id", handler.DeleteRepo)
 
+	// Branch Routes
+	h.GET("/api/repos/:id/branches", handler.ListRepoBranches)
+	h.POST("/api/repos/:id/branches", handler.CreateBranch)
+	h.DELETE("/api/repos/:id/branches/:name", handler.DeleteBranch)
+	h.PUT("/api/repos/:id/branches/:name", handler.UpdateBranch)
+
 	h.GET("/api/tasks/:id", handler.GetCloneTask) // New Task Endpoint
 
 	h.GET("/api/config", handler.GetConfig)

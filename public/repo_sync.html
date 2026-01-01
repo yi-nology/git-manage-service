@@ -169,6 +169,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/request.js"></script>
     <script src="js/common.js"></script>
     <script src="js/navbar.js"></script>
     <script>
@@ -189,70 +190,70 @@
 
         async function loadRepoInfo() {
             // Load all repos to find current (or add specific API)
-            const res = await fetch(`${API_BASE}/repos`);
-            const repos = await res.json();
-            currentRepo = repos.find(r => r.key === repoKey);
-            if (!currentRepo) {
-                alert("仓库不存在");
-                window.location.href = "repos.html";
-                return;
-            }
-            document.getElementById('repoNameTitle').innerText = currentRepo.name;
-            // document.getElementById('taskRepoId').value = repoId; // No longer needed or used as reference? 
-            // We might need repo ID for some other things, but here we use Key mainly.
-            
-            // Scan remotes for dropdowns
-            const scanRes = await fetch(`${API_BASE}/repos/scan`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: currentRepo.path})
-            });
-            if (scanRes.ok) {
-                const config = await scanRes.json();
+            try {
+                const repos = await request('/repos');
+                currentRepo = repos.find(r => r.key === repoKey);
+                if (!currentRepo) {
+                    alert("仓库不存在");
+                    window.location.href = "repos.html";
+                    return;
+                }
+                document.getElementById('repoNameTitle').innerText = currentRepo.name;
+                
+                // Scan remotes for dropdowns
+                const config = await request('/repos/scan', {
+                    method: 'POST',
+                    body: {path: currentRepo.path}
+                });
                 repoRemotes = (config.remotes || []).map(r => r.name);
+            } catch (e) {
+                // Handled by request or alert
             }
         }
 
         async function loadTasks() {
-            const res = await fetch(`${API_BASE}/sync/tasks?repo_key=${repoKey}`);
-            const tasks = await res.json();
-            const list = document.getElementById('taskList');
-            list.innerHTML = '';
-            
-            if (tasks.length === 0) {
-                list.innerHTML = '<div class="alert alert-secondary text-center">暂无同步规则</div>';
-                return;
-            }
-
-            tasks.forEach(task => {
-                const item = document.createElement('div');
-                item.className = 'card mb-3 sync-card';
-                if (!task.enabled) item.classList.add('opacity-75');
+            try {
+                const tasks = await request(`/sync/tasks?repo_key=${repoKey}`);
+                const list = document.getElementById('taskList');
+                list.innerHTML = '';
                 
-                item.innerHTML = `
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <h5 class="card-title">
-                                <span class="badge bg-light text-dark border me-2">${getSyncType(task)}</span>
-                                ${task.source_remote}/${task.source_branch} <i class="bi bi-arrow-right"></i> ${task.target_remote}/${task.target_branch}
-                            </h5>
-                            <div>
-                                <button class="btn btn-sm btn-outline-success me-1" onclick="runTask(${task.id})" title="立即执行"><i class="bi bi-play-fill"></i></button>
-                                <button class="btn btn-sm btn-outline-info me-1" onclick="showHistory('${task.key}')" title="历史记录"><i class="bi bi-clock-history"></i></button>
-                                <button class="btn btn-sm btn-outline-secondary me-1" onclick="editTask(${task.id})"><i class="bi bi-pencil"></i></button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})"><i class="bi bi-trash"></i></button>
+                if (!tasks || tasks.length === 0) {
+                    list.innerHTML = '<div class="alert alert-secondary text-center">暂无同步规则</div>';
+                    return;
+                }
+
+                tasks.forEach(task => {
+                    const item = document.createElement('div');
+                    item.className = 'card mb-3 sync-card';
+                    if (!task.enabled) item.classList.add('opacity-75');
+                    
+                    item.innerHTML = `
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <h5 class="card-title">
+                                    <span class="badge bg-light text-dark border me-2">${getSyncType(task)}</span>
+                                    ${task.source_remote}/${task.source_branch} <i class="bi bi-arrow-right"></i> ${task.target_remote}/${task.target_branch}
+                                </h5>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-success me-1" onclick="runTask(${task.id})" title="立即执行"><i class="bi bi-play-fill"></i></button>
+                                    <button class="btn btn-sm btn-outline-info me-1" onclick="showHistory('${task.key}')" title="历史记录"><i class="bi bi-clock-history"></i></button>
+                                    <button class="btn btn-sm btn-outline-secondary me-1" onclick="editTask(${task.id})"><i class="bi bi-pencil"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
+                            <div class="text-muted small mt-2">
+                                ${task.cron ? `<span class="me-3"><i class="bi bi-alarm"></i> ${task.cron}</span>` : ''}
+                                ${task.webhook_token ? renderWebhookInfo(task.webhook_token) : ''}
+                                <span class="me-3"><i class="bi bi-toggle-${task.enabled ? 'on text-success' : 'off'}"></i> ${task.enabled ? '已启用' : '已禁用'}</span>
+                                ${task.push_options ? `<span><i class="bi bi-terminal"></i> ${task.push_options}</span>` : ''}
                             </div>
                         </div>
-                        <div class="text-muted small mt-2">
-                            ${task.cron ? `<span class="me-3"><i class="bi bi-alarm"></i> ${task.cron}</span>` : ''}
-                            ${task.webhook_token ? renderWebhookInfo(task.webhook_token) : ''}
-                            <span class="me-3"><i class="bi bi-toggle-${task.enabled ? 'on text-success' : 'off'}"></i> ${task.enabled ? '已启用' : '已禁用'}</span>
-                            ${task.push_options ? `<span><i class="bi bi-terminal"></i> ${task.push_options}</span>` : ''}
-                        </div>
-                    </div>
-                `;
-                list.appendChild(item);
-            });
+                    `;
+                    list.appendChild(item);
+                });
+            } catch (e) {
+                document.getElementById('taskList').innerHTML = '<div class="alert alert-danger text-center">加载失败</div>';
+            }
         }
         
         function renderWebhookInfo(token) {
@@ -305,14 +306,10 @@
         }
 
         function editTask(id) {
-            // Need to fetch task details or find from list if we stored it
-            // Let's fetch individual
-             fetch(`${API_BASE}/sync/tasks/${id}`)
-                .then(res => res.json())
+            request(`/sync/tasks/${id}`)
                 .then(task => {
                     const form = document.getElementById('taskForm');
                     form.id.value = task.id;
-                    // form.repo_id.value = repoId; 
                     
                     populateRemotes();
                     form.source_remote.value = task.source_remote;
@@ -329,6 +326,8 @@
                     new bootstrap.Modal(document.getElementById('taskModal')).show();
                 });
         }
+        
+        // ... (updateTaskHint skipped)
         
         function updateTaskHint() {
              const src = document.getElementById('sourceRemoteSelect').value;
@@ -350,8 +349,8 @@
             const form = document.getElementById('taskForm');
             const id = form.id.value;
             const data = {
-                source_repo_key: currentRepo.key, // Use Key for backend relation
-                target_repo_key: currentRepo.key, // Self-sync usually
+                source_repo_key: currentRepo.key,
+                target_repo_key: currentRepo.key,
                 source_remote: form.source_remote.value,
                 source_branch: form.source_branch.value,
                 target_remote: form.target_remote.value,
@@ -362,68 +361,67 @@
                 enabled: form.enabled.checked
             };
             
-            const url = id ? `${API_BASE}/sync/tasks/${id}` : `${API_BASE}/sync/tasks`;
+            const url = id ? `/sync/tasks/${id}` : `/sync/tasks`;
             const method = id ? 'PUT' : 'POST';
             
-            const res = await fetch(url, {
-                method: method,
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-            
-            if (res.ok) {
+            try {
+                await request(url, {
+                    method: method,
+                    body: data
+                });
+                
                 bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
                 loadTasks();
-            } else {
-                const err = await res.json();
-                alert("保存失败: " + err.error);
+            } catch (e) {
+                // request handles alert
             }
         }
 
         async function deleteTask(id) {
             if(!confirm("确定删除该同步规则吗？")) return;
-            await fetch(`${API_BASE}/sync/tasks/${id}`, { method: 'DELETE' });
-            loadTasks();
+            try {
+                await request(`/sync/tasks/${id}`, { method: 'DELETE' });
+                loadTasks();
+            } catch(e) {}
         }
 
         async function runTask(id) {
-            const res = await fetch(`${API_BASE}/sync/run`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({task_id: id})
-            });
-            if (res.ok) {
+            try {
+                await request(`/sync/run`, {
+                    method: 'POST',
+                    body: {task_id: id}
+                });
                 alert("任务已触发");
-            } else {
-                alert("触发失败");
+            } catch(e) {
+                // request handles alert
             }
         }
         
         async function showHistory(taskKey) {
-             // We need an API to get history by task key
-             // Currently ListHistory returns all. We can filter on client or add API param.
-             // Let's assume client filter for now as history list is small (limit 50)
-             // Or better, fetch all history and filter.
-             
-             const res = await fetch(`${API_BASE}/sync/history`);
-             const allHistory = await res.json();
-             const history = allHistory.filter(h => h.task_key === taskKey);
-             
-             const tbody = document.getElementById('historyList');
-             tbody.innerHTML = '';
-             history.forEach(h => {
-                 const duration = h.end_time ? (new Date(h.end_time) - new Date(h.start_time)) + 'ms' : '-';
-                 const tr = document.createElement('tr');
-                 tr.innerHTML = `
-                    <td>${new Date(h.start_time).toLocaleString()}</td>
-                    <td><span class="badge bg-${getStatusColor(h.status)}">${h.status}</span></td>
-                    <td>${duration}</td>
-                    <td><button class="btn btn-xs btn-link p-0" onclick='showLog(${JSON.stringify(h.details || "")})'>日志</button></td>
-                 `;
-                 tbody.appendChild(tr);
-             });
-             
-             new bootstrap.Modal(document.getElementById('historyModal')).show();
+             try {
+                 const allHistory = await request(`/sync/history`);
+                 const history = allHistory.filter(h => h.task_key === taskKey);
+                 
+                 const tbody = document.getElementById('historyList');
+                 tbody.innerHTML = '';
+                 history.forEach(h => {
+                     const duration = h.end_time ? (new Date(h.end_time) - new Date(h.start_time)) + 'ms' : '-';
+                     const tr = document.createElement('tr');
+                     tr.innerHTML = `
+                        <td>${new Date(h.start_time).toLocaleString()}</td>
+                        <td><span class="badge bg-${getStatusColor(h.status)}">${h.status}</span></td>
+                        <td>${duration}</td>
+                        <td><button class="btn btn-xs btn-link p-0 log-btn">日志</button></td>
+                     `;
+                     
+                     const logBtn = tr.querySelector('.log-btn');
+                     logBtn.onclick = () => showLog(h.details || "");
+                     
+                     tbody.appendChild(tr);
+                 });
+                 
+                 new bootstrap.Modal(document.getElementById('historyModal')).show();
+             } catch(e) {}
         }
     </script>
 </body>
