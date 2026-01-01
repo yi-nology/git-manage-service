@@ -10,6 +10,11 @@ type BranchInfo struct {
 	AuthorEmail string    `json:"author_email"`
 	Date        time.Time `json:"date"`
 	Message     string    `json:"message"`
+
+	// Sync Status
+	Upstream string `json:"upstream"`
+	Ahead    int    `json:"ahead"`
+	Behind   int    `json:"behind"`
 }
 
 type CreateBranchReq struct {

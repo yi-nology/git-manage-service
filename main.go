@@ -53,6 +53,8 @@ func main() {
 	h.POST("/api/repos/:id/branches", handler.CreateBranch)
 	h.DELETE("/api/repos/:id/branches/:name", handler.DeleteBranch)
 	h.PUT("/api/repos/:id/branches/:name", handler.UpdateBranch)
+	h.POST("/api/repos/:id/branches/:name/push", handler.PushBranch)
+	h.POST("/api/repos/:id/branches/:name/pull", handler.PullBranch)
 
 	// Merge Routes
 	h.GET("/api/repos/:id/compare", handler.CompareBranches)

@@ -11,14 +11,14 @@ import (
 
 // ListBranchesWithInfo returns detailed information for all branches
 func (s *GitService) ListBranchesWithInfo(path string) ([]model.BranchInfo, error) {
-	// Format: refname:short | objectname | authorname | authoremail | committerdate:iso | subject | HEAD
+	// Format: refname:short | objectname | authorname | authoremail | committerdate:iso | subject | HEAD | upstream:short
 	// HEAD will be "*" if current, " " otherwise (but for-each-ref doesn't show * like branch -v)
 	// We can check HEAD ref separately or use %(HEAD) which prints * in for-each-ref since 2.7?
 	// Actually %(HEAD) prints * if it matches HEAD.
-	
+
 	args := []string{
 		"for-each-ref",
-		"--format=%(refname:short)|%(objectname)|%(authorname)|%(authoremail)|%(committerdate:iso)|%(subject)|%(HEAD)",
+		"--format=%(refname:short)|%(objectname)|%(authorname)|%(authoremail)|%(committerdate:iso)|%(subject)|%(HEAD)|%(upstream:short)",
 		"refs/heads",
 	}
 
@@ -44,6 +44,10 @@ func (s *GitService) ListBranchesWithInfo(path string) ([]model.BranchInfo, erro
 			Author:      parts[2],
 			AuthorEmail: parts[3],
 			Message:     parts[5],
+		}
+
+		if len(parts) >= 8 {
+			b.Upstream = parts[7]
 		}
 
 		// Parse Date

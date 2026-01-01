@@ -57,6 +57,26 @@ async function loadBranches() {
             const dateStr = b.date ? new Date(b.date).toLocaleString() : '-';
             const shortHash = b.hash ? b.hash.substring(0, 7) : '-';
             
+            // Sync Status UI
+            let syncStatus = '';
+            let syncBtn = '';
+            if (b.upstream) {
+                if (b.behind > 0) {
+                    syncStatus += `<span class="badge bg-danger me-1" title="落后 ${b.behind} 个提交"><i class="bi bi-arrow-down"></i> ${b.behind}</span>`;
+                    if (b.is_current) {
+                        syncBtn = `<button class="btn btn-warning btn-sm" onclick="syncBranch('${b.name}')" title="同步代码 (Pull --rebase)"><i class="bi bi-cloud-download"></i></button>`;
+                    }
+                }
+                if (b.ahead > 0) {
+                    syncStatus += `<span class="badge bg-success me-1" title="领先 ${b.ahead} 个提交"><i class="bi bi-arrow-up"></i> ${b.ahead}</span>`;
+                }
+                if (b.behind === 0 && b.ahead === 0) {
+                    syncStatus = `<span class="text-success small"><i class="bi bi-check-all"></i> 已同步</span>`;
+                }
+            } else {
+                syncStatus = `<span class="text-muted small">无上游</span>`;
+            }
+
             tr.innerHTML = `
                 <td>
                     <span class="${b.is_current ? 'branch-current' : ''}">
@@ -73,8 +93,11 @@ async function loadBranches() {
                     <div class="small text-muted">${b.author_email}</div>
                 </td>
                 <td class="small">${dateStr}</td>
+                <td>${syncStatus}</td>
                 <td class="text-end">
                     <div class="btn-group btn-group-sm">
+                        ${syncBtn}
+                        <button class="btn btn-outline-dark" onclick="openPushModal('${b.name}')" title="推送至远端"><i class="bi bi-cloud-upload"></i></button>
                         <button class="btn btn-outline-secondary" onclick="openDetail('${b.name}')" title="详情"><i class="bi bi-info-circle"></i></button>
                         <button class="btn btn-outline-primary" onclick="openRenameModal('${b.name}')" title="重命名/描述"><i class="bi bi-pencil"></i></button>
                         ${b.is_current ? '' : `<button class="btn btn-outline-danger" onclick="deleteBranch('${b.name}')" title="删除"><i class="bi bi-trash"></i></button>`}
@@ -180,4 +203,88 @@ async function deleteBranch(name) {
 
 function openDetail(branchName) {
     window.location.href = `branch_detail.html?repo_id=${repoId}&branch=${encodeURIComponent(branchName)}`;
+}
+
+async function syncBranch(branch) {
+    if (!confirm(`确定要同步分支 ${branch} 吗？\n这将执行 git pull --rebase，可能会产生冲突。`)) return;
+    
+    try {
+        await request(`/repos/${repoId}/branches/${encodeURIComponent(branch)}/pull`, { method: 'POST' });
+        showToast("同步成功", "success");
+        loadBranches();
+    } catch (e) {
+        // handled
+    }
+}
+
+async function openPushModal(branch) {
+    document.getElementById('pushBranchName').innerText = branch;
+    document.getElementById('pushBranchName').dataset.branch = branch;
+    
+    const list = document.getElementById('pushRemoteList');
+    list.innerHTML = '<div class="spinner-border spinner-border-sm"></div>';
+    new bootstrap.Modal(document.getElementById('pushModal')).show();
+    
+    try {
+        // We need to fetch repo config to get remotes. 
+        // We can reuse /repos/scan or just assume we have list from somewhere.
+        // Let's use the repo info we loaded in currentRepo global or fetch again.
+        
+        // Actually currentRepo only has basic info. Let's fetch detail.
+        const config = await request('/repos/scan', {
+            method: 'POST',
+            body: { path: currentRepo.path }
+        });
+        
+        list.innerHTML = '';
+        if (!config.remotes || config.remotes.length === 0) {
+            list.innerHTML = '<span class="text-muted">无可用远端</span>';
+            return;
+        }
+        
+        config.remotes.forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'form-check';
+            div.innerHTML = `
+                <input class="form-check-input remote-checkbox" type="checkbox" value="${r.name}" id="remote-${r.name}" checked>
+                <label class="form-check-label" for="remote-${r.name}">
+                    ${r.name} <span class="text-muted small">(${r.push_url || r.fetch_url})</span>
+                </label>
+            `;
+            list.appendChild(div);
+        });
+        
+    } catch (e) {
+        list.innerHTML = '<span class="text-danger">加载远端失败</span>';
+    }
+}
+
+async function submitPush() {
+    const branch = document.getElementById('pushBranchName').dataset.branch;
+    const remotes = [];
+    document.querySelectorAll('.remote-checkbox:checked').forEach(cb => remotes.push(cb.value));
+    
+    if (remotes.length === 0) {
+        showToast("请至少选择一个远端", "warning");
+        return;
+    }
+    
+    const btn = document.querySelector('#pushModal .btn-primary');
+    btn.disabled = true;
+    btn.innerText = "推送中...";
+    
+    try {
+        await request(`/repos/${repoId}/branches/${encodeURIComponent(branch)}/push`, {
+            method: 'POST',
+            body: { remotes }
+        });
+        showToast("推送成功", "success");
+        bootstrap.Modal.getInstance(document.getElementById('pushModal')).hide();
+        loadBranches();
+    } catch (e) {
+        // handled
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "确认推送";
+    }
 }
