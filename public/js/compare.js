@@ -94,7 +94,7 @@ async function checkDiff(force = false) {
         const fileList = document.getElementById('file-list');
         fileList.innerHTML = '';
         
-        if (res.files.length === 0) {
+        if (!res.files || res.files.length === 0) {
             fileList.innerHTML = '<div class="text-muted p-3">无差异</div>';
         } else {
             res.files.forEach((f, idx) => {
