@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-manage-config
+  namespace: default
+data:
+  config.yaml: |
+    server:
+      port: 8080
+    database:
+      type: mysql
+      host: git-manage-mysql
+      port: 3306
+      user: gituser
+      dbname: git_manage
+    webhook:
+      secret: "my-secret-key"
+      rate_limit: 100
+    debug: false
