@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-manage-app
+  namespace: default
+  labels:
+    app: git-manage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-manage
+  template:
+    metadata:
+      labels:
+        app: git-manage
+    spec:
+      containers:
+        - name: app
+          image: git-manage-service:latest # Ensure image is available in your registry
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: CONFIG_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: git-manage-secret
+                  key: DB_PASSWORD
+            - name: WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: git-manage-secret
+                  key: WEBHOOK_SECRET
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+            - name: data-volume
+              mountPath: /app/data
+            - name: repos-volume
+              mountPath: /repos
+            - name: ssh-volume
+              mountPath: /root/.ssh
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: git-manage-config
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: git-manage-data-pvc
+        - name: repos-volume
+          persistentVolumeClaim:
+            claimName: git-manage-repos-pvc
+        - name: ssh-volume
+          hostPath:
+            path: /root/.ssh # Warning: Node dependent
+            type: Directory
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: git-manage-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: git-manage-repos-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

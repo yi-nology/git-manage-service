@@ -1,0 +1,48 @@
+# Git Manage Service Configuration
+
+# 1. Server Configuration
+server:
+  # Service listening port
+  # Default: 8080
+  port: 8080
+
+# 2. Database Configuration
+database:
+  # Database Type: sqlite, mysql, postgres
+  # Default: sqlite
+  type: sqlite
+  
+  # SQLite Configuration
+  # Path to the database file. Recommend using absolute path or path relative to working directory.
+  path: data/git_sync.db
+  
+  # MySQL / PostgreSQL Configuration
+  # Uncomment and configure if using remote database
+  # host: localhost
+  # port: 3306 # 5432 for postgres
+  # user: root
+  # password: password # It is recommended to use environment variables in production
+  # dbname: git_manage
+  
+  # Advanced: Custom DSN (Data Source Name)
+  # If provided, it overrides host/port/user/pass/dbname settings.
+  # dsn: "user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
+
+# 3. Webhook Configuration
+webhook:
+  # Secret key for validating webhook signatures
+  # SECURITY WARNING: Change this in production!
+  secret: "my-secret-key"
+  
+  # Rate limit (requests per minute)
+  rate_limit: 100
+  
+  # IP Whitelist for webhook endpoints
+  # Leave empty to allow all IPs
+  ip_whitelist: []
+  # - "127.0.0.1"
+  # - "192.168.1.100"
+
+# 4. Debug Mode
+# Enable for verbose logging
+debug: false
