@@ -20,7 +20,7 @@ services:
       - CONFIG_DATABASE_DBNAME=${DB_NAME}
     volumes:
       # Config file
-      - ./config.yaml:/app/config.yaml
+      - ./config.yaml:/app/conf/config.yaml
       # Data persistence (SQLite Database & Repos)
       # We map to root project's data folder to keep it clean, or use named volumes
       - ../data:/app/data

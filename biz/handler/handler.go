@@ -7,9 +7,9 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/yi-nology/git-manage-service/biz/dal"
+	"github.com/yi-nology/git-manage-service/biz/dal/query"
 	"github.com/yi-nology/git-manage-service/biz/model"
-	"github.com/yi-nology/git-manage-service/biz/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-manage-service/biz/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -100,7 +100,7 @@ func RegisterRepo(ctx context.Context, c *app.RequestContext) {
 	if repo.ConfigSource == "" {
 		repo.ConfigSource = "local"
 	}
-	if err := dal.DB.Create(&repo).Error; err != nil {
+	if err := query.NewRepoDAO().Create(&repo); err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}
@@ -218,7 +218,7 @@ func CloneRepo(ctx context.Context, c *app.RequestContext) {
 		if repo.ConfigSource == "" {
 			repo.ConfigSource = "local"
 		}
-		dal.DB.Create(&repo)
+		query.NewRepoDAO().Create(&repo)
 	}()
 
 	response.Success(c, map[string]string{"task_id": taskID})
@@ -283,8 +283,11 @@ func TestConnection(ctx context.Context, c *app.RequestContext) {
 // @Success 200 {object} response.Response{data=[]model.Repo}
 // @Router /api/repos [get]
 func ListRepos(ctx context.Context, c *app.RequestContext) {
-	var repos []model.Repo
-	dal.DB.Find(&repos)
+	repos, err := query.NewRepoDAO().FindAll()
+	if err != nil {
+		response.InternalServerError(c, err.Error())
+		return
+	}
 	response.Success(c, repos)
 }
 
@@ -298,8 +301,8 @@ func ListRepos(ctx context.Context, c *app.RequestContext) {
 // @Router /api/repos/{key} [get]
 func GetRepo(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -323,8 +326,9 @@ func UpdateRepo(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repoDAO := query.NewRepoDAO()
+	repo, err := repoDAO.FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -385,7 +389,7 @@ func UpdateRepo(ctx context.Context, c *app.RequestContext) {
 		repo.ConfigSource = "local"
 	}
 
-	if err := dal.DB.Save(&repo).Error; err != nil {
+	if err := repoDAO.Save(repo); err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}
@@ -404,22 +408,21 @@ func UpdateRepo(ctx context.Context, c *app.RequestContext) {
 func DeleteRepo(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	// Check if used in SyncTask
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repoDAO := query.NewRepoDAO()
+	repo, err := repoDAO.FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
 
 	// Check if used in SyncTask
-	var count int64
-	dal.DB.Model(&model.SyncTask{}).Where("source_repo_key = ? OR target_repo_key = ?", repo.Key, repo.Key).Count(&count)
+	count, _ := query.NewSyncTaskDAO().CountByRepoKey(repo.Key)
 	if count > 0 {
 		response.BadRequest(c, "cannot delete repo used in sync tasks")
 		return
 	}
 
-	if err := dal.DB.Delete(&repo).Error; err != nil {
+	if err := repoDAO.Delete(repo); err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}
@@ -447,7 +450,7 @@ func CreateTask(ctx context.Context, c *app.RequestContext) {
 	req.Key = uuid.New().String()
 	// Should validate Repo existence
 
-	if err := dal.DB.Create(&req).Error; err != nil {
+	if err := query.NewSyncTaskDAO().Create(&req); err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}
@@ -467,14 +470,20 @@ func CreateTask(ctx context.Context, c *app.RequestContext) {
 func ListTasks(ctx context.Context, c *app.RequestContext) {
 	repoKey := c.Query("repo_key")
 	var tasks []model.SyncTask
+	var err error
 
-	db := dal.DB.Preload("SourceRepo").Preload("TargetRepo")
+	taskDAO := query.NewSyncTaskDAO()
 
 	if repoKey != "" {
-		db = db.Where("source_repo_key = ? OR target_repo_key = ?", repoKey, repoKey)
+		tasks, err = taskDAO.FindByRepoKey(repoKey)
+	} else {
+		tasks, err = taskDAO.FindAllWithRepos()
 	}
 
-	db.Find(&tasks)
+	if err != nil {
+		response.InternalServerError(c, err.Error())
+		return
+	}
 	response.Success(c, tasks)
 }
 
@@ -489,8 +498,8 @@ func ListTasks(ctx context.Context, c *app.RequestContext) {
 func GetTask(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	var task model.SyncTask
-	if err := dal.DB.Preload("SourceRepo").Preload("TargetRepo").Where("key = ?", key).First(&task).Error; err != nil {
+	task, err := query.NewSyncTaskDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "task not found")
 		return
 	}
@@ -516,8 +525,9 @@ func UpdateTask(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var task model.SyncTask
-	if err := dal.DB.Where("key = ?", key).First(&task).Error; err != nil {
+	taskDAO := query.NewSyncTaskDAO()
+	task, err := taskDAO.FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "task not found")
 		return
 	}
@@ -536,8 +546,11 @@ func UpdateTask(ctx context.Context, c *app.RequestContext) {
 	// Reset webhook token if needed or requested?
 	// For now keep existing or allow update if passed?
 
-	dal.DB.Save(&task)
-	service.CronSvc.UpdateTask(task)
+	if err := taskDAO.Save(task); err != nil {
+		response.InternalServerError(c, err.Error())
+		return
+	}
+	service.CronSvc.UpdateTask(*task)
 	service.AuditSvc.Log(c, "UPDATE", "task:"+task.Key, task)
 
 	response.Success(c, task)
@@ -553,13 +566,14 @@ func UpdateTask(ctx context.Context, c *app.RequestContext) {
 func DeleteTask(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	var task model.SyncTask
-	if err := dal.DB.Where("key = ?", key).First(&task).Error; err != nil {
+	taskDAO := query.NewSyncTaskDAO()
+	task, err := taskDAO.FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "task not found")
 		return
 	}
 
-	dal.DB.Delete(&task)
+	taskDAO.Delete(task)
 	service.CronSvc.RemoveTask(task.ID)
 	service.AuditSvc.Log(c, "DELETE", "task:"+task.Key, nil)
 
@@ -618,8 +632,8 @@ func ExecuteSync(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", req.RepoKey).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(req.RepoKey)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -628,11 +642,11 @@ func ExecuteSync(ctx context.Context, c *app.RequestContext) {
 	task := model.SyncTask{
 		Key:           uuid.New().String(),
 		SourceRepoKey: repo.Key,
-		SourceRepo:    repo,
+		SourceRepo:    *repo,
 		SourceRemote:  req.SourceRemote,
 		SourceBranch:  req.SourceBranch,
 		TargetRepoKey: repo.Key, // Same repo for ad-hoc sync (usually)
-		TargetRepo:    repo,
+		TargetRepo:    *repo,
 		TargetRemote:  req.TargetRemote,
 		TargetBranch:  req.TargetBranch,
 		PushOptions:   req.PushOptions,
@@ -656,26 +670,30 @@ func ExecuteSync(ctx context.Context, c *app.RequestContext) {
 // @Router /api/sync/history [get]
 func ListHistory(ctx context.Context, c *app.RequestContext) {
 	repoKey := c.Query("repo_key")
-	db := dal.DB.Order("start_time desc").Limit(50).Preload("Task")
+	var runs []model.SyncRun
+	var err error
+
+	runDAO := query.NewSyncRunDAO()
 
 	if repoKey != "" {
 		// Find tasks related to this repo
-		var taskKeys []string
-		dal.DB.Model(&model.SyncTask{}).
-			Where("source_repo_key = ? OR target_repo_key = ?", repoKey, repoKey).
-			Pluck("key", &taskKeys)
+		taskKeys, _ := query.NewSyncTaskDAO().GetKeysByRepoKey(repoKey)
 
 		if len(taskKeys) > 0 {
-			db = db.Where("task_key IN ?", taskKeys)
+			runs, err = runDAO.FindByTaskKeys(taskKeys, 50)
 		} else {
 			// No tasks found, return empty history
 			response.Success(c, []model.SyncRun{})
 			return
 		}
+	} else {
+		runs, err = runDAO.FindLatest(50)
 	}
 
-	var runs []model.SyncRun
-	db.Find(&runs)
+	if err != nil {
+		response.InternalServerError(c, err.Error())
+		return
+	}
 	response.Success(c, runs)
 }
 
@@ -688,7 +706,7 @@ func DeleteHistory(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
 
-	if err := dal.DB.Delete(&model.SyncRun{}, id).Error; err != nil {
+	if err := query.NewSyncRunDAO().Delete(uint(id)); err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}

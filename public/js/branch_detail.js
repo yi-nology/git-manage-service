@@ -185,6 +185,17 @@ function openSubmitModal() {
     }
     submitModal.show();
     checkRepoStatus();
+    loadGitConfig();
+}
+
+async function loadGitConfig() {
+    try {
+        const res = await request(`/repos/${repoKey}/git-config`);
+        document.getElementById('author-name').value = res.name || '';
+        document.getElementById('author-email').value = res.email || '';
+    } catch (e) {
+        console.error("Failed to load git config", e);
+    }
 }
 
 async function checkRepoStatus() {
@@ -224,6 +235,8 @@ async function checkRepoStatus() {
 async function doSubmit() {
     const msg = document.getElementById('commit-message').value;
     const push = document.getElementById('push-after-commit').checked;
+    const authorName = document.getElementById('author-name').value;
+    const authorEmail = document.getElementById('author-email').value;
     
     if (!msg.trim()) {
         showToast('请输入提交信息', 'error');
@@ -240,7 +253,9 @@ async function doSubmit() {
             method: 'POST',
             body: JSON.stringify({
                 message: msg,
-                push: push
+                push: push,
+                author_name: authorName,
+                author_email: authorEmail
             })
         });
 

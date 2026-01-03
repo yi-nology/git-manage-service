@@ -617,7 +617,7 @@ func (s *GitService) AddAll(path string) error {
 	return err
 }
 
-func (s *GitService) Commit(path, message string) error {
+func (s *GitService) Commit(path, message, authorName, authorEmail string) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -626,14 +626,48 @@ func (s *GitService) Commit(path, message string) error {
 	if err != nil {
 		return err
 	}
+
+	// Use provided author info, or fallback to default
+	if authorName == "" {
+		authorName = "Git Manage Service"
+	}
+	if authorEmail == "" {
+		authorEmail = "git-manage@example.com"
+	}
+
 	_, err = w.Commit(message, &git.CommitOptions{
 		Author: &object.Signature{
-			Name:  "Git Manage Service",
-			Email: "git-manage@example.com",
+			Name:  authorName,
+			Email: authorEmail,
 			When:  time.Now(),
 		},
 	})
 	return err
+}
+
+func (s *GitService) GetGitUser(path string) (string, string, error) {
+	// Use git config command to get effective config (Local > Global > System)
+	name, _ := s.RunCommand(path, "config", "user.name")
+	email, _ := s.RunCommand(path, "config", "user.email")
+	return name, email, nil
+}
+
+func (s *GitService) SetGlobalGitUser(name, email string) error {
+	// Use any valid path or current directory, but --global doesn't care about path usually.
+	// However, RunCommand needs a dir.
+	wd, _ := os.Getwd()
+
+	if name != "" {
+		if _, err := s.RunCommand(wd, "config", "--global", "user.name", name); err != nil {
+			return err
+		}
+	}
+	if email != "" {
+		if _, err := s.RunCommand(wd, "config", "--global", "user.email", email); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *GitService) PushCurrent(path string) error {

@@ -23,7 +23,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN go build -o git-manage-service .
+RUN go build -o git-manage-service cmd/api/main.go
 
 # Runtime Stage
 FROM alpine:latest
@@ -52,7 +52,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/docs ./docs
 
 # Copy default config
-COPY --from=builder /app/config.yaml ./config.yaml
+COPY --from=builder /app/conf/config.yaml ./conf/config.yaml
 
 # Set environment variables
 ENV GIN_MODE=release \

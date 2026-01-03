@@ -119,6 +119,11 @@ type SyncTask struct {
 	TargetRepo Repo `gorm:"foreignKey:TargetRepoKey;references:Key" json:"target_repo"`
 }
 
+type SystemConfig struct {
+	Key   string `gorm:"primaryKey" json:"key"`
+	Value string `json:"value"`
+}
+
 type SyncRun struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	TaskKey      string    `json:"task_key"`

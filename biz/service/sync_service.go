@@ -5,26 +5,30 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yi-nology/git-manage-service/biz/dal"
+	"github.com/yi-nology/git-manage-service/biz/dal/query"
 	"github.com/yi-nology/git-manage-service/biz/model"
 )
 
 type SyncService struct {
-	git *GitService
+	git         *GitService
+	syncTaskDAO *query.SyncTaskDAO
+	syncRunDAO  *query.SyncRunDAO
 }
 
 func NewSyncService() *SyncService {
 	return &SyncService{
-		git: NewGitService(),
+		git:         NewGitService(),
+		syncTaskDAO: query.NewSyncTaskDAO(),
+		syncRunDAO:  query.NewSyncRunDAO(),
 	}
 }
 
 func (s *SyncService) RunTask(taskKey string) error {
-	var task model.SyncTask
-	if err := dal.DB.Preload("SourceRepo").Preload("TargetRepo").Where("key = ?", taskKey).First(&task).Error; err != nil {
+	task, err := s.syncTaskDAO.FindByKey(taskKey)
+	if err != nil {
 		return err
 	}
-	return s.ExecuteSync(&task)
+	return s.ExecuteSync(task)
 }
 
 func (s *SyncService) ExecuteSync(task *model.SyncTask) error {
@@ -33,7 +37,7 @@ func (s *SyncService) ExecuteSync(task *model.SyncTask) error {
 		StartTime: time.Now(),
 		Status:    "running",
 	}
-	dal.DB.Create(&run)
+	s.syncRunDAO.Create(&run)
 
 	repoPath := task.SourceRepo.Path
 
@@ -64,7 +68,7 @@ func (s *SyncService) ExecuteSync(task *model.SyncTask) error {
 	}
 	// Save final details
 	run.Details = logs.String()
-	dal.DB.Save(&run)
+	s.syncRunDAO.Save(&run)
 	return err
 }
 

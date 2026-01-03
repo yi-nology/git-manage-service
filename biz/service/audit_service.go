@@ -5,16 +5,20 @@ import (
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal"
+	"github.com/yi-nology/git-manage-service/biz/dal/query"
 	"github.com/yi-nology/git-manage-service/biz/model"
 )
 
-type AuditService struct{}
+type AuditService struct {
+	auditDAO *query.AuditLogDAO
+}
 
 var AuditSvc *AuditService
 
 func InitAuditService() {
-	AuditSvc = &AuditService{}
+	AuditSvc = &AuditService{
+		auditDAO: query.NewAuditLogDAO(),
+	}
 }
 
 // Log records an audit log entry
@@ -39,10 +43,10 @@ func (s *AuditService) Log(c *app.RequestContext, action, target string, details
 		CreatedAt: time.Now(),
 	}
 
-	// Run in background to not block main flow? 
+	// Run in background to not block main flow?
 	// Or sync to ensure audit? Usually async is better for performance unless strict audit required.
 	// For now, sync is safer to ensure recording.
 	go func() {
-		dal.DB.Create(&logEntry)
+		s.auditDAO.Create(&logEntry)
 	}()
 }
