@@ -2,10 +2,11 @@ package service
 
 import (
 	"fmt"
-	"github.com/yi-nology/git-manage-service/biz/dal"
-	"github.com/yi-nology/git-manage-service/biz/model"
 	"log"
 	"sync"
+
+	"github.com/yi-nology/git-manage-service/biz/dal/query"
+	"github.com/yi-nology/git-manage-service/biz/model"
 
 	"github.com/robfig/cron/v3"
 )
@@ -15,6 +16,7 @@ type CronService struct {
 	entries map[uint]cron.EntryID
 	mu      sync.Mutex
 	syncSvc *SyncService
+	taskDAO *query.SyncTaskDAO
 }
 
 var CronSvc *CronService
@@ -24,6 +26,7 @@ func InitCronService() {
 		cron:    cron.New(),
 		entries: make(map[uint]cron.EntryID),
 		syncSvc: NewSyncService(),
+		taskDAO: query.NewSyncTaskDAO(),
 	}
 	CronSvc.cron.Start()
 	CronSvc.Reload()
@@ -39,8 +42,8 @@ func (s *CronService) Reload() {
 	}
 	s.entries = make(map[uint]cron.EntryID)
 
-	var tasks []model.SyncTask
-	if err := dal.DB.Where("enabled = ?", true).Find(&tasks).Error; err != nil {
+	tasks, err := s.taskDAO.FindEnabledWithCron()
+	if err != nil {
 		log.Println("Failed to load tasks:", err)
 		return
 	}

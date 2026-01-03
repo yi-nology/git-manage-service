@@ -7,9 +7,9 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
-	"github.com/yi-nology/git-manage-service/biz/dal"
+	"github.com/yi-nology/git-manage-service/biz/dal/query"
 	"github.com/yi-nology/git-manage-service/biz/model"
-	"github.com/yi-nology/git-manage-service/biz/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-manage-service/biz/service"
 )
 
@@ -25,8 +25,8 @@ import (
 func ListBranches(ctx context.Context, c *app.RequestContext) {
 	repoKey := c.Query("repo_key")
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", repoKey).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(repoKey)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -55,8 +55,8 @@ func ListCommits(ctx context.Context, c *app.RequestContext) {
 	since := c.Query("since")
 	until := c.Query("until")
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", repoKey).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(repoKey)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -90,8 +90,8 @@ func GetStats(ctx context.Context, c *app.RequestContext) {
 	since := c.Query("since")
 	until := c.Query("until")
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", repoKey).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(repoKey)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -139,8 +139,8 @@ func ExportStatsCSV(ctx context.Context, c *app.RequestContext) {
 	since := c.Query("since")
 	until := c.Query("until")
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", repoKey).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(repoKey)
+	if err != nil {
 		c.JSON(consts.StatusNotFound, map[string]string{"error": "repo not found"})
 		return
 	}

@@ -52,7 +52,7 @@ func Init() {
 	}
 
 	// Migrate the schema
-	err = DB.AutoMigrate(&model.Repo{}, &model.SyncTask{}, &model.SyncRun{}, &model.AuditLog{})
+	err = DB.AutoMigrate(&model.Repo{}, &model.SyncTask{}, &model.SyncRun{}, &model.AuditLog{}, &model.SystemConfig{})
 	if err != nil {
 		log.Fatal("failed to migrate database: ", err)
 	}

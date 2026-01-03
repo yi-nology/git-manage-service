@@ -7,8 +7,9 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal"
+	"github.com/yi-nology/git-manage-service/biz/dal/query"
 	"github.com/yi-nology/git-manage-service/biz/model"
-	"github.com/yi-nology/git-manage-service/biz/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-manage-service/biz/service"
 )
 
@@ -26,8 +27,8 @@ import (
 func ListRepoBranches(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -115,8 +116,8 @@ func CreateBranch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -146,8 +147,8 @@ func DeleteBranch(ctx context.Context, c *app.RequestContext) {
 	name := c.Param("name")
 	force := c.Query("force") == "true"
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -233,8 +234,8 @@ func CheckoutBranch(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 	branch := c.Param("name")
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}

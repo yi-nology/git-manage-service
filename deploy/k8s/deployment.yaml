@@ -34,7 +34,7 @@ spec:
                   key: WEBHOOK_SECRET
           volumeMounts:
             - name: config-volume
-              mountPath: /app/config.yaml
+              mountPath: /app/conf/config.yaml
               subPath: config.yaml
             - name: data-volume
               mountPath: /app/data

@@ -12,6 +12,7 @@ git_sync.db
 test/origin/
 test/ky/
 test/local/
+output/
 
 # Environment
 .env

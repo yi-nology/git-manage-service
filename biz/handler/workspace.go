@@ -5,10 +5,9 @@ import (
 	"fmt"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal"
-	"github.com/yi-nology/git-manage-service/biz/model"
-	"github.com/yi-nology/git-manage-service/biz/pkg/response"
+	"github.com/yi-nology/git-manage-service/biz/dal/query"
 	"github.com/yi-nology/git-manage-service/biz/service"
+	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
 // @Summary Get repository status
@@ -23,8 +22,8 @@ import (
 func GetRepoStatus(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -39,9 +38,34 @@ func GetRepoStatus(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, map[string]string{"status": status})
 }
 
+// @Summary Get effective git config (user.name, user.email) for the repo
+// @Tags Workspace
+// @Param key path string true "Repo Key"
+// @Produce json
+// @Success 200 {object} response.Response{data=map[string]string}
+// @Router /api/repos/{key}/git-config [get]
+func GetRepoGitConfig(ctx context.Context, c *app.RequestContext) {
+	key := c.Param("key")
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
+		response.NotFound(c, "repo not found")
+		return
+	}
+
+	gitSvc := service.NewGitService()
+	name, email, _ := gitSvc.GetGitUser(repo.Path)
+
+	response.Success(c, map[string]string{
+		"name":  name,
+		"email": email,
+	})
+}
+
 type SubmitChangesReq struct {
-	Message string `json:"message"`
-	Push    bool   `json:"push"`
+	Message     string `json:"message"`
+	Push        bool   `json:"push"`
+	AuthorName  string `json:"author_name"`
+	AuthorEmail string `json:"author_email"`
 }
 
 // @Summary Submit changes (Add, Commit, Push)
@@ -69,8 +93,8 @@ func SubmitChanges(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -85,15 +109,15 @@ func SubmitChanges(ctx context.Context, c *app.RequestContext) {
 
 	// 2. Commit
 	// We might want to append status to message like the script, but usually simple message is fine.
-	// The user script appended status snapshot. Let's replicate that if we want exact parity, 
-	// but for UI it's better to just use what user typed. 
+	// The user script appended status snapshot. Let's replicate that if we want exact parity,
+	// but for UI it's better to just use what user typed.
 	// However, the prompt said "merge git status output and user input".
 	// Let's do that to strictly follow "This feature on page".
-	
+
 	status, _ := gitSvc.GetStatus(repo.Path)
 	fullMsg := fmt.Sprintf("%s\n\nGit Status Snapshot:\n%s", req.Message, status)
 
-	if err := gitSvc.Commit(repo.Path, fullMsg); err != nil {
+	if err := gitSvc.Commit(repo.Path, fullMsg, req.AuthorName, req.AuthorEmail); err != nil {
 		// Rollback stage? git reset HEAD .
 		_, _ = gitSvc.RunCommand(repo.Path, "reset", "HEAD", ".")
 		response.InternalServerError(c, "Failed to commit: "+err.Error())

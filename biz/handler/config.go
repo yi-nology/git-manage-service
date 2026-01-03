@@ -2,14 +2,17 @@ package handler
 
 import (
 	"context"
-	"github.com/yi-nology/git-manage-service/biz/config"
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/yi-nology/git-manage-service/biz/config"
+	"github.com/yi-nology/git-manage-service/biz/service"
 )
 
 type ConfigReq struct {
-	DebugMode bool `json:"debug_mode"`
+	DebugMode   bool   `json:"debug_mode"`
+	AuthorName  string `json:"author_name"`
+	AuthorEmail string `json:"author_email"`
 }
 
 // @Summary Get global configuration
@@ -18,8 +21,15 @@ type ConfigReq struct {
 // @Success 200 {object} map[string]interface{}
 // @Router /api/config [get]
 func GetConfig(ctx context.Context, c *app.RequestContext) {
+	gitSvc := service.NewGitService()
+	// Get global git config
+	name, _ := gitSvc.RunCommand(".", "config", "--global", "user.name")
+	email, _ := gitSvc.RunCommand(".", "config", "--global", "user.email")
+
 	c.JSON(http.StatusOK, map[string]interface{}{
-		"debug_mode": config.DebugMode,
+		"debug_mode":   config.DebugMode,
+		"author_name":  name,
+		"author_email": email,
 	})
 }
 
@@ -40,7 +50,17 @@ func UpdateConfig(ctx context.Context, c *app.RequestContext) {
 	}
 
 	config.DebugMode = req.DebugMode
+
+	// Update global git config
+	gitSvc := service.NewGitService()
+	if err := gitSvc.SetGlobalGitUser(req.AuthorName, req.AuthorEmail); err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to set git config: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, map[string]interface{}{
-		"debug_mode": config.DebugMode,
+		"debug_mode":   config.DebugMode,
+		"author_name":  req.AuthorName,
+		"author_email": req.AuthorEmail,
 	})
 }

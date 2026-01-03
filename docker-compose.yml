@@ -12,7 +12,7 @@ services:
       - TZ=Asia/Shanghai
     volumes:
       # Config file
-      - ./config.yaml:/app/config.yaml
+      - ./conf/config.yaml:/app/conf/config.yaml
       # Data persistence (SQLite Database)
       - ./data:/app/data
       # SSH Keys (Read-only access to host keys)

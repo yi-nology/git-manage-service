@@ -8,8 +8,9 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/google/uuid"
 	"github.com/yi-nology/git-manage-service/biz/dal"
+	"github.com/yi-nology/git-manage-service/biz/dal/query"
 	"github.com/yi-nology/git-manage-service/biz/model"
-	"github.com/yi-nology/git-manage-service/biz/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-manage-service/biz/service"
 )
 
@@ -34,8 +35,8 @@ func CompareBranches(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -77,8 +78,8 @@ func GetDiffContent(ctx context.Context, c *app.RequestContext) {
 	target := c.Query("target")
 	file := c.Query("file")
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -146,8 +147,8 @@ func ExecuteMerge(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := query.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}

@@ -48,7 +48,8 @@ func Init() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
-	viper.AddConfigPath("./config")
+	viper.AddConfigPath("./conf")
+	viper.AddConfigPath("../conf") // Support running from cmd/api
 
 	// Set defaults
 	viper.SetDefault("server.port", 8080)
