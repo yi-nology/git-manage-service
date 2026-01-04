@@ -22,6 +22,15 @@ func Success(c *app.RequestContext, data interface{}) {
 	})
 }
 
+// Accepted response (HTTP 202) - Used for async processing
+func Accepted(c *app.RequestContext, msg string, data interface{}) {
+	c.JSON(consts.StatusAccepted, Response{
+		Code:    errno.Success.ErrCode,
+		Message: msg,
+		Data:    data,
+	})
+}
+
 // Error response
 func Error(c *app.RequestContext, err error) {
 	e := errno.ConvertErr(err)

@@ -98,12 +98,12 @@ func GetStats(ctx context.Context, c *app.RequestContext) {
 	}
 
 	// Async GetStats with Cache
-	statsData, status, err := stats.StatsSvc.GetStats(repo.Path, branch, since, until)
+	statsData, status, err, progress := stats.StatsSvc.GetStats(repo.Path, branch, since, until)
 
 	if status == stats.StatusProcessing {
-		c.JSON(consts.StatusAccepted, map[string]string{
-			"status":  "processing",
-			"message": "Statistics are being calculated in the background. Please try again later.",
+		response.Accepted(c, "Statistics are being calculated in the background. Please try again later.", map[string]string{
+			"status":   "processing",
+			"progress": progress,
 		})
 		return
 	}
@@ -154,9 +154,9 @@ func ExportStatsCSV(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	statsData, status, err := stats.StatsSvc.GetStats(repo.Path, branch, since, until)
+	statsData, status, err, _ := stats.StatsSvc.GetStats(repo.Path, branch, since, until)
 	if status == stats.StatusProcessing {
-		c.JSON(consts.StatusAccepted, map[string]string{"message": "Stats are being calculated, please try again later"})
+		response.Accepted(c, "Stats are being calculated, please try again later", nil)
 		return
 	}
 	if err != nil {

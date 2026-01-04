@@ -751,6 +751,47 @@ func (s *GitService) GetLogIterator(path, branch string) (object.CommitIter, err
 	return r.Log(&git.LogOptions{From: *hash})
 }
 
+func (s *GitService) GetLogStats(path, branch string) (string, error) {
+	// git log --numstat --no-merges --pretty=format:"COMMIT|%H|%aN|%aE|%at" <branch>
+	return s.RunCommand(path, "log", "--numstat", "--no-merges", "--pretty=format:COMMIT|%H|%aN|%aE|%at", branch)
+}
+
+func (s *GitService) GetLogStatsStream(path, branch string) (io.ReadCloser, error) {
+	// git log --numstat --no-merges --pretty=format:"COMMIT|%H|%aN|%aE|%at" <branch>
+	cmd := exec.Command("git", "log", "--numstat", "--no-merges", "--pretty=format:COMMIT|%H|%aN|%aE|%at", branch)
+	cmd.Dir = path
+	// Prevent password prompts and force English output
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	return &cmdStream{
+		cmd:    cmd,
+		stdout: stdout,
+	}, nil
+}
+
+type cmdStream struct {
+	cmd    *exec.Cmd
+	stdout io.ReadCloser
+}
+
+func (c *cmdStream) Read(p []byte) (n int, err error) {
+	return c.stdout.Read(p)
+}
+
+func (c *cmdStream) Close() error {
+	_ = c.stdout.Close()
+	return c.cmd.Wait()
+}
+
 func (s *GitService) GetCommit(path, hashStr string) (*object.Commit, error) {
 	r, err := s.openRepo(path)
 	if err != nil {

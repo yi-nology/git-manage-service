@@ -86,6 +86,7 @@ func GeneratedRegister(h *server.Hertz) {
 
 	// Audit Routes
 	api.GET("/audit/logs", handler.ListAuditLogs)
+	api.GET("/audit/logs/:id", handler.GetAuditLog)
 
 	// Swagger JSON
 	h.StaticFile("/docs/swagger.json", "./docs/swagger.json")
