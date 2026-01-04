@@ -20,7 +20,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	ssh2 "golang.org/x/crypto/ssh"
 
-	conf "github.com/yi-nology/git-manage-service/biz/config"
+	conf "github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/biz/model"
 )
 

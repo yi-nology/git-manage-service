@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/config"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/biz/service"
 )
 
@@ -27,7 +27,7 @@ func GetConfig(ctx context.Context, c *app.RequestContext) {
 	email, _ := gitSvc.RunCommand(".", "config", "--global", "user.email")
 
 	c.JSON(http.StatusOK, map[string]interface{}{
-		"debug_mode":   config.DebugMode,
+		"debug_mode":   configs.DebugMode,
 		"author_name":  name,
 		"author_email": email,
 	})
@@ -49,7 +49,7 @@ func UpdateConfig(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	config.DebugMode = req.DebugMode
+	configs.DebugMode = req.DebugMode
 
 	// Update global git config
 	gitSvc := service.NewGitService()
@@ -59,7 +59,7 @@ func UpdateConfig(ctx context.Context, c *app.RequestContext) {
 	}
 
 	c.JSON(http.StatusOK, map[string]interface{}{
-		"debug_mode":   config.DebugMode,
+		"debug_mode":   configs.DebugMode,
 		"author_name":  req.AuthorName,
 		"author_email": req.AuthorEmail,
 	})

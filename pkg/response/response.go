@@ -3,11 +3,12 @@ package response
 import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/yi-nology/git-manage-service/pkg/errno"
 )
 
 // Response standard structure
 type Response struct {
-	Code    int         `json:"code"`
+	Code    int32       `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
 }
@@ -15,29 +16,33 @@ type Response struct {
 // Success response
 func Success(c *app.RequestContext, data interface{}) {
 	c.JSON(consts.StatusOK, Response{
-		Code:    0,
-		Message: "success",
+		Code:    errno.Success.ErrCode,
+		Message: errno.Success.ErrMsg,
 		Data:    data,
 	})
 }
 
 // Error response
-func Error(c *app.RequestContext, httpCode int, errCode int, msg string) {
-	c.JSON(httpCode, Response{
-		Code:    errCode,
-		Message: msg,
+func Error(c *app.RequestContext, err error) {
+	e := errno.ConvertErr(err)
+	c.JSON(consts.StatusOK, Response{
+		Code:    e.ErrCode,
+		Message: e.ErrMsg,
 	})
 }
 
-// Common Errors
+// Deprecated: Use Error instead. Kept for backward compatibility during refactor.
 func BadRequest(c *app.RequestContext, msg string) {
-	Error(c, consts.StatusBadRequest, 400, msg)
+	Error(c, errno.ParamErr.WithMessage(msg))
 }
 
+// Deprecated: Use Error instead. Kept for backward compatibility during refactor.
 func InternalServerError(c *app.RequestContext, msg string) {
-	Error(c, consts.StatusInternalServerError, 500, msg)
+	Error(c, errno.ServiceErr.WithMessage(msg))
 }
 
+// Deprecated: Use Error instead. Kept for backward compatibility during refactor.
 func NotFound(c *app.RequestContext, msg string) {
-	Error(c, consts.StatusNotFound, 404, msg)
+	// 404 is usually a client error, could map to ParamErr or a new NotFoundErr
+	Error(c, errno.ParamErr.WithMessage(msg))
 }

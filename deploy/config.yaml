@@ -46,3 +46,9 @@ webhook:
 # 4. Debug Mode
 # Enable for verbose logging
 debug: false
+
+# 5. RPC Configuration
+rpc:
+  # RPC service listening port
+  # Default: 8888
+  port: 8888

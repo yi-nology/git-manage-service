@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/yi-nology/git-manage-service/biz/dal/query"
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-manage-service/biz/service"
@@ -100,7 +100,7 @@ func RegisterRepo(ctx context.Context, c *app.RequestContext) {
 	if repo.ConfigSource == "" {
 		repo.ConfigSource = "local"
 	}
-	if err := query.NewRepoDAO().Create(&repo); err != nil {
+	if err := db.NewRepoDAO().Create(&repo); err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}
@@ -218,7 +218,7 @@ func CloneRepo(ctx context.Context, c *app.RequestContext) {
 		if repo.ConfigSource == "" {
 			repo.ConfigSource = "local"
 		}
-		query.NewRepoDAO().Create(&repo)
+		db.NewRepoDAO().Create(&repo)
 	}()
 
 	response.Success(c, map[string]string{"task_id": taskID})
@@ -283,7 +283,7 @@ func TestConnection(ctx context.Context, c *app.RequestContext) {
 // @Success 200 {object} response.Response{data=[]model.Repo}
 // @Router /api/repos [get]
 func ListRepos(ctx context.Context, c *app.RequestContext) {
-	repos, err := query.NewRepoDAO().FindAll()
+	repos, err := db.NewRepoDAO().FindAll()
 	if err != nil {
 		response.InternalServerError(c, err.Error())
 		return
@@ -301,7 +301,7 @@ func ListRepos(ctx context.Context, c *app.RequestContext) {
 // @Router /api/repos/{key} [get]
 func GetRepo(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
-	repo, err := query.NewRepoDAO().FindByKey(key)
+	repo, err := db.NewRepoDAO().FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
@@ -326,7 +326,7 @@ func UpdateRepo(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	repoDAO := query.NewRepoDAO()
+	repoDAO := db.NewRepoDAO()
 	repo, err := repoDAO.FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
@@ -408,7 +408,7 @@ func UpdateRepo(ctx context.Context, c *app.RequestContext) {
 func DeleteRepo(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	repoDAO := query.NewRepoDAO()
+	repoDAO := db.NewRepoDAO()
 	repo, err := repoDAO.FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
@@ -416,7 +416,7 @@ func DeleteRepo(ctx context.Context, c *app.RequestContext) {
 	}
 
 	// Check if used in SyncTask
-	count, _ := query.NewSyncTaskDAO().CountByRepoKey(repo.Key)
+	count, _ := db.NewSyncTaskDAO().CountByRepoKey(repo.Key)
 	if count > 0 {
 		response.BadRequest(c, "cannot delete repo used in sync tasks")
 		return
@@ -450,7 +450,7 @@ func CreateTask(ctx context.Context, c *app.RequestContext) {
 	req.Key = uuid.New().String()
 	// Should validate Repo existence
 
-	if err := query.NewSyncTaskDAO().Create(&req); err != nil {
+	if err := db.NewSyncTaskDAO().Create(&req); err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}
@@ -472,7 +472,7 @@ func ListTasks(ctx context.Context, c *app.RequestContext) {
 	var tasks []model.SyncTask
 	var err error
 
-	taskDAO := query.NewSyncTaskDAO()
+	taskDAO := db.NewSyncTaskDAO()
 
 	if repoKey != "" {
 		tasks, err = taskDAO.FindByRepoKey(repoKey)
@@ -498,7 +498,7 @@ func ListTasks(ctx context.Context, c *app.RequestContext) {
 func GetTask(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	task, err := query.NewSyncTaskDAO().FindByKey(key)
+	task, err := db.NewSyncTaskDAO().FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "task not found")
 		return
@@ -525,7 +525,7 @@ func UpdateTask(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	taskDAO := query.NewSyncTaskDAO()
+	taskDAO := db.NewSyncTaskDAO()
 	task, err := taskDAO.FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "task not found")
@@ -566,7 +566,7 @@ func UpdateTask(ctx context.Context, c *app.RequestContext) {
 func DeleteTask(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	taskDAO := query.NewSyncTaskDAO()
+	taskDAO := db.NewSyncTaskDAO()
 	task, err := taskDAO.FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "task not found")
@@ -632,7 +632,7 @@ func ExecuteSync(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	repo, err := query.NewRepoDAO().FindByKey(req.RepoKey)
+	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
@@ -673,11 +673,11 @@ func ListHistory(ctx context.Context, c *app.RequestContext) {
 	var runs []model.SyncRun
 	var err error
 
-	runDAO := query.NewSyncRunDAO()
+	runDAO := db.NewSyncRunDAO()
 
 	if repoKey != "" {
 		// Find tasks related to this repo
-		taskKeys, _ := query.NewSyncTaskDAO().GetKeysByRepoKey(repoKey)
+		taskKeys, _ := db.NewSyncTaskDAO().GetKeysByRepoKey(repoKey)
 
 		if len(taskKeys) > 0 {
 			runs, err = runDAO.FindByTaskKeys(taskKeys, 50)
@@ -706,7 +706,7 @@ func DeleteHistory(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
 
-	if err := query.NewSyncRunDAO().Delete(uint(id)); err != nil {
+	if err := db.NewSyncRunDAO().Delete(uint(id)); err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}

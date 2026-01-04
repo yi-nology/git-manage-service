@@ -7,11 +7,10 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/google/uuid"
-	"github.com/yi-nology/git-manage-service/biz/dal"
-	"github.com/yi-nology/git-manage-service/biz/dal/query"
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model"
-	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-manage-service/biz/service"
+	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
 // @Summary Compare two branches
@@ -35,7 +34,7 @@ func CompareBranches(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	repo, err := query.NewRepoDAO().FindByKey(key)
+	repo, err := db.NewRepoDAO().FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
@@ -78,7 +77,7 @@ func GetDiffContent(ctx context.Context, c *app.RequestContext) {
 	target := c.Query("target")
 	file := c.Query("file")
 
-	repo, err := query.NewRepoDAO().FindByKey(key)
+	repo, err := db.NewRepoDAO().FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
@@ -110,7 +109,7 @@ func MergeCheck(ctx context.Context, c *app.RequestContext) {
 	target := c.Query("target") // Destination (main)
 
 	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	if err := db.DB.Where("key = ?", key).First(&repo).Error; err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
@@ -147,7 +146,7 @@ func ExecuteMerge(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	repo, err := query.NewRepoDAO().FindByKey(key)
+	repo, err := db.NewRepoDAO().FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
@@ -214,7 +213,7 @@ func GetPatch(ctx context.Context, c *app.RequestContext) {
 	target := c.Query("target")
 
 	var repo model.Repo
-	if err := dal.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	if err := db.DB.Where("key = ?", key).First(&repo).Error; err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}

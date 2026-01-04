@@ -1,6 +1,9 @@
 server:
   port: 8080
 
+rpc:
+  port: 8888
+
 database:
   # type: sqlite, mysql, postgres
   type: sqlite
