@@ -5,7 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/yi-nology/git-manage-service/biz/config"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"net/http"
 	"strings"
 
@@ -13,15 +13,15 @@ import (
 	"golang.org/x/time/rate"
 )
 
-var limiter = rate.NewLimiter(rate.Limit(config.WebhookRateLimit/60.0), config.WebhookRateLimit)
+var limiter = rate.NewLimiter(rate.Limit(configs.WebhookRateLimit/60.0), configs.WebhookRateLimit)
 
 func WebhookAuth() app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		// 1. IP Whitelist Check (Optional)
-		if len(config.WebhookIPWhitelist) > 0 {
+		if len(configs.WebhookIPWhitelist) > 0 {
 			clientIP := c.ClientIP()
 			allowed := false
-			for _, ip := range config.WebhookIPWhitelist {
+			for _, ip := range configs.WebhookIPWhitelist {
 				if ip == clientIP {
 					allowed = true
 					break
@@ -54,7 +54,7 @@ func WebhookAuth() app.HandlerFunc {
 		}
 
 		body := c.GetRequest().Body()
-		mac := hmac.New(sha256.New, []byte(config.WebhookSecret))
+		mac := hmac.New(sha256.New, []byte(configs.WebhookSecret))
 		mac.Write(body)
 		expectedMAC := mac.Sum(nil)
 		expectedSignature := hex.EncodeToString(expectedMAC)

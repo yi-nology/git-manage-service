@@ -1,0 +1,77 @@
+syntax = "proto3";
+package git;
+option go_package = "git";
+
+service GitService {
+    rpc ListRepos(ListReposRequest) returns (ListReposResponse);
+    rpc GetRepo(GetRepoRequest) returns (GetRepoResponse);
+    rpc ListBranches(ListBranchesRequest) returns (ListBranchesResponse);
+    rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse);
+    rpc DeleteBranch(DeleteBranchRequest) returns (DeleteBranchResponse);
+}
+
+message Repo {
+    int64 id = 1;
+    string key = 2;
+    string name = 3;
+    string description = 4;
+    string remote_url = 5;
+    string status = 6;
+}
+
+message Branch {
+    string name = 1;
+    string commit_hash = 2;
+    string commit_message = 3;
+    string author = 4;
+    string date = 5;
+    bool is_current = 6;
+}
+
+message ListReposRequest {
+    int32 page = 1;
+    int32 page_size = 2;
+}
+
+message ListReposResponse {
+    repeated Repo repos = 1;
+    int64 total = 2;
+}
+
+message GetRepoRequest {
+    string key = 1;
+}
+
+message GetRepoResponse {
+    Repo repo = 1;
+}
+
+message ListBranchesRequest {
+    string repo_key = 1;
+}
+
+message ListBranchesResponse {
+    repeated Branch branches = 1;
+}
+
+message CreateBranchRequest {
+    string repo_key = 1;
+    string branch_name = 2;
+    string ref = 3; // Source ref (branch/commit)
+}
+
+message CreateBranchResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message DeleteBranchRequest {
+    string repo_key = 1;
+    string branch_name = 2;
+    bool force = 3;
+}
+
+message DeleteBranchResponse {
+    bool success = 1;
+    string message = 2;
+}

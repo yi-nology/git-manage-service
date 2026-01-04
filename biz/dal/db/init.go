@@ -1,10 +1,10 @@
-package dal
+package db
 
 import (
 	"fmt"
 	"log"
 
-	"github.com/yi-nology/git-manage-service/biz/config"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/biz/model"
 
 	"gorm.io/driver/mysql"
@@ -19,7 +19,7 @@ func Init() {
 	var err error
 	var dialector gorm.Dialector
 
-	dbConfig := config.GlobalConfig.Database
+	dbConfig := configs.GlobalConfig.Database
 
 	switch dbConfig.Type {
 	case "mysql":

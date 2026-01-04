@@ -5,21 +5,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yi-nology/git-manage-service/biz/dal/query"
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model"
 )
 
 type SyncService struct {
 	git         *GitService
-	syncTaskDAO *query.SyncTaskDAO
-	syncRunDAO  *query.SyncRunDAO
+	syncTaskDAO *db.SyncTaskDAO
+	syncRunDAO  *db.SyncRunDAO
 }
 
 func NewSyncService() *SyncService {
 	return &SyncService{
 		git:         NewGitService(),
-		syncTaskDAO: query.NewSyncTaskDAO(),
-		syncRunDAO:  query.NewSyncRunDAO(),
+		syncTaskDAO: db.NewSyncTaskDAO(),
+		syncRunDAO:  db.NewSyncRunDAO(),
 	}
 }
 

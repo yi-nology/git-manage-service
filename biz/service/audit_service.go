@@ -5,19 +5,19 @@ import (
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/query"
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model"
 )
 
 type AuditService struct {
-	auditDAO *query.AuditLogDAO
+	auditDAO *db.AuditLogDAO
 }
 
 var AuditSvc *AuditService
 
 func InitAuditService() {
 	AuditSvc = &AuditService{
-		auditDAO: query.NewAuditLogDAO(),
+		auditDAO: db.NewAuditLogDAO(),
 	}
 }
 

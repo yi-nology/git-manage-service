@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/query"
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -15,7 +15,7 @@ import (
 // @Success 200 {object} response.Response{data=[]model.AuditLog}
 // @Router /api/audit/logs [get]
 func ListAuditLogs(ctx context.Context, c *app.RequestContext) {
-	logs, err := query.NewAuditLogDAO().FindLatest(100)
+	logs, err := db.NewAuditLogDAO().FindLatest(100)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
 		return

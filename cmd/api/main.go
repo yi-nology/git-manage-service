@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/cloudwego/hertz/pkg/app/server"
-	"github.com/yi-nology/git-manage-service/biz/config"
-	"github.com/yi-nology/git-manage-service/biz/dal"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/router"
 	"github.com/yi-nology/git-manage-service/biz/service"
 	"github.com/yi-nology/git-manage-service/biz/utils"
@@ -35,10 +35,10 @@ import (
 
 func main() {
 	// 0. Init Config
-	config.Init()
+	configs.Init()
 
 	// 1. Init DB
-	dal.Init()
+	db.Init()
 
 	// 2. Init Cron & Services
 	service.InitCronService()
@@ -47,7 +47,7 @@ func main() {
 	utils.InitEncryption()
 
 	// 3. Init Server
-	addr := fmt.Sprintf(":%d", config.GlobalConfig.Server.Port)
+	addr := fmt.Sprintf(":%d", configs.GlobalConfig.Server.Port)
 	h := server.Default(server.WithHostPorts(addr))
 
 	// 4. Register Routes

@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     ports:
       - "${APP_PORT:-8080}:8080"
+      - "${RPC_PORT:-8888}:8888"
     environment:
       - WEBHOOK_SECRET=${WEBHOOK_SECRET}
       - DB_PATH=/app/${DB_PATH}

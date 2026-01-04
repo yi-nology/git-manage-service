@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/query"
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/service"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -22,7 +22,7 @@ import (
 func GetRepoStatus(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	repo, err := query.NewRepoDAO().FindByKey(key)
+	repo, err := db.NewRepoDAO().FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
@@ -46,7 +46,7 @@ func GetRepoStatus(ctx context.Context, c *app.RequestContext) {
 // @Router /api/repos/{key}/git-config [get]
 func GetRepoGitConfig(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
-	repo, err := query.NewRepoDAO().FindByKey(key)
+	repo, err := db.NewRepoDAO().FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
@@ -93,7 +93,7 @@ func SubmitChanges(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	repo, err := query.NewRepoDAO().FindByKey(key)
+	repo, err := db.NewRepoDAO().FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return

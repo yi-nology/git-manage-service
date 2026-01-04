@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/query"
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-manage-service/biz/service"
 )
@@ -32,7 +32,7 @@ func PushBranch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	repo, err := query.NewRepoDAO().FindByKey(key)
+	repo, err := db.NewRepoDAO().FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
@@ -73,7 +73,7 @@ func PullBranch(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 	branch := c.Param("name")
 
-	repo, err := query.NewRepoDAO().FindByKey(key)
+	repo, err := db.NewRepoDAO().FindByKey(key)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
