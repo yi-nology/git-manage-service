@@ -5,15 +5,10 @@ import (
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
-	"github.com/yi-nology/git-manage-service/biz/service"
 )
-
-type ConfigReq struct {
-	DebugMode   bool   `json:"debug_mode"`
-	AuthorName  string `json:"author_name"`
-	AuthorEmail string `json:"author_email"`
-}
 
 // @Summary Get global configuration
 // @Tags Config
@@ -21,10 +16,9 @@ type ConfigReq struct {
 // @Success 200 {object} map[string]interface{}
 // @Router /api/config [get]
 func GetConfig(ctx context.Context, c *app.RequestContext) {
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	// Get global git config
-	name, _ := gitSvc.RunCommand(".", "config", "--global", "user.name")
-	email, _ := gitSvc.RunCommand(".", "config", "--global", "user.email")
+	name, email, _ := gitSvc.GetGlobalGitUser()
 
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"debug_mode":   configs.DebugMode,
@@ -38,12 +32,12 @@ func GetConfig(ctx context.Context, c *app.RequestContext) {
 // @Tags Config
 // @Accept json
 // @Produce json
-// @Param request body ConfigReq true "Config info"
+// @Param request body api.ConfigReq true "Config info"
 // @Success 200 {object} map[string]interface{} "Updated config"
 // @Failure 400 {object} map[string]string "Bad Request"
 // @Router /api/config [post]
 func UpdateConfig(ctx context.Context, c *app.RequestContext) {
-	var req ConfigReq
+	var req api.ConfigReq
 	if err := c.BindAndValidate(&req); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
@@ -52,7 +46,7 @@ func UpdateConfig(ctx context.Context, c *app.RequestContext) {
 	configs.DebugMode = req.DebugMode
 
 	// Update global git config
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	if err := gitSvc.SetGlobalGitUser(req.AuthorName, req.AuthorEmail); err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to set git config: " + err.Error()})
 		return

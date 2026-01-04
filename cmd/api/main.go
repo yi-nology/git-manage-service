@@ -7,7 +7,9 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/router"
-	"github.com/yi-nology/git-manage-service/biz/service"
+	"github.com/yi-nology/git-manage-service/biz/service/audit"
+	"github.com/yi-nology/git-manage-service/biz/service/stats"
+	"github.com/yi-nology/git-manage-service/biz/service/sync"
 	"github.com/yi-nology/git-manage-service/biz/utils"
 
 	_ "github.com/yi-nology/git-manage-service/docs"
@@ -41,9 +43,9 @@ func main() {
 	db.Init()
 
 	// 2. Init Cron & Services
-	service.InitCronService()
-	service.InitStatsService()
-	service.InitAuditService()
+	sync.InitCronService()
+	stats.InitStatsService()
+	audit.InitAuditService()
 	utils.InitEncryption()
 
 	// 3. Init Server

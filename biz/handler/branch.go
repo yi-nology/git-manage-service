@@ -7,9 +7,11 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model"
+	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/model/domain"
+	"github.com/yi-nology/git-manage-service/biz/service/audit"
+	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
-	"github.com/yi-nology/git-manage-service/biz/service"
 )
 
 // @Summary List branches
@@ -32,7 +34,7 @@ func ListRepoBranches(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	branches, err := gitSvc.ListBranchesWithInfo(repo.Path)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
@@ -42,7 +44,7 @@ func ListRepoBranches(ctx context.Context, c *app.RequestContext) {
 	// Filter
 	keyword := c.Query("keyword")
 	if keyword != "" {
-		var filtered []model.BranchInfo
+		var filtered []domain.BranchInfo
 		keyword = strings.ToLower(keyword)
 		for _, b := range branches {
 			if strings.Contains(strings.ToLower(b.Name), keyword) ||
@@ -103,13 +105,13 @@ func ListRepoBranches(ctx context.Context, c *app.RequestContext) {
 // @Summary Create a branch
 // @Tags Branches
 // @Param key path string true "Repo Key"
-// @Param request body model.CreateBranchReq true "Create info"
+// @Param request body api.CreateBranchReq true "Create info"
 // @Success 200 {object} response.Response
 // @Router /api/repos/{key}/branches [post]
 func CreateBranch(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	var req model.CreateBranchReq
+	var req api.CreateBranchReq
 	if err := c.BindAndValidate(&req); err != nil {
 		response.BadRequest(c, err.Error())
 		return
@@ -121,13 +123,13 @@ func CreateBranch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	if err := gitSvc.CreateBranch(repo.Path, req.Name, req.BaseRef); err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}
 
-	service.AuditSvc.Log(c, "CREATE_BRANCH", "repo:"+repo.Key, map[string]string{
+	audit.AuditSvc.Log(c, "CREATE_BRANCH", "repo:"+repo.Key, map[string]string{
 		"branch": req.Name,
 		"base":   req.BaseRef,
 	})
@@ -152,14 +154,14 @@ func DeleteBranch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	if err := gitSvc.DeleteBranch(repo.Path, name, force); err != nil {
 		// If error says "not fully merged", client should prompt to use force
 		response.InternalServerError(c, err.Error())
 		return
 	}
 
-	service.AuditSvc.Log(c, "DELETE_BRANCH", "repo:"+repo.Key, map[string]string{
+	audit.AuditSvc.Log(c, "DELETE_BRANCH", "repo:"+repo.Key, map[string]string{
 		"branch": name,
 		"force":  strconv.FormatBool(force),
 	})
@@ -171,7 +173,7 @@ func DeleteBranch(ctx context.Context, c *app.RequestContext) {
 // @Tags Branches
 // @Param key path string true "Repo Key"
 // @Param name path string true "Current Branch Name"
-// @Param request body model.UpdateBranchReq true "Update info"
+// @Param request body api.UpdateBranchReq true "Update info"
 // @Success 200 {object} response.Response
 // @Failure 400 {object} response.Response "Bad Request"
 // @Failure 404 {object} response.Response "Repo not found"
@@ -181,19 +183,19 @@ func UpdateBranch(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 	currentName := c.Param("name")
 
-	var req model.UpdateBranchReq
+	var req api.UpdateBranchReq
 	if err := c.BindAndValidate(&req); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
 
-	var repo model.Repo
-	if err := db.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := db.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 
 	// Rename
 	if req.NewName != "" && req.NewName != currentName {
@@ -212,7 +214,7 @@ func UpdateBranch(ctx context.Context, c *app.RequestContext) {
 		}
 	}
 
-	service.AuditSvc.Log(c, "UPDATE_BRANCH", "repo:"+repo.Key, map[string]string{
+	audit.AuditSvc.Log(c, "UPDATE_BRANCH", "repo:"+repo.Key, map[string]string{
 		"old_name": c.Param("name"), // Original name
 		"new_name": req.NewName,
 		"desc":     req.Desc,
@@ -239,14 +241,14 @@ func CheckoutBranch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	if err := gitSvc.CheckoutBranch(repo.Path, branch); err != nil {
 		// Provide clear error message about why checkout failed (e.g. dirty worktree)
 		response.BadRequest(c, "Checkout failed: "+err.Error())
 		return
 	}
 
-	service.AuditSvc.Log(c, "CHECKOUT_BRANCH", "repo:"+repo.Key, map[string]string{
+	audit.AuditSvc.Log(c, "CHECKOUT_BRANCH", "repo:"+repo.Key, map[string]string{
 		"branch": branch,
 	})
 	response.Success(c, map[string]string{"message": "checked out " + branch})

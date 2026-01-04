@@ -12,13 +12,15 @@ import (
 
 	hserver "github.com/cloudwego/hertz/pkg/app/server"
 	kserver "github.com/cloudwego/kitex/server"
-	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/router"
 	"github.com/yi-nology/git-manage-service/biz/rpc_handler"
-	"github.com/yi-nology/git-manage-service/biz/service"
+	"github.com/yi-nology/git-manage-service/biz/service/audit"
+	"github.com/yi-nology/git-manage-service/biz/service/stats"
+	"github.com/yi-nology/git-manage-service/biz/service/sync"
 	"github.com/yi-nology/git-manage-service/biz/utils"
 	"github.com/yi-nology/git-manage-service/kitex_gen/git/gitservice"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
 
 	_ "github.com/yi-nology/git-manage-service/docs"
 )
@@ -51,9 +53,9 @@ func main() {
 	utils.InitEncryption()
 
 	// 初始化业务服务 (Initialize Services)
-	service.InitCronService()
-	service.InitStatsService()
-	service.InitAuditService()
+	sync.InitCronService()
+	stats.InitStatsService()
+	audit.InitAuditService()
 
 	// 2. 启动 gRPC Server (Kitex)
 	rpcAddr := fmt.Sprintf(":%d", configs.GlobalConfig.Rpc.Port)

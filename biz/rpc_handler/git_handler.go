@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/service"
+	gitSvc "github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/kitex_gen/git"
 )
 
@@ -76,8 +76,8 @@ func (s *GitServiceImpl) ListBranches(ctx context.Context, req *git.ListBranches
 		return nil, fmt.Errorf("repo not found")
 	}
 
-	gitSvc := service.NewGitService()
-	branches, err := gitSvc.ListBranchesWithInfo(r.Path)
+	svc := gitSvc.NewGitService()
+	branches, err := svc.ListBranchesWithInfo(r.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +106,8 @@ func (s *GitServiceImpl) CreateBranch(ctx context.Context, req *git.CreateBranch
 		return &git.CreateBranchResponse{Success: false, Message: "repo not found"}, nil
 	}
 
-	gitSvc := service.NewGitService()
-	if err := gitSvc.CreateBranch(r.Path, req.BranchName, req.Ref); err != nil {
+	svc := gitSvc.NewGitService()
+	if err := svc.CreateBranch(r.Path, req.BranchName, req.Ref); err != nil {
 		return &git.CreateBranchResponse{Success: false, Message: err.Error()}, nil
 	}
 
@@ -121,8 +121,8 @@ func (s *GitServiceImpl) DeleteBranch(ctx context.Context, req *git.DeleteBranch
 		return &git.DeleteBranchResponse{Success: false, Message: "repo not found"}, nil
 	}
 
-	gitSvc := service.NewGitService()
-	if err := gitSvc.DeleteBranch(r.Path, req.BranchName, req.Force); err != nil {
+	svc := gitSvc.NewGitService()
+	if err := svc.DeleteBranch(r.Path, req.BranchName, req.Force); err != nil {
 		return &git.DeleteBranchResponse{Success: false, Message: err.Error()}, nil
 	}
 

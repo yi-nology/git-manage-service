@@ -9,33 +9,18 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/yi-nology/git-manage-service/biz/model/api"
 )
-
-type ListDirsReq struct {
-	Path   string `query:"path"`
-	Search string `query:"search"`
-}
-
-type DirItem struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-}
-
-type ListDirsResp struct {
-	Parent  string    `json:"parent"`
-	Current string    `json:"current"`
-	Dirs    []DirItem `json:"dirs"`
-}
 
 // @Summary List directories for file browser
 // @Tags System
 // @Param path query string false "Current path"
 // @Param search query string false "Search term"
 // @Produce json
-// @Success 200 {object} ListDirsResp
+// @Success 200 {object} api.ListDirsResp
 // @Router /api/system/dirs [get]
 func ListDirs(ctx context.Context, c *app.RequestContext) {
-	var req ListDirsReq
+	var req api.ListDirsReq
 	if err := c.BindAndValidate(&req); err != nil {
 		c.JSON(consts.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
@@ -58,13 +43,13 @@ func ListDirs(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var dirs []DirItem
+	var dirs []api.DirItem
 	for _, entry := range entries {
 		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
 			if req.Search != "" && !strings.Contains(strings.ToLower(entry.Name()), strings.ToLower(req.Search)) {
 				continue
 			}
-			dirs = append(dirs, DirItem{
+			dirs = append(dirs, api.DirItem{
 				Name: entry.Name(),
 				Path: filepath.Join(currentPath, entry.Name()),
 			})
@@ -81,23 +66,18 @@ func ListDirs(ctx context.Context, c *app.RequestContext) {
 		parent = ""
 	}
 
-	c.JSON(consts.StatusOK, ListDirsResp{
+	c.JSON(consts.StatusOK, api.ListDirsResp{
 		Parent:  parent,
 		Current: currentPath,
 		Dirs:    dirs,
 	})
 }
 
-type SSHKey struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-}
-
 // @Summary List available SSH keys
 // @Description List public SSH keys available in the user's home .ssh directory.
 // @Tags System
 // @Produce json
-// @Success 200 {array} SSHKey
+// @Success 200 {array} api.SSHKey
 // @Failure 500 {object} map[string]string "Internal Server Error"
 // @Router /api/system/ssh-keys [get]
 func ListSSHKeys(ctx context.Context, c *app.RequestContext) {
@@ -111,14 +91,14 @@ func ListSSHKeys(ctx context.Context, c *app.RequestContext) {
 	entries, err := os.ReadDir(sshDir)
 	if err != nil {
 		// If .ssh dir doesn't exist, return empty
-		c.JSON(consts.StatusOK, []SSHKey{})
+		c.JSON(consts.StatusOK, []api.SSHKey{})
 		return
 	}
 
-	var keys []SSHKey
+	var keys []api.SSHKey
 	for _, entry := range entries {
 		if !entry.IsDir() {
-			keys = append(keys, SSHKey{
+			keys = append(keys, api.SSHKey{
 				Name: entry.Name(),
 				Path: filepath.Join(sshDir, entry.Name()),
 			})

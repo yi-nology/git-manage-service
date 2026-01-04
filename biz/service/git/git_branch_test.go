@@ -1,10 +1,15 @@
-package service
+package git
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 func TestBranchCRUD(t *testing.T) {
@@ -16,18 +21,30 @@ func TestBranchCRUD(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	s := NewGitService()
-	
+
 	// Init Repo
-	if _, err := s.RunCommand(tmpDir, "init"); err != nil {
+	r, err := git.PlainInit(tmpDir, false)
+	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	// Create a commit so we have a HEAD
 	if err := os.WriteFile(filepath.Join(tmpDir, "test.txt"), []byte("hello"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	s.RunCommand(tmpDir, "add", ".")
-	s.RunCommand(tmpDir, "commit", "-m", "initial")
+
+	w, err := r.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Add(".")
+	w.Commit("initial", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	})
 
 	// Determine default branch name (master or main)
 	branches, err := s.ListBranchesWithInfo(tmpDir)
@@ -63,7 +80,7 @@ func TestBranchCRUD(t *testing.T) {
 	if err := s.RenameBranch(tmpDir, newBranch, renamedBranch); err != nil {
 		t.Fatalf("RenameBranch failed: %v", err)
 	}
-	
+
 	branches, _ = s.ListBranchesWithInfo(tmpDir)
 	foundOld := false
 	foundNew := false
@@ -99,11 +116,59 @@ func TestBranchCRUD(t *testing.T) {
 	if err := s.DeleteBranch(tmpDir, renamedBranch, true); err != nil {
 		t.Fatalf("DeleteBranch failed: %v", err)
 	}
-	
+
 	branches, _ = s.ListBranchesWithInfo(tmpDir)
 	for _, b := range branches {
 		if b.Name == renamedBranch {
 			t.Error("Branch still exists after delete")
 		}
+	}
+}
+
+func TestGetBranchMetrics(t *testing.T) {
+	// Setup
+	tmpDir, err := os.MkdirTemp("", "git-test-metrics")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	s := NewGitService()
+
+	// Init Repo
+	r, err := git.PlainInit(tmpDir, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w, err := r.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create 3 commits
+	for i := 0; i < 3; i++ {
+		filename := filepath.Join(tmpDir, fmt.Sprintf("file%d.txt", i))
+		if err := os.WriteFile(filename, []byte("content"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		w.Add(filepath.Base(filename))
+		w.Commit(fmt.Sprintf("commit %d", i), &git.CommitOptions{
+			Author: &object.Signature{
+				Name:  "Test",
+				Email: "test@example.com",
+				When:  time.Now(),
+			},
+		})
+	}
+
+	// Test Metrics
+	metrics, err := s.GetBranchMetrics(tmpDir, "master")
+	if err != nil {
+		t.Fatalf("GetBranchMetrics failed: %v", err)
+	}
+
+	if count, ok := metrics["commit_count"]; !ok || count != 3 {
+		t.Errorf("Expected commit_count 3, got %v", metrics["commit_count"])
 	}
 }

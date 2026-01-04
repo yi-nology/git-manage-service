@@ -8,9 +8,10 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model"
+	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/service/git"
+	"github.com/yi-nology/git-manage-service/biz/service/stats"
 	"github.com/yi-nology/git-manage-service/pkg/response"
-	"github.com/yi-nology/git-manage-service/biz/service"
 )
 
 // @Summary List branches for a repository
@@ -31,7 +32,7 @@ func ListBranches(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	branches, err := service.NewGitService().GetBranches(repo.Path)
+	branches, err := git.NewGitService().GetBranches(repo.Path)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
 		return
@@ -47,7 +48,7 @@ func ListBranches(ctx context.Context, c *app.RequestContext) {
 // @Param since query string false "Since (YYYY-MM-DD)"
 // @Param until query string false "Until (YYYY-MM-DD)"
 // @Produce json
-// @Success 200 {object} response.Response{data=[]model.Commit}
+// @Success 200 {object} response.Response{data=[]api.Commit}
 // @Router /api/stats/commits [get]
 func ListCommits(ctx context.Context, c *app.RequestContext) {
 	repoKey := c.Query("repo_key")
@@ -61,13 +62,13 @@ func ListCommits(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	raw, err := service.NewGitService().GetCommits(repo.Path, branch, since, until)
+	raw, err := git.NewGitService().GetCommits(repo.Path, branch, since, until)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}
 
-	commits := service.StatsSvc.ParseCommits(raw)
+	commits := stats.StatsSvc.ParseCommits(raw)
 	response.Success(c, commits)
 }
 
@@ -80,7 +81,7 @@ func ListCommits(ctx context.Context, c *app.RequestContext) {
 // @Param until query string false "Until (YYYY-MM-DD)"
 // @Param author query string false "Filter by Author Name or Email"
 // @Produce json
-// @Success 200 {object} response.Response{data=model.StatsResponse}
+// @Success 200 {object} response.Response{data=api.StatsResponse}
 // @Failure 404 {object} response.Response "Repo not found"
 // @Failure 500 {object} response.Response "Internal Server Error"
 // @Router /api/stats/analyze [get]
@@ -98,7 +99,7 @@ func GetStats(ctx context.Context, c *app.RequestContext) {
 
 	// This might take a while, consider async or cache
 	// For now, we run it synchronously
-	stats, err := service.StatsSvc.CalculateStats(repo.Path, branch, since, until)
+	statsData, err := stats.StatsSvc.CalculateStats(repo.Path, branch, since, until)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
 		return
@@ -107,22 +108,22 @@ func GetStats(ctx context.Context, c *app.RequestContext) {
 	// Filter by author if requested
 	author := c.Query("author")
 	if author != "" {
-		filtered := []*model.AuthorStat{}
-		for _, a := range stats.Authors {
+		filtered := []*api.AuthorStat{}
+		for _, a := range statsData.Authors {
 			if a.Name == author || a.Email == author {
 				filtered = append(filtered, a)
 			}
 		}
-		stats.Authors = filtered
+		statsData.Authors = filtered
 		// Recalculate total lines based on filter
 		total := 0
 		for _, a := range filtered {
 			total += a.TotalLines
 		}
-		stats.TotalLines = total
+		statsData.TotalLines = total
 	}
 
-	response.Success(c, stats)
+	response.Success(c, statsData)
 }
 
 // @Summary Export statistics as CSV
@@ -145,7 +146,7 @@ func ExportStatsCSV(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	stats, err := service.StatsSvc.CalculateStats(repo.Path, branch, since, until)
+	statsData, err := stats.StatsSvc.CalculateStats(repo.Path, branch, since, until)
 	if err != nil {
 		c.JSON(consts.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -157,7 +158,7 @@ func ExportStatsCSV(ctx context.Context, c *app.RequestContext) {
 	// Write CSV Header
 	c.Write([]byte("Author,Email,Total Effective Lines,Top Language\n"))
 
-	for _, author := range stats.Authors {
+	for _, author := range statsData.Authors {
 		topLang := ""
 		maxLines := 0
 		for lang, count := range author.FileTypes {

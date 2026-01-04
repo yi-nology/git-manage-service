@@ -264,13 +264,48 @@
             });
             
             // Line Chart
+            const { dates, values } = processTrendData(displayAuthors);
+
             if (!lineChart) lineChart = echarts.init(document.getElementById('lineChart'));
-            lineChart.setOption({
-                title: { text: '暂无趋势数据', left: 'center', textStyle: { color: '#ccc' } },
-                xAxis: { type: 'category', data: [] },
+            
+            const option = {
+                tooltip: { trigger: 'axis' },
+                xAxis: { type: 'category', data: dates },
                 yAxis: { type: 'value' },
-                series: []
+                series: [{
+                    data: values,
+                    type: 'line',
+                    smooth: true,
+                    name: '新增/修改行数',
+                    areaStyle: {}
+                }]
+            };
+
+            if (dates.length === 0) {
+                option.title = { text: '暂无趋势数据', left: 'center', textStyle: { color: '#ccc' } };
+            } else {
+                option.title = { text: '' };
+            }
+
+            lineChart.setOption(option, true);
+        }
+
+        function processTrendData(authors) {
+            const dateMap = new Map();
+            
+            authors.forEach(author => {
+                if (author.time_trend) {
+                    Object.entries(author.time_trend).forEach(([date, count]) => {
+                        dateMap.set(date, (dateMap.get(date) || 0) + count);
+                    });
+                }
             });
+            
+            // Sort dates
+            const sortedDates = Array.from(dateMap.keys()).sort();
+            const values = sortedDates.map(date => dateMap.get(date));
+            
+            return { dates: sortedDates, values };
         }
         
         async function loadCommits(repoKey, branch, since, until, authorFilter) {

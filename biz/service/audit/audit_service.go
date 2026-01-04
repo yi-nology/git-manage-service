@@ -1,12 +1,11 @@
-package service
+package audit
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
 type AuditService struct {
@@ -33,14 +32,13 @@ func (s *AuditService) Log(c *app.RequestContext, action, target string, details
 
 	detailsJSON, _ := json.Marshal(details)
 
-	logEntry := model.AuditLog{
+	logEntry := po.AuditLog{
 		Action:    action,
 		Target:    target,
 		Operator:  "system", // TODO: Replace with actual user when auth is implemented
 		Details:   string(detailsJSON),
 		IPAddress: ip,
 		UserAgent: ua,
-		CreatedAt: time.Now(),
 	}
 
 	// Run in background to not block main flow?

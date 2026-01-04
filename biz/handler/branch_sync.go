@@ -7,26 +7,24 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/service/audit"
+	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
-	"github.com/yi-nology/git-manage-service/biz/service"
 )
-
-type PushBranchReq struct {
-	Remotes []string `json:"remotes"` // List of remote names
-}
 
 // @Summary Push branch to remotes
 // @Tags Branches
 // @Param key path string true "Repo Key"
 // @Param name path string true "Branch Name"
-// @Param request body PushBranchReq true "Remotes"
+// @Param request body api.PushBranchReq true "Remotes"
 // @Success 200 {object} response.Response
 // @Router /api/repos/{key}/branches/{name}/push [post]
 func PushBranch(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 	branch := c.Param("name")
 
-	var req PushBranchReq
+	var req api.PushBranchReq
 	if err := c.BindAndValidate(&req); err != nil {
 		response.BadRequest(c, err.Error())
 		return
@@ -38,7 +36,7 @@ func PushBranch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 
 	var errors []string
 	for _, remote := range req.Remotes {
@@ -52,7 +50,7 @@ func PushBranch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	service.AuditSvc.Log(c, "PUSH_BRANCH", "repo:"+repo.Key, map[string]interface{}{
+	audit.AuditSvc.Log(c, "PUSH_BRANCH", "repo:"+repo.Key, map[string]interface{}{
 		"branch":  branch,
 		"remotes": req.Remotes,
 	})
@@ -79,7 +77,7 @@ func PullBranch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 
 	// Get Upstream
 	// We need to know which remote is upstream.
@@ -125,7 +123,7 @@ func PullBranch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	service.AuditSvc.Log(c, "PULL_BRANCH", "repo:"+repo.Key, map[string]string{
+	audit.AuditSvc.Log(c, "PULL_BRANCH", "repo:"+repo.Key, map[string]string{
 		"branch": branch,
 		"remote": upstreamRemote,
 	})

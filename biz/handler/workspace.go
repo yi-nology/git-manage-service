@@ -6,7 +6,8 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/service"
+	"github.com/yi-nology/git-manage-service/biz/service/audit"
+	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -28,7 +29,7 @@ func GetRepoStatus(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	status, err := gitSvc.GetStatus(repo.Path)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
@@ -52,7 +53,7 @@ func GetRepoGitConfig(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	name, email, _ := gitSvc.GetGitUser(repo.Path)
 
 	response.Success(c, map[string]string{
@@ -99,7 +100,7 @@ func SubmitChanges(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 
 	// 1. Add .
 	if err := gitSvc.AddAll(repo.Path); err != nil {
@@ -119,7 +120,7 @@ func SubmitChanges(ctx context.Context, c *app.RequestContext) {
 
 	if err := gitSvc.Commit(repo.Path, fullMsg, req.AuthorName, req.AuthorEmail); err != nil {
 		// Rollback stage? git reset HEAD .
-		_, _ = gitSvc.RunCommand(repo.Path, "reset", "HEAD", ".")
+		_ = gitSvc.Reset(repo.Path)
 		response.InternalServerError(c, "Failed to commit: "+err.Error())
 		return
 	}
@@ -137,7 +138,7 @@ func SubmitChanges(ctx context.Context, c *app.RequestContext) {
 		msg += " and pushed to remote"
 	}
 
-	service.AuditSvc.Log(c, "SUBMIT_CHANGES", "repo:"+repo.Key, map[string]interface{}{
+	audit.AuditSvc.Log(c, "SUBMIT_CHANGES", "repo:"+repo.Key, map[string]interface{}{
 		"message": req.Message,
 		"push":    req.Push,
 	})

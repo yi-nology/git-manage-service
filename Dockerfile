@@ -1,11 +1,14 @@
 # Build Stage
 FROM golang:1.24-alpine AS builder
 
-# Set environment variables
+# Set environment variables with China Proxy
 ENV GO111MODULE=on \
     CGO_ENABLED=1 \
     GOOS=linux \
-    GOARCH=amd64
+    GOPROXY=https://goproxy.cn,direct
+
+# Replace Alpine mirrors with Aliyun mirror
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # Install build dependencies (git, gcc, musl-dev required for CGO/SQLite)
 RUN apk add --no-cache git gcc musl-dev
@@ -27,6 +30,9 @@ RUN go build -o git-manage-service cmd/api/main.go
 
 # Runtime Stage
 FROM alpine:latest
+
+# Replace Alpine mirrors with Aliyun mirror
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # Install runtime dependencies
 # git: for git operations

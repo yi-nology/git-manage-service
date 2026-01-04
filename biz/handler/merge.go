@@ -8,8 +8,9 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/google/uuid"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model"
-	"github.com/yi-nology/git-manage-service/biz/service"
+	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/service/audit"
+	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -40,7 +41,7 @@ func CompareBranches(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 
 	stat, err := gitSvc.GetDiffStat(repo.Path, base, target)
 	if err != nil {
@@ -83,7 +84,7 @@ func GetDiffContent(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	content, err := gitSvc.GetRawDiff(repo.Path, base, target, file)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
@@ -108,13 +109,13 @@ func MergeCheck(ctx context.Context, c *app.RequestContext) {
 	base := c.Query("base")     // Source (feature)
 	target := c.Query("target") // Destination (main)
 
-	var repo model.Repo
-	if err := db.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := db.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	result, err := gitSvc.MergeDryRun(repo.Path, base, target)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
@@ -124,23 +125,16 @@ func MergeCheck(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, result)
 }
 
-type MergeReq struct {
-	Source   string `json:"source"`
-	Target   string `json:"target"`
-	Message  string `json:"message"`
-	Strategy string `json:"strategy"` // Not implemented yet
-}
-
 // @Summary Execute merge
 // @Tags Merge
 // @Param key path string true "Repo Key"
-// @Param request body MergeReq true "Merge Info"
+// @Param request body api.MergeReq true "Merge Info"
 // @Success 200 {object} response.Response
 // @Router /api/repos/{key}/merge [post]
 func ExecuteMerge(ctx context.Context, c *app.RequestContext) {
 	key := c.Param("key")
 
-	var req MergeReq
+	var req api.MergeReq
 	if err := c.BindAndValidate(&req); err != nil {
 		response.BadRequest(c, err.Error())
 		return
@@ -152,7 +146,7 @@ func ExecuteMerge(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 
 	// Double check conflicts
 	check, err := gitSvc.MergeDryRun(repo.Path, req.Source, req.Target)
@@ -167,7 +161,7 @@ func ExecuteMerge(ctx context.Context, c *app.RequestContext) {
 		reportURL := fmt.Sprintf("/merge_report.html?repo_key=%s&source=%s&target=%s&merge_id=%s", repo.Key, req.Source, req.Target, mergeID)
 
 		// Log conflict
-		service.AuditSvc.Log(c, "MERGE_CONFLICT", "repo:"+repo.Key, map[string]interface{}{
+		audit.AuditSvc.Log(c, "MERGE_CONFLICT", "repo:"+repo.Key, map[string]interface{}{
 			"source":    req.Source,
 			"target":    req.Target,
 			"conflicts": check.Conflicts,
@@ -192,7 +186,7 @@ func ExecuteMerge(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	service.AuditSvc.Log(c, "MERGE_SUCCESS", "repo:"+repo.Key, map[string]string{
+	audit.AuditSvc.Log(c, "MERGE_SUCCESS", "repo:"+repo.Key, map[string]string{
 		"source": req.Source,
 		"target": req.Target,
 	})
@@ -212,13 +206,13 @@ func GetPatch(ctx context.Context, c *app.RequestContext) {
 	base := c.Query("base")
 	target := c.Query("target")
 
-	var repo model.Repo
-	if err := db.DB.Where("key = ?", key).First(&repo).Error; err != nil {
+	repo, err := db.NewRepoDAO().FindByKey(key)
+	if err != nil {
 		response.NotFound(c, "repo not found")
 		return
 	}
 
-	gitSvc := service.NewGitService()
+	gitSvc := git.NewGitService()
 	patch, err := gitSvc.GetPatch(repo.Path, base, target)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
