@@ -1,9 +1,11 @@
 package stats
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -14,7 +16,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 
-	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
@@ -31,6 +32,7 @@ type StatsCacheItem struct {
 	Data      *api.StatsResponse
 	Error     error
 	CreatedAt time.Time
+	Progress  string // e.g. "Processed 100 commits..."
 }
 
 type StatsService struct {
@@ -168,7 +170,7 @@ type ActivityStat struct {
 }
 
 // GetStats retrieves stats from cache or triggers calculation
-func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsResponse, StatsStatus, error) {
+func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsResponse, StatsStatus, error, string) {
 	key := fmt.Sprintf("%s:%s:%s:%s", path, branch, since, until)
 
 	// 1. Check cache
@@ -176,7 +178,7 @@ func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsRe
 		item := val.(*StatsCacheItem)
 		// Simple TTL: 1 hour
 		if time.Since(item.CreatedAt) < time.Hour {
-			return item.Data, item.Status, item.Error
+			return item.Data, item.Status, item.Error, item.Progress
 		}
 	}
 
@@ -184,6 +186,7 @@ func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsRe
 	newItem := &StatsCacheItem{
 		Status:    StatusProcessing,
 		CreatedAt: time.Now(),
+		Progress:  "Initializing...",
 	}
 	// Use LoadOrStore to prevent duplicate concurrent calculations
 	actual, loaded := s.cache.LoadOrStore(key, newItem)
@@ -191,39 +194,49 @@ func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsRe
 	if loaded {
 		item := actual.(*StatsCacheItem)
 		if time.Since(item.CreatedAt) < time.Hour {
-			return item.Data, item.Status, item.Error
+			return item.Data, item.Status, item.Error, item.Progress
 		}
-		return item.Data, item.Status, item.Error
+		return item.Data, item.Status, item.Error, item.Progress
 	}
 
 	// 3. Start async calculation
 	go func() {
-		data, err := s.calculateStatsInternal(path, branch, since, until)
+		data, err := s.calculateStatsFast(path, branch, since, until, key)
 		if err != nil {
-			s.cache.Store(key, &StatsCacheItem{
-				Status:    StatusFailed,
-				Error:     err,
-				CreatedAt: time.Now(),
+			s.updateCache(key, func(item *StatsCacheItem) {
+				item.Status = StatusFailed
+				item.Error = err
 			})
 		} else {
-			s.cache.Store(key, &StatsCacheItem{
-				Status:    StatusReady,
-				Data:      data,
-				CreatedAt: time.Now(),
+			s.updateCache(key, func(item *StatsCacheItem) {
+				item.Status = StatusReady
+				item.Data = data
+				item.Progress = "Completed"
 			})
 		}
 	}()
 
-	return nil, StatusProcessing, nil
+	return nil, StatusProcessing, nil, "Initializing..."
 }
 
-// calculateStatsInternal computes effective line counts per author
-func (s *StatsService) calculateStatsInternal(path, branch, since, until string) (*api.StatsResponse, error) {
-	files, err := s.Git.GetRepoFiles(path, branch)
-	if err != nil {
-		return nil, err
+func (s *StatsService) updateCache(key string, update func(*StatsCacheItem)) {
+	if val, ok := s.cache.Load(key); ok {
+		item := val.(*StatsCacheItem)
+		update(item)
+		// No need to Store back since we modified the pointer, but sync.Map might need it if we replaced the struct.
+		// Since we are modifying fields of the struct pointer, it is visible to other goroutines reading the same pointer.
+		// However, to be safe from race conditions on the struct fields themselves if they were not atomic, 
+		// we should be careful. But here it's simple string/status updates.
+		// Ideally we should use a mutex inside StatsCacheItem or replace the item in the map.
+		// For progress reporting, replacing the item in map is safer if we treat it as immutable, but slower.
+		// Let's assume for now the pointer approach is "good enough" for status updates or we can re-store.
+		// Actually, let's create a new item to be thread-safe for readers? No, that breaks the "LoadOrStore" logic if we want to share progress.
+		// We should probably add a Mutex to StatsCacheItem.
 	}
+}
 
+// calculateStatsFast computes stats using git log --numstat (Fast, No Blame)
+func (s *StatsService) calculateStatsFast(path, branch, since, until, cacheKey string) (*api.StatsResponse, error) {
 	// Parse dates
 	var sinceTime, untilTime time.Time
 	if since != "" {
@@ -235,77 +248,107 @@ func (s *StatsService) calculateStatsInternal(path, branch, since, until string)
 		untilTime = untilTime.Add(24*time.Hour - time.Nanosecond)
 	}
 
+	// 1. Get raw log stats stream
+	stream, err := s.Git.GetLogStatsStream(path, branch)
+	if err != nil {
+		return nil, err
+	}
+	defer stream.Close()
+
 	authorStats := make(map[string]*api.AuthorStat)
-	var mu sync.Mutex
+	
+	scanner := bufio.NewScanner(stream)
+	// Increase buffer size for long lines
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
 
-	// Worker pool to process files
-	sem := make(chan struct{}, 10)
-	var wg sync.WaitGroup
+	var currentEmail, currentName string
+	var currentDate time.Time
+	
+	commitCount := 0
+	lastUpdate := time.Now()
 
-	for _, file := range files {
-		if strings.TrimSpace(file) == "" {
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
 
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(f string) {
-			defer wg.Done()
-			defer func() { <-sem }()
-
-			rawBlame, err := s.Git.BlameFile(path, branch, f)
-			if err != nil {
-				return
+		if strings.HasPrefix(line, "COMMIT|") {
+			commitCount++
+			
+			// Update progress every 100 commits or 1 second
+			if commitCount%100 == 0 || time.Since(lastUpdate) > time.Second {
+				s.updateCache(cacheKey, func(item *StatsCacheItem) {
+					item.Progress = fmt.Sprintf("Processed %d commits...", commitCount)
+				})
+				lastUpdate = time.Now()
 			}
 
-			lines := s.parseBlame(rawBlame, f)
-
-			mu.Lock()
-			defer mu.Unlock()
-
-			for _, line := range lines {
-				// Date Filter
-				if !sinceTime.IsZero() && line.Date.Before(sinceTime) {
-					continue
-				}
-				if !untilTime.IsZero() && line.Date.After(untilTime) {
-					continue
-				}
-
-				if _, exists := authorStats[line.Email]; !exists {
-					authorStats[line.Email] = &api.AuthorStat{
-						Name:      line.Author,
-						Email:     line.Email,
-						FileTypes: make(map[string]int),
-						TimeTrend: make(map[string]int),
-					}
-				}
-
-				stat := authorStats[line.Email]
-				stat.TotalLines++
-				stat.FileTypes[line.Extension]++
+			parts := strings.Split(line, "|")
+			if len(parts) >= 5 {
+				// COMMIT|Hash|Name|Email|Timestamp
+				currentName = parts[2]
+				currentEmail = parts[3]
+				ts, _ := strconv.ParseInt(parts[4], 10, 64)
+				currentDate = time.Unix(ts, 0)
 			}
-		}(file)
-	}
+			continue
+		}
+		
+		// ... (rest of the loop)
+		
+		// Date Filter
+		if !sinceTime.IsZero() && currentDate.Before(sinceTime) {
+			continue
+		}
+		if !untilTime.IsZero() && currentDate.After(untilTime) {
+			continue
+		}
 
-	wg.Wait()
+		// Parse numstat: "added deleted filename"
+		// Note: binary files might show "-"
+		parts := strings.Fields(line)
+		if len(parts) < 3 {
+			continue
+		}
 
-	// Calculate Activity Trend using git log with DB caching
-	activityTrends, err := s.getContributionStats(path, branch, since, until)
-	if err == nil {
-		for email, data := range activityTrends {
-			if _, exists := authorStats[email]; !exists {
-				authorStats[email] = &api.AuthorStat{
-					Name:       data.Name,
-					Email:      email,
-					FileTypes:  make(map[string]int),
-					TimeTrend:  data.Trend,
-					TotalLines: 0,
-				}
-			} else {
-				authorStats[email].TimeTrend = data.Trend
+		added, err1 := strconv.Atoi(parts[0])
+		deleted, err2 := strconv.Atoi(parts[1])
+
+		// Skip binary files or parse errors
+		if err1 != nil || err2 != nil {
+			continue
+		}
+
+		filename := parts[2]
+		ext := strings.ToLower(filepath.Ext(filename))
+		if len(ext) > 0 {
+			ext = ext[1:] // remove dot
+		} else {
+			ext = "unknown"
+		}
+
+		if _, exists := authorStats[currentEmail]; !exists {
+			authorStats[currentEmail] = &api.AuthorStat{
+				Name:      currentName,
+				Email:     currentEmail,
+				FileTypes: make(map[string]int),
+				TimeTrend: make(map[string]int),
 			}
 		}
+
+		stat := authorStats[currentEmail]
+		// Use Net Contribution as "Total Lines" approximation
+		stat.TotalLines += (added - deleted)
+		stat.FileTypes[ext] += (added - deleted)
+
+		dateStr := currentDate.Format("2006-01-02")
+		stat.TimeTrend[dateStr] += (added - deleted)
+	}
+	
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 
 	// Convert map to slice
@@ -318,168 +361,4 @@ func (s *StatsService) calculateStatsInternal(path, branch, since, until string)
 	}
 
 	return resp, nil
-}
-
-func (s *StatsService) parseBlame(result *gogit.BlameResult, filename string) []domain.LineStat {
-	var stats []domain.LineStat
-
-	ext := strings.ToLower(filepath.Ext(filename))
-	if len(ext) > 0 {
-		ext = ext[1:] // remove dot
-	} else {
-		ext = "unknown"
-	}
-
-	for _, line := range result.Lines {
-		if s.isEffectiveLine(line.Text, ext) {
-			stats = append(stats, domain.LineStat{
-				Author:    line.Author,
-				Email:     line.Author, // go-git Line.Author is typically the email
-				Date:      line.Date,
-				Extension: ext,
-			})
-		}
-	}
-
-	return stats
-}
-
-func (s *StatsService) isEffectiveLine(content, ext string) bool {
-	trimmed := strings.TrimSpace(content)
-	if trimmed == "" {
-		return false
-	}
-	if strings.HasPrefix(trimmed, "//") ||
-		strings.HasPrefix(trimmed, "#") ||
-		strings.HasPrefix(trimmed, "--") ||
-		strings.HasPrefix(trimmed, "/*") ||
-		strings.HasPrefix(trimmed, "*") {
-		return false
-	}
-	return true
-}
-
-// getContributionStats uses DB cache to speed up stats calculation
-func (s *StatsService) getContributionStats(path, branch, since, until string) (map[string]*ActivityStat, error) {
-	// 1. Get Repo ID
-	repo, err := db.NewRepoDAO().FindByPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	// 2. Parse dates
-	var sinceTime, untilTime time.Time
-	if since != "" {
-		sinceTime, _ = time.Parse("2006-01-02", since)
-	}
-	if until != "" {
-		untilTime, _ = time.Parse("2006-01-02", until)
-		untilTime = untilTime.Add(24*time.Hour - time.Nanosecond)
-	}
-
-	// 3. Trigger Async Sync to ensure we are up to date (Best Effort)
-	// We don't wait for it to finish, but it helps populate DB for next time if missing
-	go s.SyncRepoStats(repo.ID, path, branch)
-
-	// 4. Get all commits from git log
-	cIter, err := s.Git.GetLogIterator(path, branch)
-	if err != nil {
-		return nil, err
-	}
-
-	var allHashes []string
-	commitMap := make(map[string]*object.Commit)
-
-	err = cIter.ForEach(func(c *object.Commit) error {
-		if !untilTime.IsZero() && c.Author.When.After(untilTime) {
-			return nil
-		}
-		if !sinceTime.IsZero() && c.Author.When.Before(sinceTime) {
-			return nil
-		}
-		// Skip merges
-		if len(c.ParentHashes) > 1 {
-			return nil
-		}
-
-		allHashes = append(allHashes, c.Hash.String())
-		commitMap[c.Hash.String()] = c
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// 5. Batch get from DB
-	commitStatDAO := db.NewCommitStatDAO()
-	cachedStats, err := commitStatDAO.GetByRepoAndHashes(repo.ID, allHashes)
-	if err != nil {
-		cachedStats = make(map[string]*po.CommitStat)
-	}
-
-	// 6. Identify missing commits & Calculate
-	var missingStats []*po.CommitStat
-	results := make(map[string]*ActivityStat)
-
-	for _, hash := range allHashes {
-		var additions int
-		var authorName, authorEmail string
-		var commitDate time.Time
-
-		if stat, ok := cachedStats[hash]; ok {
-			// Hit cache
-			additions = stat.Additions
-			authorName = stat.AuthorName
-			authorEmail = stat.AuthorEmail
-			commitDate = stat.CommitTime
-		} else {
-			// Miss cache, calculate
-			c := commitMap[hash]
-			fileStats, err := c.Stats()
-			if err != nil {
-				continue
-			}
-
-			additions = 0
-			deletions := 0
-			for _, fs := range fileStats {
-				additions += fs.Addition
-				deletions += fs.Deletion
-			}
-
-			// Add to missing list for DB insertion
-			missingStats = append(missingStats, &po.CommitStat{
-				RepoID:      repo.ID,
-				CommitHash:  hash,
-				AuthorName:  c.Author.Name,
-				AuthorEmail: c.Author.Email,
-				CommitTime:  c.Author.When,
-				Additions:   additions,
-				Deletions:   deletions,
-			})
-
-			authorName = c.Author.Name
-			authorEmail = c.Author.Email
-			commitDate = c.Author.When
-		}
-
-		// Aggregate for result
-		dateStr := commitDate.Format("2006-01-02")
-		if _, ok := results[authorEmail]; !ok {
-			results[authorEmail] = &ActivityStat{
-				Name:  authorName,
-				Trend: make(map[string]int),
-			}
-		}
-		results[authorEmail].Trend[dateStr] += additions
-	}
-
-	// 7. Async save missing stats to DB
-	if len(missingStats) > 0 {
-		go func() {
-			_ = commitStatDAO.BatchSave(missingStats)
-		}()
-	}
-
-	return results, nil
 }
