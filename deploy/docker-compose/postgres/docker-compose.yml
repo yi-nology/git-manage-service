@@ -1,0 +1,48 @@
+services:
+  app:
+    container_name: git-manage-service-postgres
+    build: 
+      context: ../../
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8888:8888"
+    environment:
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-my-secret-key}
+      - DB_TYPE=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=gituser
+      - DB_PASSWORD=gitpassword
+      - DB_NAME=git_manage
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./repos:/repos
+      - ~/.ssh:/root/.ssh:ro
+    networks:
+      - git-sync-net
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: git-manage-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: gituser
+      POSTGRES_PASSWORD: gitpassword
+      POSTGRES_DB: git_manage
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - git-sync-net
+
+networks:
+  git-sync-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

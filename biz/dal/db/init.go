@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/yi-nology/git-manage-service/pkg/configs"
-	"github.com/yi-nology/git-manage-service/biz/model"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -52,7 +52,7 @@ func Init() {
 	}
 
 	// Migrate the schema
-	err = DB.AutoMigrate(&model.Repo{}, &model.SyncTask{}, &model.SyncRun{}, &model.AuditLog{}, &model.SystemConfig{})
+	err = DB.AutoMigrate(&po.Repo{}, &po.SyncTask{}, &po.SyncRun{}, &po.AuditLog{}, &po.SystemConfig{})
 	if err != nil {
 		log.Fatal("failed to migrate database: ", err)
 	}

@@ -1,0 +1,29 @@
+services:
+  app:
+    container_name: git-manage-service-sqlite
+    build: 
+      context: ../../
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8888:8888"
+    environment:
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-my-secret-key}
+      - DB_TYPE=sqlite
+      - DB_PATH=/app/data/git_sync.db
+      - TZ=Asia/Shanghai
+    volumes:
+      # Config file (optional override)
+      # - ./config.yaml:/app/conf/config.yaml
+      # Data persistence
+      - ./data:/app/data
+      - ./repos:/repos
+      # SSH Keys
+      - ~/.ssh:/root/.ssh:ro
+    networks:
+      - git-sync-net
+
+networks:
+  git-sync-net:
+    driver: bridge

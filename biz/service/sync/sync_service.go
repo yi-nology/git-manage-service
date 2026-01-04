@@ -1,4 +1,4 @@
-package service
+package sync
 
 import (
 	"fmt"
@@ -6,18 +6,19 @@ import (
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"github.com/yi-nology/git-manage-service/biz/service/git"
 )
 
 type SyncService struct {
-	git         *GitService
+	git         *git.GitService
 	syncTaskDAO *db.SyncTaskDAO
 	syncRunDAO  *db.SyncRunDAO
 }
 
 func NewSyncService() *SyncService {
 	return &SyncService{
-		git:         NewGitService(),
+		git:         git.NewGitService(),
 		syncTaskDAO: db.NewSyncTaskDAO(),
 		syncRunDAO:  db.NewSyncRunDAO(),
 	}
@@ -31,8 +32,8 @@ func (s *SyncService) RunTask(taskKey string) error {
 	return s.ExecuteSync(task)
 }
 
-func (s *SyncService) ExecuteSync(task *model.SyncTask) error {
-	run := model.SyncRun{
+func (s *SyncService) ExecuteSync(task *po.SyncTask) error {
+	run := po.SyncRun{
 		TaskKey:   task.Key,
 		StartTime: time.Now(),
 		Status:    "running",
@@ -72,7 +73,7 @@ func (s *SyncService) ExecuteSync(task *model.SyncTask) error {
 	return err
 }
 
-func getAuthForRemote(repo model.Repo, remoteName string) (string, string, string) {
+func getAuthForRemote(repo po.Repo, remoteName string) (string, string, string) {
 	if repo.RemoteAuths != nil {
 		if auth, ok := repo.RemoteAuths[remoteName]; ok {
 			return auth.Type, auth.Key, auth.Secret
@@ -81,7 +82,7 @@ func getAuthForRemote(repo model.Repo, remoteName string) (string, string, strin
 	return repo.AuthType, repo.AuthKey, repo.AuthSecret
 }
 
-func (s *SyncService) doSync(path string, task *model.SyncTask, logf func(string, ...interface{})) (string, error) {
+func (s *SyncService) doSync(path string, task *po.SyncTask, logf func(string, ...interface{})) (string, error) {
 	logf("Starting sync for task %s (Repo: %s)", task.Key, path)
 
 	// 1. Fetch Source
@@ -126,7 +127,7 @@ func (s *SyncService) doSync(path string, task *model.SyncTask, logf func(string
 		// Local Source
 		// Get Hash from Local Head
 		logf("Using local branch: %s", task.SourceBranch)
-		h, err := s.git.RunCommand(path, "rev-parse", task.SourceBranch)
+		h, err := s.git.ResolveRevision(path, task.SourceBranch)
 		if err != nil {
 			return "", fmt.Errorf("get local source hash failed: %v", err)
 		}

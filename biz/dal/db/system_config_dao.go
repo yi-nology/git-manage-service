@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/yi-nology/git-manage-service/biz/model"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
 type SystemConfigDAO struct{}
@@ -11,7 +11,7 @@ func NewSystemConfigDAO() *SystemConfigDAO {
 }
 
 func (dao *SystemConfigDAO) GetConfig(key string) (string, error) {
-	var config model.SystemConfig
+	var config po.SystemConfig
 	err := DB.Where("key = ?", key).First(&config).Error
 	if err != nil {
 		return "", err
@@ -20,7 +20,7 @@ func (dao *SystemConfigDAO) GetConfig(key string) (string, error) {
 }
 
 func (dao *SystemConfigDAO) SetConfig(key, value string) error {
-	config := model.SystemConfig{
+	config := po.SystemConfig{
 		Key:   key,
 		Value: value,
 	}
@@ -28,7 +28,7 @@ func (dao *SystemConfigDAO) SetConfig(key, value string) error {
 }
 
 func (dao *SystemConfigDAO) GetAll() (map[string]string, error) {
-	var configs []model.SystemConfig
+	var configs []po.SystemConfig
 	err := DB.Find(&configs).Error
 	if err != nil {
 		return nil, err

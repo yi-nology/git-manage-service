@@ -13,6 +13,7 @@ test/origin/
 test/ky/
 test/local/
 output/
+.trae/
 
 # Environment
 .env

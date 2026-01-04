@@ -1,4 +1,4 @@
-package service
+package git
 
 import (
 	"fmt"
@@ -20,8 +20,8 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	ssh2 "golang.org/x/crypto/ssh"
 
+	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	conf "github.com/yi-nology/git-manage-service/pkg/configs"
-	"github.com/yi-nology/git-manage-service/biz/model"
 )
 
 type GitService struct{}
@@ -31,7 +31,7 @@ func NewGitService() *GitService {
 }
 
 // RunCommand executes a raw git command.
-// Deprecated: Use go-git methods instead. Kept for backward compatibility during migration.
+// Deprecated: Ideally use go-git methods. However, kept for operations not fully supported by go-git (e.g. Merge logic, Config branch description).
 func (s *GitService) RunCommand(dir string, args ...string) (string, error) {
 	if conf.DebugMode {
 		log.Printf("[DEBUG] Executing in %s: git %s", dir, strings.Join(args, " "))
@@ -329,7 +329,7 @@ func (s *GitService) GetRemoteURL(path, remoteName string) (string, error) {
 	return "", fmt.Errorf("no URL for remote %s", remoteName)
 }
 
-func (s *GitService) GetRepoConfig(path string) (*model.GitRepoConfig, error) {
+func (s *GitService) GetRepoConfig(path string) (*domain.GitRepoConfig, error) {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return nil, err
@@ -339,13 +339,13 @@ func (s *GitService) GetRepoConfig(path string) (*model.GitRepoConfig, error) {
 		return nil, err
 	}
 
-	repoConfig := &model.GitRepoConfig{
-		Remotes:  []model.GitRemote{},
-		Branches: []model.GitBranch{},
+	repoConfig := &domain.GitRepoConfig{
+		Remotes:  []domain.GitRemote{},
+		Branches: []domain.GitBranch{},
 	}
 
 	for _, remote := range cfg.Remotes {
-		r := &model.GitRemote{
+		r := &domain.GitRemote{
 			Name:       remote.Name,
 			FetchURL:   "",
 			PushURL:    "",
@@ -368,7 +368,7 @@ func (s *GitService) GetRepoConfig(path string) (*model.GitRepoConfig, error) {
 	}
 
 	for _, branch := range cfg.Branches {
-		b := &model.GitBranch{
+		b := &domain.GitBranch{
 			Name:   branch.Name,
 			Remote: branch.Remote,
 			Merge:  branch.Merge.String(),
@@ -445,27 +445,18 @@ func (s *GitService) GetBranches(path string) ([]string, error) {
 }
 
 func (s *GitService) GetCommits(path, branch, since, until string) (string, error) {
-	// Replacing `git log` formatting is complex.
-	// For now, let's keep using RunCommand for this specific complex query
-	// OR implement a basic version.
-	// The caller expects a specific format string.
-	// If I change the return format, it might break the frontend.
-	// I'll stick to RunCommand for this one for now, as it's a read-only porcelain command.
-	// BUT the user asked to replace ALL direct usages.
-	// So I should try to reconstruct the output.
-
 	r, err := s.openRepo(path)
 	if err != nil {
 		return "", err
 	}
 
 	// Resolve branch
-	hash, err := r.ResolveRevision(plumbing.Revision(branch))
+	commit, err := s.resolveCommit(r, branch)
 	if err != nil {
 		return "", err
 	}
 
-	cIter, err := r.Log(&git.LogOptions{From: *hash})
+	cIter, err := r.Log(&git.LogOptions{From: commit.Hash})
 	if err != nil {
 		return "", err
 	}
@@ -526,11 +517,7 @@ func (s *GitService) GetRepoFiles(path, branch string) ([]string, error) {
 	}
 
 	// Resolve branch to commit -> tree
-	hash, err := r.ResolveRevision(plumbing.Revision(branch))
-	if err != nil {
-		return nil, err
-	}
-	commit, err := r.CommitObject(*hash)
+	commit, err := s.resolveCommit(r, branch)
 	if err != nil {
 		return nil, err
 	}
@@ -547,13 +534,18 @@ func (s *GitService) GetRepoFiles(path, branch string) ([]string, error) {
 	return files, nil
 }
 
-func (s *GitService) BlameFile(path, branch, file string) (string, error) {
-	// go-git Blame returns a BlameResult struct.
-	// We need to format it to match `git blame --line-porcelain`.
-	// This is hard to match exactly.
-	// If the caller parses the output, we might break it.
-	// Let's use RunCommand for Blame as it is very specific format.
-	return s.RunCommand(path, "blame", "--line-porcelain", "-w", branch, "--", file)
+func (s *GitService) BlameFile(path, branch, file string) (*git.BlameResult, error) {
+	r, err := s.openRepo(path)
+	if err != nil {
+		return nil, err
+	}
+
+	commit, err := s.resolveCommit(r, branch)
+	if err != nil {
+		return nil, err
+	}
+
+	return git.Blame(commit, file)
 }
 
 func (s *GitService) TestRemoteConnection(url string) error {
@@ -646,28 +638,68 @@ func (s *GitService) Commit(path, message, authorName, authorEmail string) error
 }
 
 func (s *GitService) GetGitUser(path string) (string, string, error) {
-	// Use git config command to get effective config (Local > Global > System)
-	name, _ := s.RunCommand(path, "config", "user.name")
-	email, _ := s.RunCommand(path, "config", "user.email")
+	// 1. Try Local Config
+	var name, email string
+	r, err := s.openRepo(path)
+	if err == nil {
+		if cfg, err := r.Config(); err == nil {
+			name = cfg.User.Name
+			email = cfg.User.Email
+		}
+	}
+
+	if name != "" && email != "" {
+		return name, email, nil
+	}
+
+	// 2. Try Global Config (~/.gitconfig)
+	home, err := os.UserHomeDir()
+	if err == nil {
+		globalConfigPath := filepath.Join(home, ".gitconfig")
+		content, err := os.ReadFile(globalConfigPath)
+		if err == nil {
+			cfg := config.NewConfig()
+			if err := cfg.Unmarshal(content); err == nil {
+				if name == "" {
+					name = cfg.User.Name
+				}
+				if email == "" {
+					email = cfg.User.Email
+				}
+			}
+		}
+	}
+
 	return name, email, nil
 }
 
 func (s *GitService) SetGlobalGitUser(name, email string) error {
-	// Use any valid path or current directory, but --global doesn't care about path usually.
-	// However, RunCommand needs a dir.
-	wd, _ := os.Getwd()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	globalConfigPath := filepath.Join(home, ".gitconfig")
 
-	if name != "" {
-		if _, err := s.RunCommand(wd, "config", "--global", "user.name", name); err != nil {
+	// Read existing
+	cfg := config.NewConfig()
+	content, err := os.ReadFile(globalConfigPath)
+	if err == nil {
+		if err := cfg.Unmarshal(content); err != nil {
 			return err
 		}
+	} else if !os.IsNotExist(err) {
+		return err
 	}
-	if email != "" {
-		if _, err := s.RunCommand(wd, "config", "--global", "user.email", email); err != nil {
-			return err
-		}
+
+	cfg.User.Name = name
+	cfg.User.Email = email
+
+	// Write back
+	data, err := cfg.Marshal()
+	if err != nil {
+		return err
 	}
-	return nil
+	return os.WriteFile(globalConfigPath, data, 0644)
 }
 
 func (s *GitService) PushCurrent(path string) error {
@@ -705,6 +737,89 @@ func (s *GitService) Reset(path string) error {
 		return err
 	}
 	return w.Reset(&git.ResetOptions{Mode: git.MixedReset})
+}
+
+func (s *GitService) GetLogIterator(path, branch string) (object.CommitIter, error) {
+	r, err := s.openRepo(path)
+	if err != nil {
+		return nil, err
+	}
+	hash, err := r.ResolveRevision(plumbing.Revision(branch))
+	if err != nil {
+		return nil, err
+	}
+	return r.Log(&git.LogOptions{From: *hash})
+}
+
+func (s *GitService) GetCommit(path, hashStr string) (*object.Commit, error) {
+	r, err := s.openRepo(path)
+	if err != nil {
+		return nil, err
+	}
+	return r.CommitObject(plumbing.NewHash(hashStr))
+}
+
+func (s *GitService) resolveCommit(r *git.Repository, rev string) (*object.Commit, error) {
+	hash, err := r.ResolveRevision(plumbing.Revision(rev))
+	if err != nil {
+		// Try adding refs/heads/ if simple name failed and it doesn't already look like a ref
+		if !strings.HasPrefix(rev, "refs/") {
+			h, err2 := r.ResolveRevision(plumbing.Revision("refs/heads/" + rev))
+			if err2 == nil {
+				hash = h
+				err = nil
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return r.CommitObject(*hash)
+}
+
+func (s *GitService) resolveCommitPair(r *git.Repository, base, target string) (*object.Commit, *object.Commit, error) {
+	cBase, err := s.resolveCommit(r, base)
+	if err != nil {
+		return nil, nil, err
+	}
+	cTarget, err := s.resolveCommit(r, target)
+	if err != nil {
+		return nil, nil, err
+	}
+	return cBase, cTarget, nil
+}
+
+func (s *GitService) ResolveRevision(path, rev string) (string, error) {
+	r, err := s.openRepo(path)
+	if err != nil {
+		return "", err
+	}
+	hash, err := r.ResolveRevision(plumbing.Revision(rev))
+	if err != nil {
+		return "", err
+	}
+	return hash.String(), nil
+}
+
+func (s *GitService) GetGlobalGitUser() (string, string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", "", err
+	}
+	globalConfigPath := filepath.Join(home, ".gitconfig")
+	content, err := os.ReadFile(globalConfigPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", "", nil
+		}
+		return "", "", err
+	}
+
+	cfg := config.NewConfig()
+	if err := cfg.Unmarshal(content); err != nil {
+		return "", "", err
+	}
+	return cfg.User.Name, cfg.User.Email, nil
 }
 
 // Task Manager for Async Clones

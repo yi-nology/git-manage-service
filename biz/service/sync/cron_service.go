@@ -1,12 +1,12 @@
-package service
+package sync
 
 import (
 	"fmt"
 	"log"
-	"sync"
+	stdsync "sync"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 
 	"github.com/robfig/cron/v3"
 )
@@ -14,7 +14,7 @@ import (
 type CronService struct {
 	cron    *cron.Cron
 	entries map[uint]cron.EntryID
-	mu      sync.Mutex
+	mu      stdsync.Mutex
 	syncSvc *SyncService
 	taskDAO *db.SyncTaskDAO
 }
@@ -56,7 +56,7 @@ func (s *CronService) Reload() {
 	}
 }
 
-func (s *CronService) UpdateTask(task model.SyncTask) {
+func (s *CronService) UpdateTask(task po.SyncTask) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -81,7 +81,7 @@ func (s *CronService) RemoveTask(taskID uint) {
 	}
 }
 
-func (s *CronService) addTask(task model.SyncTask) {
+func (s *CronService) addTask(task po.SyncTask) {
 	taskID := task.ID
 	taskKey := task.Key
 	entryID, err := s.cron.AddFunc(task.Cron, func() {
