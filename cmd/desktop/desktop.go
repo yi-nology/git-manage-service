@@ -110,6 +110,7 @@ func (a *App) startBackend() {
 	// 初始化数据库
 	db.Init()
 	db.InitLintRules()
+	db.InitBindingMigration()
 
 	// 初始化加密工具
 	utils.InitEncryption()

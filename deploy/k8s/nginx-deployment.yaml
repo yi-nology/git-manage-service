@@ -18,6 +18,8 @@ spec:
         app: git-manage
         component: nginx
     spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
       containers:
         - name: nginx
           image: nginx:alpine

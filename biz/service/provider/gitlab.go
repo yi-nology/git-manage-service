@@ -3,6 +3,7 @@ package provider
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,14 +18,18 @@ type gitlabProvider struct {
 	client  *http.Client
 }
 
-func NewGitLabProvider(baseURL, token string) *gitlabProvider {
+func NewGitLabProvider(baseURL, token string, skipTLS bool) *gitlabProvider {
 	if baseURL == "" {
 		baseURL = "https://gitlab.com/api/v4"
+	}
+	transport := &http.Transport{}
+	if skipTLS {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 	return &gitlabProvider{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		token:   token,
-		client:  &http.Client{Timeout: 30 * time.Second},
+		client:  &http.Client{Timeout: 30 * time.Second, Transport: transport},
 	}
 }
 
@@ -165,6 +170,15 @@ func (g *gitlabProvider) ListCRs(ctx context.Context, opts ListCROptions) ([]*Ch
 
 func (g *gitlabProvider) MergeCR(ctx context.Context, owner, repo string, number int, opts MergeCROptions) (*ChangeRequest, error) {
 	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	var existingMR gitlabMR
+	if err := g.doRequest(ctx, "GET", fmt.Sprintf("/projects/%s/merge_requests/%d", encoded, number), nil, &existingMR); err == nil {
+		if existingMR.MergeStatus != "" && existingMR.MergeStatus != "can_be_merged" && existingMR.MergeStatus != "checking" {
+			return nil, fmt.Errorf("MR cannot be merged (status: %s). It may have conflicts or an active pipeline", existingMR.MergeStatus)
+		}
+		if existingMR.State != "opened" {
+			return nil, fmt.Errorf("MR is not in 'opened' state (current: %s)", existingMR.State)
+		}
+	}
 	body := map[string]interface{}{}
 	if opts.MergeCommitMessage != "" {
 		body["merge_commit_message"] = opts.MergeCommitMessage
@@ -177,7 +191,7 @@ func (g *gitlabProvider) MergeCR(ctx context.Context, owner, repo string, number
 	}
 	var mr gitlabMR
 	if err := g.doRequest(ctx, "PUT", fmt.Sprintf("/projects/%s/merge_requests/%d/merge", encoded, number), body, &mr); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("merge failed: %w. The MR may have conflicts, an active pipeline, or branch protection rules preventing merge", err)
 	}
 	return mr.toCR(), nil
 }
@@ -386,4 +400,37 @@ func mapGLState(state string) CRState {
 	default:
 		return CRStateOpened
 	}
+}
+
+func (g *gitlabProvider) ListBranches(ctx context.Context, owner, repo string) ([]*PlatformBranch, error) {
+	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	path := fmt.Sprintf("/projects/%s/repository/branches?per_page=100", encoded)
+	var branches []struct {
+		Name string `json:"name"`
+	}
+	if err := g.doRequest(ctx, "GET", path, nil, &branches); err != nil {
+		return nil, err
+	}
+	result := make([]*PlatformBranch, 0, len(branches))
+	for _, b := range branches {
+		result = append(result, &PlatformBranch{Name: b.Name})
+	}
+	return result, nil
+}
+
+func (g *gitlabProvider) CreateBranch(ctx context.Context, owner, repo, branch, ref string) (*PlatformBranch, error) {
+	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	body := map[string]string{"branch": branch, "ref": ref}
+	var res struct {
+		Name string `json:"name"`
+	}
+	if err := g.doRequest(ctx, "POST", fmt.Sprintf("/projects/%s/repository/branches", encoded), body, &res); err != nil {
+		return nil, err
+	}
+	return &PlatformBranch{Name: res.Name}, nil
+}
+
+func (g *gitlabProvider) DeleteBranch(ctx context.Context, owner, repo, branch string) error {
+	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	return g.doRequest(ctx, "DELETE", fmt.Sprintf("/projects/%s/repository/branches/%s", encoded, branch), nil, nil)
 }

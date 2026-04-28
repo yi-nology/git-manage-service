@@ -3,6 +3,7 @@ package provider
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,14 +18,18 @@ type githubProvider struct {
 	client  *http.Client
 }
 
-func NewGitHubProvider(baseURL, token string) *githubProvider {
+func NewGitHubProvider(baseURL, token string, skipTLS bool) *githubProvider {
 	if baseURL == "" {
 		baseURL = "https://api.github.com"
+	}
+	transport := &http.Transport{}
+	if skipTLS {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 	return &githubProvider{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		token:   token,
-		client:  &http.Client{Timeout: 30 * time.Second},
+		client:  &http.Client{Timeout: 30 * time.Second, Transport: transport},
 	}
 }
 
@@ -419,4 +424,35 @@ func mapGHStateToGitHub(state CRState) string {
 	default:
 		return "all"
 	}
+}
+
+func (g *githubProvider) ListBranches(ctx context.Context, owner, repo string) ([]*PlatformBranch, error) {
+	path := fmt.Sprintf("/repos/%s/%s/branches?per_page=100", owner, repo)
+	var branches []struct {
+		Name string `json:"name"`
+	}
+	if err := g.doRequest(ctx, "GET", path, nil, &branches); err != nil {
+		return nil, err
+	}
+	result := make([]*PlatformBranch, 0, len(branches))
+	for _, b := range branches {
+		result = append(result, &PlatformBranch{Name: b.Name})
+	}
+	return result, nil
+}
+
+func (g *githubProvider) CreateBranch(ctx context.Context, owner, repo, branch, ref string) (*PlatformBranch, error) {
+	body := map[string]string{"ref": ref, "branch_name": branch}
+	var res struct {
+		Ref string `json:"ref"`
+	}
+	if err := g.doRequest(ctx, "POST", fmt.Sprintf("/repos/%s/%s/git/refs", owner, repo), body, &res); err != nil {
+		return nil, err
+	}
+	name := strings.TrimPrefix(res.Ref, "refs/heads/")
+	return &PlatformBranch{Name: name}, nil
+}
+
+func (g *githubProvider) DeleteBranch(ctx context.Context, owner, repo, branch string) error {
+	return g.doRequest(ctx, "DELETE", fmt.Sprintf("/repos/%s/%s/git/refs/heads/%s", owner, repo, branch), nil, nil)
 }

@@ -297,7 +297,8 @@ async function loadFileTree() {
     fileTree.value = Array.isArray(tree) ? tree : []
     
     // 不再自动弹出引导，只在文件树为空时显示空状态提示
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
     ElMessage.error('加载文件树失败')
     console.error(error)
     fileTree.value = []
@@ -326,7 +327,8 @@ async function loadFile(path: string) {
     if (editorInstance) {
       editorInstance.setValue(fileContent)
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
     ElMessage.error('加载文件失败')
     console.error(error)
   } finally {
@@ -424,7 +426,8 @@ async function lintContent() {
     } else {
       ElMessage.warning(`发现 ${lintIssues.value.length} 个问题`)
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
     ElMessage.error('Linting 失败')
     console.error(error)
   } finally {
@@ -451,7 +454,8 @@ async function saveCurrentFile() {
     originalContent.value = content.value
     isDirty.value = false
     ElMessage.success('保存成功')
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
     ElMessage.error('保存失败')
     console.error(error)
   } finally {
@@ -532,7 +536,8 @@ async function handleInitSpec() {
       url: '',
       description: '',
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
     ElMessage.error('创建 Spec 文件失败')
     console.error(error)
   } finally {

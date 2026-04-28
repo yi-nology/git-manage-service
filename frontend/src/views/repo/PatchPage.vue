@@ -1,13 +1,11 @@
 <template>
   <div class="patch-page">
-    <div class="page-header">
-      <div class="header-left">
-        <el-button @click="$router.push(`/repos/${repoKey}`)" :icon="ArrowLeft" text>
-          返回仓库详情
-        </el-button>
-        <h2>Patch 管理</h2>
-        <el-tag v-if="repoName" size="small" type="info">{{ repoName }}</el-tag>
-      </div>
+    <div class="title-row">
+      <button class="back-btn" @click="$router.push(`/local-repos/${repoKey}`)">
+        <el-icon><ArrowLeft /></el-icon> 返回
+      </button>
+      <h2 class="page-title">Patch 管理</h2>
+      <span v-if="repoName" class="repo-tag">{{ repoName }}</span>
     </div>
 
     <PatchManager :repo-key="repoKey" />
@@ -37,24 +35,51 @@ onMounted(async () => {
 
 <style scoped>
 .patch-page {
-  padding: 20px;
-}
-
-.page-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.header-left {
+.title-row {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.header-left h2 {
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-color-page);
+  color: var(--text-color-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-color-primary);
   margin: 0;
-  font-size: 20px;
+}
+
+.repo-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: #EEF2FF;
+  color: #6366F1;
+  font-size: 12px;
+  font-weight: 500;
 }
 </style>

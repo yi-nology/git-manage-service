@@ -20,8 +20,8 @@ export function useKeyboard() {
       event.preventDefault()
       console.log('[Keyboard] New item triggered')
       // 根据当前路由决定新建什么
-      if (window.location.pathname.includes('/repos')) {
-        router.push('/repos/register')
+      if (window.location.pathname.includes('/local-repos')) {
+        router.push('/local-repos/register')
       }
     }
 

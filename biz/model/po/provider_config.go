@@ -13,6 +13,7 @@ type ProviderConfig struct {
 	CredentialID    uint   `gorm:"index" json:"credential_id"`
 	WebhookSecret   string `gorm:"size:200" json:"webhook_secret"`
 	WebhookEndpoint string `gorm:"size:500" json:"webhook_endpoint"`
+	SkipTLS         bool   `gorm:"default:false" json:"skip_tls"`
 }
 
 func (ProviderConfig) TableName() string { return "provider_configs" }

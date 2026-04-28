@@ -121,8 +121,9 @@ func initResources() {
 	// 初始化数据库
 	db.Init()
 
-	// 初始化 lint 规则
 	db.InitLintRules()
+
+	db.InitBindingMigration()
 
 	// 初始化加密工具
 	utils.InitEncryption()

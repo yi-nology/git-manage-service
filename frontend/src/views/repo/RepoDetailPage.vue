@@ -2,20 +2,17 @@
   <div class="repo-detail-page" v-loading="loading">
     <div class="page-header">
       <div class="header-left">
-        <button class="back-btn" @click="$router.push('/repos')">
+        <button class="back-btn" @click="$router.push('/local-repos')">
           <el-icon><ArrowLeft /></el-icon> 返回
         </button>
         <h2>{{ repo?.name || '仓库详情' }}</h2>
         <span v-if="currentVersion" class="version-tag">{{ currentVersion }}</span>
       </div>
       <div class="header-actions">
-        <button class="action-pill action-pill--green" @click="$router.push(`/repos/${repoKey}/branches`)">
+        <button class="action-pill action-pill--green" @click="$router.push(`/local-repos/${repoKey}/branches`)">
           <el-icon><Share /></el-icon> 分支管理
         </button>
-        <button class="action-pill action-pill--primary" @click="$router.push(`/repos/${repoKey}/compare`)">
-          <el-icon><Switch /></el-icon> 分支对比
-        </button>
-        <button class="action-pill action-pill--amber" @click="$router.push(`/repos/${repoKey}/sync`)">
+        <button class="action-pill action-pill--amber" @click="$router.push(`/local-repos/${repoKey}/sync`)">
           <el-icon><Refresh /></el-icon> 同步任务
         </button>
       </div>
@@ -28,7 +25,7 @@
             v-for="item in sidebarItems"
             :key="item.key"
             class="sidebar-item"
-            :class="{ active: activeTab === item.key }"
+            :class="{ active: activeTab === item.key && !(item as any).route }"
             @click="handleNavSelect(item.key)"
           >
             <el-icon><component :is="item.icon" /></el-icon>
@@ -39,65 +36,81 @@
 
       <!-- 右侧内容区域 -->
       <div class="content-area">
-        <!-- 基本信息 -->
-        <div v-if="activeTab === 'info'">
-          <el-card v-if="repo">
-            <template #header>
-              <div class="card-header-row">
-                <span>基本信息</span>
-                <el-button type="primary" size="small" @click="openEditDialog">
-                  <el-icon><Edit /></el-icon> 编辑仓库
-                </el-button>
+        <div v-show="activeTab === 'info'">
+          <div v-if="repo" class="info-card">
+            <div class="info-top-row">
+              <div class="info-left-col">
+                <div class="info-section-header">
+                  <span class="info-section-title">基本信息</span>
+                  <button class="info-edit-btn" @click="openEditDialog">
+                    <el-icon><Edit /></el-icon> 编辑仓库
+                  </button>
+                </div>
+                <div class="info-row">
+                  <div class="info-field"><span class="info-label">名称</span><span class="info-value info-value--bold">{{ repo.name }}</span></div>
+                  <div class="info-field"><span class="info-label">当前版本</span><span v-if="currentVersion" class="info-version-tag">{{ currentVersion }}</span><span v-else class="info-value">-</span></div>
+                </div>
+                <div class="info-field"><span class="info-label">本地路径</span><span class="info-value mono">{{ repo.path }}</span></div>
+                <div class="info-row">
+                  <div class="info-field"><span class="info-label">Repo Key</span><span class="info-value info-value--accent">{{ repo.key }}<button class="copy-btn-sm" @click="copyKey">复制</button></span></div>
+                  <div class="info-field"><span class="info-label">远程 URL</span><span class="info-value">{{ repo.remote_url || '-' }}</span></div>
+                </div>
+                <div class="info-row">
+                  <div class="info-field"><span class="info-label">创建时间</span><span class="info-value">{{ formatDate(repo.created_at) }}</span></div>
+                  <div class="info-field"><span class="info-label">更新时间</span><span class="info-value">{{ formatDate(repo.updated_at) }}</span></div>
+                </div>
+              </div>
+
+              <div class="info-v-divider"></div>
+
+              <div class="info-right-col">
+                <BindingPanel
+                  :bindings="bindings"
+                  @add="openBindingDialog"
+                  @delete="handleDeleteBinding"
+                  @set-primary="handleSetPrimaryBinding"
+                  @register-webhook="handleRegisterWebhook"
+                  @delete-webhook="handleDeleteWebhook"
+                />
+              </div>
+            </div>
+
+            <template v-if="scanData">
+              <div class="info-divider"></div>
+              <div class="scan-section">
+                <div class="info-section-header" style="margin-bottom:12px">
+                  <span class="info-section-title">远程配置</span>
+                  <span class="info-subtitle">来自 .git/config</span>
+                </div>
+                <div class="scan-remote-list">
+                  <div v-for="r in scanData.remotes" :key="r.name" class="scan-remote-row">
+                    <span class="remote-name">{{ r.name }}</span>
+                    <span class="remote-url">{{ r.fetch_url }}</span>
+                    <span v-if="r.is_mirror" class="mirror-tag">Mirror</span>
+                  </div>
+                </div>
+                <div v-if="scanData.branches?.length" class="tracking-tags">
+                  <span v-for="b in scanData.branches" :key="b.name" class="track-tag">{{ b.name }} -> {{ b.upstream_ref }}</span>
+                </div>
               </div>
             </template>
-            <el-descriptions :column="2" border>
-              <el-descriptions-item label="名称">{{ repo.name }}</el-descriptions-item>
-              <el-descriptions-item label="当前版本">
-                <el-tag v-if="currentVersion" type="success" size="small">{{ currentVersion }}</el-tag>
-                <span v-else>-</span>
-              </el-descriptions-item>
-              <el-descriptions-item label="本地路径" :span="2">
-                <el-text class="mono-text">{{ repo.path }}</el-text>
-              </el-descriptions-item>
-              <el-descriptions-item label="Repo Key">
-                <el-text class="mono-text">{{ repo.key }}</el-text>
-                <el-button size="small" link @click="copyKey">复制</el-button>
-              </el-descriptions-item>
-              <el-descriptions-item label="远程 URL" :span="2">{{ repo.remote_url || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="创建时间">{{ formatDate(repo.created_at) }}</el-descriptions-item>
-              <el-descriptions-item label="更新时间">{{ formatDate(repo.updated_at) }}</el-descriptions-item>
-            </el-descriptions>
-          </el-card>
-
-          <!-- Scan Info -->
-          <el-card v-if="scanData" class="mt-4" header="远程配置 (来自 .git/config)">
-            <el-table :data="scanData.remotes" size="small" border>
-              <el-table-column prop="name" label="Remote Name" width="120" />
-              <el-table-column prop="fetch_url" label="Fetch URL" />
-              <el-table-column prop="push_url" label="Push URL" />
-              <el-table-column label="Mirror" width="80">
-                <template #default="{ row }">
-                  <el-tag v-if="row.is_mirror" size="small" type="warning">Yes</el-tag>
-                  <span v-else>-</span>
-                </template>
-              </el-table-column>
-            </el-table>
-            <div class="mt-3" v-if="scanData.branches?.length">
-              <strong>分支追踪:</strong>
-              <el-tag v-for="b in scanData.branches" :key="b.name" size="small" class="ml-1 mt-1">
-                {{ b.name }} -> {{ b.upstream_ref }}
-              </el-tag>
-            </div>
-          </el-card>
+          </div>
         </div>
 
+        <BindingDialog
+          v-model:visible="showBindingDialog"
+          :repo-key="repoKey"
+          :providers="availableProviders"
+          @created="loadBindings"
+        />
+
         <!-- Spec 编辑器 -->
-        <div v-if="activeTab === 'spec'">
+        <div v-show="activeTab === 'spec'">
           <SpecEditor ref="specEditorRef" :repo-key="repoKey" />
         </div>
         
         <!-- Git有效提交度量 -->
-        <div v-if="activeTab === 'stats'">
+        <div v-show="activeTab === 'stats'">
           <el-card>
             <el-form inline class="filter-form">
               <el-form-item label="分支">
@@ -160,7 +173,7 @@
         </div>
 
         <!-- 真实工程代码度量 -->
-        <div v-if="activeTab === 'lines'">
+        <div v-show="activeTab === 'lines'">
           <el-card>
             <el-form inline class="filter-form">
               <el-form-item label="分支">
@@ -217,7 +230,7 @@
         </div>
 
         <!-- 版本历史 -->
-        <div v-if="activeTab === 'versions'">
+        <div v-show="activeTab === 'versions'">
           <el-card>
             <template #header>
               <div class="card-header-row">
@@ -276,27 +289,27 @@
         </div>
 
         <!-- 文件浏览 -->
-        <div v-if="activeTab === 'files'">
+        <div v-show="activeTab === 'files'">
           <FileBrowser :repo-key="repoKey" :branches="allRefs" />
         </div>
 
         <!-- Commit 搜索 -->
-        <div v-if="activeTab === 'commits'">
+        <div v-show="activeTab === 'commits'">
           <CommitSearch :repo-key="repoKey" :branches="allRefs" :authors="statsAuthors" />
         </div>
 
         <!-- Stash 管理 -->
-        <div v-if="activeTab === 'stash'">
+        <div v-show="activeTab === 'stash'">
           <StashManager :repo-key="repoKey" />
         </div>
 
         <!-- Submodule -->
-        <div v-if="activeTab === 'submodules'">
+        <div v-show="activeTab === 'submodules'">
           <SubmoduleManager :repo-key="repoKey" />
         </div>
 
         <!-- Patch 管理 -->
-        <div v-if="activeTab === 'patches'">
+        <div v-show="activeTab === 'patches'">
           <PatchManager :repo-key="repoKey" />
         </div>
       </div>
@@ -458,9 +471,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Share, Switch, Refresh, Edit, Search, Download, Setting, Plus, Top, Delete, CopyDocument, Connection, DocumentCopy, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Edit, Search, Download, Setting, Plus, Top, Delete, CopyDocument, Connection, DocumentCopy, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link, Share } from '@element-plus/icons-vue'
 import { getRepoDetail, scanRepo, updateRepo, fetchRepo } from '@/api/modules/repo'
 import { testConnection } from '@/api/modules/system'
 import { testCredential } from '@/api/modules/credential'
@@ -482,8 +495,19 @@ import CredentialSelector from '@/components/credential/CredentialSelector.vue'
 import SpecEditor from '@/components/spec/SpecEditor.vue'
 
 import { validateGitRemoteUrl, detectGitProtocol, convertGitUrl } from '@/utils/git'
+import { getProvider } from '@/api/modules/provider'
+import type { ProviderConfigDTO } from '@/api/modules/provider'
+import { listBindings, deleteBinding, setPrimaryBinding, registerBindingWebhook, deleteBindingWebhook } from '@/api/modules/binding'
+import type { RepoProviderBindingDTO } from '@/types/binding'
+import BindingPanel from '@/components/binding/BindingPanel.vue'
+import BindingDialog from '@/components/binding/BindingDialog.vue'
+import { useProviderStore } from '@/stores/useProviderStore'
+
+const providerStore = useProviderStore()
+
 
 const route = useRoute()
+const router = useRouter()
 const repoKey = route.params.repoKey as string
 
 const loading = ref(false)
@@ -491,6 +515,10 @@ const repo = ref<RepoDTO | null>(null)
 const scanData = ref<ScanResult | null>(null)
 const activeTab = ref('info')
 const currentVersion = ref('')
+const providerInfo = ref<ProviderConfigDTO | null>(null)
+const showBindingDialog = ref(false)
+const availableProviders = ref<ProviderConfigDTO[]>([])
+const bindings = ref<RepoProviderBindingDTO[]>([])
 const specEditorRef = ref<{ refresh: () => void; clearEditor: () => void } | null>(null)
 
 const sidebarItems = [
@@ -588,6 +616,8 @@ onMounted(async () => {
     try { statsAuthors.value = (await getStatsAuthors(repoKey)) || [] } catch { statsAuthors.value = [] }
     try { currentVersion.value = (await getCurrentVersion(repoKey)) || '' } catch { /* ignore */ }
     try { versionList.value = (await getVersionList(repoKey)) || [] } catch { versionList.value = [] }
+    loadProviderInfo()
+    loadBindings()
   } finally {
     loading.value = false
   }
@@ -689,7 +719,7 @@ function pollLineStats() {
 async function loadVersions() {
   versionsLoading.value = true
   try {
-    versionList.value = await getVersionList(repoKey)
+    versionList.value = (await getVersionList(repoKey)) || []
   } catch { /* ignore */ }
   finally {
     versionsLoading.value = false
@@ -813,6 +843,69 @@ function copyKey() {
   if (repo.value?.key) {
     navigator.clipboard.writeText(repo.value.key)
     ElMessage.success('已复制 Repo Key')
+  }
+}
+
+async function loadProviderInfo() {
+  if (!repo.value?.provider_config_id) { providerInfo.value = null; return }
+  const cached = providerStore.getProviderById(repo.value.provider_config_id)
+  if (cached) { providerInfo.value = cached; return }
+  try {
+    providerInfo.value = await getProvider(repo.value.provider_config_id)
+  } catch { providerInfo.value = null }
+}
+
+async function loadBindings() {
+  try {
+    const result = await listBindings({ repo_key: repoKey })
+    bindings.value = result || []
+  } catch { bindings.value = [] }
+}
+
+async function openBindingDialog() {
+  try {
+    await providerStore.fetchProviders()
+    availableProviders.value = providerStore.providers
+  } catch { availableProviders.value = [] }
+  showBindingDialog.value = true
+}
+
+async function handleDeleteBinding(id: number) {
+  try {
+    await ElMessageBox.confirm('确认取消此关联？', '取消关联', { type: 'warning' })
+    await deleteBinding(id, true)
+    ElMessage.success('关联已取消')
+    loadBindings()
+  } catch {}
+}
+
+async function handleSetPrimaryBinding(id: number) {
+  try {
+    await setPrimaryBinding(id)
+    ElMessage.success('已设为主关联')
+    loadBindings()
+  } catch (e: any) {
+    ElMessage.error('操作失败: ' + (e?.message || ''))
+  }
+}
+
+async function handleRegisterWebhook(id: number) {
+  try {
+    await registerBindingWebhook(id)
+    ElMessage.success('Webhook 已注册')
+    loadBindings()
+  } catch (e: any) {
+    ElMessage.error('注册失败: ' + (e?.message || ''))
+  }
+}
+
+async function handleDeleteWebhook(id: number) {
+  try {
+    await deleteBindingWebhook(id)
+    ElMessage.success('Webhook 已删除')
+    loadBindings()
+  } catch (e: any) {
+    ElMessage.error('删除失败: ' + (e?.message || ''))
   }
 }
 
@@ -1062,11 +1155,301 @@ async function handleSaveExclude() {
 }
 
 function handleNavSelect(key: string) {
-  activeTab.value = key
+  const item = sidebarItems.find(i => i.key === key)
+  if (item && (item as any).route) {
+    router.push(`/local-repos/${repoKey}/${key}`)
+  } else {
+    activeTab.value = key
+  }
 }
 </script>
 
 <style scoped>
+.info-card {
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.info-top-row {
+  display: flex;
+  gap: 0;
+}
+
+.info-left-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 16px;
+}
+
+.info-v-divider {
+  width: 1px;
+  background: var(--border-color, #e5e7eb);
+  align-self: stretch;
+}
+
+.info-right-col {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 16px;
+}
+
+.info-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color-primary);
+}
+
+.info-subtitle {
+  font-size: 12px;
+  color: var(--text-color-secondary, #94A3B8);
+}
+
+.info-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--accent-primary, #6366F1);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.info-edit-btn:hover { opacity: 0.9; }
+
+.info-row {
+  display: flex;
+  gap: 20px;
+}
+
+.info-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.info-label {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+}
+
+.info-value {
+  font-size: 14px;
+  color: var(--text-color-primary);
+}
+.info-value--bold { font-weight: 500; }
+.info-value--accent { color: var(--accent-primary, #6366F1); font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; display: flex; align-items: center; gap: 8px; }
+.info-value.mono { font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; font-size: 13px; }
+
+.info-version-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #ECFDF5;
+  color: #10B981;
+  font-size: 12px;
+}
+
+.copy-btn-sm {
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: transparent;
+  font-size: 11px;
+  color: var(--text-color-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.copy-btn-sm:hover { border-color: var(--accent-primary, #6366F1); color: var(--accent-primary, #6366F1); }
+
+.info-divider {
+  height: 1px;
+  background: var(--border-color, #e5e7eb);
+  margin: 16px 0;
+}
+
+.scan-section { display: flex; flex-direction: column; }
+
+.scan-remote-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scan-remote-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #F8F9FC;
+  font-size: 13px;
+}
+
+.remote-name {
+  font-weight: 600;
+  color: var(--accent-primary, #6366F1);
+  min-width: 60px;
+}
+
+.remote-url {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  flex: 1;
+}
+
+.mirror-tag {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #FFFBEB;
+  color: #F59E0B;
+  font-size: 11px;
+}
+
+.tracking-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.track-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #EEF2FF;
+  color: #6366F1;
+  font-size: 12px;
+}
+
+.platform-card-mini {
+  padding: 16px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.platform-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.platform-icon-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.platform-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.platform-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color-primary);
+}
+
+.platform-card-repo {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+}
+
+.platform-connected-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: #ECFDF5;
+  color: #059669;
+  font-size: 10px;
+}
+
+.dot-green {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+}
+
+.platform-card-meta {
+  display: flex;
+  gap: 16px;
+}
+
+.platform-card-meta .meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.platform-card-meta .meta-label {
+  font-size: 11px;
+  color: var(--text-color-secondary, #94A3B8);
+}
+
+.platform-card-meta .meta-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-color-primary);
+}
+
+.no-platform-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  border: 1px dashed var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-color-secondary, #94A3B8);
+}
+
+.link-platform-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: var(--accent-primary, #6366F1);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.link-platform-btn:hover { opacity: 0.9; }
+
 .page-header {
   display: flex;
   justify-content: space-between;

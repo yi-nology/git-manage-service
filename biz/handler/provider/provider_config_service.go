@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -82,6 +83,7 @@ func Create(ctx context.Context, c *app.RequestContext) {
 	cfg := &po.ProviderConfig{
 		Name: req.Name, Platform: req.Platform, BaseURL: req.BaseURL,
 		CredentialID: req.CredentialID, WebhookSecret: req.WebhookSecret,
+		SkipTLS: req.SkipTLS,
 	}
 	if err := dao.Create(cfg); err != nil {
 		pkgresponse.InternalServerError(c, "Failed to create provider config: "+err.Error())
@@ -124,6 +126,9 @@ func Update(ctx context.Context, c *app.RequestContext) {
 	if req.WebhookSecret != "" {
 		cfg.WebhookSecret = req.WebhookSecret
 	}
+	if req.SkipTLS != nil {
+		cfg.SkipTLS = *req.SkipTLS
+	}
 	if err := dao.Save(cfg); err != nil {
 		pkgresponse.InternalServerError(c, "Failed to update provider config: "+err.Error())
 		return
@@ -141,6 +146,12 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 	dao := db.NewProviderConfigDAO()
 	if _, err := dao.FindByID(id); err != nil {
 		pkgresponse.NotFound(c, "Provider config not found")
+		return
+	}
+	bindingDAO := db.NewRepoProviderBindingDAO()
+	bindings, _ := bindingDAO.FindByProviderConfigID(id)
+	if len(bindings) > 0 {
+		pkgresponse.BadRequest(c, fmt.Sprintf("Provider config is referenced by %d binding(s), please remove bindings first", len(bindings)))
 		return
 	}
 	if err := dao.Delete(id); err != nil {
@@ -170,12 +181,125 @@ func Test(ctx context.Context, c *app.RequestContext) {
 	pkgresponse.Success(c, result)
 }
 
+func ListRemoteRepos(ctx context.Context, c *app.RequestContext) {
+	id, err := parseID(c)
+	if err != nil {
+		pkgresponse.BadRequest(c, "Invalid ID")
+		return
+	}
+	p, err := provider.GetManager().GetProvider(id)
+	if err != nil {
+		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "50"))
+	owner := c.Query("owner")
+
+	opts := provider.ListRepoOptions{
+		Owner:   owner,
+		Page:    page,
+		PerPage: perPage,
+	}
+
+	repos, err := p.ListRepos(ctx, opts)
+	if err != nil {
+		pkgresponse.InternalServerError(c, "Failed to list repos: "+err.Error())
+		return
+	}
+
+	type repoDTO struct {
+		ID            int64  `json:"id"`
+		Name          string `json:"name"`
+		FullName      string `json:"full_name"`
+		Owner         string `json:"owner"`
+		Description   string `json:"description"`
+		CloneURL      string `json:"clone_url"`
+		SSHURL        string `json:"ssh_url"`
+		DefaultBranch string `json:"default_branch"`
+		Private       bool   `json:"private"`
+		Platform      string `json:"platform"`
+	}
+
+	result := make([]repoDTO, 0, len(repos))
+	for _, r := range repos {
+		result = append(result, repoDTO{
+			ID: r.ID, Name: r.Name, FullName: r.FullName, Owner: r.Owner,
+			Description: r.Description, CloneURL: r.CloneURL, SSHURL: r.SSHURL,
+			DefaultBranch: r.DefaultBranch, Private: r.Private, Platform: string(r.Platform),
+		})
+	}
+
+	pkgresponse.Success(c, result)
+}
+
+func CreateRemoteBranch(ctx context.Context, c *app.RequestContext) {
+	var req struct {
+		ProviderID uint   `json:"provider_id"`
+		Owner      string `json:"owner"`
+		Repo       string `json:"repo"`
+		Branch     string `json:"branch"`
+		Ref        string `json:"ref"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+	if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.Branch == "" {
+		pkgresponse.BadRequest(c, "provider_id, owner, repo and branch are required")
+		return
+	}
+	if req.Ref == "" {
+		req.Ref = "main"
+	}
+	p, err := provider.GetManager().GetProvider(req.ProviderID)
+	if err != nil {
+		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
+		return
+	}
+	br, err := p.CreateBranch(ctx, req.Owner, req.Repo, req.Branch, req.Ref)
+	if err != nil {
+		pkgresponse.InternalServerError(c, "Failed to create branch: "+err.Error())
+		return
+	}
+	pkgresponse.Success(c, br)
+}
+
+func DeleteRemoteBranch(ctx context.Context, c *app.RequestContext) {
+	var req struct {
+		ProviderID uint   `json:"provider_id"`
+		Owner      string `json:"owner"`
+		Repo       string `json:"repo"`
+		Branch     string `json:"branch"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+	if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.Branch == "" {
+		pkgresponse.BadRequest(c, "provider_id, owner, repo and branch are required")
+		return
+	}
+	p, err := provider.GetManager().GetProvider(req.ProviderID)
+	if err != nil {
+		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
+		return
+	}
+	if err := p.DeleteBranch(ctx, req.Owner, req.Repo, req.Branch); err != nil {
+		pkgresponse.InternalServerError(c, "Failed to delete branch: "+err.Error())
+		return
+	}
+	pkgresponse.Success(c, map[string]string{"message": "deleted"})
+}
+
 func toProviderConfigDTO(cfg *po.ProviderConfig) api.ProviderConfigDTO {
 	return api.ProviderConfigDTO{
 		ID: cfg.ID, Name: cfg.Name, Platform: cfg.Platform,
 		BaseURL: cfg.BaseURL, CredentialID: cfg.CredentialID,
 		HasWebhookSecret: cfg.WebhookSecret != "",
 		WebhookEndpoint:  cfg.WebhookEndpoint,
+		SkipTLS:          cfg.SkipTLS,
 		CreatedAt:        cfg.CreatedAt, UpdatedAt: cfg.UpdatedAt,
 	}
 }
@@ -184,4 +308,33 @@ func parseID(c *app.RequestContext) (uint, error) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	return uint(id), err
+}
+
+func ListRemoteBranches(ctx context.Context, c *app.RequestContext) {
+	providerIDStr := c.Query("provider_id")
+	owner := c.Query("owner")
+	repo := c.Query("repo")
+	if providerIDStr == "" || owner == "" || repo == "" {
+		pkgresponse.BadRequest(c, "provider_id, owner and repo are required")
+		return
+	}
+	pid, _ := strconv.ParseUint(providerIDStr, 10, 64)
+	p, err := provider.GetManager().GetProvider(uint(pid))
+	if err != nil {
+		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
+		return
+	}
+	branches, err := p.ListBranches(ctx, owner, repo)
+	if err != nil {
+		pkgresponse.InternalServerError(c, "Failed to list branches: "+err.Error())
+		return
+	}
+	type branchDTO struct {
+		Name string `json:"name"`
+	}
+	result := make([]branchDTO, 0, len(branches))
+	for _, b := range branches {
+		result = append(result, branchDTO{Name: b.Name})
+	}
+	pkgresponse.Success(c, result)
 }

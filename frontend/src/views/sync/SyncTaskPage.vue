@@ -2,7 +2,7 @@
   <div class="sync-page">
     <div class="page-header">
       <div class="header-left">
-        <button class="back-btn" @click="$router.push(`/repos/${repoKey}`)">
+        <button class="back-btn" @click="$router.push(`/local-repos/${repoKey}`)">
           <el-icon><ArrowLeft /></el-icon> 返回
         </button>
         <h2>Git 同步管理</h2>

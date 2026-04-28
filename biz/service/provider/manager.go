@@ -101,13 +101,14 @@ func resolveCredential(credentialID uint) (*po.Credential, error) {
 
 func newProvider(cfg *po.ProviderConfig, cred *po.Credential) (Provider, error) {
 	token := cred.Secret
+	skipTLS := cfg.SkipTLS
 	switch Platform(cfg.Platform) {
 	case PlatformGitLab:
-		return NewGitLabProvider(cfg.BaseURL, token), nil
+		return NewGitLabProvider(cfg.BaseURL, token, skipTLS), nil
 	case PlatformGitHub:
-		return NewGitHubProvider(cfg.BaseURL, token), nil
+		return NewGitHubProvider(cfg.BaseURL, token, skipTLS), nil
 	case PlatformGitea:
-		return NewGiteaProvider(cfg.BaseURL, token), nil
+		return NewGiteaProvider(cfg.BaseURL, token, skipTLS), nil
 	default:
 		return nil, fmt.Errorf("unsupported platform: %s", cfg.Platform)
 	}

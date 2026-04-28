@@ -2,7 +2,7 @@
   <div class="compare-page">
     <div class="page-header">
       <div class="header-left">
-        <button class="back-btn" @click="$router.push(`/repos/${repoKey}/branches`)">
+        <button class="back-btn" @click="$router.push(`/local-repos/${repoKey}/branches`)">
           <el-icon><ArrowLeft /></el-icon> 返回
         </button>
         <h2>分支对比 & 合并</h2>

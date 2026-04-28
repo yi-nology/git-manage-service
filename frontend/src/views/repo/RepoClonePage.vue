@@ -1,139 +1,108 @@
 <template>
   <div class="clone-page">
-    <h2>克隆远程仓库</h2>
-
-    <el-steps :active="step" align-center class="mb-6">
-      <el-step title="仓库地址" description="输入远程 URL" />
-      <el-step title="认证配置" description="选择凭证" />
-      <el-step title="本地路径" description="确认并克隆" />
-    </el-steps>
-
-    <!-- Step 1: URL -->
-    <div v-show="step === 0">
-      <el-card>
-        <el-form label-width="100px">
-          <el-form-item label="协议类型">
-            <el-radio-group v-model="urlMode" @change="onModeChange">
-              <el-radio-button value="ssh">SSH</el-radio-button>
-              <el-radio-button value="https">HTTPS</el-radio-button>
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item label="远程 URL">
-            <el-input
-              v-model="form.remote_url"
-              :placeholder="urlPlaceholder"
-              @blur="onUrlBlur"
-              :class="{ 'is-error-input': urlError }"
-            >
-              <template #prefix>
-                <el-tag :type="urlMode === 'ssh' ? 'success' : 'warning'" size="small" class="url-prefix-tag">
-                  {{ urlMode === 'ssh' ? 'SSH' : 'HTTPS' }}
-                </el-tag>
-              </template>
-            </el-input>
-            <div v-if="urlError" class="field-error">{{ urlError }}</div>
-            <div class="url-format-hint">
-              <template v-if="urlMode === 'ssh'">格式: <code>git@host:user/repo.git</code> 或 <code>ssh://git@host/path</code></template>
-              <template v-else>格式: <code>https://host/user/repo.git</code></template>
-            </div>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="goStep2" :disabled="!form.remote_url">下一步</el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
-    </div>
-
-    <!-- Step 2: Credential -->
-    <div v-show="step === 1">
-      <el-card>
-        <el-form label-width="100px">
-          <el-form-item label="认证凭证">
-            <CredentialSelector
-              v-model="form.credential_id"
-              :url="form.remote_url"
-              placeholder="选择凭证（公开仓库可不选）"
-            />
-          </el-form-item>
-          <el-form-item>
-            <el-text type="info" size="small">
-              <template v-if="urlMode === 'ssh'">
-                SSH 协议需要配置 SSH 密钥凭证。如果本机已配置 SSH Agent 可跳过。
-              </template>
-              <template v-else>
-                公开仓库可跳过。私有仓库需要配置 HTTP 账号密码或 Token。
-              </template>
-            </el-text>
-          </el-form-item>
-          <el-form-item>
-            <el-button @click="step = 0">上一步</el-button>
-            <el-button type="primary" @click="step = 2">下一步</el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
-    </div>
-
-    <!-- Step 3: Local path & confirm -->
-    <div v-show="step === 2">
-      <el-card>
-        <el-form :model="form" label-width="100px">
-          <el-form-item label="本地路径">
-            <el-input v-model="form.local_path" placeholder="/path/to/clone/destination" />
-          </el-form-item>
-          <el-form-item label="仓库名称">
-            <el-input v-model="form.name" placeholder="可选，默认从 URL 推断" />
-          </el-form-item>
-
-          <el-divider>确认信息</el-divider>
-          <el-descriptions :column="1" border size="small">
-            <el-descriptions-item label="协议">
-              <el-tag :type="urlMode === 'ssh' ? 'success' : 'warning'" size="small">{{ urlMode === 'ssh' ? 'SSH' : 'HTTPS' }}</el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="远程 URL">{{ form.remote_url }}</el-descriptions-item>
-            <el-descriptions-item label="本地路径">{{ form.local_path }}</el-descriptions-item>
-            <el-descriptions-item label="仓库名称">{{ form.name || '(自动推断)' }}</el-descriptions-item>
-            <el-descriptions-item label="认证凭证">
-              {{ form.credential_id ? `凭证 #${form.credential_id}` : '无（公开仓库）' }}
-            </el-descriptions-item>
-          </el-descriptions>
-
-          <el-form-item class="mt-4">
-            <el-button @click="step = 1">上一步</el-button>
-            <el-button type="primary" @click="handleClone" :loading="cloning" :disabled="!form.remote_url || !form.local_path">
-              开始克隆
-            </el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
-    </div>
-
-    <!-- Clone progress -->
-    <el-card v-if="taskId" class="mt-4" header="克隆进度">
-      <div class="progress-area">
-        <el-tag :type="statusTagType" size="small" class="mb-2">{{ statusLabel }}</el-tag>
-        <div class="progress-logs">
-          <div v-for="(line, i) in progressLines" :key="i" class="log-line">{{ line }}</div>
-        </div>
-        <el-result v-if="taskStatus === 'done'" icon="success" title="克隆成功">
-          <template #extra>
-            <el-button type="primary" @click="$router.push('/repos')">查看仓库列表</el-button>
-          </template>
-        </el-result>
-        <el-result v-if="taskStatus === 'failed'" icon="error" title="克隆失败" :sub-title="taskError" />
+    <div class="title-row">
+      <div class="title-left">
+        <button class="back-btn" @click="$router.push('/local-repos')">
+          <el-icon><ArrowLeft /></el-icon> 返回
+        </button>
+        <h2 class="page-title">克隆远程仓库</h2>
       </div>
-    </el-card>
+    </div>
+
+    <div class="steps-bar">
+      <div class="step" :class="{ active: step >= 0, current: step === 0 }">
+        <span class="step-num">1</span>
+        <span class="step-text">仓库地址</span>
+      </div>
+      <div class="step-line" :class="{ filled: step >= 1 }"></div>
+      <div class="step" :class="{ active: step >= 1, current: step === 1 }">
+        <span class="step-num">2</span>
+        <span class="step-text">认证配置</span>
+      </div>
+      <div class="step-line" :class="{ filled: step >= 2 }"></div>
+      <div class="step" :class="{ active: step >= 2, current: step === 2 }">
+        <span class="step-num">3</span>
+        <span class="step-text">确认克隆</span>
+      </div>
+    </div>
+
+    <div class="form-card" v-if="!taskId">
+      <div class="form-field">
+        <label class="field-label">远程仓库地址</label>
+        <div class="proto-row">
+          <button class="proto-btn" :class="{ active: urlMode === 'ssh' }" @click="switchMode('ssh')">SSH</button>
+          <button class="proto-btn" :class="{ active: urlMode === 'https' }" @click="switchMode('https')">HTTPS</button>
+        </div>
+        <div class="url-input-row">
+          <span class="url-tag">{{ urlMode === 'ssh' ? 'SSH' : 'HTTPS' }}</span>
+          <input v-model="form.remote_url" :placeholder="urlPlaceholder" @blur="onUrlBlur" class="field-input url-field" :class="{ 'is-error': urlError }" />
+        </div>
+        <span v-if="urlError" class="field-error">{{ urlError }}</span>
+        <span v-else class="field-hint">格式: {{ urlMode === 'ssh' ? 'git@host:user/repo.git' : 'https://host/user/repo.git' }}</span>
+      </div>
+
+      <div class="form-field">
+        <label class="field-label">认证凭证</label>
+        <CredentialSelector v-model="form.credential_id" :url="form.remote_url" placeholder="选择凭证（公开仓库可不选）" />
+      </div>
+
+      <div class="form-field">
+        <label class="field-label">本地路径</label>
+        <div class="input-with-btn">
+          <input v-model="form.local_path" placeholder="/path/to/clone/destination" class="field-input" />
+          <button class="browse-btn" @click="handleBrowse">浏览</button>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label class="field-label">仓库名称</label>
+        <input v-model="form.name" placeholder="可选，默认从 URL 推断" class="field-input" />
+      </div>
+
+      <div class="form-actions">
+        <button class="action-pill pill-outline" @click="$router.push('/local-repos')">取消</button>
+        <button class="action-pill pill-primary" @click="handleClone" :disabled="cloning || !form.remote_url || !form.local_path">
+          <el-icon><ArrowRight /></el-icon>
+          {{ cloning ? '克隆中...' : '开始克隆' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="form-card" v-if="taskId">
+      <div class="section-header">
+        <span class="section-title">克隆进度</span>
+        <span class="status-pill" :class="'status-' + taskStatus">{{ statusLabel }}</span>
+      </div>
+
+      <div v-if="progressLines.length" class="progress-logs">
+        <div v-for="(line, i) in progressLines" :key="i" class="log-line">{{ line }}</div>
+      </div>
+
+      <div v-if="taskStatus === 'done'" class="result-row">
+        <span class="result-text">克隆成功！</span>
+        <button class="action-pill pill-primary" @click="$router.push('/local-repos')">查看仓库列表</button>
+      </div>
+
+      <div v-if="taskStatus === 'failed'" class="result-row">
+        <span class="result-text result-text--error">克隆失败: {{ taskError }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { cloneRepo, getCloneTask } from '@/api/modules/repo'
+import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { cloneRepo, getCloneTask, selectDirectory } from '@/api/modules/repo'
 import type { CloneRepoReq } from '@/types/repo'
 import CredentialSelector from '@/components/credential/CredentialSelector.vue'
-import { validateGitRemoteUrl, detectGitProtocol, extractRepoName } from '@/utils/git'
+import { validateGitRemoteUrl, detectGitProtocol, extractRepoName, convertGitUrl } from '@/utils/git'
 
 type UrlMode = 'ssh' | 'https'
+
+const route = useRoute()
 
 const step = ref(0)
 const cloning = ref(false)
@@ -152,66 +121,62 @@ const form = ref<CloneRepoReq>({
   credential_id: undefined,
 })
 
+onMounted(() => {
+  const q = route.query
+  if (q.url) {
+    form.value.remote_url = q.url as string
+    const proto = detectGitProtocol(form.value.remote_url)
+    if (proto === 'ssh') urlMode.value = 'ssh'
+    else if (proto === 'http') urlMode.value = 'https'
+    if (!form.value.name) {
+      const name = extractRepoName(form.value.remote_url)
+      if (name) form.value.name = name
+    }
+  }
+  if (q.provider_config_id) form.value.provider_config_id = Number(q.provider_config_id)
+  if (q.platform_owner) form.value.platform_owner = q.platform_owner as string
+  if (q.platform_repo) form.value.platform_repo = q.platform_repo as string
+})
+
 const urlPlaceholder = computed(() => {
   return urlMode.value === 'ssh'
     ? 'git@github.com:user/repo.git'
     : 'https://github.com/user/repo.git'
 })
 
-const statusTagType = computed(() => {
-  if (taskStatus.value === 'done') return 'success'
-  if (taskStatus.value === 'failed') return 'danger'
-  return 'primary'
-})
-
 const statusLabel = computed(() => {
-  const map: Record<string, string> = {
-    running: '克隆中...',
-    done: '已完成',
-    failed: '失败',
-  }
+  const map: Record<string, string> = { running: '克隆中...', done: '已完成', failed: '失败' }
   return map[taskStatus.value] || taskStatus.value || '等待中'
 })
 
-function onModeChange() {
-  // 切换模式时清空 URL 和错误
-  form.value.remote_url = ''
-  form.value.name = ''
+function switchMode(mode: UrlMode) {
+  if (urlMode.value !== mode && form.value.remote_url) {
+    form.value.remote_url = convertGitUrl(form.value.remote_url, mode)
+  }
+  urlMode.value = mode
   urlError.value = ''
 }
 
 function onUrlBlur() {
   const url = form.value.remote_url
-  if (!url) {
-    urlError.value = ''
-    return
-  }
-  // 自动检测协议并同步模式
+  if (!url) { urlError.value = ''; return }
   const proto = detectGitProtocol(url)
   if (proto === 'ssh') urlMode.value = 'ssh'
   else if (proto === 'http') urlMode.value = 'https'
-
-  // 校验格式
   urlError.value = validateGitRemoteUrl(url)
-  // 自动推断名称
   if (!form.value.name) {
     const name = extractRepoName(url)
     if (name) form.value.name = name
   }
 }
 
-function goStep2() {
-  if (!form.value.remote_url) {
-    ElMessage.warning('请输入远程仓库 URL')
-    return
-  }
-  const err = validateGitRemoteUrl(form.value.remote_url)
-  if (err) {
-    urlError.value = err
-    return
-  }
-  onUrlBlur()
-  step.value = 1
+async function handleBrowse() {
+  try {
+    const result = await selectDirectory('选择克隆目录')
+    if (!result.cancelled && result.path) {
+      form.value.local_path = result.path
+    }
+  } catch { /* ignore */ }
 }
 
 async function handleClone() {
@@ -219,6 +184,8 @@ async function handleClone() {
     ElMessage.warning('请填写远程 URL 和本地路径')
     return
   }
+  const err = validateGitRemoteUrl(form.value.remote_url)
+  if (err) { urlError.value = err; return }
 
   cloning.value = true
   progressLines.value = []
@@ -245,85 +212,153 @@ function startPolling() {
       taskStatus.value = task.status
       progressLines.value = task.progress || []
       if (task.error) taskError.value = task.error
-
       if (task.status === 'done' || task.status === 'failed') {
         stopPolling()
-        if (task.status === 'done') {
-          ElMessage.success('仓库克隆成功')
-        }
+        if (task.status === 'done') ElMessage.success('仓库克隆成功')
       }
-    } catch {
-      // ignore polling errors
-    }
+    } catch { /* ignore */ }
   }, 1500)
 }
 
 function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
 }
 
-onUnmounted(() => {
-  stopPolling()
-})
+onUnmounted(() => { stopPolling() })
 </script>
 
 <style scoped>
-.clone-page h2 {
-  margin-bottom: 20px;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  color: var(--text-color-primary);
+.clone-page {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
-.mb-6 {
-  margin-bottom: 24px;
+
+.title-row { display: flex; align-items: center; justify-content: space-between; }
+.title-left { display: flex; align-items: center; gap: 12px; }
+
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
+  color: var(--text-color-secondary); background: none;
+  border: 1px solid var(--border-color, #e5e7eb); border-radius: 6px;
+  padding: 6px 12px; cursor: pointer; transition: all 0.2s;
 }
-.mb-2 {
-  margin-bottom: var(--spacing-sm);
+.back-btn:hover { border-color: var(--accent-primary, #6366F1); color: var(--accent-primary, #6366F1); }
+
+.page-title { margin: 0; font-size: 24px; font-weight: 600; color: var(--text-color-primary); }
+
+.steps-bar {
+  display: flex; align-items: center; justify-content: center; gap: 0;
+  padding: 16px 24px; background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px;
 }
-.mt-4 {
-  margin-top: var(--spacing-md);
+
+.step { display: flex; align-items: center; gap: 8px; opacity: 0.4; transition: opacity 0.2s; }
+.step.active { opacity: 1; }
+
+.step-num {
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 12px;
+  font-size: 12px; font-weight: 600; background: var(--border-color, #e5e7eb); color: var(--text-color-secondary);
 }
-.url-prefix-tag {
-  margin-right: var(--spacing-xs);
+.step.active .step-num { background: var(--accent-primary, #6366F1); color: #fff; }
+
+.step-text { font-size: 13px; font-weight: 500; color: var(--text-color-primary); }
+
+.step-line { width: 80px; height: 2px; background: var(--border-color, #e5e7eb); margin: 0 8px; transition: background 0.2s; }
+.step-line.filled { background: var(--accent-primary, #6366F1); }
+
+.form-card {
+  border-radius: 12px; background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb); padding: 24px;
+  display: flex; flex-direction: column; gap: 16px;
 }
-.url-format-hint {
-  font-size: var(--font-size-xs);
-  color: var(--text-color-secondary);
-  margin-top: var(--spacing-xs);
+
+.form-field { display: flex; flex-direction: column; gap: 8px; }
+
+.field-label { font-size: 13px; font-weight: 500; color: var(--text-color-primary); }
+
+.field-input {
+  padding: 10px 12px; border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px; font-size: 13px; color: var(--text-color-primary);
+  background: var(--bg-color-page, #fff); outline: none; width: 100%; box-sizing: border-box;
+  transition: border-color 0.2s;
 }
-.url-format-hint code {
-  background: var(--bg-color);
-  padding: 1px 4px;
-  border-radius: 2px;
-  font-family: monospace;
-  font-size: var(--font-size-xs);
+.field-input:focus { border-color: var(--accent-primary, #6366F1); }
+.field-input.is-error { border-color: #EF4444; }
+.field-input::placeholder { color: var(--text-color-placeholder, #9ca3af); }
+
+.proto-row { display: flex; gap: 8px; }
+
+.proto-btn {
+  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-color-page, #fff); font-size: 13px; color: var(--text-color-secondary);
+  cursor: pointer; transition: all 0.2s;
 }
-.progress-area {
-  padding: var(--spacing-sm) 0;
+.proto-btn.active { background: var(--accent-primary, #6366F1); border-color: var(--accent-primary, #6366F1); color: #fff; }
+
+.url-input-row { display: flex; align-items: center; gap: 8px; }
+
+.url-tag {
+  padding: 4px 10px; border-radius: 6px; background: #ECFDF5; color: #10B981;
+  font-size: 12px; flex-shrink: 0;
 }
+
+.url-field { flex: 1; }
+
+.input-with-btn { display: flex; gap: 8px; }
+.input-with-btn .field-input { flex: 1; }
+
+.browse-btn {
+  padding: 10px 16px; border-radius: 6px; background: #EEF2FF;
+  border: none; font-size: 13px; color: var(--accent-primary, #6366F1);
+  cursor: pointer; transition: opacity 0.2s; white-space: nowrap;
+}
+.browse-btn:hover { opacity: 0.8; }
+
+.field-error { font-size: 12px; color: #EF4444; }
+.field-hint { font-size: 12px; color: var(--text-color-secondary, #94A3B8); }
+
+.section-header { display: flex; align-items: center; justify-content: space-between; }
+.section-title { font-size: 16px; font-weight: 600; color: var(--text-color-primary); }
+
+.status-pill {
+  display: inline-block; padding: 4px 8px; border-radius: 9999px;
+  font-size: 11px; font-weight: 500; text-align: center;
+}
+.status-running { background: #EEF2FF; color: #6366F1; }
+.status-done { background: #ECFDF5; color: #059669; }
+.status-failed { background: #FEF2F2; color: #DC2626; }
+
+.form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.action-pill {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500;
+  padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s;
+}
+.action-pill:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.pill-primary { background: var(--accent-primary, #6366F1); color: #fff; }
+.pill-primary:hover:not(:disabled) { opacity: 0.9; }
+
+.pill-outline { background: transparent; border: 1px solid var(--border-color, #e5e7eb); color: var(--text-color-primary); }
+.pill-outline:hover { border-color: var(--accent-primary, #6366F1); color: var(--accent-primary, #6366F1); }
+
 .progress-logs {
-  background: var(--bg-color);
-  border-radius: var(--border-radius-sm);
-  padding: 12px;
-  margin: var(--spacing-sm) 0 var(--spacing-md);
-  max-height: 300px;
-  overflow-y: auto;
-  font-family: monospace;
-  font-size: var(--font-size-sm);
+  background: #F8F9FC; border-radius: 6px; padding: 12px;
+  max-height: 300px; overflow-y: auto;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; font-size: 12px;
 }
-.log-line {
-  line-height: 1.6;
-  color: var(--text-color-primary);
-}
-.field-error {
-  color: var(--danger-color);
-  font-size: var(--font-size-xs);
-  margin-top: var(--spacing-xs);
-}
-.is-error-input :deep(.el-input__wrapper) {
-  box-shadow: 0 0 0 1px var(--danger-color) inset;
+
+.log-line { line-height: 1.6; color: var(--text-color-primary); }
+
+.result-row { display: flex; align-items: center; justify-content: space-between; }
+.result-text { font-size: 14px; font-weight: 500; color: #10B981; }
+.result-text--error { color: #EF4444; }
+
+@media (max-width: 768px) {
+  .steps-bar { padding: 12px; }
+  .step-text { display: none; }
 }
 </style>

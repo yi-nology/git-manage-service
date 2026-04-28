@@ -16,6 +16,7 @@ import (
 	eventhandler "github.com/yi-nology/git-manage-service/biz/handler/webhook_event"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"
+	"github.com/yi-nology/git-manage-service/biz/router/binding"
 	"github.com/yi-nology/git-manage-service/biz/router/branch"
 	"github.com/yi-nology/git-manage-service/biz/router/commit"
 	"github.com/yi-nology/git-manage-service/biz/router/credential"
@@ -71,6 +72,7 @@ func GeneratedRegister(h *server.Hertz) {
 	patch.Register(h)
 	spec.Register(h)
 	stats.Register(h)
+	binding.Register(h)
 
 	// Provider Config CRUD
 	h.GET("/api/v1/providers", providerhandler.List)
@@ -79,6 +81,10 @@ func GeneratedRegister(h *server.Hertz) {
 	h.PUT("/api/v1/providers/:id", providerhandler.Update)
 	h.DELETE("/api/v1/providers/:id", providerhandler.Delete)
 	h.POST("/api/v1/providers/:id/test", providerhandler.Test)
+	h.GET("/api/v1/providers/:id/repos", providerhandler.ListRemoteRepos)
+	h.GET("/api/v1/providers/branches", providerhandler.ListRemoteBranches)
+	h.POST("/api/v1/providers/branches/create", providerhandler.CreateRemoteBranch)
+	h.POST("/api/v1/providers/branches/delete", providerhandler.DeleteRemoteBranch)
 
 	// Change Request (CR/MR) management
 	h.POST("/api/v1/cr/create", cr.Create)
@@ -88,6 +94,10 @@ func GeneratedRegister(h *server.Hertz) {
 	h.POST("/api/v1/cr/close", cr.Close)
 	h.POST("/api/v1/cr/sync", cr.Sync)
 	h.GET("/api/v1/cr/detect", cr.Detect)
+	h.GET("/api/v1/cr/remote/list", cr.ListByProvider)
+	h.POST("/api/v1/cr/remote/create", cr.CreateByProvider)
+	h.POST("/api/v1/cr/remote/merge", cr.MergeByProvider)
+	h.POST("/api/v1/cr/remote/close", cr.CloseByProvider)
 
 	// Webhook Events
 	h.GET("/api/v1/webhook/events", eventhandler.List)

@@ -1,65 +1,76 @@
 <template>
   <div class="audit-log-page">
-    <div class="page-header">
-      <h2><el-icon><Warning /></el-icon> 操作审计日志</h2>
-      <el-button @click="loadLogs" :icon="RefreshRight">刷新</el-button>
+    <div class="title-row">
+      <div class="title-left">
+        <h2 class="page-title">操作审计日志</h2>
+      </div>
+      <button class="refresh-btn" @click="loadLogs">
+        <el-icon><RefreshRight /></el-icon>
+        刷新
+      </button>
     </div>
 
-    <el-card>
-      <div class="filter-bar">
-        <el-select v-model="filterAction" placeholder="操作类型" clearable filterable style="width: 160px" @change="loadLogs">
-          <el-option v-for="(label, key) in actionLabelMap" :key="key" :label="label" :value="key" />
-        </el-select>
-        <el-input v-model="filterTarget" placeholder="目标对象" clearable style="width: 200px" @clear="loadLogs" @keyup.enter="loadLogs" />
-        <el-date-picker v-model="filterDateRange" type="daterange" range-separator="~" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" style="width: 280px" @change="loadLogs" />
-        <el-button type="primary" @click="loadLogs" :icon="Search">搜索</el-button>
+    <div class="filter-bar">
+      <div class="filter-item">
+        <select v-model="filterAction" class="filter-select" @change="loadLogs">
+          <option value="">全部操作</option>
+          <option v-for="(label, key) in actionLabelMap" :key="key" :value="key">{{ label }}</option>
+        </select>
       </div>
-
-      <el-table :data="logs" v-loading="loading" stripe border>
-        <el-table-column prop="created_at" label="时间" width="180">
-          <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
-        </el-table-column>
-        <el-table-column prop="action" label="操作类型" width="120">
-          <template #default="{ row }">
-            <el-tag size="small" :type="getActionType(row.action)">{{ getActionLabel(row.action) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="target" label="目标对象" min-width="200">
-          <template #default="{ row }">{{ formatTarget(row.target) }}</template>
-        </el-table-column>
-        <el-table-column label="操作人 / IP" width="200">
-          <template #default="{ row }">
-            <div>{{ row.operator || '-' }}</div>
-            <el-text type="info" size="small">{{ row.ip_address }}</el-text>
-          </template>
-        </el-table-column>
-        <el-table-column label="详情" width="100">
-          <template #default="{ row }">
-            <el-button v-if="row.details" size="small" link @click="showDetail(row.details)">查看</el-button>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-bar">
-        <el-text type="info" size="small">
-          显示 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, totalCount) }} 共 {{ totalCount }} 条
-        </el-text>
-        <el-pagination
-          v-model:current-page="currentPage"
-          :page-size="pageSize"
-          :total="totalCount"
-          layout="prev, pager, next"
-          @current-change="loadLogs"
-          small
-        />
+      <div class="filter-item">
+        <input v-model="filterTarget" placeholder="目标对象" class="filter-input" @keyup.enter="loadLogs" />
       </div>
-    </el-card>
+      <div class="filter-spacer"></div>
+      <button class="filter-search-btn" @click="loadLogs">
+        <el-icon><Search /></el-icon>
+        搜索
+      </button>
+    </div>
 
-    <!-- Detail Dialog -->
-    <el-dialog v-model="showDetailDialog" title="操作详情" width="600px">
-      <pre class="detail-content">{{ detailContent }}</pre>
-    </el-dialog>
+    <div v-if="loading" class="loading-card">
+      <div class="loading-spinner"></div>
+      <span>加载中...</span>
+    </div>
+
+    <div v-else-if="logs.length === 0" class="empty-card">
+      <div class="empty-icon">
+        <el-icon :size="32"><Warning /></el-icon>
+      </div>
+      <div class="empty-text">暂无审计日志</div>
+    </div>
+
+    <div v-else class="table-card">
+      <div class="table-header">
+        <span class="th" style="width:160px">时间</span>
+        <span class="th" style="width:120px">操作</span>
+        <span class="th" style="width:160px">仓库</span>
+        <span class="th" style="flex:1">详情</span>
+        <span class="th" style="width:100px">状态</span>
+      </div>
+      <div v-for="(log, idx) in logs" :key="idx" class="table-row">
+        <span class="td time-cell" style="width:160px">{{ formatDate(log.created_at) }}</span>
+        <span class="td" style="width:120px">
+          <span class="action-tag" :class="getActionClass(log.action)">{{ getActionLabel(log.action) }}</span>
+        </span>
+        <span class="td repo-cell" style="width:160px">{{ formatTarget(log.target) }}</span>
+        <span class="td detail-cell" style="flex:1">{{ log.details || '-' }}</span>
+        <span class="td" style="width:100px">
+          <span class="status-tag" :class="getStatusClass(log.action)">成功</span>
+        </span>
+      </div>
+    </div>
+
+    <div v-if="totalCount > 0" class="pagination-bar">
+      <span class="pagination-info">
+        显示 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, totalCount) }} 共 {{ totalCount }} 条
+      </span>
+      <div class="pagination-btns">
+        <button class="page-btn" :disabled="currentPage <= 1" @click="currentPage--; loadLogs()">上一页</button>
+        <span class="page-num">{{ currentPage }}</span>
+        <button class="page-btn" :disabled="currentPage * pageSize >= totalCount" @click="currentPage++; loadLogs()">下一页</button>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -143,29 +154,29 @@ const pageSize = 20
 
 const filterAction = ref('')
 const filterTarget = ref('')
-const filterDateRange = ref<[string, string] | null>(null)
 
-const showDetailDialog = ref(false)
-const detailContent = ref('')
-
-function getActionType(action: string): '' | 'success' | 'warning' | 'danger' | 'info' {
-  if (action.includes('DELETE') || action.includes('REMOVE') || action === 'MERGE_CONFLICT' || action === 'STASH_DROP' || action === 'STASH_CLEAR') return 'danger'
+function getActionClass(action: string): string {
+  if (action.includes('DELETE') || action.includes('REMOVE') || action === 'MERGE_CONFLICT') return 'danger'
   if (action.includes('CREATE') || action === 'MERGE_SUCCESS' || action === 'SUBMODULE_ADD') return 'success'
-  if (action.includes('UPDATE') || action.includes('PUSH') || action === 'SUBMIT_CHANGES' || action === 'REBASE' || action === 'CHERRY_PICK') return 'warning'
-  if (action.includes('SYNC') || action.includes('WEBHOOK') || action.includes('FETCH') || action.includes('PULL')) return ''
+  if (action.includes('UPDATE') || action.includes('PUSH') || action === 'SUBMIT_CHANGES') return 'warning'
   return 'info'
+}
+
+function getStatusClass(action: string): string {
+  if (action === 'MERGE_CONFLICT') return 'danger'
+  return 'success'
 }
 
 onMounted(async () => {
   try {
-    const repos = await getRepoList()
+    const repos = await getRepoList() || []
     const map: Record<string, string> = {}
     for (const r of repos) {
       map[r.key] = r.name
     }
     repoNameMap.value = map
   } catch {
-    // 仓库列表加载失败不影响日志展示
+    // ignore
   }
   loadLogs()
 })
@@ -178,63 +189,327 @@ async function loadLogs() {
       page_size: pageSize,
       action: filterAction.value || undefined,
       target: filterTarget.value || undefined,
-      start_date: filterDateRange.value?.[0] || undefined,
-      end_date: filterDateRange.value?.[1] || undefined,
     })
     logs.value = res.items || []
     totalCount.value = res.total || 0
+  } catch {
+    logs.value = []
+    totalCount.value = 0
   } finally {
     loading.value = false
   }
 }
-
-function showDetail(details: string) {
-  try {
-    detailContent.value = JSON.stringify(JSON.parse(details), null, 2)
-  } catch {
-    detailContent.value = details
-  }
-  showDetailDialog.value = true
-}
 </script>
 
 <style scoped>
-.page-header {
+.audit-log-page {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
 }
-.page-header h2 {
+
+.title-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.page-title {
   margin: 0;
-  font-size: var(--font-size-xl);
+  font-size: 24px;
   font-weight: 600;
   color: var(--text-color-primary);
+}
+
+.refresh-btn {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-color-page, #fff);
+  color: var(--text-color-regular);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
+
+.refresh-btn:hover {
+  border-color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary, #6366F1);
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.filter-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-color-primary);
+  background: var(--bg-color-page, #fff);
+  outline: none;
+  min-width: 140px;
+}
+
+.filter-select:focus {
+  border-color: var(--accent-primary, #6366F1);
+}
+
+.filter-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-color-primary);
+  background: var(--bg-color-page, #fff);
+  outline: none;
+  width: 180px;
+}
+
+.filter-input:focus {
+  border-color: var(--accent-primary, #6366F1);
+}
+
+.filter-spacer {
+  flex: 1;
+}
+
+.filter-search-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-color-regular);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-search-btn:hover {
+  border-color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary, #6366F1);
+}
+
+.loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  color: var(--text-color-secondary);
+  font-size: 13px;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border-color, #e5e7eb);
+  border-top-color: var(--accent-primary, #6366F1);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.empty-icon {
+  color: var(--text-color-placeholder, #9ca3af);
+  margin-bottom: 4px;
+}
+
+.empty-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-color-primary);
+}
+
+.table-card {
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--accent-bg, #EEF2FF);
+}
+
+.th {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+}
+
+.table-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.td {
+  font-size: 13px;
+  color: var(--text-color-regular);
+}
+
+.time-cell {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+}
+
+.repo-cell {
+  font-size: 13px;
+  color: var(--accent-primary, #6366F1);
+}
+
+.detail-cell {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.action-tag.success {
+  background: #ECFDF5;
+  color: #10B981;
+}
+
+.action-tag.warning {
+  background: #FFFBEB;
+  color: #F59E0B;
+}
+
+.action-tag.danger {
+  background: #FEF2F2;
+  color: #EF4444;
+}
+
+.action-tag.info {
+  background: #EEF2FF;
+  color: #6366F1;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.status-tag.success {
+  background: #ECFDF5;
+  color: #10B981;
+}
+
+.status-tag.danger {
+  background: #FEF2F2;
+  color: #EF4444;
+}
+
 .pagination-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: var(--spacing-md);
 }
-.filter-bar {
+
+.pagination-info {
+  font-size: 13px;
+  color: var(--text-color-secondary);
+}
+
+.pagination-btns {
   display: flex;
-  gap: 10px;
-  margin-bottom: var(--spacing-md);
-  flex-wrap: wrap;
   align-items: center;
+  gap: 8px;
 }
+
+.page-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-color-page, #fff);
+  color: var(--text-color-regular);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary, #6366F1);
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-num {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color-primary);
+  min-width: 30px;
+  text-align: center;
+}
+
 .detail-content {
   background: var(--bg-color);
   padding: 12px;
-  border-radius: var(--border-radius-sm);
+  border-radius: 8px;
   max-height: 500px;
   overflow: auto;
   white-space: pre-wrap;
   font-family: monospace;
-  font-size: var(--font-size-sm);
+  font-size: 13px;
 }
 </style>

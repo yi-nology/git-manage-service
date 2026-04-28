@@ -2,14 +2,14 @@
   <div class="branch-detail-page" v-loading="loading">
     <div class="page-header">
       <div class="header-left">
-        <button class="back-btn" @click="$router.push(`/repos/${repoKey}/branches`)">
+        <button class="back-btn" @click="$router.push(`/local-repos/${repoKey}/branches`)">
           <el-icon><ArrowLeft /></el-icon> 返回
         </button>
         <h2>{{ branchName }}</h2>
         <span v-if="isCurrent" class="current-tag">当前分支</span>
       </div>
       <div class="header-actions">
-        <button class="action-pill action-pill--primary" @click="$router.push(`/repos/${repoKey}/compare`)">
+        <button class="action-pill action-pill--primary" @click="$router.push(`/local-repos/${repoKey}/compare`)">
           <el-icon><Switch /></el-icon> 对比/合并
         </button>
         <button class="action-pill action-pill--green" @click="handlePush">
@@ -242,7 +242,7 @@ async function handleDelete() {
     await ElMessageBox.confirm(`确定要删除分支 "${branchName}" 吗？`, '确认删除', { type: 'warning' })
     await deleteBranch(repoKey, branchName)
     ElMessage.success('分支已删除')
-    router.push(`/repos/${repoKey}/branches`)
+    router.push(`/local-repos/${repoKey}/branches`)
   } catch { /* cancelled */ }
 }
 

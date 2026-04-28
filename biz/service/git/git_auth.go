@@ -14,6 +14,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
+	ssh2 "golang.org/x/crypto/ssh"
 
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	conf "github.com/yi-nology/git-manage-service/pkg/configs"
@@ -65,17 +66,36 @@ func (s *GitService) getAuthFromInfo(authInfo domain.AuthInfo) (transport.AuthMe
 
 // GetAuthFromDBKey 从数据库密钥内容创建认证方法
 func (s *GitService) GetAuthFromDBKey(privateKey, passphrase string) (transport.AuthMethod, error) {
-	publicKeys, err := ssh.NewPublicKeys("git", []byte(privateKey), passphrase)
+	keyContent := strings.ReplaceAll(privateKey, "\r\n", "\n")
+	keyContent = strings.ReplaceAll(keyContent, "\r", "")
+	keyContent = strings.TrimSpace(keyContent)
+	if !strings.HasSuffix(keyContent, "\n") {
+		keyContent += "\n"
+	}
+
+	var signer ssh2.Signer
+	var err error
+
+	if passphrase != "" {
+		signer, err = ssh2.ParsePrivateKeyWithPassphrase([]byte(keyContent), []byte(passphrase))
+	} else {
+		signer, err = ssh2.ParsePrivateKey([]byte(keyContent))
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %v", err)
 	}
+
+	publicKeys, err := ssh.NewPublicKeys("git", []byte(keyContent), passphrase)
+	if err != nil {
+		publicKeys = &ssh.PublicKeys{
+			User:   "git",
+			Signer: signer,
+		}
+	}
+
 	helper := NewSSHKeyHelper()
 	publicKeys.HostKeyCallback = helper.GetHostKeyCallback()
-
-	// 配置更广泛的 SSH 算法支持以提高兼容性
-	publicKeys.HostKeyCallbackHelper = ssh.HostKeyCallbackHelper{
-		HostKeyCallback: helper.GetHostKeyCallback(),
-	}
 
 	return publicKeys, nil
 }
@@ -128,23 +148,19 @@ func (s *GitService) TestRemoteConnectionWithDBKey(url, privateKey, passphrase s
 func (s *GitService) testConnectionWithGitCommand(url, privateKey, passphrase string) error {
 	helper := NewSSHKeyHelper()
 
-	// 处理私钥内容
 	keyContent, err := helper.ProcessPrivateKey(privateKey, passphrase)
 	if err != nil {
-		return err
+		return fmt.Errorf("process key failed: %v", err)
 	}
 
-	// 创建临时密钥文件
 	tmpFile, err := helper.CreateTempKeyFile(keyContent)
 	if err != nil {
 		return err
 	}
 	defer helper.CleanupTempFile(tmpFile)
 
-	// 构建 GIT_SSH_COMMAND
 	sshCmd := helper.BuildSSHCommand(tmpFile)
 
-	// 执行 git ls-remote
 	cmd := exec.Command("git", "ls-remote", "--heads", url)
 	cmd.Env = append(os.Environ(), "GIT_SSH_COMMAND="+sshCmd)
 
