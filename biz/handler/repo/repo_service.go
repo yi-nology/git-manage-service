@@ -231,6 +231,10 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 		response.InternalServerError(c, err.Error())
 		return
 	}
+
+	bindingDAO := db.NewRepoProviderBindingDAO()
+	bindingDAO.DeleteByRepoID(repo.ID)
+
 	audit.AuditSvc.Log(c, "DELETE", "repo:"+repo.Key, nil)
 	response.Success(c, map[string]string{"message": "deleted"})
 }
@@ -347,17 +351,43 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
 
 		name := filepath.Base(req.LocalPath)
+		repoName := req.Name
+		if repoName == "" {
+			repoName = name
+		}
 		repo := po.Repo{
 			Key:                 uuid.New().String(),
-			Name:                name,
+			Name:                repoName,
 			Path:                req.LocalPath,
 			RemoteURL:           req.RemoteURL,
 			AuthType:            req.AuthType,
 			AuthKey:             req.AuthKey,
 			AuthSecret:          req.AuthSecret,
 			DefaultCredentialID: req.CredentialID,
+			ProviderConfigID:    req.ProviderConfigID,
+			PlatformOwner:       req.PlatformOwner,
+			PlatformRepo:        req.PlatformRepo,
 		}
-		db.NewRepoDAO().Create(&repo)
+		if err := db.NewRepoDAO().Create(&repo); err != nil {
+			git.GlobalTaskManager.AppendLog(taskID, "Warning: failed to persist repo record: "+err.Error())
+			return
+		}
+
+		if repo.ProviderConfigID > 0 && repo.PlatformOwner != "" && repo.PlatformRepo != "" {
+			bindingDAO := db.NewRepoProviderBindingDAO()
+			binding := &po.RepoProviderBinding{
+				RepoID:           repo.ID,
+				ProviderConfigID: repo.ProviderConfigID,
+				PlatformOwner:    repo.PlatformOwner,
+				PlatformRepo:     repo.PlatformRepo,
+				RemoteName:       "origin",
+				IsPrimary:        true,
+				Status:           "active",
+			}
+			if err := bindingDAO.Create(binding); err != nil {
+				git.GlobalTaskManager.AppendLog(taskID, "Warning: failed to create provider binding: "+err.Error())
+			}
+		}
 
 		go func() {
 			head, err := gitSvc.GetHeadBranch(repo.Path)

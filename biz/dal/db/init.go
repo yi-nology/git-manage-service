@@ -72,15 +72,23 @@ func Init() {
 		migrator.HasTable(&po.ProviderConfig{}) &&
 		migrator.HasTable(&po.ChangeRequest{}) &&
 		migrator.HasTable(&po.WebhookEvent{}) &&
-		migrator.HasTable(&po.WebhookRule{}) {
+		migrator.HasTable(&po.WebhookRule{}) &&
+		migrator.HasTable(&po.RepoProviderBinding{}) {
 		log.Println("Database tables exist, skipping schema migration.")
 		return
 	}
 
-	err = DB.AutoMigrate(&po.Repo{}, &po.SyncTask{}, &po.SyncRun{}, &po.AuditLog{}, &po.SystemConfig{}, &po.CommitStat{}, &po.NotificationChannel{}, &po.NotificationEventTemplate{}, &po.SSHKey{}, &po.BackupRecord{}, &po.Credential{}, &po.LintRule{}, &po.CommitAnalysis{}, &po.CommitPattern{}, &po.SyncRecommendation{}, &po.ProviderConfig{}, &po.ChangeRequest{}, &po.WebhookEvent{}, &po.WebhookRule{})
+	err = DB.AutoMigrate(&po.Repo{}, &po.SyncTask{}, &po.SyncRun{}, &po.AuditLog{}, &po.SystemConfig{}, &po.CommitStat{}, &po.NotificationChannel{}, &po.NotificationEventTemplate{}, &po.SSHKey{}, &po.BackupRecord{}, &po.Credential{}, &po.LintRule{}, &po.CommitAnalysis{}, &po.CommitPattern{}, &po.SyncRecommendation{}, &po.ProviderConfig{}, &po.ChangeRequest{}, &po.WebhookEvent{}, &po.WebhookRule{}, &po.RepoProviderBinding{})
 	if err != nil {
 		log.Fatal("failed to migrate database: ", err)
 	}
+}
+
+func InitBindingMigration() {
+	if !DB.Migrator().HasTable(&po.RepoProviderBinding{}) {
+		return
+	}
+	MigrateRepoProviderBindings()
 }
 
 func InitLintRules() {

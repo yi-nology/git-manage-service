@@ -25,6 +25,10 @@ export interface RepoDTO {
   remote_auths: Record<string, AuthInfo>
   default_credential_id?: number
   remote_credentials?: Record<string, number>
+  provider_config_id?: number
+  platform_repo_id?: string
+  platform_owner?: string
+  platform_repo?: string
   created_at: string
   updated_at: string
 }
@@ -51,6 +55,9 @@ export interface CloneRepoReq {
   auth_secret?: string
   ssh_key_id?: number
   credential_id?: number
+  provider_config_id?: number
+  platform_owner?: string
+  platform_repo?: string
 }
 
 export interface ScanRepoReq {

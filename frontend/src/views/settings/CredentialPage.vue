@@ -1,97 +1,89 @@
 <template>
   <div class="credential-page">
-    <div class="page-header">
-      <h2>凭证管理</h2>
-      <el-button type="primary" @click="showForm = true; editingCredential = undefined">
+    <div class="title-row">
+      <div class="title-left">
+        <h2 class="page-title">凭证管理</h2>
+        <p class="page-subtitle">统一管理 Git 仓库认证凭证</p>
+      </div>
+      <button class="add-btn" @click="router.push('/settings/credentials/add')">
         <el-icon><Plus /></el-icon>
-        新建凭证
-      </el-button>
+        添加凭证
+      </button>
     </div>
 
-    <el-alert
-      type="info"
-      :closable="false"
-      show-icon
-      class="mb-4"
-    >
-      凭证用于 Git 仓库的认证。支持 SSH 密钥（数据库或本地文件）和 HTTP（用户名密码或 Token）。
-      配置 URL 匹配模式后，系统将在配置仓库时自动推荐匹配的凭证。
-    </el-alert>
-
-    <!-- 凭证列表 -->
-    <div v-loading="loading">
-      <div v-if="credentials.length === 0 && !loading" class="empty-state">
-        <el-empty description="暂无凭证">
-          <el-button type="primary" @click="showForm = true">创建第一个凭证</el-button>
-        </el-empty>
-      </div>
-
-      <div v-else class="credential-list">
-        <CredentialCard
-          v-for="cred in credentials"
-          :key="cred.id"
-          :credential="cred"
-          @edit="handleEdit"
-          @delete="handleDelete"
-        />
-      </div>
+    <div class="info-banner">
+      <el-icon class="info-icon"><InfoFilled /></el-icon>
+      <span>凭证用于 Git 仓库的认证。支持 SSH 密钥（数据库或本地文件）和 HTTP（用户名密码或 Token）。配置 URL 匹配模式后，系统将在配置仓库时自动推荐匹配的凭证。</span>
     </div>
 
-    <!-- 测试连接区域 -->
-    <el-card v-if="credentials.length > 0" header="测试凭证连接" class="mt-4">
-      <el-form inline>
-        <el-form-item label="凭证">
-          <el-select v-model="testCredId" placeholder="选择凭证" style="width: 200px">
-            <el-option v-for="c in credentials" :key="c.id" :label="c.name" :value="c.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="远程 URL">
-          <el-input v-model="testUrl" placeholder="git@github.com:user/repo.git" style="width: 350px" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleTest" :loading="testing" :disabled="!testCredId || !testUrl">
-            测试连接
-          </el-button>
-        </el-form-item>
-      </el-form>
-      <el-result
-        v-if="testResult !== null"
-        :icon="testResult.success ? 'success' : 'error'"
-        :title="testResult.success ? '连接成功' : '连接失败'"
-        :sub-title="testResult.message"
-      />
-    </el-card>
+    <div v-if="loading" class="loading-card">
+      <div class="loading-spinner"></div>
+      <span>加载中...</span>
+    </div>
 
-    <!-- 创建/编辑 Drawer -->
-    <el-drawer
-      v-model="showForm"
-      :title="editingCredential ? '编辑凭证' : '新建凭证'"
-      size="500px"
-    >
-      <CredentialForm
-        :credential="editingCredential"
-        @success="handleFormSuccess"
-        @cancel="showForm = false"
+    <div v-else-if="credentials.length === 0" class="empty-card">
+      <div class="empty-icon">
+        <el-icon :size="32"><Key /></el-icon>
+      </div>
+      <div class="empty-text">暂无凭证</div>
+      <div class="empty-sub">点击上方按钮创建第一个凭证</div>
+    </div>
+
+    <div v-else class="cred-grid">
+      <CredentialCard
+        v-for="cred in credentials"
+        :key="cred.id"
+        :credential="cred"
+        @edit="handleEdit"
+        @delete="handleDelete"
       />
-    </el-drawer>
+    </div>
+
+    <div v-if="credentials.length > 0" class="test-section">
+      <div class="section-header">
+        <span class="section-title">测试凭证连接</span>
+      </div>
+      <div class="test-card">
+        <div class="test-row">
+          <div class="test-field">
+            <label class="field-label">凭证</label>
+            <select v-model="testCredId" class="field-select">
+              <option :value="undefined" disabled>选择凭证</option>
+              <option v-for="c in credentials" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+          <div class="test-field" style="flex:1">
+            <label class="field-label">远程 URL</label>
+            <input v-model="testUrl" placeholder="git@github.com:user/repo.git" class="field-input" />
+          </div>
+          <button class="test-btn" @click="handleTest" :disabled="!testCredId || !testUrl">
+            <span v-if="testing" class="loading-spinner-sm"></span>
+            <span v-else>测试连接</span>
+          </button>
+        </div>
+        <div v-if="testResult !== null" class="test-result" :class="testResult.success ? 'success' : 'error'">
+          <el-icon v-if="testResult.success"><CircleCheck /></el-icon>
+          <el-icon v-else><CircleClose /></el-icon>
+          <span>{{ testResult.message }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, InfoFilled, Key, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import { listCredentials, deleteCredential, testCredential } from '@/api/modules/credential'
 import type { CredentialDTO } from '@/types/credential'
 import CredentialCard from '@/components/credential/CredentialCard.vue'
-import CredentialForm from '@/components/credential/CredentialForm.vue'
 
+const router = useRouter()
 const loading = ref(false)
 const credentials = ref<CredentialDTO[]>([])
-const showForm = ref(false)
-const editingCredential = ref<CredentialDTO | undefined>()
 
-// 测试连接
 const testCredId = ref<number>()
 const testUrl = ref('')
 const testing = ref(false)
@@ -100,15 +92,16 @@ const testResult = ref<{ success: boolean; message: string } | null>(null)
 async function loadCredentials() {
   loading.value = true
   try {
-    credentials.value = await listCredentials()
+    credentials.value = await listCredentials() || []
+  } catch {
+    credentials.value = []
   } finally {
     loading.value = false
   }
 }
 
 function handleEdit(cred: CredentialDTO) {
-  editingCredential.value = cred
-  showForm.value = true
+  router.push(`/settings/credentials/${cred.id}/edit`)
 }
 
 async function handleDelete(cred: CredentialDTO) {
@@ -119,12 +112,6 @@ async function handleDelete(cred: CredentialDTO) {
   } catch (e: any) {
     ElMessage.error(e?.message || '删除失败')
   }
-}
-
-function handleFormSuccess() {
-  showForm.value = false
-  editingCredential.value = undefined
-  loadCredentials()
 }
 
 async function handleTest() {
@@ -146,29 +133,261 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.credential-page h2 {
-  margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  color: var(--text-color-primary);
+.credential-page {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
-.page-header {
+
+.title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-md);
 }
-.mb-4 {
-  margin-bottom: var(--spacing-md);
+
+.title-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-.mt-4 {
-  margin-top: var(--spacing-md);
+
+.page-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-color-primary);
 }
-.empty-state {
-  padding: 40px 0;
+
+.page-subtitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--text-color-secondary);
 }
-.credential-list {
-  display: grid;
+
+.add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent-primary, #6366F1);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.add-btn:hover {
+  opacity: 0.9;
+}
+
+.info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--accent-bg, #EEF2FF);
+  border: 1px solid var(--border-color, #e5e7eb);
+  font-size: 13px;
+  color: var(--text-color-secondary);
+  line-height: 1.6;
+}
+
+.info-icon {
+  color: var(--accent-primary, #6366F1);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 12px;
+  padding: 48px 24px;
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  color: var(--text-color-secondary);
+  font-size: 13px;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border-color, #e5e7eb);
+  border-top-color: var(--accent-primary, #6366F1);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.empty-icon {
+  color: var(--text-color-placeholder, #9ca3af);
+  margin-bottom: 4px;
+}
+
+.empty-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-color-primary);
+}
+
+.empty-sub {
+  font-size: 13px;
+  color: var(--text-color-secondary);
+}
+
+.cred-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color-primary);
+}
+
+.test-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.test-card {
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  padding: 20px;
+}
+
+.test-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.test-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+}
+
+.field-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-color-primary);
+  background: var(--bg-color-page, #fff);
+  min-width: 200px;
+  outline: none;
+}
+
+.field-select:focus {
+  border-color: var(--accent-primary, #6366F1);
+}
+
+.field-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-color-primary);
+  background: var(--bg-color-page, #fff);
+  width: 100%;
+  outline: none;
+}
+
+.field-input:focus {
+  border-color: var(--accent-primary, #6366F1);
+}
+
+.test-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent-primary, #6366F1);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  min-width: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+}
+
+.test-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.test-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.test-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.test-result.success {
+  background: #ECFDF5;
+  color: #10B981;
+}
+
+.test-result.error {
+  background: #FEF2F2;
+  color: #EF4444;
 }
 </style>

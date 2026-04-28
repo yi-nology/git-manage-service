@@ -26,13 +26,17 @@ type ScanRepoReq struct {
 }
 
 type CloneRepoReq struct {
-	RemoteURL    string `json:"remote_url"`
-	LocalPath    string `json:"local_path"`
-	AuthType     string `json:"auth_type"`
-	AuthKey      string `json:"auth_key"`
-	AuthSecret   string `json:"auth_secret"`
-	SSHKeyID     uint   `json:"ssh_key_id"`    // 数据库SSH密钥ID，优先于AuthKey (deprecated)
-	CredentialID uint   `json:"credential_id"` // 凭证 ID (新字段)
+	RemoteURL        string `json:"remote_url"`
+	LocalPath        string `json:"local_path"`
+	Name             string `json:"name"`
+	AuthType         string `json:"auth_type"`
+	AuthKey          string `json:"auth_key"`
+	AuthSecret       string `json:"auth_secret"`
+	SSHKeyID         uint   `json:"ssh_key_id"`
+	CredentialID     uint   `json:"credential_id"`
+	ProviderConfigID uint   `json:"provider_config_id"`
+	PlatformOwner    string `json:"platform_owner"`
+	PlatformRepo     string `json:"platform_repo"`
 }
 
 type TestConnectionReq struct {
@@ -106,6 +110,10 @@ type RepoDTO struct {
 	RemoteAuths         map[string]domain.AuthInfo `json:"remote_auths"`
 	DefaultCredentialID uint                       `json:"default_credential_id,omitempty"`
 	RemoteCredentials   map[string]uint            `json:"remote_credentials,omitempty"`
+	ProviderConfigID    uint                       `json:"provider_config_id,omitempty"`
+	PlatformRepoID      string                     `json:"platform_repo_id,omitempty"`
+	PlatformOwner       string                     `json:"platform_owner,omitempty"`
+	PlatformRepo        string                     `json:"platform_repo,omitempty"`
 	CreatedAt           time.Time                  `json:"created_at"`
 	UpdatedAt           time.Time                  `json:"updated_at"`
 }
@@ -123,6 +131,10 @@ func NewRepoDTO(r po.Repo) RepoDTO {
 		RemoteAuths:         r.RemoteAuths,
 		DefaultCredentialID: r.DefaultCredentialID,
 		RemoteCredentials:   r.RemoteCredentials,
+		ProviderConfigID:    r.ProviderConfigID,
+		PlatformRepoID:      r.PlatformRepoID,
+		PlatformOwner:       r.PlatformOwner,
+		PlatformRepo:        r.PlatformRepo,
 		CreatedAt:           r.CreatedAt,
 		UpdatedAt:           r.UpdatedAt,
 	}

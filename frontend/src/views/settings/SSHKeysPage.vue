@@ -1,47 +1,56 @@
 <template>
   <div class="ssh-keys-page">
-    <div class="page-header">
-      <h2>SSH 密钥管理</h2>
-      <el-button type="primary" @click="showCreateDialog">
+    <div class="title-row">
+      <div class="title-left">
+        <h2 class="page-title">SSH 密钥管理</h2>
+        <p class="page-subtitle">管理用于 Git 仓库认证的 SSH 密钥</p>
+      </div>
+      <button class="add-btn" @click="showCreateDialog">
         <el-icon><Plus /></el-icon>
-        新增密钥
-      </el-button>
+        添加密钥
+      </button>
     </div>
 
-    <el-card v-loading="loading">
-      <el-table :data="sshKeys" stripe>
-        <el-table-column prop="name" label="名称" width="180" />
-        <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="key_type" label="类型" width="120">
-          <template #default="{ row }">
-            <el-tag :type="keyTypeTagColor(row.key_type)" size="small">
-              {{ keyTypeLabel(row.key_type) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="密码保护" width="100" align="center">
-          <template #default="{ row }">
-            <el-icon v-if="row.has_passphrase" color="#67C23A"><Lock /></el-icon>
-            <el-icon v-else color="#909399"><Unlock /></el-icon>
-          </template>
-        </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="180">
-          <template #default="{ row }">
-            {{ formatDate(row.created_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="240" fixed="right">
-          <template #default="{ row }">
-            <el-button size="small" @click="showDetailDialog(row)">查看</el-button>
-            <el-button size="small" type="primary" @click="showEditDialog(row)">编辑</el-button>
-            <el-button size="small" type="success" @click="showTestDialog(row)">测试</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+    <div v-if="loading" class="loading-card">
+      <div class="loading-spinner"></div>
+      <span>加载中...</span>
+    </div>
 
-      <el-empty v-if="!loading && sshKeys.length === 0" description="暂无 SSH 密钥" />
-    </el-card>
+    <div v-else-if="sshKeys.length === 0" class="empty-card">
+      <div class="empty-icon">
+        <el-icon :size="32"><Unlock /></el-icon>
+      </div>
+      <div class="empty-text">暂无 SSH 密钥</div>
+      <div class="empty-sub">点击上方按钮添加第一把密钥</div>
+    </div>
+
+    <div v-else class="table-card">
+      <div class="table-header">
+        <span class="th" style="width:160px">名称</span>
+        <span class="th" style="width:100px">类型</span>
+        <span class="th" style="flex:1">指纹 (Fingerprint)</span>
+        <span class="th" style="width:160px">创建时间</span>
+        <span class="th" style="width:200px">操作</span>
+      </div>
+      <div v-for="key in sshKeys" :key="key.id" class="table-row">
+        <span class="td name-cell" style="width:160px">{{ key.name }}</span>
+        <span class="td" style="width:100px">
+          <span class="type-tag" :class="'type-' + keyTypeClass(key.key_type)">
+            {{ keyTypeLabel(key.key_type) }}
+          </span>
+        </span>
+        <span class="td fingerprint-cell" style="flex:1">{{ key.key_type ? key.key_type.toUpperCase() : '-' }}</span>
+        <span class="td" style="width:160px">{{ formatDate(key.created_at) }}</span>
+        <span class="td" style="width:200px">
+          <div class="action-btns">
+            <button class="action-btn btn-view" @click="showDetailDialog(key)">查看</button>
+            <button class="action-btn btn-edit" @click="showEditDialog(key)">编辑</button>
+            <button class="action-btn btn-test" @click="showTestDialog(key)">测试</button>
+            <button class="action-btn btn-delete" @click="handleDelete(key)">删除</button>
+          </div>
+        </span>
+      </div>
+    </div>
 
     <!-- 创建密钥对话框 -->
     <el-dialog v-model="createDialogVisible" title="新增 SSH 密钥" width="600px" destroy-on-close>
@@ -52,13 +61,37 @@
         <el-form-item label="描述" prop="description">
           <el-input v-model="createForm.description" placeholder="可选，用于备注密钥用途" />
         </el-form-item>
-        <el-form-item label="私钥" prop="private_key">
+        <el-form-item label="添加方式">
+          <div class="key-input-mode">
+            <button type="button" class="mode-btn" :class="{ active: keyInputMode === 'paste' }" @click="keyInputMode = 'paste'">粘贴内容</button>
+            <button type="button" class="mode-btn" :class="{ active: keyInputMode === 'file' }" @click="keyInputMode = 'file'">选择文件</button>
+          </div>
+        </el-form-item>
+        <el-form-item v-show="keyInputMode === 'paste'" label="私钥" prop="private_key">
           <el-input
             v-model="createForm.private_key"
             type="textarea"
             :rows="8"
             placeholder="粘贴 SSH 私钥内容（以 -----BEGIN 开头）"
           />
+        </el-form-item>
+        <el-form-item v-show="keyInputMode === 'file'" label="私钥文件">
+            <input
+              ref="fileInputRef"
+              type="file"
+              style="display:none"
+              @change="handleFileSelect"
+            />
+          <div v-if="!selectedFileName" class="file-drop-zone" @click="triggerFileInput">
+            <el-icon :size="24" style="color:var(--text-color-placeholder)"><Upload /></el-icon>
+            <span>点击选择私钥文件</span>
+            <span class="file-hint">支持 id_rsa、id_ed25519、id_ecdsa 等格式</span>
+          </div>
+          <div v-else class="file-selected" @click="triggerFileInput">
+            <el-icon style="color:#6366F1"><Document /></el-icon>
+            <span class="file-name">{{ selectedFileName }}</span>
+            <button type="button" class="file-remove" @click.stop="clearFile">移除</button>
+          </div>
         </el-form-item>
         <el-form-item label="密码短语" prop="passphrase">
           <el-input
@@ -113,9 +146,9 @@
         <el-descriptions-item label="名称">{{ currentKey.name }}</el-descriptions-item>
         <el-descriptions-item label="描述">{{ currentKey.description || '-' }}</el-descriptions-item>
         <el-descriptions-item label="类型">
-          <el-tag :type="keyTypeTagColor(currentKey.key_type)">
+          <span class="type-tag" :class="'type-' + keyTypeClass(currentKey.key_type)">
             {{ keyTypeLabel(currentKey.key_type) }}
-          </el-tag>
+          </span>
         </el-descriptions-item>
         <el-descriptions-item label="密码保护">
           {{ currentKey.has_passphrase ? '是' : '否' }}
@@ -166,8 +199,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { FormInstance, FormRules } from 'element-plus'
-import { Plus, Lock, Unlock, CopyDocument, CircleCheck, CircleClose } from '@element-plus/icons-vue'
+import type { FormRules } from 'element-plus'
+import { Plus, Unlock, CopyDocument, CircleCheck, CircleClose, Upload, Document } from '@element-plus/icons-vue'
 import {
   listDBSSHKeys,
   createDBSSHKey,
@@ -183,10 +216,11 @@ import {
 const loading = ref(false)
 const sshKeys = ref<DBSSHKey[]>([])
 
-// 创建表单
 const createDialogVisible = ref(false)
 const creating = ref(false)
-const createFormRef = ref<FormInstance>()
+const keyInputMode = ref<'paste' | 'file'>('paste')
+const fileInputRef = ref<HTMLInputElement>()
+const selectedFileName = ref('')
 const createForm = ref<CreateDBSSHKeyReq>({
   name: '',
   description: '',
@@ -199,7 +233,6 @@ const createRules: FormRules = {
   private_key: [{ required: true, message: '请输入私钥内容', trigger: 'blur' }],
 }
 
-// 编辑表单
 const editDialogVisible = ref(false)
 const editing = ref(false)
 const editingKeyId = ref<number>(0)
@@ -210,18 +243,15 @@ const editForm = ref<UpdateDBSSHKeyReq & { name: string }>({
   passphrase: '',
 })
 
-// 详情对话框
 const detailDialogVisible = ref(false)
 const currentKey = ref<DBSSHKey | null>(null)
 
-// 测试对话框
 const testDialogVisible = ref(false)
 const testing = ref(false)
 const testForm = ref({ url: '' })
 const testResult = ref<TestDBSSHKeyResp | null>(null)
 const testKeyId = ref<number>(0)
 
-// 密钥类型展示辅助
 const KEY_TYPE_LABELS: Record<string, string> = {
   rsa: 'RSA',
   ed25519: 'Ed25519',
@@ -229,21 +259,20 @@ const KEY_TYPE_LABELS: Record<string, string> = {
   dsa: 'DSA',
   unknown: '未知',
 }
-const KEY_TYPE_COLORS: Record<string, string> = {
-  rsa: 'warning',
-  ed25519: 'success',
-  ecdsa: '',
-  dsa: 'info',
-  unknown: 'info',
-}
 
 function keyTypeLabel(t: string): string {
   if (!t) return '未知'
   return KEY_TYPE_LABELS[t.toLowerCase()] ?? t.toUpperCase()
 }
-function keyTypeTagColor(t: string): string {
+
+function keyTypeClass(t: string): string {
   if (!t) return 'info'
-  return KEY_TYPE_COLORS[t.toLowerCase()] ?? ''
+  const lower = t.toLowerCase()
+  if (lower === 'ed25519') return 'success'
+  if (lower === 'rsa') return 'info'
+  if (lower === 'ecdsa') return 'warning'
+  if (lower === 'dsa') return 'default'
+  return 'default'
 }
 
 onMounted(() => {
@@ -264,12 +293,50 @@ async function fetchSSHKeys() {
 
 function showCreateDialog() {
   createForm.value = { name: '', description: '', private_key: '', passphrase: '' }
+  keyInputMode.value = 'paste'
+  selectedFileName.value = ''
   createDialogVisible.value = true
 }
 
+function triggerFileInput() {
+  fileInputRef.value?.click()
+}
+
+function clearFile() {
+  selectedFileName.value = ''
+  createForm.value.private_key = ''
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
+
+function handleFileSelect(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  selectedFileName.value = file.name
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    createForm.value.private_key = (e.target?.result as string) || ''
+  }
+  reader.onerror = () => {
+    ElMessage.error('读取文件失败')
+    clearFile()
+  }
+  reader.readAsText(file)
+}
+
 async function handleCreate() {
-  if (!createFormRef.value) return
-  await createFormRef.value.validate()
+  if (!createForm.value.name) {
+    ElMessage.warning('请输入密钥名称')
+    return
+  }
+  if (keyInputMode.value === 'paste' && !createForm.value.private_key) {
+    ElMessage.warning('请输入私钥内容')
+    return
+  }
+  if (keyInputMode.value === 'file' && !createForm.value.private_key) {
+    ElMessage.warning('请选择私钥文件')
+    return
+  }
 
   creating.value = true
   try {
@@ -376,38 +443,340 @@ function formatDate(dateStr: string) {
 <style scoped>
 .ssh-keys-page {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.page-header {
+.title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
 }
 
-.page-header h2 {
+.title-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.page-title {
   margin: 0;
-  font-size: var(--font-size-xl);
+  font-size: 24px;
   font-weight: 600;
   color: var(--text-color-primary);
+}
+
+.page-subtitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--text-color-secondary);
+}
+
+.add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent-primary, #6366F1);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.add-btn:hover {
+  opacity: 0.9;
+}
+
+.loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  color: var(--text-color-secondary);
+  font-size: 13px;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border-color, #e5e7eb);
+  border-top-color: var(--accent-primary, #6366F1);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.empty-icon {
+  color: var(--text-color-placeholder, #9ca3af);
+  margin-bottom: 4px;
+}
+
+.empty-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-color-primary);
+}
+
+.empty-sub {
+  font-size: 13px;
+  color: var(--text-color-secondary);
+}
+
+.table-card {
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--accent-bg, #EEF2FF);
+}
+
+.th {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+}
+
+.table-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.td {
+  font-size: 13px;
+  color: var(--text-color-regular);
+}
+
+.name-cell {
+  font-weight: 500;
+  color: var(--text-color-primary);
+}
+
+.fingerprint-cell {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.type-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: normal;
+}
+
+.type-tag.type-success {
+  background: #ECFDF5;
+  color: #10B981;
+}
+
+.type-tag.type-info {
+  background: #EEF2FF;
+  color: #6366F1;
+}
+
+.type-tag.type-warning {
+  background: #FFFBEB;
+  color: #F59E0B;
+}
+
+.type-tag.type-default {
+  background: var(--accent-bg, #EEF2FF);
+  color: var(--text-color-secondary);
+}
+
+.action-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.action-btn {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: none;
+  transition: all 0.2s;
+}
+
+.btn-view {
+  color: var(--text-color-secondary);
+  border-color: var(--border-color, #e5e7eb);
+}
+
+.btn-view:hover {
+  background: var(--accent-bg, #EEF2FF);
+  color: var(--accent-primary, #6366F1);
+}
+
+.btn-edit {
+  color: #6366F1;
+  border-color: #6366F1;
+}
+
+.btn-edit:hover {
+  background: #EEF2FF;
+}
+
+.btn-test {
+  color: #10B981;
+  border-color: #10B981;
+}
+
+.btn-test:hover {
+  background: #ECFDF5;
+}
+
+.btn-delete {
+  color: #EF4444;
+  border-color: #EF4444;
+}
+
+.btn-delete:hover {
+  background: #FEF2F2;
 }
 
 .test-result {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 8px;
   padding: 12px;
-  border-radius: var(--border-radius-sm);
-  margin-top: var(--spacing-md);
+  border-radius: 8px;
+  margin-top: 12px;
 }
 
 .test-result.success {
   background-color: #ECFDF5;
-  color: var(--success-color);
+  color: #10B981;
 }
 
 .test-result.error {
   background-color: #FEF2F2;
-  color: var(--danger-color);
+  color: #EF4444;
+}
+
+.key-input-mode {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-color-page, #fff);
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn.active {
+  background: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary, #6366F1);
+  color: #fff;
+}
+
+.file-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 20px;
+  border: 2px dashed var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  background: var(--bg-color-page, #fff);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  color: var(--text-color-secondary);
+}
+
+.file-drop-zone:hover {
+  border-color: var(--accent-primary, #6366F1);
+  background: #FAFAFE;
+}
+
+.file-hint {
+  font-size: 11px;
+  color: var(--text-color-placeholder);
+}
+
+.file-selected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  background: var(--bg-color-page, #fff);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.file-selected:hover {
+  border-color: var(--accent-primary, #6366F1);
+}
+
+.file-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-color-primary);
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+}
+
+.file-remove {
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #FCA5A5;
+  background: transparent;
+  font-size: 11px;
+  color: #EF4444;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.file-remove:hover {
+  background: #FEF2F2;
 }
 </style>

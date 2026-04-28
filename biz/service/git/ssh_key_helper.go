@@ -32,20 +32,19 @@ func NewSSHKeyHelper() *SSHKeyHelper {
 
 // ProcessPrivateKey 处理私钥内容，支持带密码的密钥
 func (h *SSHKeyHelper) ProcessPrivateKey(privateKey, passphrase string) (string, error) {
-	keyContent := privateKey
+	keyContent := strings.ReplaceAll(privateKey, "\r\n", "\n")
+	keyContent = strings.ReplaceAll(keyContent, "\r", "")
+	keyContent = strings.TrimSpace(keyContent)
 	if !strings.HasSuffix(keyContent, "\n") {
 		keyContent += "\n"
 	}
 
-	// 如果有 passphrase，需要解密私钥
 	if passphrase != "" {
-		// 解析加密的私钥
 		rawKey, err := ssh2.ParseRawPrivateKeyWithPassphrase([]byte(keyContent), []byte(passphrase))
 		if err != nil {
 			return "", fmt.Errorf("failed to parse encrypted private key: %v", err)
 		}
 
-		// 重新编码为无密码的 PEM 格式
 		pemBytes, err := x509.MarshalPKCS8PrivateKey(rawKey)
 		if err != nil {
 			return "", fmt.Errorf("failed to marshal private key: %v", err)
@@ -88,7 +87,7 @@ func (h *SSHKeyHelper) CreateTempKeyFile(keyContent string) (string, error) {
 
 // BuildSSHCommand 构建 SSH 命令
 func (h *SSHKeyHelper) BuildSSHCommand(keyPath string) string {
-	return fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null", keyPath)
+	return fmt.Sprintf("ssh -i %s -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null", keyPath)
 }
 
 // CleanupTempFile 清理临时文件

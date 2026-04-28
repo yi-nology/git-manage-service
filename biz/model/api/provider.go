@@ -11,6 +11,7 @@ type ProviderConfigDTO struct {
 	CredentialName   string    `json:"credential_name,omitempty"`
 	WebhookEndpoint  string    `json:"webhook_endpoint,omitempty"`
 	HasWebhookSecret bool      `json:"has_webhook_secret"`
+	SkipTLS          bool      `json:"skip_tls"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
@@ -21,6 +22,7 @@ type CreateProviderConfigReq struct {
 	BaseURL       string `json:"base_url"`
 	CredentialID  uint   `json:"credential_id"`
 	WebhookSecret string `json:"webhook_secret"`
+	SkipTLS       bool   `json:"skip_tls"`
 }
 
 type UpdateProviderConfigReq struct {
@@ -28,6 +30,7 @@ type UpdateProviderConfigReq struct {
 	BaseURL       string `json:"base_url"`
 	CredentialID  uint   `json:"credential_id"`
 	WebhookSecret string `json:"webhook_secret"`
+	SkipTLS       *bool  `json:"skip_tls"`
 }
 
 type TestProviderConfigResp struct {
@@ -99,6 +102,18 @@ type GetCRReq struct {
 type SyncCRsReq struct {
 	RepoKey string `json:"repo_key"`
 	State   string `json:"state"`
+}
+
+type CreateCRByProviderReq struct {
+	ProviderID         uint     `json:"provider_id"`
+	Owner              string   `json:"owner"`
+	Repo               string   `json:"repo"`
+	Title              string   `json:"title"`
+	Description        string   `json:"description"`
+	SourceBranch       string   `json:"source_branch"`
+	TargetBranch       string   `json:"target_branch"`
+	Labels             []string `json:"labels"`
+	RemoveSourceBranch bool     `json:"remove_source_branch"`
 }
 
 type WebhookEventDTO struct {

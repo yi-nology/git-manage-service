@@ -8,31 +8,56 @@
     </div>
 
     <div class="card-grid">
-      <div class="settings-card">
-        <div class="card-icon card-icon--red">
-          <el-icon :size="20"><Key /></el-icon>
+      <div class="card-row">
+        <div class="settings-card">
+          <div class="card-icon card-icon--red">
+            <el-icon :size="20"><Key /></el-icon>
+          </div>
+          <h3 class="card-title">SSH 密钥管理</h3>
+          <p class="card-desc">管理用于 Git 仓库认证的 SSH 密钥，支持将密钥存储在数据库中。</p>
+          <button class="card-btn" @click="$router.push('/settings/ssh-keys')">
+            <el-icon><Key /></el-icon>
+            管理 SSH 密钥
+          </button>
         </div>
-        <h3 class="card-title">SSH 密钥管理</h3>
-        <p class="card-desc">管理用于 Git 仓库认证的 SSH 密钥，支持将密钥存储在数据库中。</p>
-        <button class="card-btn" @click="$router.push('/settings/ssh-keys')">管理 SSH 密钥</button>
+
+        <div class="settings-card">
+          <div class="card-icon card-icon--indigo">
+            <el-icon :size="20"><Lock /></el-icon>
+          </div>
+          <h3 class="card-title">凭证管理</h3>
+          <p class="card-desc">统一管理 Git 仓库认证凭证，支持 SSH、HTTP 账号密码和 Token。</p>
+          <button class="card-btn" @click="$router.push('/settings/credentials')">
+            <el-icon><Lock /></el-icon>
+            管理凭证
+          </button>
+        </div>
       </div>
 
-      <div class="settings-card">
-        <div class="card-icon card-icon--indigo">
-          <el-icon :size="20"><Lock /></el-icon>
+      <div class="card-row">
+        <div class="settings-card">
+          <div class="card-icon card-icon--amber">
+            <el-icon :size="20"><Bell /></el-icon>
+          </div>
+          <h3 class="card-title">通知渠道管理</h3>
+          <p class="card-desc">管理系统通知渠道，支持邮件、钉钉、微信等多种通知方式。</p>
+          <button class="card-btn" @click="$router.push('/settings/notification-channels')">
+            <el-icon><Bell /></el-icon>
+            管理通知渠道
+          </button>
         </div>
-        <h3 class="card-title">凭证管理</h3>
-        <p class="card-desc">统一管理 Git 仓库认证凭证，支持 SSH、HTTP 账号密码和 Token。</p>
-        <button class="card-btn" @click="$router.push('/settings/credentials')">管理凭证</button>
-      </div>
 
-      <div class="settings-card">
-        <div class="card-icon card-icon--amber">
-          <el-icon :size="20"><Bell /></el-icon>
+        <div class="settings-card">
+          <div class="card-icon card-icon--blue">
+            <el-icon :size="20"><Connection /></el-icon>
+          </div>
+          <h3 class="card-title">平台配置</h3>
+          <p class="card-desc">管理 GitLab/GitHub/Gitea 等平台集成，用于 CR 同步和 Webhook 事件。</p>
+          <button class="card-btn" @click="$router.push('/settings/platforms')">
+            <el-icon><Connection /></el-icon>
+            管理平台
+          </button>
         </div>
-        <h3 class="card-title">通知渠道管理</h3>
-        <p class="card-desc">管理系统通知渠道，支持邮件、钉钉、微信等多种通知方式。</p>
-        <button class="card-btn" @click="$router.push('/settings/notification-channels')">管理通知渠道</button>
       </div>
 
       <div class="settings-card">
@@ -43,7 +68,9 @@
         <p class="card-desc">调试模式、日志级别等系统级配置开关。</p>
         <div class="toggle-row">
           <span class="toggle-label">调试模式</span>
-          <el-switch v-model="config.debug_mode" />
+          <button class="toggle-btn" :class="{ active: config.debug_mode }" @click="config.debug_mode = !config.debug_mode">
+            <span class="toggle-dot" :class="{ right: config.debug_mode }"></span>
+          </button>
         </div>
       </div>
 
@@ -55,16 +82,16 @@
         <div class="git-form">
           <div class="form-field">
             <label class="field-label">Author Name</label>
-            <input v-model="config.author_name" placeholder="输入您的 Git 用户名" class="field-input" />
+            <input v-model="config.author_name" placeholder="John Doe" class="field-input" />
           </div>
           <div class="form-field">
             <label class="field-label">Author Email</label>
-            <input v-model="config.author_email" placeholder="输入您的 Git 邮箱" class="field-input" />
+            <input v-model="config.author_email" placeholder="john@example.com" class="field-input" />
           </div>
-          <button class="card-btn" @click="handleSave" :disabled="saving">
-            {{ saving ? '保存中...' : '保存配置' }}
-          </button>
         </div>
+        <button class="card-btn" @click="handleSave" :disabled="saving">
+          {{ saving ? '保存中...' : '保存配置' }}
+        </button>
       </div>
     </div>
   </div>
@@ -108,12 +135,10 @@ async function handleSave() {
 
 <style scoped>
 .settings-page {
-  padding: var(--spacing-xl);
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 24px;
-  min-height: 100vh;
-  background: var(--bg-color);
 }
 
 .title-row {
@@ -147,14 +172,20 @@ async function handleSave() {
   gap: 16px;
 }
 
+.card-row {
+  display: flex;
+  gap: 16px;
+}
+
 .settings-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 24px;
-  background: var(--bg-color-page);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  flex: 1;
 }
 
 .card-icon {
@@ -163,32 +194,37 @@ async function handleSave() {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: var(--border-radius-md);
+  border-radius: 8px;
 }
 
 .card-icon--red {
   background: #FEF2F2;
-  color: var(--danger-color);
+  color: #F56C6C;
 }
 
 .card-icon--indigo {
   background: #EEF2FF;
-  color: var(--primary-color);
+  color: #6366F1;
 }
 
 .card-icon--amber {
   background: #FFFBEB;
-  color: var(--warning-color);
+  color: #F59E0B;
 }
 
 .card-icon--gray {
   background: #F3F4F6;
-  color: var(--text-color-secondary);
+  color: #909399;
 }
 
 .card-icon--green {
   background: #ECFDF5;
-  color: var(--success-color);
+  color: #10B981;
+}
+
+.card-icon--blue {
+  background: #EFF6FF;
+  color: #3B82F6;
 }
 
 .card-title {
@@ -209,20 +245,19 @@ async function handleSave() {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--primary-color);
-  color: #FFFFFF;
+  background: var(--accent-primary, #6366F1);
+  color: #fff;
   font-size: 13px;
   padding: 8px 16px;
-  border-radius: var(--border-radius-md);
+  border-radius: 8px;
   border: none;
   cursor: pointer;
-  transition: background var(--transition-fast);
-  font-family: var(--font-family);
+  transition: opacity 0.2s;
   align-self: flex-start;
 }
 
-.card-btn:hover {
-  background: var(--primary-color-hover);
+.card-btn:hover:not(:disabled) {
+  opacity: 0.9;
 }
 
 .card-btn:disabled {
@@ -241,10 +276,45 @@ async function handleSave() {
   color: var(--text-color-primary);
 }
 
+.toggle-btn {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: none;
+  background: #E2E8F0;
+  cursor: pointer;
+  transition: background 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.toggle-btn.active {
+  background: var(--accent-primary, #6366F1);
+}
+
+.toggle-dot {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.2s;
+}
+
+.toggle-dot.right {
+  left: 18px;
+}
+
 .git-form {
   display: flex;
-  flex-direction: column;
   gap: 12px;
+}
+
+.git-form .form-field {
+  flex: 1;
 }
 
 .form-field {
@@ -259,28 +329,23 @@ async function handleSave() {
 }
 
 .field-input {
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
   padding: 8px 12px;
   font-size: 13px;
   color: var(--text-color-primary);
-  background: var(--bg-color-page);
+  background: var(--bg-color-page, #fff);
   outline: none;
-  font-family: var(--font-family);
-  transition: border-color var(--transition-fast);
+  transition: border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .field-input:focus {
-  border-color: var(--primary-color);
+  border-color: var(--accent-primary, #6366F1);
 }
 
 .field-input::placeholder {
-  color: var(--text-color-placeholder);
-}
-
-@media (max-width: 768px) {
-  .settings-page {
-    padding: var(--spacing-md);
-  }
+  color: var(--text-color-placeholder, #9ca3af);
 }
 </style>

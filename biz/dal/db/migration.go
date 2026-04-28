@@ -159,3 +159,46 @@ func findOrCreateCredentialFromAuth(credDAO *CredentialDAO, authType, authKey, a
 	}
 	return 0
 }
+
+func MigrateRepoProviderBindings() {
+	repoDAO := NewRepoDAO()
+	bindingDAO := NewRepoProviderBindingDAO()
+
+	repos, err := repoDAO.FindAll()
+	if err != nil {
+		log.Printf("Warning: failed to load repos for binding migration: %v", err)
+		return
+	}
+
+	for i := range repos {
+		repo := &repos[i]
+		if repo.ProviderConfigID == 0 || repo.PlatformOwner == "" || repo.PlatformRepo == "" {
+			continue
+		}
+
+		exists, _ := bindingDAO.ExistsByRepoAndProvider(repo.ID, repo.ProviderConfigID)
+		if exists {
+			continue
+		}
+
+		binding := &po.RepoProviderBinding{
+			RepoID:           repo.ID,
+			ProviderConfigID: repo.ProviderConfigID,
+			PlatformOwner:    repo.PlatformOwner,
+			PlatformRepo:     repo.PlatformRepo,
+			PlatformRepoID:   repo.PlatformRepoID,
+			RemoteName:       "origin",
+			IsPrimary:        true,
+			Status:           "active",
+		}
+
+		if err := bindingDAO.Create(binding); err != nil {
+			log.Printf("Warning: failed to create binding for repo %s: %v", repo.Key, err)
+		} else {
+			log.Printf("Migrated binding: repo=%s provider=%d owner=%s repo=%s",
+				repo.Key, repo.ProviderConfigID, repo.PlatformOwner, repo.PlatformRepo)
+		}
+	}
+
+	log.Println("Repo-Provider binding migration completed.")
+}

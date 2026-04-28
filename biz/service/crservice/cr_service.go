@@ -13,7 +13,7 @@ import (
 )
 
 func CreateCR(ctx context.Context, req *api.CreateCRReq) (*api.CRDTO, error) {
-	repo, p, owner, repoName, err := resolveRepoProvider(req.RepoKey)
+	repo, p, owner, repoName, providerCfgID, err := resolveRepoProvider(req.RepoKey)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func CreateCR(ctx context.Context, req *api.CreateCRReq) (*api.CRDTO, error) {
 	if err != nil {
 		return nil, err
 	}
-	localCR := platformCRToLocal(repo.ID, repo.ProviderConfigID, cr)
+	localCR := platformCRToLocal(repo.ID, providerCfgID, cr)
 	crDAO := db.NewChangeRequestDAO()
 	if err := crDAO.Create(localCR); err != nil {
 		log.Printf("Warning: failed to save CR locally: %v", err)
@@ -44,7 +44,7 @@ func GetCR(ctx context.Context, repoKey string, crNumber int) (*api.CRDTO, error
 	if err == nil {
 		return toCRDTO(localCR), nil
 	}
-	_, p, owner, repoName, err := resolveRepoProvider(repoKey)
+	_, p, owner, repoName, _, err := resolveRepoProvider(repoKey)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func ListCRs(ctx context.Context, repoKey, state, sourceBranch, targetBranch str
 }
 
 func MergeCR(ctx context.Context, repoKey string, crNumber int, mergeMsg string, squash, removeBranch bool) (*api.CRDTO, error) {
-	repo, p, owner, repoName, err := resolveRepoProvider(repoKey)
+	repo, p, owner, repoName, _, err := resolveRepoProvider(repoKey)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func MergeCR(ctx context.Context, repoKey string, crNumber int, mergeMsg string,
 }
 
 func CloseCR(ctx context.Context, repoKey string, crNumber int) (*api.CRDTO, error) {
-	repo, p, owner, repoName, err := resolveRepoProvider(repoKey)
+	repo, p, owner, repoName, _, err := resolveRepoProvider(repoKey)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func CloseCR(ctx context.Context, repoKey string, crNumber int) (*api.CRDTO, err
 }
 
 func SyncCRs(ctx context.Context, repoKey, state string) (int, error) {
-	repo, p, owner, repoName, err := resolveRepoProvider(repoKey)
+	repo, p, owner, repoName, providerCfgID, err := resolveRepoProvider(repoKey)
 	if err != nil {
 		return 0, err
 	}
@@ -129,7 +129,7 @@ func SyncCRs(ctx context.Context, repoKey, state string) (int, error) {
 	crDAO := db.NewChangeRequestDAO()
 	synced := 0
 	for _, cr := range crs {
-		localCR := platformCRToLocal(repo.ID, repo.ProviderConfigID, cr)
+		localCR := platformCRToLocal(repo.ID, providerCfgID, cr)
 		existing, dbErr := crDAO.FindByRepoAndNumber(repo.ID, cr.Number)
 		if dbErr != nil {
 			if saveErr := crDAO.Create(localCR); saveErr == nil {
@@ -157,25 +157,36 @@ func SyncCRs(ctx context.Context, repoKey, state string) (int, error) {
 	return synced, nil
 }
 
-func resolveRepoProvider(repoKey string) (*po.Repo, provider.Provider, string, string, error) {
+func resolveRepoProvider(repoKey string) (*po.Repo, provider.Provider, string, string, uint, error) {
 	repoDAO := db.NewRepoDAO()
 	repo, err := repoDAO.FindByKey(repoKey)
 	if err != nil {
-		return nil, nil, "", "", fmt.Errorf("repo not found: %w", err)
+		return nil, nil, "", "", 0, fmt.Errorf("repo not found: %w", err)
 	}
+
+	bindingDAO := db.NewRepoProviderBindingDAO()
+	b, err := bindingDAO.FindPrimaryByRepoID(repo.ID)
+	if err == nil && b != nil {
+		p, err := provider.GetManager().GetProvider(b.ProviderConfigID)
+		if err != nil {
+			return nil, nil, "", "", 0, err
+		}
+		return repo, p, b.PlatformOwner, b.PlatformRepo, b.ProviderConfigID, nil
+	}
+
 	if repo.ProviderConfigID == 0 {
-		return nil, nil, "", "", fmt.Errorf("repo %s has no provider configured", repoKey)
+		return nil, nil, "", "", 0, fmt.Errorf("repo %s has no provider configured", repoKey)
 	}
 	p, err := provider.GetManager().GetProvider(repo.ProviderConfigID)
 	if err != nil {
-		return nil, nil, "", "", err
+		return nil, nil, "", "", 0, err
 	}
 	owner := repo.PlatformOwner
 	repoName := repo.PlatformRepo
 	if owner == "" || repoName == "" {
-		return nil, nil, "", "", fmt.Errorf("repo %s missing platform owner/repo info", repoKey)
+		return nil, nil, "", "", 0, fmt.Errorf("repo %s missing platform owner/repo info", repoKey)
 	}
-	return repo, p, owner, repoName, nil
+	return repo, p, owner, repoName, repo.ProviderConfigID, nil
 }
 
 func platformCRToLocal(repoID, providerConfigID uint, cr *provider.ChangeRequest) *po.ChangeRequest {
@@ -245,4 +256,74 @@ func toCRDTO(cr *po.ChangeRequest) *api.CRDTO {
 		UpdatedAt:      cr.UpdatedAt,
 		MergedAt:       cr.MergedAt,
 	}
+}
+
+func resolveProvider(providerID uint) (provider.Provider, error) {
+	p, err := provider.GetManager().GetProvider(providerID)
+	if err != nil {
+		return nil, fmt.Errorf("provider not found: %w", err)
+	}
+	return p, nil
+}
+
+func ListCRsByProvider(ctx context.Context, providerIDStr, owner, repoName, state string, page, perPage int) ([]api.CRDTO, int, error) {
+	providerID := uint(0)
+	fmt.Sscanf(providerIDStr, "%d", &providerID)
+	p, err := resolveProvider(providerID)
+	if err != nil {
+		return nil, 0, err
+	}
+	crs, total, err := p.ListCRs(ctx, provider.ListCROptions{
+		Owner: owner, Repo: repoName, State: provider.CRState(state), Page: page, PerPage: perPage,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	dtos := make([]api.CRDTO, 0, len(crs))
+	for _, cr := range crs {
+		dtos = append(dtos, *platformCRToAPI(cr))
+	}
+	return dtos, total, nil
+}
+
+func CreateCRByProvider(ctx context.Context, req *api.CreateCRByProviderReq) (*api.CRDTO, error) {
+	p, err := resolveProvider(req.ProviderID)
+	if err != nil {
+		return nil, err
+	}
+	cr, err := p.CreateCR(ctx, provider.CreateCROptions{
+		Owner: req.Owner, Repo: req.Repo, Title: req.Title, Description: req.Description,
+		SourceBranch: req.SourceBranch, TargetBranch: req.TargetBranch,
+		Labels: req.Labels, RemoveSourceBranch: req.RemoveSourceBranch,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return platformCRToAPI(cr), nil
+}
+
+func MergeCRByProvider(ctx context.Context, providerID uint, owner, repoName string, crNumber int, mergeMsg string, squash, removeBranch bool) (*api.CRDTO, error) {
+	p, err := resolveProvider(providerID)
+	if err != nil {
+		return nil, err
+	}
+	cr, err := p.MergeCR(ctx, owner, repoName, crNumber, provider.MergeCROptions{
+		MergeCommitMessage: mergeMsg, Squash: squash, RemoveSourceBranch: removeBranch,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return platformCRToAPI(cr), nil
+}
+
+func CloseCRByProvider(ctx context.Context, providerID uint, owner, repoName string, crNumber int) (*api.CRDTO, error) {
+	p, err := resolveProvider(providerID)
+	if err != nil {
+		return nil, err
+	}
+	cr, err := p.CloseCR(ctx, owner, repoName, crNumber)
+	if err != nil {
+		return nil, err
+	}
+	return platformCRToAPI(cr), nil
 }

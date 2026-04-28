@@ -10,31 +10,33 @@
         提供友好的 Web 界面，支持定时任务、Webhook 触发、多渠道消息通知以及详细的同步日志记录。
       </p>
       <div class="hero-actions">
-        <el-button type="primary" size="large" @click="$router.push('/repos')">
-          开始使用<el-icon class="el-icon--right"><ArrowRight /></el-icon>
-        </el-button>
-        <el-button size="large" @click="openGitHub">
-          <el-icon><Link /></el-icon>GitHub
-        </el-button>
+        <button class="hero-btn hero-btn-primary" @click="$router.push('/local-repos')">
+          开始使用
+          <el-icon><ArrowRight /></el-icon>
+        </button>
+        <button class="hero-btn hero-btn-outline" @click="openGitHub">
+          <el-icon><Link /></el-icon>
+          GitHub
+        </button>
       </div>
     </section>
-
-    <div class="section-divider" />
 
     <section class="features-section">
       <h2 class="section-title">功能特性</h2>
       <div class="features-grid">
-        <div v-for="feat in features" :key="feat.title" class="feature-card">
-          <div class="feature-icon" :style="{ background: feat.bg }">
-            <el-icon :size="24" :color="feat.color"><component :is="feat.icon" /></el-icon>
+        <div v-for="(row, ri) in featureRows" :key="ri" class="features-row">
+          <div v-for="feat in row" :key="feat.title" class="feature-card">
+            <div class="feature-icon" :style="{ background: feat.bg }">
+              <el-icon :size="20" :color="feat.color"><component :is="feat.icon" /></el-icon>
+            </div>
+            <div class="feature-info">
+              <h3>{{ feat.title }}</h3>
+              <p>{{ feat.desc }}</p>
+            </div>
           </div>
-          <h3>{{ feat.title }}</h3>
-          <p>{{ feat.desc }}</p>
         </div>
       </div>
     </section>
-
-    <div class="section-divider" />
 
     <section class="tech-section">
       <h2 class="section-title">技术栈</h2>
@@ -60,8 +62,6 @@
       </div>
     </section>
 
-    <div class="section-divider" />
-
     <section class="version-section">
       <h2 class="section-title">版本信息</h2>
       <div class="version-card" v-if="appInfo">
@@ -82,7 +82,10 @@
           <span class="version-value mono">{{ appInfo.git_commit }}</span>
         </div>
       </div>
-      <el-skeleton v-else :rows="2" animated />
+      <div v-else class="version-card loading-card">
+        <div class="loading-spinner"></div>
+        <span>加载版本信息...</span>
+      </div>
     </section>
 
     <footer class="home-footer">
@@ -114,7 +117,7 @@ interface Feature {
   bg: string
 }
 
-const features: Feature[] = [
+const allFeatures: Feature[] = [
   { title: '多仓库管理', desc: '统一注册和管理本地 Git 仓库，支持本地扫描与远程克隆。', icon: Connection, color: '#6366F1', bg: '#EEF2FF' },
   { title: '自动同步', desc: '支持单分支和全分支同步模式，Cron 定时调度与 Webhook 触发。', icon: Refresh, color: '#10B981', bg: '#ECFDF5' },
   { title: '多渠道通知', desc: '支持钉钉、企业微信、飞书、蓝信、邮件、自定义 Webhook。', icon: Bell, color: '#F59E0B', bg: '#FFFBEB' },
@@ -125,6 +128,11 @@ const features: Feature[] = [
   { title: '安全可靠', desc: '冲突检测、Fast-Forward 检查及 Force Push 保护，审计日志全程记录。', icon: Setting, color: '#8B5CF6', bg: '#F5F3FF' },
   { title: '支持 MCP', desc: '集成 MCP 多模型协作平台，支持多种 AI 模型对接与协作。', icon: Connection, color: '#10B981', bg: '#ECFDF5' },
 ]
+
+const featureRows: Feature[][] = []
+for (let i = 0; i < allFeatures.length; i += 3) {
+  featureRows.push(allFeatures.slice(i, i + 3))
+}
 
 const backendTech = [
   { label: '语言', value: 'Go 1.24' },
@@ -155,12 +163,15 @@ onMounted(async () => {
 .home-page {
   max-width: 960px;
   margin: 0 auto;
-  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 40px 60px 0;
 }
 
 .hero {
   text-align: center;
-  padding: 48px 0 32px;
+  padding: 20px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -170,18 +181,19 @@ onMounted(async () => {
 .hero-icon {
   width: 64px;
   height: 64px;
-  border-radius: var(--border-radius-xl);
-  background: var(--accent-bg);
+  border-radius: 16px;
+  background: var(--accent-bg, #EEF2FF);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--primary-color);
+  color: var(--accent-primary, #6366F1);
 }
 
 .hero-title {
   font-size: 36px;
   font-weight: 700;
   color: var(--text-color-primary);
+  margin: 0;
   font-family: 'Inter', -apple-system, sans-serif;
 }
 
@@ -190,6 +202,7 @@ onMounted(async () => {
   color: var(--text-color-secondary);
   line-height: 1.8;
   max-width: 560px;
+  margin: 0;
 }
 
 .hero-actions {
@@ -198,61 +211,101 @@ onMounted(async () => {
   margin-top: 4px;
 }
 
-.section-divider {
-  height: 1px;
-  background: var(--border-color);
-  margin: 8px 0 32px;
+.hero-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  border: none;
+}
+
+.hero-btn-primary {
+  background: var(--accent-primary, #6366F1);
+  color: #fff;
+}
+
+.hero-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.hero-btn-outline {
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  color: var(--text-color-regular);
+}
+
+.hero-btn-outline:hover {
+  border-color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary, #6366F1);
 }
 
 .section-title {
   font-size: 22px;
   font-weight: 600;
   color: var(--text-color-primary);
-  margin-bottom: 20px;
+  margin: 0 0 20px;
   font-family: 'Inter', -apple-system, sans-serif;
 }
 
 .features-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.features-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 
 .feature-card {
-  text-align: center;
-  padding: 24px 16px;
-  border-radius: var(--border-radius-lg);
-  background: var(--bg-color-page);
-  border: 1px solid var(--border-color);
-  transition: all var(--transition-normal);
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  transition: all 0.2s;
 }
 
 .feature-card:hover {
-  box-shadow: var(--box-shadow-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
 }
 
 .feature-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--border-radius-lg);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 12px;
+  flex-shrink: 0;
+}
+
+.feature-info {
+  flex: 1;
 }
 
 .feature-card h3 {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-color-primary);
-  margin-bottom: 6px;
+  margin: 0 0 4px;
 }
 
 .feature-card p {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-color-secondary);
   line-height: 1.6;
+  margin: 0;
 }
 
 .tech-grid {
@@ -263,16 +316,16 @@ onMounted(async () => {
 
 .tech-card {
   padding: 24px;
-  border-radius: var(--border-radius-lg);
-  background: var(--bg-color-page);
-  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
 }
 
 .tech-card h3 {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-color-primary);
-  margin-bottom: 16px;
+  margin: 0 0 16px;
 }
 
 .tech-list {
@@ -297,13 +350,13 @@ onMounted(async () => {
 }
 
 .version-card {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  justify-content: space-between;
   gap: 20px;
   padding: 24px;
-  border-radius: var(--border-radius-lg);
-  background: var(--bg-color-page);
-  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
 }
 
 .version-item {
@@ -325,29 +378,54 @@ onMounted(async () => {
 }
 
 .version-value.highlight {
-  color: var(--primary-color);
+  color: var(--accent-primary, #6366F1);
 }
 
 .version-value.mono {
   font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
 }
 
+.loading-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-color, #e5e7eb);
+  border-top-color: var(--accent-primary, #6366F1);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .home-footer {
   text-align: center;
-  padding: 24px 0 32px;
+  padding: 16px 0 8px;
   font-size: 12px;
   color: var(--text-color-secondary);
 }
 
 @media (max-width: 768px) {
-  .features-grid {
+  .features-row {
     grid-template-columns: 1fr;
   }
   .tech-grid {
     grid-template-columns: 1fr;
   }
   .version-card {
-    grid-template-columns: repeat(2, 1fr);
+    flex-wrap: wrap;
+  }
+  .version-item {
+    width: calc(50% - 10px);
   }
 }
 </style>

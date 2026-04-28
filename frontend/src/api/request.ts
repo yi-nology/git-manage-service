@@ -103,10 +103,9 @@ service.interceptors.response.use(
       cancelTokens.delete(requestKey)
     }
 
-    // 处理取消请求
-    if (axios.isCancel(error)) {
-      console.log('Request cancelled:', error.message)
-      return Promise.reject(error)
+    // 处理取消请求（静默处理，不报错）
+    if (axios.isCancel(error) || (error as any).code === 'ERR_CANCELED' || (error as any).name === 'CanceledError') {
+      return new Promise(() => {})
     }
 
     // 处理网络错误

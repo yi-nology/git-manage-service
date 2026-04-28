@@ -30,6 +30,13 @@ type Provider interface {
 	ParseWebhookEvent(r *http.Request, secret string) (*NormalizedEvent, error)
 	ValidateWebhookSignature(r *http.Request, secret string) error
 	TestConnection(ctx context.Context) (*TestConnectionResult, error)
+	ListBranches(ctx context.Context, owner, repo string) ([]*PlatformBranch, error)
+	CreateBranch(ctx context.Context, owner, repo, branch, ref string) (*PlatformBranch, error)
+	DeleteBranch(ctx context.Context, owner, repo, branch string) error
+}
+
+type PlatformBranch struct {
+	Name string `json:"name"`
 }
 
 type PlatformRepo struct {

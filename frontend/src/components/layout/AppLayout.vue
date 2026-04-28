@@ -9,8 +9,11 @@
         <router-link to="/" class="nav-item" :class="{ active: isActive('/') }">
           <el-icon><HomeFilled /></el-icon><span>首页</span>
         </router-link>
-        <router-link to="/repos" class="nav-item" :class="{ active: isActive('/repos') }">
-          <el-icon><FolderOpened /></el-icon><span>仓库</span>
+        <router-link to="/local-repos" class="nav-item" :class="{ active: isActive('/local-repos') }">
+          <el-icon><FolderOpened /></el-icon><span>本地仓库</span>
+        </router-link>
+        <router-link to="/remote-repos" class="nav-item" :class="{ active: isActive('/remote-repos') }">
+          <el-icon><Monitor /></el-icon><span>远端仓库</span>
         </router-link>
         <router-link to="/audit" class="nav-item" :class="{ active: isActive('/audit') }">
           <el-icon><Warning /></el-icon><span>审计日志</span>
@@ -35,7 +38,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { Connection, HomeFilled, FolderOpened, Setting, Warning } from '@element-plus/icons-vue'
+import { Connection, HomeFilled, FolderOpened, Setting, Warning, Monitor } from '@element-plus/icons-vue'
 import { useUIStore } from '@/stores/useUIStore'
 import { useKeyboard } from '@/composables/useKeyboard'
 import ThemeSwitch from '@/components/common/ThemeSwitch.vue'

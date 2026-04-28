@@ -18,6 +18,8 @@ spec:
         app: git-manage
         component: backend
     spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
       containers:
         - name: app
           image: git-manage-service:latest # 确保镜像在你的 Registry 中可用

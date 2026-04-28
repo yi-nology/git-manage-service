@@ -2,13 +2,16 @@
   <div class="branch-list-page">
     <div class="page-header">
       <div class="header-left">
-        <button class="back-btn" @click="$router.push(`/repos/${repoKey}`)">
+        <button class="back-btn" @click="$router.push(`/local-repos/${repoKey}`)">
           <el-icon><ArrowLeft /></el-icon> 返回
         </button>
         <h2>分支管理</h2>
       </div>
       <div class="header-actions">
-        <button class="action-pill action-pill--green" @click="$router.push(`/repos/${repoKey}/compare`)">
+        <button class="action-pill action-pill--green" @click="$router.push(`/local-repos/${repoKey}/branch-actions`)">
+          <el-icon><SetUp /></el-icon> 分支操作
+        </button>
+        <button class="action-pill action-pill--green" @click="$router.push(`/local-repos/${repoKey}/compare`)">
           <el-icon><Switch /></el-icon> 分支对比 & 合并
         </button>
         <button class="action-pill action-pill--outline" @click="handleFetchAll" :disabled="fetchLoading">
@@ -256,7 +259,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Plus, Delete, Edit, Select, Top, Bottom, Switch, Download, CircleCheck, PriceTag, View, RefreshRight, Search, Close } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus, Delete, Edit, Select, Top, Bottom, Switch, Download, CircleCheck, PriceTag, View, RefreshRight, Search, Close, SetUp } from '@element-plus/icons-vue'
 import { getBranchList, createBranch, deleteBranch, updateBranch, checkoutBranch, pushBranch, pullBranch, createTag } from '@/api/modules/branch'
 import { fetchRepo, scanRepo } from '@/api/modules/repo'
 import { getRepoDetail } from '@/api/modules/repo'
@@ -358,7 +361,7 @@ function getLocalBranch(remoteName: string): string | null {
 }
 
 function goDetail(branchName: string) {
-  router.push(`/repos/${repoKey}/branches/${encodeURIComponent(branchName)}`)
+  router.push(`/local-repos/${repoKey}/branches/${encodeURIComponent(branchName)}`)
 }
 
 async function handleFetchAll() {

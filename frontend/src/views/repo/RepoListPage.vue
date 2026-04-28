@@ -35,8 +35,8 @@
     <TableSkeleton
       v-if="repoStore.loading"
       :rows="5"
-      :columns="5"
-      :column-widths="['60px', '150px', '250px', '200px', '120px']"
+      :columns="6"
+      :column-widths="['60px', '150px', '250px', '200px', '120px', '120px']"
     />
 
     <div class="repo-table-card" v-else-if="filteredRepos.length > 0">
@@ -45,6 +45,7 @@
         <span class="th" style="width:150px">名称</span>
         <span class="th" style="width:280px">路径</span>
         <span class="th" style="width:250px">远程地址</span>
+        <span class="th" style="width:120px">远端平台</span>
         <span class="th" style="flex:1">操作</span>
       </div>
       <div
@@ -53,21 +54,28 @@
         class="table-row"
       >
         <span class="td" style="width:60px">{{ row.id }}</span>
-        <span class="td td-name" style="width:150px" @click="router.push(`/repos/${row.key}`)">{{ row.name }}</span>
+        <span class="td td-name" style="width:150px" @click="router.push(`/local-repos/${row.key}`)">{{ row.name }}</span>
         <span class="td td-mono" style="width:280px" :title="row.path">{{ row.path }}</span>
         <span class="td td-mono" style="width:250px">{{ row.remote_url || '无远程仓库' }}</span>
-        <span class="td" style="flex:1">
-          <el-dropdown @command="(cmd: string) => handleCommand(cmd, row)">
-            <button class="row-action-btn">操作</button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="detail"><el-icon><View /></el-icon> 查看详情</el-dropdown-item>
-                <el-dropdown-item command="branches"><el-icon><Share /></el-icon> 分支管理</el-dropdown-item>
-                <el-dropdown-item command="sync"><el-icon><Refresh /></el-icon> 同步任务</el-dropdown-item>
-                <el-dropdown-item command="delete" divided><el-text type="danger"><el-icon><Delete /></el-icon> 删除仓库</el-text></el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+        <span class="td" style="width:120px">
+          <template v-if="repoPlatformBadges[row.key]?.length">
+            <el-tag v-for="b in repoPlatformBadges[row.key]" :key="b" size="small" effect="plain" style="margin-right:2px">{{ b }}</el-tag>
+          </template>
+          <template v-else><span style="color:var(--el-text-color-placeholder)">-</span></template>
+        </span>
+        <span class="td td-actions" style="flex:1">
+          <button class="act-btn" @click="router.push(`/local-repos/${row.key}`)">
+            <el-icon><View /></el-icon> 详情
+          </button>
+          <button class="act-btn" @click="router.push(`/local-repos/${row.key}/branches`)">
+            <el-icon><Share /></el-icon> 分支
+          </button>
+          <button class="act-btn" @click="router.push(`/local-repos/${row.key}/sync`)">
+            <el-icon><Refresh /></el-icon> 同步
+          </button>
+          <button class="act-btn act-btn--danger" @click="handleDelete(row.key, row.name)">
+            <el-icon><Delete /></el-icon> 删除
+          </button>
         </span>
       </div>
     </div>
@@ -76,7 +84,7 @@
       <el-icon class="empty-icon"><Folder /></el-icon>
       <h3>暂无仓库</h3>
       <p>添加您的第一个仓库开始管理</p>
-      <button class="add-btn" @click="router.push('/repos/register')">添加第一个仓库</button>
+      <button class="add-btn" @click="router.push('/local-repos/register')">添加第一个仓库</button>
     </div>
 
     <div class="pagination-row" v-if="filteredRepos.length > 0">
@@ -103,12 +111,30 @@ import {
 } from '@element-plus/icons-vue'
 import { useRepoStore } from '@/stores/useRepoStore'
 import { deleteRepo } from '@/api/modules/repo'
+import { listBindings } from '@/api/modules/binding'
+import type { RepoProviderBindingDTO } from '@/types/binding'
 import { useNotification } from '@/composables/useNotification'
 import TableSkeleton from '@/components/common/TableSkeleton.vue'
 
 const router = useRouter()
 const repoStore = useRepoStore()
 const { showSuccess, showError } = useNotification()
+
+const repoPlatformBadges = ref<Record<string, string[]>>({})
+
+async function loadPlatformBadges() {
+  try {
+    const allBindings: RepoProviderBindingDTO[] = await listBindings() || []
+    const map: Record<string, string[]> = {}
+    for (const b of allBindings) {
+      const key = b.repo_key
+      if (!map[key]) map[key] = []
+      const label = { gitlab: 'GitLab', github: 'GitHub', gitea: 'Gitea' }[b.platform] || b.platform
+      if (!map[key].includes(label)) map[key].push(label)
+    }
+    repoPlatformBadges.value = map
+  } catch {}
+}
 
 // 搜索
 const searchText = ref('')
@@ -129,6 +155,7 @@ const handleSortChange = ({ prop, order }: { prop: string; order: string | null 
 
 onMounted(async () => {
   await repoStore.fetchRepoList()
+  loadPlatformBadges()
 })
 
 // 过滤后的仓库列表
@@ -174,31 +201,13 @@ const paginatedData = computed(() => {
 // 添加命令
 function handleAddCommand(command: string) {
   if (command === 'register') {
-    router.push('/repos/register')
+    router.push('/local-repos/register')
   } else if (command === 'clone') {
-    router.push('/repos/clone')
+    router.push('/local-repos/clone')
   }
 }
 
-// 操作命令
-function handleCommand(command: string, row: any) {
-  switch (command) {
-    case 'detail':
-      router.push(`/repos/${row.key}`)
-      break
-    case 'branches':
-      router.push(`/repos/${row.key}/branches`)
-      break
-    case 'sync':
-      router.push(`/repos/${row.key}/sync`)
-      break
-    case 'delete':
-      handleDelete(row.key, row.name)
-      break
-  }
-}
-
-// 删除仓库
+// 添加命令
 async function handleDelete(key: string, name: string) {
   try {
     await ElMessageBox.confirm(
@@ -229,12 +238,10 @@ async function handleDelete(key: string, name: string) {
 
 <style scoped>
 .repo-list-page {
-  padding: var(--spacing-xl);
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  min-height: 100vh;
-  background: var(--bg-color);
 }
 
 .title-row {
@@ -383,23 +390,35 @@ async function handleDelete(key: string, name: string) {
   white-space: nowrap;
 }
 
-.row-action-btn {
+.td-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.act-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 12px;
-  border-radius: var(--border-radius-sm);
-  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #e5e7eb);
   background: transparent;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-color-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
+  white-space: nowrap;
 }
 
-.row-action-btn:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
+.act-btn:hover {
+  border-color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary, #6366F1);
+}
+
+.act-btn--danger:hover {
+  border-color: #EF4444;
+  color: #EF4444;
 }
 
 .empty-state {

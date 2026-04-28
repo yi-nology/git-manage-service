@@ -225,6 +225,16 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 		}
 	}
 
+	// 检查是否被 ProviderConfig 引用
+	pcDAO := db.NewProviderConfigDAO()
+	configs, _ := pcDAO.FindAll()
+	for _, cfg := range configs {
+		if cfg.CredentialID == id {
+			response.BadRequest(c, "Credential is referenced by provider config: "+cfg.Name)
+			return
+		}
+	}
+
 	if err := dao.Delete(id); err != nil {
 		response.InternalServerError(c, "Failed to delete credential: "+err.Error())
 		return
