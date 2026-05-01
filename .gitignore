@@ -60,3 +60,8 @@ docs-site/node_modules/
 # biz/model/
 # kitex_info.yaml
 git-manage-server
+
+# Binary & design files
+/main
+desgin.pen
+design-exports/
