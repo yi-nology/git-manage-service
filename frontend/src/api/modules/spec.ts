@@ -7,6 +7,8 @@ import type {
   SaveRequest,
   CommitRequest,
   CommitResponse,
+  FormatOptions,
+  FormatResult,
 } from '@/types/spec'
 
 export function getSpecTree(repoKey?: string) {
@@ -88,6 +90,14 @@ export function deleteSpecFile(repoKey: string, path: string, commitMessage?: st
 export function validateSpec(content: string) {
   return request.post<unknown, { valid: boolean; issues: any[]; warnings: any[] }>('/spec/validate', {
     content
+  })
+}
+
+// 格式化 spec 文件
+export function formatSpec(content: string, options?: FormatOptions) {
+  return request.post<unknown, FormatResult>('/spec/format', {
+    content,
+    ...options,
   })
 }
 

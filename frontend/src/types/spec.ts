@@ -66,3 +66,27 @@ export interface EditorState {
   isDirty: boolean
   cursorPosition: { line: number; column: number } | null
 }
+
+export interface FormatOptions {
+  curlify?: boolean
+  removeClean?: boolean
+  removeBuildRoot?: boolean
+  removeGroup?: boolean
+  licenseSpdx?: boolean
+  sortDeps?: boolean
+  tabToSpaces?: boolean
+  indentSize?: number
+}
+
+export interface FormatChange {
+  line: number
+  type: string
+  before: string
+  after: string
+  reason: string
+}
+
+export interface FormatResult {
+  content: string
+  changes: FormatChange[]
+}

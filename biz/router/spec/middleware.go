@@ -120,3 +120,8 @@ func _aifixspecMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _formatspecMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

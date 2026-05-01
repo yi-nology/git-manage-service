@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	settingsHandler "github.com/yi-nology/git-manage-service/biz/handler/settings"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"
 	"github.com/yi-nology/git-manage-service/biz/router/binding"
@@ -18,6 +19,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/router/cr"
 	"github.com/yi-nology/git-manage-service/biz/router/credential"
 	"github.com/yi-nology/git-manage-service/biz/router/file"
+	maintenance "github.com/yi-nology/git-manage-service/biz/router/maintenance"
 	"github.com/yi-nology/git-manage-service/biz/router/notification"
 	"github.com/yi-nology/git-manage-service/biz/router/patch"
 	"github.com/yi-nology/git-manage-service/biz/router/provider"
@@ -35,7 +37,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/router/version"
 	"github.com/yi-nology/git-manage-service/biz/router/webhook"
 	"github.com/yi-nology/git-manage-service/biz/router/webhook_event"
-	settingsHandler "github.com/yi-nology/git-manage-service/biz/handler/settings"
 )
 
 // 嵌入的文件系统变量
@@ -55,6 +56,8 @@ func GeneratedRegister(h *server.Hertz) {
 	h.Use(middleware.CORS())
 
 	//INSERT_POINT: DO NOT DELETE THIS LINE!
+	maintenance.Register(h)
+
 	registerLLMPresetsRoute(h)
 	settings.Register(h)
 	webhook_event.Register(h)

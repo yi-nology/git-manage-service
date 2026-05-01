@@ -31,6 +31,7 @@ func Register(r *server.Hertz) {
 				_content.PUT("/:path", append(_savespeccontentbypathMw(), spec.SaveSpecContentByPath)...)
 				_spec.POST("/create", append(_createspecfileMw(), spec.CreateSpecFile)...)
 				_spec.POST("/delete", append(_deletespecfileMw(), spec.DeleteSpecFile)...)
+				_spec.POST("/format", append(_formatspecMw(), spec.FormatSpec)...)
 				_spec.POST("/lint", append(_lintspecMw(), spec.LintSpec)...)
 				_spec.GET("/list", append(_listspecfilesMw(), spec.ListSpecFiles)...)
 				_spec.GET("/rules", append(_getlintrulesMw(), spec.GetLintRules)...)

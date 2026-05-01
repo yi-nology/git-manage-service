@@ -29,6 +29,14 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
+        <el-dropdown split-button size="small" @click="handleFormat">
+          <el-icon><MagicStick /></el-icon> 格式化
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="showFormatOptions = true">格式化选项</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-button size="small" @click="loadFileTree">
           <el-icon><Refresh /></el-icon>
         </el-button>
@@ -351,6 +359,71 @@
         <el-button type="primary" :loading="initInProgress" @click="handleInitSpec">创建并打开</el-button>
       </template>
     </el-dialog>
+
+    <!-- 格式化预览 -->
+    <el-dialog v-model="showFormatPreview" title="格式化预览" width="700px" :close-on-click-modal="false">
+      <div v-if="formatChanges.length > 0" class="format-changes-list">
+        <div class="format-stats">
+          <span>共 {{ formatChanges.length }} 处变更</span>
+        </div>
+        <el-scrollbar max-height="350px">
+          <div v-for="(ch, idx) in formatChanges" :key="idx" class="format-change-item">
+            <div class="format-change-header">
+              <el-tag :type="ch.type === 'removed' ? 'danger' : ch.type === 'modified' ? 'warning' : 'info'" size="small">
+                {{ { removed: '删除', modified: '修改', reordered: '排序' }[ch.type] || ch.type }}
+              </el-tag>
+              <span class="format-change-reason">{{ ch.reason }}</span>
+            </div>
+            <div v-if="ch.before" class="format-change-before">- {{ ch.before }}</div>
+            <div v-if="ch.after" class="format-change-after">+ {{ ch.after }}</div>
+          </div>
+        </el-scrollbar>
+      </div>
+      <div v-else class="format-no-changes">
+        <el-icon :size="28" color="#10B981"><CircleCheck /></el-icon>
+        <span>无需格式化，文件已符合规范</span>
+      </div>
+      <template #footer>
+        <el-button @click="showFormatPreview = false">取消</el-button>
+        <el-button type="primary" :disabled="formatChanges.length === 0" @click="applyFormatResult">应用格式化</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 格式化选项 -->
+    <el-dialog v-model="showFormatOptions" title="格式化选项" width="500px" :close-on-click-modal="false">
+      <el-form label-width="160px">
+        <el-form-item label="宏括号规范化">
+          <el-switch v-model="formatOpts.curlify" />
+          <span class="form-tip">将 %macro 转为 %{macro}</span>
+        </el-form-item>
+        <el-form-item label="删除 %clean 段">
+          <el-switch v-model="formatOpts.removeClean" />
+          <span class="form-tip">现代 RPM 不再需要 %clean</span>
+        </el-form-item>
+        <el-form-item label="删除 BuildRoot">
+          <el-switch v-model="formatOpts.removeBuildRoot" />
+          <span class="form-tip">现代 RPM 已废弃 BuildRoot</span>
+        </el-form-item>
+        <el-form-item label="删除 Group 字段">
+          <el-switch v-model="formatOpts.removeGroup" />
+        </el-form-item>
+        <el-form-item label="License SPDX 修正">
+          <el-switch v-model="formatOpts.licenseSpdx" />
+          <span class="form-tip">将非标准 License 名修正为 SPDX 标识</span>
+        </el-form-item>
+        <el-form-item label="依赖排序去重">
+          <el-switch v-model="formatOpts.sortDeps" />
+          <span class="form-tip">BuildRequires/Requires 排序并去重</span>
+        </el-form-item>
+        <el-form-item label="Tab 转空格">
+          <el-switch v-model="formatOpts.tabToSpaces" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showFormatOptions = false">关闭</el-button>
+        <el-button type="primary" @click="showFormatOptions = false; handleFormat()">应用并格式化</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -366,10 +439,10 @@ import * as monaco from 'monaco-editor'
 import {
   getSpecTree, getSpecContent, saveSpecContent, lintSpec,
   createSpecFile, getLintRules, updateLintRule, createLintRule,
-  commitSpec, aiFixSpec,
+  commitSpec, aiFixSpec, formatSpec,
 } from '@/api/modules/spec'
 import request from '@/api/request'
-import type { SpecFileNode, LintIssue, LintRule } from '@/types/spec'
+import type { SpecFileNode, LintIssue, LintRule, FormatChange } from '@/types/spec'
 
 interface Props { repoKey: string }
 const props = defineProps<Props>()
@@ -768,6 +841,47 @@ function rejectAgentChange() {
   pendingAgentContent.value = ''
   ElMessage.info('已拒绝修改')
 }
+
+// Format
+const showFormatPreview = ref(false)
+const showFormatOptions = ref(false)
+const formatChanges = ref<FormatChange[]>([])
+const formatResult = ref('')
+const formatOpts = ref({
+  curlify: true,
+  removeClean: true,
+  removeBuildRoot: true,
+  removeGroup: false,
+  licenseSpdx: true,
+  sortDeps: true,
+  tabToSpaces: true,
+  indentSize: 4,
+})
+
+async function handleFormat() {
+  if (!content.value) { ElMessage.warning('请先选择一个 Spec 文件'); return }
+  try {
+    const result = await formatSpec(content.value, { ...formatOpts.value })
+    formatResult.value = result.content
+    formatChanges.value = result.changes || []
+    if (formatChanges.value.length === 0 && result.content === content.value) {
+      ElMessage.success('无需格式化，文件已符合规范')
+      return
+    }
+    showFormatPreview.value = true
+  } catch (e: any) {
+    ElMessage.error('格式化失败: ' + (e?.message || ''))
+  }
+}
+
+function applyFormatResult() {
+  if (!formatResult.value) return
+  content.value = formatResult.value
+  isDirty.value = content.value !== originalContent.value
+  if (editorInstance) editorInstance.setValue(content.value)
+  showFormatPreview.value = false
+  ElMessage.success('格式化已应用')
+}
 </script>
 
 <style scoped>
@@ -868,4 +982,14 @@ function rejectAgentChange() {
 .diff-content { padding: 12px; margin: 0; font-size: 12px; font-family: 'Consolas', monospace; color: #d4d4d4; line-height: 1.5; }
 
 .form-tip { margin-top: 4px; font-size: 12px; color: var(--text-color-secondary, #64748B); }
+
+/* Format Preview */
+.format-changes-list { display: flex; flex-direction: column; gap: 8px; }
+.format-stats { font-size: 13px; color: var(--text-color-secondary, #64748B); padding-bottom: 8px; border-bottom: 1px solid var(--border-color-light, #F1F5F9); }
+.format-change-item { padding: 8px 12px; background: var(--bg-color, #F8F9FC); border-radius: 6px; border: 1px solid var(--border-color-light, #F1F5F9); }
+.format-change-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.format-change-reason { font-size: 12px; color: var(--text-color-secondary, #64748B); }
+.format-change-before { font-family: 'Consolas', monospace; font-size: 12px; color: #ef4444; padding: 2px 0; white-space: pre-wrap; word-break: break-all; }
+.format-change-after { font-family: 'Consolas', monospace; font-size: 12px; color: #22c55e; padding: 2px 0; white-space: pre-wrap; word-break: break-all; }
+.format-no-changes { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: var(--success-color, #10B981); font-size: 14px; }
 </style>

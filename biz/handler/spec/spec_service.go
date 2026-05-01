@@ -774,3 +774,58 @@ func AIFixSpec(ctx context.Context, c *app.RequestContext) {
 	}
 	response.Success(c, api.AIFixResponse{Content: result})
 }
+
+// FormatSpec .
+// @router /api/v1/spec/format [POST]
+func FormatSpec(ctx context.Context, c *app.RequestContext) {
+	var err error
+	var req spec.FormatSpecRequest
+	err = c.BindAndValidate(&req)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	content := req.GetContent()
+	if content == "" {
+		response.BadRequest(c, "content is required")
+		return
+	}
+
+	opts := specService.FormatOptions{
+		Curlify:         req.GetCurlify(),
+		RemoveClean:     req.GetRemoveClean(),
+		RemoveBuildRoot: req.GetRemoveBuildRoot(),
+		RemoveGroup:     req.GetRemoveGroup(),
+		LicenseSPDX:     req.GetLicenseSpdx(),
+		SortDeps:        req.GetSortDeps(),
+		TabToSpaces:     req.GetTabToSpaces(),
+		IndentSize:      int(req.GetIndentSize()),
+	}
+
+	formatter := specService.NewSpecFormatter()
+	formatted, changes, err := formatter.Format(content, opts)
+	if err != nil {
+		response.InternalError(c, err)
+		return
+	}
+
+	var dtos []api.FormatChangeDTO
+	for _, ch := range changes {
+		dtos = append(dtos, api.FormatChangeDTO{
+			Line:   ch.Line,
+			Type:   ch.Type,
+			Before: ch.Before,
+			After:  ch.After,
+			Reason: ch.Reason,
+		})
+	}
+	if dtos == nil {
+		dtos = []api.FormatChangeDTO{}
+	}
+
+	response.Success(c, api.FormatResponse{
+		Content: formatted,
+		Changes: dtos,
+	})
+}

@@ -221,3 +221,16 @@ type SpecContentResponse struct {
 	Content string `json:"content"`
 	Path    string `json:"path"`
 }
+
+type FormatChangeDTO struct {
+	Line   int    `json:"line"`
+	Type   string `json:"type"`
+	Before string `json:"before"`
+	After  string `json:"after"`
+	Reason string `json:"reason"`
+}
+
+type FormatResponse struct {
+	Content string             `json:"content"`
+	Changes []FormatChangeDTO  `json:"changes"`
+}

@@ -78,6 +78,11 @@ service SpecService {
     rpc AIFixSpec(AIFixRequest) returns (AIFixResponse) {
         option (api.post) = "/api/v1/spec/ai-fix";
     }
+
+    // 格式化 API
+    rpc FormatSpec(FormatSpecRequest) returns (FormatSpecResponse) {
+        option (api.post) = "/api/v1/spec/format";
+    }
 }
 
 // Spec 树响应
@@ -300,4 +305,33 @@ message AIFixRequest {
 message AIFixResponse {
     optional common.BaseResponse base = 1;
     optional string content = 2;
+}
+
+// 格式化请求
+message FormatSpecRequest {
+    optional string content = 1;
+    optional bool curlify = 2 [default = true];
+    optional bool remove_clean = 3 [default = true];
+    optional bool remove_build_root = 4 [default = true];
+    optional bool remove_group = 5 [default = false];
+    optional bool license_spdx = 6 [default = true];
+    optional bool sort_deps = 7 [default = true];
+    optional bool tab_to_spaces = 8 [default = true];
+    optional int32 indent_size = 9 [default = 4];
+}
+
+// 格式化变更
+message FormatChange {
+    optional int32 line = 1;
+    optional string type = 2;
+    optional string before = 3;
+    optional string after = 4;
+    optional string reason = 5;
+}
+
+// 格式化响应
+message FormatSpecResponse {
+    optional common.BaseResponse base = 1;
+    optional string content = 2;
+    repeated FormatChange changes = 3;
 }
