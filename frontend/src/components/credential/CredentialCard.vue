@@ -109,12 +109,13 @@ function sshKeyClass(t: string): string {
 <style scoped>
 .cred-card {
   border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-color-page);
+  border: 1px solid var(--border-color);
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .card-top {
@@ -149,12 +150,12 @@ function sshKeyClass(t: string): string {
 }
 
 .type-badge.type-token {
-  background: #EEF2FF;
+  background: var(--accent-bg);
   color: #6366F1;
 }
 
 .type-badge.type-default {
-  background: var(--accent-bg, #EEF2FF);
+  background: var(--accent-bg);
   color: var(--text-color-secondary);
 }
 
@@ -185,7 +186,7 @@ function sshKeyClass(t: string): string {
 }
 
 .btn-edit:hover {
-  background: #EEF2FF;
+  background: var(--accent-bg);
 }
 
 .btn-delete {
@@ -199,7 +200,7 @@ function sshKeyClass(t: string): string {
 
 .card-url {
   font-size: 12px;
-  color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -246,7 +247,7 @@ function sshKeyClass(t: string): string {
 }
 
 .secret-tag.tag-default {
-  background: var(--accent-bg, #EEF2FF);
+  background: var(--accent-bg);
   color: var(--text-color-secondary);
 }
 
@@ -262,7 +263,7 @@ function sshKeyClass(t: string): string {
 }
 
 .meta-type.type-info {
-  background: #EEF2FF;
+  background: var(--accent-bg);
   color: #6366F1;
 }
 
@@ -272,7 +273,7 @@ function sshKeyClass(t: string): string {
 }
 
 .meta-type.type-default {
-  background: var(--accent-bg, #EEF2FF);
+  background: var(--accent-bg);
   color: var(--text-color-secondary);
 }
 </style>

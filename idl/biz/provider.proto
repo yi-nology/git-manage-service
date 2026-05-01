@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package provider;
+
+option go_package = "provider";
+
+import "api.proto";
+import "common.proto";
+
+message ProviderConfig {
+  uint64 id = 1;
+  string name = 2;
+  string platform = 3;
+  string base_url = 4;
+  uint64 credential_id = 5;
+  string webhook_secret = 6;
+  bool skip_tls = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message RemoteRepo {
+  string name = 1;
+  string full_name = 2;
+  string description = 3;
+  string url = 4;
+  string ssh_url = 5;
+  string default_branch = 6;
+  bool is_private = 7;
+}
+
+message RemoteBranch {
+  string name = 1;
+  string commit_id = 2;
+}
+
+message ListProvidersRequest {}
+
+message ListProvidersResponse {
+  common.BaseResponse base = 1;
+  repeated ProviderConfig data = 2;
+}
+
+message GetProviderRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+message ProviderResponse {
+  common.BaseResponse base = 1;
+  ProviderConfig data = 2;
+}
+
+message CreateProviderRequest {
+  string name = 1 [(api.body) = "name"];
+  string platform = 2 [(api.body) = "platform"];
+  string base_url = 3 [(api.body) = "base_url"];
+  uint64 credential_id = 4 [(api.body) = "credential_id"];
+  string webhook_secret = 5 [(api.body) = "webhook_secret"];
+  bool skip_tls = 6 [(api.body) = "skip_tls"];
+}
+
+message UpdateProviderRequest {
+  uint64 id = 1 [(api.path) = "id"];
+  string name = 2 [(api.body) = "name"];
+  string base_url = 3 [(api.body) = "base_url"];
+  uint64 credential_id = 4 [(api.body) = "credential_id"];
+  string webhook_secret = 5 [(api.body) = "webhook_secret"];
+  bool skip_tls = 6 [(api.body) = "skip_tls"];
+}
+
+message DeleteProviderRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+message TestProviderRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+message TestProviderResponse {
+  common.BaseResponse base = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message ListRemoteReposRequest {
+  uint64 id = 1 [(api.path) = "id"];
+  int32 page = 2 [(api.query) = "page"];
+  int32 per_page = 3 [(api.query) = "per_page"];
+  string owner = 4 [(api.query) = "owner"];
+}
+
+message ListRemoteReposResponse {
+  common.BaseResponse base = 1;
+  repeated RemoteRepo data = 2;
+}
+
+message ListRemoteBranchesRequest {
+  uint64 provider_id = 1 [(api.query) = "provider_id"];
+  string owner = 2 [(api.query) = "owner"];
+  string repo = 3 [(api.query) = "repo"];
+}
+
+message ListRemoteBranchesResponse {
+  common.BaseResponse base = 1;
+  repeated RemoteBranch data = 2;
+}
+
+message CreateRemoteBranchRequest {
+  uint64 provider_id = 1 [(api.body) = "provider_id"];
+  string owner = 2 [(api.body) = "owner"];
+  string repo = 3 [(api.body) = "repo"];
+  string branch = 4 [(api.body) = "branch"];
+  string ref = 5 [(api.body) = "ref"];
+}
+
+message CreateRemoteBranchResponse {
+  common.BaseResponse base = 1;
+  RemoteBranch data = 2;
+}
+
+message DeleteRemoteBranchRequest {
+  uint64 provider_id = 1 [(api.body) = "provider_id"];
+  string owner = 2 [(api.body) = "owner"];
+  string repo = 3 [(api.body) = "repo"];
+  string branch = 4 [(api.body) = "branch"];
+}
+
+service ProviderService {
+  rpc List(ListProvidersRequest) returns (ListProvidersResponse) {
+    option (api.get) = "/api/v1/providers";
+  }
+  rpc Get(GetProviderRequest) returns (ProviderResponse) {
+    option (api.get) = "/api/v1/providers/:id";
+  }
+  rpc Create(CreateProviderRequest) returns (ProviderResponse) {
+    option (api.post) = "/api/v1/providers";
+  }
+  rpc Update(UpdateProviderRequest) returns (ProviderResponse) {
+    option (api.put) = "/api/v1/providers/:id";
+  }
+  rpc Delete(DeleteProviderRequest) returns (common.EmptyResponse) {
+    option (api.delete) = "/api/v1/providers/:id";
+  }
+  rpc Test(TestProviderRequest) returns (TestProviderResponse) {
+    option (api.post) = "/api/v1/providers/:id/test";
+  }
+  rpc ListRemoteRepos(ListRemoteReposRequest) returns (ListRemoteReposResponse) {
+    option (api.get) = "/api/v1/providers/:id/repos";
+  }
+  rpc ListRemoteBranches(ListRemoteBranchesRequest) returns (ListRemoteBranchesResponse) {
+    option (api.get) = "/api/v1/providers/branches";
+  }
+  rpc CreateRemoteBranch(CreateRemoteBranchRequest) returns (CreateRemoteBranchResponse) {
+    option (api.post) = "/api/v1/providers/branches/create";
+  }
+  rpc DeleteRemoteBranch(DeleteRemoteBranchRequest) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/providers/branches/delete";
+  }
+}

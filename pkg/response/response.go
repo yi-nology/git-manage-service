@@ -1,8 +1,11 @@
 package response
 
 import (
+	"log"
+
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/errno"
 )
 
@@ -83,4 +86,15 @@ func Forbidden(c *app.RequestContext, msg string) {
 // Conflict 冲突响应
 func Conflict(c *app.RequestContext, msg string) {
 	Error(c, errno.Conflict.WithMessage(msg))
+}
+
+// InternalError logs the error and returns a generic 500 response.
+// In debug mode the real error message is included; otherwise a safe generic message is used.
+func InternalError(c *app.RequestContext, err error) {
+	log.Printf("[ERROR] %v", err)
+	msg := "internal server error"
+	if configs.DebugMode {
+		msg = err.Error()
+	}
+	Error(c, errno.ServiceErr.WithMessage(msg))
 }

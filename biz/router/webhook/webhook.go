@@ -21,6 +21,7 @@ func Register(r *server.Hertz) {
 		_api := root.Group("/api", _apiMw()...)
 		{
 			_webhooks := _api.Group("/webhooks", _webhooksMw()...)
+			_webhooks.POST("/receive", append(_receiveMw(), webhook.Receive)...)
 			_webhooks.POST("/task-sync", append(_triggersyncMw(), webhook.TriggerSync)...)
 			{
 				_trigger := _webhooks.Group("/trigger", _triggerMw()...)

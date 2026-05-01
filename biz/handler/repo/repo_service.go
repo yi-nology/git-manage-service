@@ -227,13 +227,10 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	if err := repoDAO.Delete(repo); err != nil {
+	if err := repoDAO.DeleteWithBindings(repo); err != nil {
 		response.InternalServerError(c, err.Error())
 		return
 	}
-
-	bindingDAO := db.NewRepoProviderBindingDAO()
-	bindingDAO.DeleteByRepoID(repo.ID)
 
 	audit.AuditSvc.Log(c, "DELETE", "repo:"+repo.Key, nil)
 	response.Success(c, map[string]string{"message": "deleted"})

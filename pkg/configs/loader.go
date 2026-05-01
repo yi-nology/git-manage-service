@@ -39,6 +39,16 @@ func LoadConfig(configPaths []string, configName string, configType string) (Con
 	v.SetDefault("lock.type", "memory")
 	v.SetDefault("lock.redis_db", 0)
 
+	v.SetDefault("code_review.enabled", false)
+	v.SetDefault("code_review.default_llm", "")
+	v.SetDefault("code_review.max_files", 50)
+	v.SetDefault("code_review.max_diff_lines", 3000)
+	v.SetDefault("code_review.auto_review_on_mr", true)
+	v.SetDefault("code_review.block_on_high", true)
+
+	v.SetDefault("redis.addr", "localhost:6379")
+	v.SetDefault("redis.db", 0)
+
 	// Environment variables override
 	// 支持环境变量覆盖，如 STORAGE_TYPE, LOCK_REDIS_ADDR 等
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

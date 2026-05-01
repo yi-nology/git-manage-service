@@ -110,3 +110,13 @@ func _commitspecMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _aiassistspecMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _aifixspecMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

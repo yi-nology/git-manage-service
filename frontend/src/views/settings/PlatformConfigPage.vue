@@ -1,33 +1,21 @@
 <template>
   <div class="platform-config-page">
-    <div class="page-header">
-      <div class="header-left">
-        <button class="back-btn" @click="$router.push('/settings')">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </button>
-        <h2>平台配置</h2>
-      </div>
-      <div class="header-actions">
-        <button class="action-pill action-pill--primary" @click="openAddDialog">
-          <el-icon><Plus /></el-icon> 添加平台
-        </button>
-      </div>
+    <PageHeader title="平台配置" showBack backRoute="/settings">
+      <template #actions>
+        <ActionPill variant="primary" :icon="Plus" @click="openAddDialog">添加平台</ActionPill>
+      </template>
+    </PageHeader>
+
+    <div v-if="loading" class="card-wrapper">
+      <LoadingState />
     </div>
 
-    <div v-if="loading" class="empty-card">
-      <div class="loading-spinner"></div>
-      <span>加载中...</span>
-    </div>
-
-    <div v-else-if="providers.length === 0" class="empty-card">
-      <div class="empty-icon">
-        <el-icon :size="32"><Connection /></el-icon>
-      </div>
-      <div class="empty-text">暂无平台配置</div>
-      <p class="empty-hint">添加 GitLab/GitHub/Gitea 平台集成，用于 CR 同步和 Webhook 事件</p>
-      <button class="action-pill action-pill--primary" @click="openAddDialog">
-        <el-icon><Plus /></el-icon> 添加平台
-      </button>
+    <div v-else-if="providers.length === 0" class="card-wrapper">
+      <EmptyState title="暂无平台配置" description="添加 GitLab/GitHub/Gitea 平台集成，用于 CR 同步和 Webhook 事件">
+        <template #action>
+          <ActionPill variant="primary" :icon="Plus" @click="openAddDialog">添加平台</ActionPill>
+        </template>
+      </EmptyState>
     </div>
 
     <div v-else class="provider-list">
@@ -122,7 +110,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Plus, Connection, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, Connection, Edit, Delete } from '@element-plus/icons-vue'
 import {
   createProvider, updateProvider, deleteProvider, testProvider,
 } from '@/api/modules/provider'
@@ -130,6 +118,10 @@ import type { ProviderConfigDTO } from '@/api/modules/provider'
 import { listCredentials } from '@/api/modules/credential'
 import type { CredentialDTO } from '@/types/credential'
 import { useProviderStore } from '@/stores/useProviderStore'
+import PageHeader from '@/components/common/PageHeader.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import LoadingState from '@/components/common/LoadingState.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
 
 const providerStore = useProviderStore()
 
@@ -270,81 +262,22 @@ onMounted(() => {
   gap: 20px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-left h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 8px;
-  background: var(--bg-color-page, #fff);
-  color: var(--text-color-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.action-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.action-pill--primary {
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-}
-
-.action-pill--primary:hover {
-  background: #4F46E5;
+.card-wrapper {
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-color-page);
 }
 
 .provider-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
 
 .provider-card {
   border-radius: 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color);
+  background: var(--bg-color-page);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -407,14 +340,14 @@ onMounted(() => {
 }
 
 .act-btn--outline {
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   background: transparent;
   color: var(--text-color-secondary);
 }
 
 .act-btn--outline:hover:not(:disabled) {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .act-btn--danger {
@@ -458,34 +391,6 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.empty-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 0;
-  gap: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
-}
-
-.empty-icon {
-  color: var(--text-color-placeholder);
-}
-
-.empty-text {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text-color-primary);
-}
-
-.empty-hint {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-color-secondary);
-}
-
 .dialog-form {
   display: flex;
   flex-direction: column;
@@ -505,12 +410,12 @@ onMounted(() => {
 }
 
 .field-input {
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 13px;
   color: var(--text-color-primary);
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   outline: none;
   transition: border-color 0.2s;
   width: 100%;
@@ -518,7 +423,7 @@ onMounted(() => {
 }
 
 .field-input:focus {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
 }
 
 .type-selector {
@@ -529,8 +434,8 @@ onMounted(() => {
 .type-btn {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color);
+  background: var(--bg-color-page);
   font-size: 13px;
   color: var(--text-color-secondary);
   cursor: pointer;
@@ -538,8 +443,8 @@ onMounted(() => {
 }
 
 .type-btn.active {
-  background: var(--accent-primary, #6366F1);
-  border-color: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
   color: #fff;
 }
 
@@ -569,7 +474,7 @@ onMounted(() => {
 }
 
 .toggle-btn.active {
-  background: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
 }
 
 .toggle-dot {

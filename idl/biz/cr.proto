@@ -1,0 +1,171 @@
+// idl/biz/cr.proto - 变更请求(CR/MR)管理模块
+syntax = "proto3";
+
+package cr;
+
+option go_package = "cr";
+
+import "api.proto";
+import "common.proto";
+
+message CRInfo {
+  uint64 id = 1;
+  string repo_key = 2;
+  int32 cr_number = 3;
+  string title = 4;
+  string description = 5;
+  string source_branch = 6;
+  string target_branch = 7;
+  string state = 8;
+  repeated string labels = 9;
+  string url = 10;
+  string author = 11;
+  string created_at = 12;
+  string updated_at = 13;
+  uint64 provider_config_id = 14;
+  string platform_owner = 15;
+  string platform_repo = 16;
+}
+
+message CreateCRRequest {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  string title = 2 [(api.body) = "title"];
+  string description = 3 [(api.body) = "description"];
+  string source_branch = 4 [(api.body) = "source_branch"];
+  string target_branch = 5 [(api.body) = "target_branch"];
+  repeated string labels = 6 [(api.body) = "labels"];
+  bool remove_source_branch = 7 [(api.body) = "remove_source_branch"];
+}
+
+message GetCRRequest {
+  string repo_key = 1 [(api.query) = "repo_key"];
+  int32 cr_number = 2 [(api.query) = "cr_number"];
+}
+
+message ListCRsRequest {
+  string repo_key = 1 [(api.query) = "repo_key"];
+  string state = 2 [(api.query) = "state"];
+  string source_branch = 3 [(api.query) = "source_branch"];
+  string target_branch = 4 [(api.query) = "target_branch"];
+  int32 page = 5 [(api.query) = "page"];
+  int32 page_size = 6 [(api.query) = "page_size"];
+}
+
+message MergeCRRequest {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  int32 cr_number = 2 [(api.body) = "cr_number"];
+  string merge_commit_message = 3 [(api.body) = "merge_commit_message"];
+  bool squash = 4 [(api.body) = "squash"];
+  bool remove_source_branch = 5 [(api.body) = "remove_source_branch"];
+}
+
+message CloseCRRequest {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  int32 cr_number = 2 [(api.body) = "cr_number"];
+}
+
+message SyncCRsRequest {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  string state = 2 [(api.body) = "state"];
+}
+
+message DetectCRRequest {
+  string repo_key = 1 [(api.query) = "repo_key"];
+}
+
+message DetectCRResponse {
+  common.BaseResponse base = 1;
+  uint64 provider_config_id = 2;
+  string platform_owner = 3;
+  string platform_repo = 4;
+}
+
+message ListCRsByProviderRequest {
+  uint64 provider_id = 1 [(api.query) = "provider_id"];
+  string owner = 2 [(api.query) = "owner"];
+  string repo = 3 [(api.query) = "repo"];
+  string state = 4 [(api.query) = "state"];
+  int32 page = 5 [(api.query) = "page"];
+  int32 per_page = 6 [(api.query) = "per_page"];
+}
+
+message CreateCRByProviderRequest {
+  uint64 provider_id = 1 [(api.body) = "provider_id"];
+  string owner = 2 [(api.body) = "owner"];
+  string repo = 3 [(api.body) = "repo"];
+  string title = 4 [(api.body) = "title"];
+  string description = 5 [(api.body) = "description"];
+  string source_branch = 6 [(api.body) = "source_branch"];
+  string target_branch = 7 [(api.body) = "target_branch"];
+  repeated string labels = 8 [(api.body) = "labels"];
+  bool remove_source_branch = 9 [(api.body) = "remove_source_branch"];
+}
+
+message MergeCRByProviderRequest {
+  uint64 provider_id = 1 [(api.body) = "provider_id"];
+  string owner = 2 [(api.body) = "owner"];
+  string repo = 3 [(api.body) = "repo"];
+  int32 cr_number = 4 [(api.body) = "cr_number"];
+  string merge_commit_message = 5 [(api.body) = "merge_commit_message"];
+  bool squash = 6 [(api.body) = "squash"];
+  bool remove_source_branch = 7 [(api.body) = "remove_source_branch"];
+}
+
+message CloseCRByProviderRequest {
+  uint64 provider_id = 1 [(api.body) = "provider_id"];
+  string owner = 2 [(api.body) = "owner"];
+  string repo = 3 [(api.body) = "repo"];
+  int32 cr_number = 4 [(api.body) = "cr_number"];
+}
+
+message CRResponse {
+  common.BaseResponse base = 1;
+  CRInfo data = 2;
+}
+
+message ListCRsResponse {
+  common.BaseResponse base = 1;
+  repeated CRInfo items = 2;
+  int64 total = 3;
+}
+
+message SyncCRsResponse {
+  common.BaseResponse base = 1;
+  int32 synced_count = 2;
+}
+
+service CRService {
+  rpc Create(CreateCRRequest) returns (CRResponse) {
+    option (api.post) = "/api/v1/cr/create";
+  }
+  rpc Get(GetCRRequest) returns (CRResponse) {
+    option (api.get) = "/api/v1/cr/detail";
+  }
+  rpc List(ListCRsRequest) returns (ListCRsResponse) {
+    option (api.get) = "/api/v1/cr/list";
+  }
+  rpc Merge(MergeCRRequest) returns (CRResponse) {
+    option (api.post) = "/api/v1/cr/merge";
+  }
+  rpc Close(CloseCRRequest) returns (CRResponse) {
+    option (api.post) = "/api/v1/cr/close";
+  }
+  rpc Sync(SyncCRsRequest) returns (SyncCRsResponse) {
+    option (api.post) = "/api/v1/cr/sync";
+  }
+  rpc Detect(DetectCRRequest) returns (DetectCRResponse) {
+    option (api.get) = "/api/v1/cr/detect";
+  }
+  rpc ListByProvider(ListCRsByProviderRequest) returns (ListCRsResponse) {
+    option (api.get) = "/api/v1/cr/remote/list";
+  }
+  rpc CreateByProvider(CreateCRByProviderRequest) returns (CRResponse) {
+    option (api.post) = "/api/v1/cr/remote/create";
+  }
+  rpc MergeByProvider(MergeCRByProviderRequest) returns (CRResponse) {
+    option (api.post) = "/api/v1/cr/remote/merge";
+  }
+  rpc CloseByProvider(CloseCRByProviderRequest) returns (CRResponse) {
+    option (api.post) = "/api/v1/cr/remote/close";
+  }
+}

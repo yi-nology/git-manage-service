@@ -41,6 +41,8 @@ type LintIssue struct {
 	Column    int    `json:"column,omitempty"`
 	EndLine   int    `json:"endLine,omitempty"`
 	EndColumn int    `json:"endColumn,omitempty"`
+	Source    string `json:"source,omitempty"`
+	QuickFix  string `json:"quickFix,omitempty"`
 }
 
 type LintStats struct {
@@ -180,4 +182,42 @@ type DeleteSpecFileReq struct {
 	RepoKey       string `json:"repo_key" form:"repo_key"`
 	Path          string `json:"path" form:"path"`
 	CommitMessage string `json:"commit_message" form:"commit_message"`
+}
+
+type SaveSpecResponse struct {
+	Message string `json:"message"`
+	Path    string `json:"path,omitempty"`
+}
+
+type CommitResponse struct {
+	Message string `json:"message"`
+	Output  string `json:"output,omitempty"`
+}
+
+type SaveWithValidationResponse struct {
+	Message           string      `json:"message"`
+	ValidationResult  interface{} `json:"validationResult,omitempty"`
+}
+
+type CreateFileResponse struct {
+	Path    string `json:"path"`
+	Message string `json:"message"`
+}
+
+type MessageResponse struct {
+	Message string `json:"message"`
+}
+
+type AIAssistResponse struct {
+	Result       string `json:"result"`
+	ApplyContent string `json:"applyContent,omitempty"`
+}
+
+type AIFixResponse struct {
+	Content string `json:"content"`
+}
+
+type SpecContentResponse struct {
+	Content string `json:"content"`
+	Path    string `json:"path"`
 }

@@ -1,33 +1,25 @@
 <template>
   <div class="credential-page">
-    <div class="title-row">
-      <div class="title-left">
-        <h2 class="page-title">凭证管理</h2>
-        <p class="page-subtitle">统一管理 Git 仓库认证凭证</p>
-      </div>
-      <button class="add-btn" @click="router.push('/settings/credentials/add')">
-        <el-icon><Plus /></el-icon>
-        添加凭证
-      </button>
-    </div>
+    <PageHeader title="凭证管理" subtitle="统一管理 Git 仓库认证凭证">
+      <template #actions>
+        <ActionPill variant="primary" :icon="Plus" @click="router.push('/settings/credentials/add')">
+          添加凭证
+        </ActionPill>
+      </template>
+    </PageHeader>
 
     <div class="info-banner">
       <el-icon class="info-icon"><InfoFilled /></el-icon>
       <span>凭证用于 Git 仓库的认证。支持 SSH 密钥（数据库或本地文件）和 HTTP（用户名密码或 Token）。配置 URL 匹配模式后，系统将在配置仓库时自动推荐匹配的凭证。</span>
     </div>
 
-    <div v-if="loading" class="loading-card">
-      <div class="loading-spinner"></div>
-      <span>加载中...</span>
-    </div>
+    <LoadingState v-if="loading" />
 
-    <div v-else-if="credentials.length === 0" class="empty-card">
-      <div class="empty-icon">
-        <el-icon :size="32"><Key /></el-icon>
-      </div>
-      <div class="empty-text">暂无凭证</div>
-      <div class="empty-sub">点击上方按钮创建第一个凭证</div>
-    </div>
+    <EmptyState
+      v-else-if="credentials.length === 0"
+      title="暂无凭证"
+      description="点击上方按钮创建第一个凭证"
+    />
 
     <div v-else class="cred-grid">
       <CredentialCard
@@ -40,9 +32,7 @@
     </div>
 
     <div v-if="credentials.length > 0" class="test-section">
-      <div class="section-header">
-        <span class="section-title">测试凭证连接</span>
-      </div>
+      <SectionTitle title="测试凭证连接" />
       <div class="test-card">
         <div class="test-row">
           <div class="test-field">
@@ -75,10 +65,15 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, InfoFilled, Key, CircleCheck, CircleClose } from '@element-plus/icons-vue'
+import { Plus, InfoFilled, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import { listCredentials, deleteCredential, testCredential } from '@/api/modules/credential'
 import type { CredentialDTO } from '@/types/credential'
 import CredentialCard from '@/components/credential/CredentialCard.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import LoadingState from '@/components/common/LoadingState.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import SectionTitle from '@/components/common/SectionTitle.vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -140,139 +135,29 @@ onMounted(() => {
   gap: 20px;
 }
 
-.title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.title-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.page-subtitle {
-  margin: 0;
-  font-size: 13px;
-  font-weight: normal;
-  color: var(--text-color-secondary);
-}
-
-.add-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: none;
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.add-btn:hover {
-  opacity: 0.9;
-}
-
 .info-banner {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   padding: 12px 16px;
   border-radius: 8px;
-  background: var(--accent-bg, #EEF2FF);
-  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--accent-bg);
+  border: 1px solid var(--border-color);
   font-size: 13px;
   color: var(--text-color-secondary);
   line-height: 1.6;
 }
 
 .info-icon {
-  color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary);
   margin-top: 2px;
   flex-shrink: 0;
 }
 
-.loading-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 48px 24px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  color: var(--text-color-secondary);
-  font-size: 13px;
-}
-
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--border-color, #e5e7eb);
-  border-top-color: var(--accent-primary, #6366F1);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 48px 24px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-}
-
-.empty-icon {
-  color: var(--text-color-placeholder, #9ca3af);
-  margin-bottom: 4px;
-}
-
-.empty-text {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-color-primary);
-}
-
-.empty-sub {
-  font-size: 13px;
-  color: var(--text-color-secondary);
-}
-
 .cred-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-color-primary);
 }
 
 .test-section {
@@ -283,8 +168,8 @@ onMounted(() => {
 
 .test-card {
   border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-color-page);
+  border: 1px solid var(--border-color);
   padding: 20px;
 }
 
@@ -308,39 +193,39 @@ onMounted(() => {
 
 .field-select {
   padding: 8px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
   color: var(--text-color-primary);
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   min-width: 200px;
   outline: none;
 }
 
 .field-select:focus {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
 }
 
 .field-input {
   padding: 8px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
   color: var(--text-color-primary);
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   width: 100%;
   outline: none;
 }
 
 .field-input:focus {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
 }
 
 .test-btn {
   padding: 8px 16px;
   border-radius: 6px;
   border: none;
-  background: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
   color: #fff;
   font-size: 13px;
   font-weight: 500;
@@ -365,10 +250,16 @@ onMounted(() => {
 .loading-spinner-sm {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255,255,255,0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .test-result {
@@ -382,12 +273,12 @@ onMounted(() => {
 }
 
 .test-result.success {
-  background: #ECFDF5;
-  color: #10B981;
+  background: #ecfdf5;
+  color: #10b981;
 }
 
 .test-result.error {
-  background: #FEF2F2;
-  color: #EF4444;
+  background: #fef2f2;
+  color: #ef4444;
 }
 </style>

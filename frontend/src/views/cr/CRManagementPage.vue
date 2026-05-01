@@ -1,19 +1,15 @@
 <template>
   <div class="cr-page-wrapper">
-    <div class="page-header">
-      <div class="header-left">
-        <button class="back-btn" @click="$router.push(`/local-repos/${repoKey}`)">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </button>
-        <h2>{{ repoName || '仓库' }}</h2>
+    <PageHeader :title="repoName || '仓库'" showBack :backRoute="`/local-repos/${repoKey}`">
+      <template #title-suffix>
         <span v-if="currentVersion" class="version-tag">{{ currentVersion }}</span>
-      </div>
-      <div class="header-actions">
-        <button class="action-pill action-pill--primary" @click="handleSync" :disabled="syncing">
-          <el-icon><Refresh /></el-icon> {{ syncing ? '同步中...' : '同步 CR' }}
-        </button>
-      </div>
-    </div>
+      </template>
+      <template #actions>
+        <ActionPill variant="primary" :icon="Refresh" @click="handleSync" :disabled="syncing">
+          {{ syncing ? '同步中...' : '同步 CR' }}
+        </ActionPill>
+      </template>
+    </PageHeader>
 
     <div class="cr-layout">
       <RepoSidebar :repo-key="repoKey" active-key="cr" />
@@ -27,48 +23,37 @@
               {{ f.label }}
             </button>
             <div class="filter-spacer"></div>
-            <div class="filter-search">
-              <el-icon :size="14"><Search /></el-icon>
-              <input v-model="searchText" placeholder="搜索 CR..." class="search-input" />
-            </div>
+            <SearchBar v-model="searchText" placeholder="搜索 CR..." />
           </div>
 
-        <div class="table-card" v-if="filteredCRs.length > 0">
-          <div class="table-header">
-            <span class="th" style="width:60px">CR</span>
-            <span class="th" style="flex:1">标题</span>
-            <span class="th" style="width:80px">平台</span>
-            <span class="th" style="width:140px">源分支</span>
-            <span class="th" style="width:140px">目标分支</span>
-            <span class="th" style="width:80px">状态</span>
-            <span class="th" style="width:100px">作者</span>
-          </div>
-          <div v-for="row in filteredCRs" :key="row.id" class="table-row">
-            <span class="td td-id" style="width:60px">#{{ row.cr_number }}</span>
-            <span class="td td-title" style="flex:1" :title="row.title">{{ row.title }}</span>
-            <span class="td" style="width:80px">
+          <DataTable v-if="filteredCRs.length > 0 || loading" :columns="crColumns" :data="filteredCRs" :loading="loading" row-key="id">
+            <template #cell-cr_number="{ row }">
+              <span class="td-id">#{{ row.cr_number }}</span>
+            </template>
+            <template #cell-title="{ row }">
+              <span class="td-title" :title="row.title">{{ row.title }}</span>
+            </template>
+            <template #cell-platform="{ row }">
               <span class="platform-tag">
                 <span class="platform-dot" :style="{ background: platformColor(row.platform) }"></span>
                 {{ platformLabel(row.platform) }}
               </span>
-            </span>
-            <span class="td td-mono" style="width:140px">{{ row.source_branch }}</span>
-            <span class="td td-mono" style="width:140px">{{ row.target_branch }}</span>
-            <span class="td" style="width:80px">
-              <span class="status-pill" :class="'status-' + row.state">{{ stateLabel(row.state) }}</span>
-            </span>
-            <span class="td" style="width:100px">{{ row.author_name }}</span>
-          </div>
-        </div>
+            </template>
+            <template #cell-source_branch="{ row }">
+              <span class="mono">{{ row.source_branch }}</span>
+            </template>
+            <template #cell-target_branch="{ row }">
+              <span class="mono">{{ row.target_branch }}</span>
+            </template>
+            <template #cell-state="{ row }">
+              <StatusBadge :variant="crStateVariant(row.state)" :text="stateLabel(row.state)" :showDot="false" />
+            </template>
+          </DataTable>
 
-        <div v-else-if="!loading" class="empty-state">
-          <el-icon class="empty-icon"><Share /></el-icon>
-          <h3>暂无 CR</h3>
-          <p>点击"同步"从远程平台拉取 Change Request</p>
+          <EmptyState v-else-if="!loading" title="暂无 CR" description="点击「同步」从远程平台拉取 Change Request" />
         </div>
       </div>
     </div>
-  </div>
   </div>
 </template>
 
@@ -76,12 +61,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Refresh, Search, Share } from '@element-plus/icons-vue'
+import { Refresh } from '@element-plus/icons-vue'
 import { listCRs, syncCRs } from '@/api/modules/cr'
 import type { CRDTO } from '@/api/modules/cr'
 import RepoSidebar from '@/components/repo/RepoSidebar.vue'
 import { getRepoDetail } from '@/api/modules/repo'
 import { getCurrentVersion } from '@/api/modules/version'
+import PageHeader from '@/components/common/PageHeader.vue'
+import DataTable from '@/components/common/DataTable.vue'
+import type { TableColumn } from '@/components/common/DataTable.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import SearchBar from '@/components/common/SearchBar.vue'
 
 const route = useRoute()
 const repoKey = route.params.repoKey as string
@@ -96,9 +88,9 @@ const currentVersion = ref('')
 
 const filters = [
   { key: 'all', label: '全部' },
-  { key: 'opened', label: 'Open' },
-  { key: 'merged', label: 'Merged' },
-  { key: 'closed', label: 'Closed' },
+  { key: 'opened', label: '进行中' },
+  { key: 'merged', label: '已合并' },
+  { key: 'closed', label: '已关闭' },
 ]
 
 const PLATFORM_COLORS: Record<string, string> = { gitlab: '#FC6D26', github: '#24292F', gitea: '#609926' }
@@ -107,10 +99,28 @@ const PLATFORM_LABELS: Record<string, string> = { gitlab: 'GitLab', github: 'Git
 function platformColor(p?: string) { return PLATFORM_COLORS[p || ''] || '#6B7280' }
 function platformLabel(p?: string) { return PLATFORM_LABELS[p || ''] || p || '-' }
 function stateLabel(s: string) {
-  if (s === 'opened') return 'Open'
-  if (s === 'merged') return 'Merged'
+  if (s === 'opened') return '进行中'
+  if (s === 'merged') return '已合并'
+  if (s === 'closed') return '已关闭'
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
+
+function crStateVariant(s: string): 'success' | 'info' | 'danger' | 'default' {
+  if (s === 'opened') return 'success'
+  if (s === 'merged') return 'info'
+  if (s === 'closed') return 'danger'
+  return 'default'
+}
+
+const crColumns: TableColumn[] = [
+  { key: 'cr_number', label: 'CR', width: '60px' },
+  { key: 'title', label: '标题' },
+  { key: 'platform', label: '平台', width: '80px' },
+  { key: 'source_branch', label: '源分支', width: '140px' },
+  { key: 'target_branch', label: '目标分支', width: '140px' },
+  { key: 'state', label: '状态', width: '80px' },
+  { key: 'author_name', label: '作者', width: '100px' },
+]
 
 const filteredCRs = computed(() => {
   let list = crs.value
@@ -163,86 +173,16 @@ onMounted(async () => {
   gap: 20px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-left h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 8px;
-  background: var(--bg-color-page, #fff);
-  color: var(--text-color-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
 .version-tag {
   display: inline-flex;
   align-items: center;
   padding: 2px 10px;
   border-radius: 6px;
-  background: #EEF2FF;
+  background: var(--accent-bg);
   color: #6366F1;
   font-size: 12px;
   font-weight: 500;
   font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.action-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.action-pill--primary {
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-}
-
-.action-pill--primary:hover:not(:disabled) {
-  background: #4F46E5;
-}
-
-.action-pill:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .cr-layout {
@@ -265,55 +205,24 @@ onMounted(async () => {
 
 .filter-btn {
   display: flex; align-items: center; gap: 4px; padding: 8px 16px;
-  border-radius: 8px; border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff); font-size: 13px;
+  border: none; border-bottom: 2px solid transparent;
+  border-radius: 0; background: transparent; font-size: 13px;
   color: var(--text-color-secondary); cursor: pointer; transition: all 0.2s;
 }
-.filter-btn.active { background: var(--accent-primary, #6366F1); border-color: var(--accent-primary, #6366F1); color: #fff; }
-.filter-btn.active .filter-dot { background: #fff !important; }
+.filter-btn.active { background: transparent; border-bottom: 2px solid var(--accent-primary); color: var(--accent-primary); font-weight: 500; }
+.filter-btn:hover { color: var(--accent-primary); }
+.filter-btn.active .filter-dot { }
 .filter-dot { width: 8px; height: 8px; border-radius: 50%; }
 .filter-spacer { flex: 1; }
 
-.filter-search {
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-  border-radius: 8px; border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff); color: var(--text-color-secondary, #94A3B8); font-size: 13px;
-}
-.search-input { border: none; outline: none; background: transparent; font-size: 13px; color: var(--text-color-primary); width: 120px; }
-
-.table-card {
-  border-radius: 12px; border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff); overflow: hidden;
-}
-
-.table-header { display: flex; align-items: center; padding: 12px 20px; background: #EEF2FF; }
-.th { font-size: 12px; font-weight: 600; color: var(--text-color-secondary); }
-
-.table-row {
-  display: flex; align-items: center; padding: 12px 20px;
-  border-bottom: 1px solid var(--border-color, #e5e7eb); transition: background 0.15s;
-}
-.table-row:last-child { border-bottom: none; }
-.table-row:hover { background: #F8FAFC; }
-
-.td { font-size: 13px; color: var(--text-color-secondary); }
-.td-id { color: var(--accent-primary, #6366F1); font-weight: 600; }
+.td-id { color: var(--accent-primary); font-weight: 600; }
 .td-title { color: var(--text-color-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.td-mono { font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; font-size: 12px; }
 
 .platform-tag { display: flex; align-items: center; gap: 4px; font-size: 11px; }
 .platform-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-.status-pill {
-  display: inline-block; padding: 4px 8px; border-radius: 9999px;
-  font-size: 11px; font-weight: 500; text-align: center; width: 64px;
+.mono {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 12px;
 }
-.status-opened { background: #ECFDF5; color: #059669; }
-.status-merged { background: #EFF6FF; color: #2563EB; }
-.status-closed { background: #FEF2F2; color: #DC2626; }
-
-.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 0; gap: 12px; }
-.empty-icon { font-size: 48px; color: var(--text-color-placeholder); }
-.empty-state h3 { margin: 0; font-size: 16px; color: var(--text-color-primary); }
-.empty-state p { margin: 0; font-size: 13px; color: var(--text-color-secondary); }
 </style>

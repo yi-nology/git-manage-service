@@ -417,3 +417,31 @@ func (g *giteaProvider) CreateBranch(ctx context.Context, owner, repo, branch, r
 func (g *giteaProvider) DeleteBranch(ctx context.Context, owner, repo, branch string) error {
 	return g.doRequest(ctx, "DELETE", fmt.Sprintf("/api/v1/repos/%s/%s/branches/%s", owner, repo, branch), nil, nil)
 }
+
+func (g *giteaProvider) GetCRDiff(ctx context.Context, owner, repo string, number int) (*MergeDiff, error) {
+	return nil, fmt.Errorf("GetCRDiff not yet implemented for Gitea")
+}
+
+func (g *giteaProvider) GetCRFiles(ctx context.Context, owner, repo string, number int) ([]*ChangedFile, error) {
+	return nil, fmt.Errorf("GetCRFiles not yet implemented for Gitea")
+}
+
+func (g *giteaProvider) CreateNote(ctx context.Context, owner, repo string, number int, body string) (string, error) {
+	return "", fmt.Errorf("CreateNote not yet implemented for Gitea")
+}
+
+func (g *giteaProvider) CreateDiscussion(ctx context.Context, owner, repo string, number int, opts DiscussionOptions) (string, error) {
+	return "", fmt.Errorf("CreateDiscussion not yet implemented for Gitea")
+}
+
+func (g *giteaProvider) CreateCommitStatus(ctx context.Context, owner, repo, sha string, opts CommitStatusOptions) error {
+	return fmt.Errorf("CreateCommitStatus not yet implemented for Gitea")
+}
+
+func (g *giteaProvider) GetFileContent(ctx context.Context, owner, repo, path, ref string) (string, error) {
+	return "", fmt.Errorf("GetFileContent not yet implemented for Gitea")
+}
+
+func (g *giteaProvider) UpdateCRLabels(ctx context.Context, owner, repo string, number int, labels []string) error {
+	return fmt.Errorf("UpdateCRLabels not yet implemented for Gitea")
+}

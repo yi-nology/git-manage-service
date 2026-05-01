@@ -34,6 +34,34 @@ func GetTree(ctx context.Context, c *app.RequestContext) {
 	}
 
 	gitSvc := git.NewGitService()
+
+	if ref == "worktree" {
+		entries, err := gitSvc.GetWorktree(repo.Path, req.Path)
+		if err != nil {
+			response.InternalServerError(c, err.Error())
+			return
+		}
+
+		var treeEntries []*file.TreeEntry
+		for _, e := range entries {
+			treeEntries = append(treeEntries, &file.TreeEntry{
+				Name: e.Name,
+				Path: e.Path,
+				Type: e.Type,
+				Size: e.Size,
+				Mode: e.Mode,
+				Hash: e.Hash,
+			})
+		}
+
+		response.Success(c, map[string]interface{}{
+			"entries":      treeEntries,
+			"current_ref":  "worktree",
+			"current_path": req.Path,
+		})
+		return
+	}
+
 	entries, err := gitSvc.GetTree(repo.Path, ref, req.Path, req.Recursive)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
@@ -82,6 +110,23 @@ func GetBlob(ctx context.Context, c *app.RequestContext) {
 	}
 
 	gitSvc := git.NewGitService()
+
+	if ref == "worktree" {
+		blob, err := gitSvc.GetWorktreeBlob(repo.Path, req.Path)
+		if err != nil {
+			response.InternalServerError(c, err.Error())
+			return
+		}
+		response.Success(c, map[string]interface{}{
+			"content":   blob.Content,
+			"encoding":  blob.Encoding,
+			"size":      blob.Size,
+			"is_binary": blob.IsBinary,
+			"mime_type": blob.MimeType,
+		})
+		return
+	}
+
 	blob, err := gitSvc.GetBlob(repo.Path, ref, req.Path)
 	if err != nil {
 		response.InternalServerError(c, err.Error())

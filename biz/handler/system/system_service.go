@@ -367,7 +367,7 @@ return POSIX path of (choose folder with prompt "%s")`, title)
 	if err != nil {
 		// 检查是否是用户取消
 		errMsg := err.Error()
-		if strings.Contains(errMsg, "User canceled") || strings.Contains(errMsg, "用户取消") {
+		if strings.Contains(errMsg, "User canceled") || strings.Contains(errMsg, "用户取消") || strings.Contains(errMsg, "用户已取消") || strings.Contains(errMsg, "-128") {
 			response.Success(c, map[string]string{"path": "", "cancelled": "true"})
 			return
 		}

@@ -1,24 +1,14 @@
 <template>
   <div class="sync-page">
-    <div class="page-header">
-      <div class="header-left">
-        <button class="back-btn" @click="$router.push(`/local-repos/${repoKey}`)">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </button>
-        <h2>Git 同步管理</h2>
-      </div>
-      <div class="header-actions">
-        <button class="action-pill action-pill--green" @click="handleBatchSync" :disabled="selectedTasks.length === 0">
-          <el-icon><Refresh /></el-icon> 同步选中 ({{ selectedTasks.length }})
-        </button>
-        <button class="action-pill action-pill--primary" @click="openQuickSync">
-          <el-icon><Plus /></el-icon> 快速同步
-        </button>
-        <button class="action-pill action-pill--outline" @click="openAddTask">
-          <el-icon><Setting /></el-icon> 新建规则
-        </button>
-      </div>
-    </div>
+    <PageHeader title="同步任务" showBack :backRoute="`/local-repos/${repoKey}`">
+      <template #actions>
+        <ActionPill variant="green" :icon="Refresh" @click="handleBatchSync" :disabled="selectedTasks.length === 0">
+          同步选中 ({{ selectedTasks.length }})
+        </ActionPill>
+        <ActionPill variant="primary" :icon="Plus" @click="openQuickSync">快速同步</ActionPill>
+        <ActionPill variant="outline" :icon="Setting" @click="openAddTask">新建规则</ActionPill>
+      </template>
+    </PageHeader>
 
     <div v-if="showQuickPanel" class="quick-sync-panel">
       <div class="qp-title">
@@ -55,8 +45,8 @@
           <el-checkbox v-model="quickForm.gitPrune">--prune</el-checkbox>
         </div>
         <div class="qp-actions">
-          <button class="action-pill action-pill--outline" @click="handlePreview" :disabled="previewing">预览</button>
-          <button class="action-pill action-pill--primary" @click="handleQuickSync" :disabled="syncing">执行</button>
+          <ActionPill variant="outline" @click="handlePreview" :disabled="previewing">预览</ActionPill>
+          <ActionPill variant="primary" @click="handleQuickSync" :disabled="syncing">执行</ActionPill>
         </div>
       </div>
       <div v-if="previewResult" class="qp-preview">
@@ -72,7 +62,7 @@
       </div>
     </div>
 
-    <h3 class="section-title">同步任务列表</h3>
+    <SectionTitle title="同步任务列表" />
     <div v-loading="loading" class="task-list">
       <el-empty v-if="tasks.length === 0 && !loading" description="暂无同步规则">
         <el-button type="primary" @click="openAddTask">创建第一条规则</el-button>
@@ -80,10 +70,8 @@
 
       <el-card v-for="task in tasks" :key="task.key" class="task-card" :class="{ disabled: !task.enabled }">
         <div class="task-content">
-          <!-- Checkbox -->
           <el-checkbox v-model="selectedTasks" :value="task.key" class="task-checkbox" />
-          
-          <!-- Direction -->
+
           <div class="direction-flow">
             <div class="endpoint source">
               <span class="label">{{ task.source_remote }}</span>
@@ -99,7 +87,6 @@
             </div>
           </div>
 
-          <!-- Status -->
           <div class="task-status">
             <el-tag :type="task.enabled ? 'success' : 'info'" size="small">
               {{ task.enabled ? '✅ 已启用' : '⏸️ 已暂停' }}
@@ -109,7 +96,6 @@
             </span>
           </div>
 
-          <!-- Git Options -->
           <div class="git-options">
             <el-tag v-if="task.git_tags" size="small" effect="plain">--tags</el-tag>
             <el-tag v-if="task.git_force" size="small" type="warning" effect="plain">--force</el-tag>
@@ -117,7 +103,6 @@
             <el-tag v-if="task.git_no_verify" size="small" effect="plain">--no-verify</el-tag>
           </div>
 
-          <!-- Actions -->
           <div class="task-actions">
             <el-button size="small" type="success" @click="handleRun(task.key)" :icon="CaretRight" round>执行</el-button>
             <el-button size="small" @click="showHistory(task.key)" :icon="Clock" round>历史</el-button>
@@ -138,7 +123,6 @@
       </el-card>
     </div>
 
-    <!-- Task Dialog -->
     <el-dialog v-model="showTaskDialog" :title="editingTask ? '编辑同步规则' : '新建同步规则'" width="700px" destroy-on-close>
       <el-form :model="taskForm" label-width="100px">
         <el-form-item label="同步模式">
@@ -194,7 +178,7 @@
         <el-alert v-if="taskForm.source_remote === taskForm.target_remote" title="源和目标不能相同" type="warning" :closable="false" show-icon class="mb-3" />
 
         <el-divider content-position="left">Git 选项</el-divider>
-        
+
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item>
@@ -235,7 +219,6 @@
       </template>
     </el-dialog>
 
-    <!-- History Dialog -->
     <el-dialog v-model="showHistoryDialog" title="同步历史" width="900px">
       <el-table :data="historyList" size="small" border>
         <el-table-column prop="start_time" label="时间" width="160">
@@ -265,7 +248,6 @@
       </el-table>
     </el-dialog>
 
-    <!-- Log Dialog -->
     <el-dialog v-model="showLogDialog" title="执行详情" width="700px">
       <pre class="log-content">{{ logContent }}</pre>
     </el-dialog>
@@ -277,7 +259,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  ArrowLeft, Plus, Setting, Refresh, Close, Right, CaretRight, Clock,
+  Plus, Setting, Refresh, Close, Right, CaretRight, Clock,
   AlarmClock, More
 } from '@element-plus/icons-vue'
 import {
@@ -289,6 +271,9 @@ import { getBranchList } from '@/api/modules/branch'
 import type { BranchInfo } from '@/types/branch'
 import type { SyncTaskDTO, SyncRunDTO, PreviewSyncResponse } from '@/types/sync'
 import { formatDate, getStatusColor } from '@/utils/format'
+import PageHeader from '@/components/common/PageHeader.vue'
+import SectionTitle from '@/components/common/SectionTitle.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
 
 const route = useRoute()
 const repoKey = route.params.repoKey as string
@@ -303,7 +288,6 @@ const remoteNames = ref<string[]>([])
 const allBranches = ref<BranchInfo[]>([])
 const selectedTasks = ref<string[]>([])
 
-// Branches available for the currently selected source remote
 const sourceBranches = computed(() => {
   const remote = taskForm.value.source_remote
   if (remote === 'local') {
@@ -315,12 +299,10 @@ const sourceBranches = computed(() => {
     .map(b => b.name.slice(prefix.length))
 })
 
-// Target branch options: local branches (user can also type custom)
 const targetBranches = computed(() => {
   return allBranches.value.filter(b => b.type === 'local').map(b => b.name)
 })
 
-// Quick sync
 const showQuickPanel = ref(false)
 const quickForm = ref({
   sourceRemote: 'local',
@@ -333,7 +315,6 @@ const quickForm = ref({
 })
 const previewResult = ref<PreviewSyncResponse | null>(null)
 
-// Task dialog
 const showTaskDialog = ref(false)
 const editingTask = ref<SyncTaskDTO | null>(null)
 const taskForm = ref({
@@ -350,7 +331,6 @@ const taskForm = ref({
   git_no_verify: false,
 })
 
-// History dialog
 const showHistoryDialog = ref(false)
 const historyList = ref<SyncRunDTO[]>([])
 const showLogDialog = ref(false)
@@ -375,7 +355,6 @@ function getTriggerLabel(source: string) {
 }
 
 function onSourceRemoteChange() {
-  // Reset source branch when remote changes (old value may not exist in new list)
   taskForm.value.source_branch = ''
 }
 
@@ -390,7 +369,6 @@ onMounted(async () => {
       taskForm.value.target_remote = remoteNames.value[0] || ''
     }
   } catch { /* ignore */ }
-  // Load branches for dropdown
   branchLoading.value = true
   try {
     const result = await getBranchList(repoKey, { page_size: 500 })
@@ -507,10 +485,9 @@ async function handleQuickSync() {
       return
     }
   }
-  
+
   syncing.value = true
   try {
-    // Create a temporary task and run it
     const result = await createSyncTask({
       source_repo_key: repoKey,
       target_repo_key: repoKey,
@@ -543,7 +520,7 @@ async function handleRun(key: string) {
 
 async function handleBatchSync() {
   if (selectedTasks.value.length === 0) return
-  
+
   try {
     await ElMessageBox.confirm(`确定同步 ${selectedTasks.value.length} 个规则？`, '批量同步', { type: 'info' })
     await batchSync(selectedTasks.value)
@@ -600,95 +577,6 @@ function showLog(details: string) {
   gap: 20px;
   min-height: 100vh;
   background: var(--bg-color);
-}
-
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-left h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-color-secondary);
-  background: none;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-sm);
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.back-btn:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  padding: 8px 16px;
-  border-radius: var(--border-radius-md);
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-family: var(--font-family);
-}
-
-.action-pill:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.action-pill--green {
-  background: #ECFDF5;
-  color: var(--success-color);
-}
-.action-pill--green:hover:not(:disabled) {
-  background: #D1FAE5;
-}
-
-.action-pill--primary {
-  background: var(--primary-color);
-  color: #FFFFFF;
-}
-.action-pill--primary:hover:not(:disabled) {
-  background: var(--primary-color-hover);
-}
-
-.action-pill--outline {
-  background: transparent;
-  color: var(--text-color-primary);
-  border: 1px solid var(--border-color);
-}
-.action-pill--outline:hover:not(:disabled) {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
 }
 
 .quick-sync-panel {
@@ -770,13 +658,6 @@ function showLog(details: string) {
 
 .qp-preview {
   margin-top: 0;
-}
-
-.section-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-color-primary);
 }
 
 .task-list {
@@ -902,11 +783,6 @@ function showLog(details: string) {
 @media (max-width: 768px) {
   .sync-page {
     padding: var(--spacing-md);
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
   }
 
   .qp-body {

@@ -55,6 +55,31 @@ rpc:
 
 # 6. Lint Configuration
 lint:
-  # Enable rpmlint integration (optional, only works if rpmlint is installed on the system)
-  # rpmlint provides additional linting for RPM spec files
   enable_rpmlint: true
+
+# 7. Code Review Configuration
+code_review:
+  enabled: false
+  default_llm: "qwen"
+  max_files: 50
+  max_diff_lines: 3000
+  auto_review_on_mr: true
+  block_on_high: true
+  llm_providers: []
+  # - name: "qwen"
+  #   type: "openai_compatible"
+  #   base_url: "http://llm-gateway.internal/v1"
+  #   api_key: ""
+  #   model: "qwen2.5-coder"
+  #   max_tokens: 4096
+  # - name: "ollama"
+  #   type: "ollama"
+  #   base_url: "http://localhost:11434"
+  #   model: "qwen2.5-coder:7b"
+  #   max_tokens: 4096
+
+# 8. Redis Configuration (for Asynq task queue)
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0

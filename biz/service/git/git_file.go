@@ -5,7 +5,9 @@ package git
 import (
 	"encoding/base64"
 	"io"
+	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -128,7 +130,60 @@ func (s *GitService) GetTree(repoPath, ref, dirPath string, recursive bool) ([]T
 	return entries, err
 }
 
-// GetBlob 获取文件内容
+func (s *GitService) GetWorktree(repoPath, dirPath string) ([]TreeEntry, error) {
+	fullPath := filepath.Join(repoPath, dirPath)
+	entries, err := os.ReadDir(fullPath)
+	if err != nil {
+		return nil, err
+	}
+
+	skipDirs := map[string]bool{".git": true}
+
+	var result []TreeEntry
+	for _, e := range entries {
+		name := e.Name()
+		if skipDirs[name] {
+			continue
+		}
+
+		entryPath := name
+		if dirPath != "" {
+			entryPath = filepath.Join(dirPath, name)
+		}
+		entryPath = filepath.ToSlash(entryPath)
+
+		if e.IsDir() {
+			result = append(result, TreeEntry{
+				Name: name,
+				Path: entryPath,
+				Type: "dir",
+				Mode: filemode.Dir.String(),
+			})
+		} else {
+			info, err := e.Info()
+			if err != nil {
+				continue
+			}
+			result = append(result, TreeEntry{
+				Name: name,
+				Path: entryPath,
+				Type: "file",
+				Size: info.Size(),
+				Mode: filemode.Regular.String(),
+			})
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Type != result[j].Type {
+			return result[i].Type == "dir"
+		}
+		return result[i].Name < result[j].Name
+	})
+
+	return result, nil
+}
+
 func (s *GitService) GetBlob(repoPath, ref, filePath string) (*BlobContent, error) {
 	r, err := s.openRepo(repoPath)
 	if err != nil {
@@ -165,6 +220,32 @@ func (s *GitService) GetBlob(repoPath, ref, filePath string) (*BlobContent, erro
 
 	result := &BlobContent{
 		Size:     file.Size,
+		IsBinary: isBinary,
+		MimeType: getMimeType(filePath),
+	}
+
+	if isBinary {
+		result.Content = base64.StdEncoding.EncodeToString(content)
+		result.Encoding = "base64"
+	} else {
+		result.Content = string(content)
+		result.Encoding = "utf-8"
+	}
+
+	return result, nil
+}
+
+func (s *GitService) GetWorktreeBlob(repoPath, filePath string) (*BlobContent, error) {
+	fullPath := filepath.Join(repoPath, filePath)
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		return nil, err
+	}
+
+	isBinary := !utf8.Valid(content) || containsNullByte(content)
+
+	result := &BlobContent{
+		Size:     int64(len(content)),
 		IsBinary: isBinary,
 		MimeType: getMimeType(filePath),
 	}

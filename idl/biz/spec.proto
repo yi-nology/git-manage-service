@@ -69,6 +69,15 @@ service SpecService {
     rpc DeleteSpecFile(DeleteSpecFileRequest) returns (common.EmptyResponse) {
         option (api.post) = "/api/v1/spec/delete";
     }
+
+    // AI 相关 API
+    rpc AIAssistSpec(AIAssistRequest) returns (AIAssistResponse) {
+        option (api.post) = "/api/v1/spec/ai-assist";
+    }
+
+    rpc AIFixSpec(AIFixRequest) returns (AIFixResponse) {
+        option (api.post) = "/api/v1/spec/ai-fix";
+    }
 }
 
 // Spec 树响应
@@ -132,7 +141,8 @@ message SaveSpecContentByPathRequest {
 // Lint 请求
 message LintRequest {
     optional string content = 1;
-    optional string rules = 2;
+    repeated string rules = 2;
+    optional string mode = 3;
 }
 
 // Lint 响应
@@ -149,6 +159,11 @@ message LintIssue {
     optional string severity = 2;
     optional string message = 3;
     optional int32 line = 4;
+    optional int32 column = 5;
+    optional int32 end_line = 6;
+    optional int32 end_column = 7;
+    optional string source = 8;
+    optional string quick_fix = 9;
 }
 
 // Lint 统计
@@ -250,4 +265,39 @@ message DeleteSpecFileRequest {
     optional string repo_key = 1;
     optional string path = 2;
     optional string commit_message = 3;
+}
+
+// AI 聊天消息
+message ChatMessage {
+    optional string role = 1;
+    optional string content = 2;
+}
+
+// AI 辅助请求
+message AIAssistRequest {
+    optional string content = 1;
+    optional string prompt = 2;
+    optional string action = 3;
+    repeated ChatMessage history = 4;
+}
+
+// AI 辅助响应
+message AIAssistResponse {
+    optional common.BaseResponse base = 1;
+    optional string result = 2;
+    optional string apply_content = 3;
+}
+
+// AI 修复请求
+message AIFixRequest {
+    optional string content = 1;
+    optional string issue = 2;
+    optional int32 line = 3;
+    optional string severity = 4;
+}
+
+// AI 修复响应
+message AIFixResponse {
+    optional common.BaseResponse base = 1;
+    optional string content = 2;
 }

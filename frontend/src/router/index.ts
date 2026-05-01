@@ -86,6 +86,30 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'CR 管理' },
       },
       {
+        path: 'local-repos/:repoKey/review',
+        name: 'ReviewDashboard',
+        component: () => import('@/views/review/ReviewDashboardPage.vue'),
+        meta: { title: '代码审查' },
+      },
+      {
+        path: 'local-repos/:repoKey/review/tasks',
+        name: 'ReviewTaskList',
+        component: () => import('@/views/review/ReviewTaskListPage.vue'),
+        meta: { title: '审查任务列表' },
+      },
+      {
+        path: 'local-repos/:repoKey/review/tasks/:taskId',
+        name: 'ReviewTaskDetail',
+        component: () => import('@/views/review/ReviewTaskDetailPage.vue'),
+        meta: { title: '审查任务详情' },
+      },
+      {
+        path: 'local-repos/:repoKey/review/config',
+        name: 'ReviewConfig',
+        component: () => import('@/views/review/ReviewConfigPage.vue'),
+        meta: { title: '审查配置' },
+      },
+      {
         path: 'local-repos/:repoKey/webhooks',
         name: 'WebhookEvents',
         component: () => import('@/views/webhook/WebhookEventsPage.vue'),
@@ -164,10 +188,22 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '编辑通知渠道' },
       },
       {
-        path: 'spec-editor',
-        name: 'SpecEditor',
-        component: () => import('@/views/spec/SpecEditorPage.vue'),
-        meta: { title: 'Spec 编辑器' },
+        path: 'settings/llm',
+        name: 'LLMSettings',
+        component: () => import('@/views/settings/LLMSettingsPage.vue'),
+        meta: { title: 'LLM 配置' },
+      },
+      {
+        path: 'settings/code-review',
+        name: 'CodeReviewSettings',
+        component: () => import('@/views/settings/CodeReviewSettingsPage.vue'),
+        meta: { title: '代码审查设置' },
+      },
+      {
+        path: 'settings/branch-rules',
+        name: 'BranchRuleSettings',
+        component: () => import('@/views/settings/BranchRuleSettingsPage.vue'),
+        meta: { title: '分支规则管理' },
       },
       {
         path: 'mcp',

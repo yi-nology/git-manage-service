@@ -1,86 +1,73 @@
 <template>
   <div class="audit-log-page">
-    <div class="title-row">
-      <div class="title-left">
-        <h2 class="page-title">操作审计日志</h2>
-      </div>
-      <button class="refresh-btn" @click="loadLogs">
-        <el-icon><RefreshRight /></el-icon>
-        刷新
-      </button>
-    </div>
+    <PageHeader title="操作审计日志">
+      <template #actions>
+        <ActionPill variant="outline" :icon="RefreshRight" @click="loadLogs">刷新</ActionPill>
+      </template>
+    </PageHeader>
 
-    <div class="filter-bar">
-      <div class="filter-item">
-        <select v-model="filterAction" class="filter-select" @change="loadLogs">
-          <option value="">全部操作</option>
-          <option v-for="(label, key) in actionLabelMap" :key="key" :value="key">{{ label }}</option>
-        </select>
-      </div>
-      <div class="filter-item">
-        <input v-model="filterTarget" placeholder="目标对象" class="filter-input" @keyup.enter="loadLogs" />
-      </div>
+    <form class="filter-bar" @submit.prevent="loadLogs">
+      <select v-model="filterAction" class="filter-select" @change="loadLogs">
+        <option value="">全部操作</option>
+        <option v-for="(label, key) in actionLabelMap" :key="key" :value="key">{{ label }}</option>
+      </select>
+      <input v-model="filterTarget" placeholder="目标对象" class="filter-input" />
       <div class="filter-spacer"></div>
-      <button class="filter-search-btn" @click="loadLogs">
-        <el-icon><Search /></el-icon>
-        搜索
-      </button>
-    </div>
+      <ActionPill variant="outline" :icon="Search">搜索</ActionPill>
+    </form>
 
-    <div v-if="loading" class="loading-card">
-      <div class="loading-spinner"></div>
-      <span>加载中...</span>
-    </div>
+    <DataTable :columns="columns" :data="logs" :loading="loading">
+      <template #cell-created_at="{ row }">
+        <span class="time-cell">{{ formatDate(row.created_at) }}</span>
+      </template>
+      <template #cell-action="{ row }">
+        <StatusBadge
+          :variant="(getActionClass(row.action) as any)"
+          :text="getActionLabel(row.action)"
+          :show-dot="false"
+        />
+      </template>
+      <template #cell-target="{ row }">
+        <span class="repo-cell">{{ formatTarget(row.target) }}</span>
+      </template>
+      <template #cell-details="{ row }">
+        <span class="detail-cell">{{ row.details || '-' }}</span>
+      </template>
+      <template #cell-status="{ row }">
+        <StatusBadge
+          :variant="(getStatusClass(row.action) as any)"
+          text="成功"
+          :show-dot="false"
+        />
+      </template>
+      <template #empty>
+        <EmptyState title="暂无审计日志" />
+      </template>
+    </DataTable>
 
-    <div v-else-if="logs.length === 0" class="empty-card">
-      <div class="empty-icon">
-        <el-icon :size="32"><Warning /></el-icon>
-      </div>
-      <div class="empty-text">暂无审计日志</div>
-    </div>
-
-    <div v-else class="table-card">
-      <div class="table-header">
-        <span class="th" style="width:160px">时间</span>
-        <span class="th" style="width:120px">操作</span>
-        <span class="th" style="width:160px">仓库</span>
-        <span class="th" style="flex:1">详情</span>
-        <span class="th" style="width:100px">状态</span>
-      </div>
-      <div v-for="(log, idx) in logs" :key="idx" class="table-row">
-        <span class="td time-cell" style="width:160px">{{ formatDate(log.created_at) }}</span>
-        <span class="td" style="width:120px">
-          <span class="action-tag" :class="getActionClass(log.action)">{{ getActionLabel(log.action) }}</span>
-        </span>
-        <span class="td repo-cell" style="width:160px">{{ formatTarget(log.target) }}</span>
-        <span class="td detail-cell" style="flex:1">{{ log.details || '-' }}</span>
-        <span class="td" style="width:100px">
-          <span class="status-tag" :class="getStatusClass(log.action)">成功</span>
-        </span>
-      </div>
-    </div>
-
-    <div v-if="totalCount > 0" class="pagination-bar">
-      <span class="pagination-info">
-        显示 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, totalCount) }} 共 {{ totalCount }} 条
-      </span>
-      <div class="pagination-btns">
-        <button class="page-btn" :disabled="currentPage <= 1" @click="currentPage--; loadLogs()">上一页</button>
-        <span class="page-num">{{ currentPage }}</span>
-        <button class="page-btn" :disabled="currentPage * pageSize >= totalCount" @click="currentPage++; loadLogs()">下一页</button>
-      </div>
-    </div>
-
+    <PaginationBar
+      v-if="totalCount > 0"
+      :total="totalCount"
+      v-model:currentPage="currentPage"
+      :page-size="pageSize"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Warning, RefreshRight, Search } from '@element-plus/icons-vue'
+import { ref, watch, onMounted } from 'vue'
+import { RefreshRight, Search } from '@element-plus/icons-vue'
 import { getAuditLogs } from '@/api/modules/audit'
 import { getRepoList } from '@/api/modules/repo'
 import type { AuditLogDTO } from '@/types/stats'
 import { formatDate } from '@/utils/format'
+import PageHeader from '@/components/common/PageHeader.vue'
+import DataTable from '@/components/common/DataTable.vue'
+import type { TableColumn } from '@/components/common/DataTable.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import PaginationBar from '@/components/common/PaginationBar.vue'
 
 const repoNameMap = ref<Record<string, string>>({})
 
@@ -146,6 +133,14 @@ function formatTarget(target: string): string {
   return `${label}: ${value}`
 }
 
+const columns: TableColumn[] = [
+  { key: 'created_at', label: '时间', width: '160px' },
+  { key: 'action', label: '操作', width: '120px' },
+  { key: 'target', label: '仓库', width: '160px' },
+  { key: 'details', label: '详情', flex: 1 },
+  { key: 'status', label: '状态', width: '100px' },
+]
+
 const loading = ref(false)
 const logs = ref<AuditLogDTO[]>([])
 const totalCount = ref(0)
@@ -166,6 +161,10 @@ function getStatusClass(action: string): string {
   if (action === 'MERGE_CONFLICT') return 'danger'
   return 'success'
 }
+
+watch(currentPage, () => {
+  loadLogs()
+})
 
 onMounted(async () => {
   try {
@@ -203,48 +202,9 @@ async function loadLogs() {
 
 <style scoped>
 .audit-log-page {
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.title-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.refresh-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
-  color: var(--text-color-regular);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.refresh-btn:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
 }
 
 .filter-bar {
@@ -253,145 +213,42 @@ async function loadLogs() {
   gap: 12px;
   padding: 12px 16px;
   border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-color-page);
+  border: 1px solid var(--border-color);
 }
 
 .filter-select {
   padding: 6px 10px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 13px;
   color: var(--text-color-primary);
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   outline: none;
   min-width: 140px;
 }
 
 .filter-select:focus {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
 }
 
 .filter-input {
   padding: 6px 10px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 13px;
   color: var(--text-color-primary);
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   outline: none;
   width: 180px;
 }
 
 .filter-input:focus {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
 }
 
 .filter-spacer {
   flex: 1;
-}
-
-.filter-search-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 4px;
-  background: none;
-  color: var(--text-color-regular);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.filter-search-btn:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
-.loading-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 48px 24px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  color: var(--text-color-secondary);
-  font-size: 13px;
-}
-
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--border-color, #e5e7eb);
-  border-top-color: var(--accent-primary, #6366F1);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 48px 24px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-}
-
-.empty-icon {
-  color: var(--text-color-placeholder, #9ca3af);
-  margin-bottom: 4px;
-}
-
-.empty-text {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-color-primary);
-}
-
-.table-card {
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  overflow: hidden;
-}
-
-.table-header {
-  display: flex;
-  align-items: center;
-  padding: 12px 20px;
-  background: var(--accent-bg, #EEF2FF);
-}
-
-.th {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-color-secondary);
-}
-
-.table-row {
-  display: flex;
-  align-items: center;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
-}
-
-.table-row:last-child {
-  border-bottom: none;
-}
-
-.td {
-  font-size: 13px;
-  color: var(--text-color-regular);
 }
 
 .time-cell {
@@ -401,7 +258,7 @@ async function loadLogs() {
 
 .repo-cell {
   font-size: 13px;
-  color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary);
 }
 
 .detail-cell {
@@ -410,106 +267,5 @@ async function loadLogs() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.action-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-}
-
-.action-tag.success {
-  background: #ECFDF5;
-  color: #10B981;
-}
-
-.action-tag.warning {
-  background: #FFFBEB;
-  color: #F59E0B;
-}
-
-.action-tag.danger {
-  background: #FEF2F2;
-  color: #EF4444;
-}
-
-.action-tag.info {
-  background: #EEF2FF;
-  color: #6366F1;
-}
-
-.status-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-}
-
-.status-tag.success {
-  background: #ECFDF5;
-  color: #10B981;
-}
-
-.status-tag.danger {
-  background: #FEF2F2;
-  color: #EF4444;
-}
-
-.pagination-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.pagination-info {
-  font-size: 13px;
-  color: var(--text-color-secondary);
-}
-
-.pagination-btns {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.page-btn {
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
-  color: var(--text-color-regular);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.page-btn:hover:not(:disabled) {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
-.page-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.page-num {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-  min-width: 30px;
-  text-align: center;
-}
-
-.detail-content {
-  background: var(--bg-color);
-  padding: 12px;
-  border-radius: 8px;
-  max-height: 500px;
-  overflow: auto;
-  white-space: pre-wrap;
-  font-family: monospace;
-  font-size: 13px;
 }
 </style>

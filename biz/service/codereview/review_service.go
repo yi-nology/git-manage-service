@@ -1,0 +1,543 @@
+package codereview
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"github.com/yi-nology/git-manage-service/biz/service/llm"
+	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
+)
+
+func CreateTask(ctx context.Context, repoKey string, providerConfigID uint, mrIID, commitSHA, triggerType string) (*po.ReviewTask, error) {
+	repo, err := db.NewRepoDAO().FindByKey(repoKey)
+	if err != nil {
+		return nil, fmt.Errorf("repo not found: %w", err)
+	}
+
+	if providerConfigID == 0 {
+		b, err := resolveBinding(repo.ID)
+		if err != nil {
+			return nil, fmt.Errorf("no provider binding for repo %s: %w", repoKey, err)
+		}
+		providerConfigID = b.ProviderConfigID
+	}
+
+	task := &po.ReviewTask{
+		RepoID:           repo.ID,
+		ProviderConfigID: providerConfigID,
+		Platform:         "gitlab",
+		EventType:        "manual",
+		MRIID:            mrIID,
+		CommitSHA:        commitSHA,
+		TriggerType:      triggerType,
+		Status:           "pending",
+	}
+	if err := db.NewReviewTaskDAO().Create(task); err != nil {
+		return nil, fmt.Errorf("failed to create review task: %w", err)
+	}
+
+	go func() {
+		_ = RunReview(context.Background(), task.ID)
+	}()
+
+	return task, nil
+}
+
+func RetryTask(ctx context.Context, id uint) (*po.ReviewTask, error) {
+	taskDAO := db.NewReviewTaskDAO()
+	task, err := taskDAO.FindByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("review task not found: %w", err)
+	}
+
+	task.Status = "pending"
+	task.ErrorMessage = ""
+	task.RiskLevel = ""
+	task.Summary = ""
+	task.StartedAt = nil
+	task.FinishedAt = nil
+	if err := taskDAO.Save(task); err != nil {
+		return nil, fmt.Errorf("failed to update task: %w", err)
+	}
+
+	go func() {
+		_ = RunReview(context.Background(), id)
+	}()
+
+	return task, nil
+}
+
+func RunReview(ctx context.Context, taskID uint) error {
+	taskDAO := db.NewReviewTaskDAO()
+	task, err := taskDAO.FindByID(taskID)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	task.Status = "running"
+	task.StartedAt = &now
+	taskDAO.Save(task)
+
+	defer func() {
+		finished := time.Now()
+		task.FinishedAt = &finished
+		taskDAO.Save(task)
+	}()
+
+	repo, p, owner, repoName, _, err := resolveRepoProvider(task.RepoID, task.ProviderConfigID)
+	if err != nil {
+		task.Status = "failed"
+		task.ErrorMessage = err.Error()
+		taskDAO.Save(task)
+		return err
+	}
+
+	mrNum, _ := strconv.Atoi(task.MRIID)
+
+	mergeDiff, err := p.GetCRDiff(ctx, owner, repoName, mrNum)
+	if err != nil {
+		task.Status = "failed"
+		task.ErrorMessage = fmt.Sprintf("failed to fetch diff: %v", err)
+		taskDAO.Save(task)
+		return err
+	}
+
+	files := ParseDiff(mergeDiff.RawDiff)
+
+	ruleCtx := &RuleContext{
+		Files:    files,
+		Provider: task.Platform,
+		RepoKey:  repo.Key,
+		Owner:    owner,
+		Repo:     repoName,
+		MRIID:    task.MRIID,
+	}
+
+	var allFindings []*Finding
+	for _, rule := range GetRules() {
+		findings, rErr := rule.Check(ruleCtx)
+		if rErr != nil {
+			log.Printf("[CodeReview] Rule %s error: %v", rule.ID(), rErr)
+			continue
+		}
+		allFindings = append(allFindings, findings...)
+	}
+
+	llmFindings := runLLMReview(ctx, files, repoName, owner)
+	allFindings = append(allFindings, llmFindings...)
+
+	totalAdd, totalDel := 0, 0
+	for _, f := range files {
+		totalAdd += f.Additions
+		totalDel += f.Deletions
+	}
+
+	cfg := GetMergedConfig(task.RepoID)
+	result := Aggregate(allFindings, totalAdd, totalDel, len(files), cfg.BlockOnHigh)
+
+	task.RiskLevel = string(result.RiskLevel)
+
+	if err := persistFindings(taskID, result.Findings); err != nil {
+		log.Printf("[CodeReview] Failed to persist findings: %v", err)
+	}
+
+	if err := publishComments(ctx, p, owner, repoName, mrNum, task.ID, result); err != nil {
+		log.Printf("[CodeReview] Failed to publish comments: %v", err)
+	}
+
+	if task.CommitSHA != "" {
+		statusState := "success"
+		statusDesc := fmt.Sprintf("Review passed (%d findings)", len(result.Findings))
+		if result.Blocked {
+			statusState = "failed"
+			statusDesc = result.BlockReason
+		}
+		_ = p.CreateCommitStatus(ctx, owner, repoName, task.CommitSHA, provider.CommitStatusOptions{
+			State:       statusState,
+			Context:     "code-review/git-manage-service",
+			Description: statusDesc,
+		})
+	}
+
+	if err := ApplyPolicy(result, task); err != nil {
+		log.Printf("[CodeReview] Failed to apply policy: %v", err)
+	}
+
+	task.Summary = BuildSummaryComment(result)
+	task.Status = "success"
+	if result.Blocked {
+		task.Status = "blocked"
+	}
+	return taskDAO.Save(task)
+}
+
+func CheckMerge(ctx context.Context, repoKey, mrIID, commitSHA string) (*api.MergeCheckDTO, error) {
+	repo, err := db.NewRepoDAO().FindByKey(repoKey)
+	if err != nil {
+		return nil, fmt.Errorf("repo not found: %w", err)
+	}
+
+	checkDAO := db.NewMergeCheckResultDAO()
+	result, err := checkDAO.FindLatest(repo.ID, mrIID, commitSHA)
+	if err != nil {
+		return &api.MergeCheckDTO{Mergeable: true, Checks: []api.MergeCheckItemDTO{}}, nil
+	}
+
+	checks := []api.MergeCheckItemDTO{{
+		CheckType: result.CheckType,
+		Status:    result.Status,
+		RiskLevel: result.RiskLevel,
+		Message:   result.Message,
+	}}
+
+	mergeable := result.Status == "success"
+	return &api.MergeCheckDTO{Mergeable: mergeable, Checks: checks}, nil
+}
+
+func GetReviewConfig(repoKey string) (string, error) {
+	_, err := db.NewRepoDAO().FindByKey(repoKey)
+	if err != nil {
+		return "", fmt.Errorf("repo not found: %w", err)
+	}
+	return "# .cr-service.yaml placeholder\nversion: 1\nreview:\n  enabled: true\n", nil
+}
+
+func UpdateReviewConfig(repoKey, configYAML string) error {
+	_, err := db.NewRepoDAO().FindByKey(repoKey)
+	if err != nil {
+		return fmt.Errorf("repo not found: %w", err)
+	}
+	return nil
+}
+
+func GetRemoteRepoConfig(providerConfigID uint, platformOwner, platformRepo string) (*api.ReviewRepoConfigDTO, error) {
+	gc := configs.GlobalConfig.CodeReview
+	dao := db.NewReviewRepoConfigDAO()
+	cfg, err := dao.FindByRemoteRepo(providerConfigID, platformOwner, platformRepo)
+	if err != nil {
+		defaultCfg := &po.ReviewRepoConfig{
+			ProviderConfigID: providerConfigID,
+			PlatformOwner:    platformOwner,
+			PlatformRepo:     platformRepo,
+			Enabled:          true,
+			BlockOnHigh:      gc.BlockOnHigh,
+			AutoReviewOnMR:   gc.AutoReviewOnMR,
+			LLMProvider:      "",
+			MaxFiles:         gc.MaxFiles,
+			MaxDiffLines:     gc.MaxDiffLines,
+		}
+		repos := findLinkedRepos(providerConfigID, platformOwner, platformRepo)
+		dto := api.NewReviewRepoConfigDTO(*defaultCfg, repos)
+		return &dto, nil
+	}
+	repos := findLinkedRepos(providerConfigID, platformOwner, platformRepo)
+	dto := api.NewReviewRepoConfigDTO(*cfg, repos)
+	return &dto, nil
+}
+
+func UpdateRemoteRepoConfig(providerConfigID uint, platformOwner, platformRepo string, req api.ReviewRepoConfigDTO) (*api.ReviewRepoConfigDTO, error) {
+	cfg := &po.ReviewRepoConfig{
+		ProviderConfigID: providerConfigID,
+		PlatformOwner:    platformOwner,
+		PlatformRepo:     platformRepo,
+		Enabled:          req.Enabled,
+		BlockOnHigh:      req.BlockOnHigh,
+		AutoReviewOnMR:   req.AutoReviewOnMR,
+		LLMProvider:      req.LLMProvider,
+		MaxFiles:         req.MaxFiles,
+		MaxDiffLines:     req.MaxDiffLines,
+		RuleOverridesJSON: req.RuleOverrides,
+		ScopeNote:        req.ScopeNote,
+	}
+	dao := db.NewReviewRepoConfigDAO()
+	if err := dao.Upsert(cfg); err != nil {
+		return nil, fmt.Errorf("failed to save config: %w", err)
+	}
+	repos := findLinkedRepos(providerConfigID, platformOwner, platformRepo)
+	dto := api.NewReviewRepoConfigDTO(*cfg, repos)
+	return &dto, nil
+}
+
+func findLinkedRepos(providerConfigID uint, platformOwner, platformRepo string) []api.LinkedRepoDTO {
+	bindingDAO := db.NewRepoProviderBindingDAO()
+	bindings, err := bindingDAO.FindByPlatformRepo(providerConfigID, platformOwner, platformRepo)
+	if err != nil {
+		return nil
+	}
+	var repos []api.LinkedRepoDTO
+	if bindings.RepoID > 0 {
+		repoDAO := db.NewRepoDAO()
+		if r, err := repoDAO.FindByID(bindings.RepoID); err == nil {
+			repos = append(repos, api.LinkedRepoDTO{ID: r.ID, Key: r.Key, Name: r.Name})
+		}
+	}
+	allBindings, _ := bindingDAO.FindByProviderConfigID(providerConfigID)
+	for _, b := range allBindings {
+		if b.PlatformOwner == platformOwner && b.PlatformRepo == platformRepo && b.RepoID > 0 {
+			exists := false
+			for _, r := range repos {
+				if r.ID == b.RepoID {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				repoDAO := db.NewRepoDAO()
+				if r, err := repoDAO.FindByID(b.RepoID); err == nil {
+					repos = append(repos, api.LinkedRepoDTO{ID: r.ID, Key: r.Key, Name: r.Name})
+				}
+			}
+		}
+	}
+	return repos
+}
+
+func GetMergedConfig(repoID uint) reviewConfig {
+	repo, err := db.NewRepoDAO().FindByID(repoID)
+	if err != nil {
+		return getConfig()
+	}
+
+	cfg := getConfig()
+
+	if repo.ProviderConfigID == 0 || repo.PlatformOwner == "" || repo.PlatformRepo == "" {
+		return cfg
+	}
+
+	repoCfg, err := db.NewReviewRepoConfigDAO().FindByRemoteRepo(repo.ProviderConfigID, repo.PlatformOwner, repo.PlatformRepo)
+	if err != nil {
+		return cfg
+	}
+
+	if !repoCfg.Enabled {
+		cfg.BlockOnHigh = false
+		cfg.AutoReviewOnMR = false
+		return cfg
+	}
+
+	cfg.BlockOnHigh = repoCfg.BlockOnHigh
+	cfg.AutoReviewOnMR = repoCfg.AutoReviewOnMR
+	if repoCfg.MaxFiles > 0 {
+		cfg.MaxFiles = repoCfg.MaxFiles
+	}
+	if repoCfg.MaxDiffLines > 0 {
+		cfg.MaxDiffLines = repoCfg.MaxDiffLines
+	}
+	if repoCfg.LLMProvider != "" {
+		cfg.LLMProvider = repoCfg.LLMProvider
+	}
+	return cfg
+}
+
+func resolveRepoProvider(repoID, providerConfigID uint) (*po.Repo, provider.Provider, string, string, uint, error) {
+	repo, err := db.NewRepoDAO().FindByID(repoID)
+	if err != nil {
+		return nil, nil, "", "", 0, fmt.Errorf("repo not found: %w", err)
+	}
+
+	p, err := provider.GetManager().GetProvider(providerConfigID)
+	if err != nil {
+		return nil, nil, "", "", 0, fmt.Errorf("provider not found: %w", err)
+	}
+
+	owner := repo.PlatformOwner
+	repoName := repo.PlatformRepo
+	if owner == "" || repoName == "" {
+		return nil, nil, "", "", 0, fmt.Errorf("repo %d missing platform owner/repo", repoID)
+	}
+	return repo, p, owner, repoName, providerConfigID, nil
+}
+
+func resolveBinding(repoID uint) (*po.RepoProviderBinding, error) {
+	bindingDAO := db.NewRepoProviderBindingDAO()
+	b, err := bindingDAO.FindPrimaryByRepoID(repoID)
+	if err == nil && b != nil {
+		return b, nil
+	}
+
+	repo, err := db.NewRepoDAO().FindByID(repoID)
+	if err != nil {
+		return nil, err
+	}
+	if repo.ProviderConfigID == 0 {
+		return nil, fmt.Errorf("no provider binding for repo %d", repoID)
+	}
+	return &po.RepoProviderBinding{ProviderConfigID: repo.ProviderConfigID}, nil
+}
+
+func persistFindings(taskID uint, findings []*Finding) error {
+	if len(findings) == 0 {
+		return nil
+	}
+	dao := db.NewReviewFindingDAO()
+	records := make([]po.ReviewFinding, 0, len(findings))
+	for _, f := range findings {
+		raw, _ := json.Marshal(f)
+		records = append(records, po.ReviewFinding{
+			TaskID:      taskID,
+			Source:      f.Source,
+			RuleID:      f.RuleID,
+			Severity:    string(f.Severity),
+			FilePath:    f.FilePath,
+			OldLine:     f.OldLine,
+			NewLine:     f.NewLine,
+			Title:       f.Title,
+			Message:     f.Message,
+			Suggestion:  f.Suggestion,
+			Fingerprint: f.Fingerprint,
+			RawPayload:  string(raw),
+		})
+	}
+	return dao.BatchCreate(records)
+}
+
+func publishComments(ctx context.Context, p provider.Provider, owner, repo string, mrNum int, taskID uint, result *AggregatedResult) error {
+	commentDAO := db.NewReviewCommentDAO()
+
+	summary := BuildSummaryComment(result)
+	noteID, err := p.CreateNote(ctx, owner, repo, mrNum, summary)
+	if err != nil {
+		return fmt.Errorf("failed to post summary comment: %w", err)
+	}
+	commentDAO.Create(&po.ReviewComment{
+		TaskID:            taskID,
+		ProviderCommentID: noteID,
+		CommentType:       "summary",
+		Body:              summary,
+		Status:            "posted",
+	})
+
+	for _, f := range result.Findings {
+		if f.FilePath == "" || f.NewLine == 0 {
+			continue
+		}
+		if f.Severity != SeverityCritical && f.Severity != SeverityHigh {
+			continue
+		}
+		body := BuildInlineComment(f)
+		discID, dErr := p.CreateDiscussion(ctx, owner, repo, mrNum, provider.DiscussionOptions{
+			Body:     body,
+			FilePath: f.FilePath,
+			NewLine:  f.NewLine,
+		})
+		if dErr != nil {
+			log.Printf("[CodeReview] Failed to create inline discussion: %v", dErr)
+			continue
+		}
+		commentDAO.Create(&po.ReviewComment{
+			TaskID:            taskID,
+			ProviderCommentID: discID,
+			CommentType:       "inline",
+			FilePath:          f.FilePath,
+			LineNumber:        f.NewLine,
+			Body:              body,
+			Status:            "posted",
+		})
+	}
+
+	return nil
+}
+
+func runLLMReview(ctx context.Context, files []*FileDiff, repoName, owner string) []*Finding {
+	llmProvider, err := llm.GetDefaultProvider()
+	if err != nil {
+		log.Printf("[CodeReview] LLM skipped: %v", err)
+		return nil
+	}
+
+	diff := buildDiffString(files)
+	if diff == "" {
+		return nil
+	}
+
+	llmFiles := make([]llm.FileInfo, 0, len(files))
+	for _, f := range files {
+		if !f.IsDeleted && len(f.RawDiff) < 5000 {
+			llmFiles = append(llmFiles, llm.FileInfo{
+				Path:      f.NewPath,
+				IsNew:     f.IsNew,
+				IsDeleted: f.IsDeleted,
+			})
+		}
+	}
+
+	resp, err := llmProvider.Review(ctx, &llm.ReviewRequest{
+		Diff:     diff,
+		Files:    llmFiles,
+		RepoName: repoName,
+		Owner:    owner,
+	})
+	if err != nil {
+		log.Printf("[CodeReview] LLM review error: %v", err)
+		return nil
+	}
+
+	var findings []*Finding
+	for _, lf := range resp.Findings {
+		sev := SeverityMedium
+		switch lf.Severity {
+		case "critical":
+			sev = SeverityCritical
+		case "high":
+			sev = SeverityHigh
+		case "medium":
+			sev = SeverityMedium
+		case "low":
+			sev = SeverityLow
+		case "info":
+			sev = SeverityInfo
+		}
+		findings = append(findings, &Finding{
+			RuleID:      "llm:" + llmProvider.Name(),
+			Source:      "llm",
+			Severity:    sev,
+			FilePath:    lf.FilePath,
+			NewLine:     lf.LineNumber,
+			Title:       lf.Title,
+			Message:     lf.Message,
+			Suggestion:  lf.Suggestion,
+			Fingerprint: computeFingerprint("llm:"+llmProvider.Name(), lf.FilePath, lf.LineNumber, lf.Title),
+		})
+	}
+
+	return findings
+}
+
+func buildDiffString(files []*FileDiff) string {
+	var b strings.Builder
+	for _, f := range files {
+		if f.IsDeleted || f.RawDiff == "" {
+			continue
+		}
+		b.WriteString(f.RawDiff)
+	}
+	return b.String()
+}
+
+type reviewConfig struct {
+	BlockOnHigh    bool
+	MaxFiles       int
+	MaxDiffLines   int
+	LLMProvider    string
+	AutoReviewOnMR bool
+}
+
+func getConfig() reviewConfig {
+	gc := configs.GlobalConfig.CodeReview
+	return reviewConfig{
+		BlockOnHigh:    gc.BlockOnHigh,
+		MaxFiles:       gc.MaxFiles,
+		MaxDiffLines:   gc.MaxDiffLines,
+		AutoReviewOnMR: gc.AutoReviewOnMR,
+	}
+}

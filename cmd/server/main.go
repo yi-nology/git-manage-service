@@ -17,9 +17,12 @@ import (
 	kserver "github.com/cloudwego/kitex/server"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/kitex_gen/git/gitservice"
+	"github.com/yi-nology/git-manage-service/biz/queue"
 	"github.com/yi-nology/git-manage-service/biz/router"
 	"github.com/yi-nology/git-manage-service/biz/rpc_handler"
 	"github.com/yi-nology/git-manage-service/biz/service/audit"
+	"github.com/yi-nology/git-manage-service/biz/service/llm"
+	settingssvc "github.com/yi-nology/git-manage-service/biz/service/settings"
 	"github.com/yi-nology/git-manage-service/biz/service/stats"
 	"github.com/yi-nology/git-manage-service/biz/service/sync"
 	"github.com/yi-nology/git-manage-service/biz/utils"
@@ -108,6 +111,8 @@ func main() {
 		}
 	}
 
+	queue.CloseClient()
+
 	log.Println("All servers stopped. Exiting.")
 }
 
@@ -125,6 +130,10 @@ func initResources() {
 
 	db.InitBindingMigration()
 
+	settingssvc.LoadCodeReviewSettingsFromDB()
+
+	settingssvc.InitDefaultReviewRules()
+
 	// 初始化加密工具
 	utils.InitEncryption()
 
@@ -133,7 +142,22 @@ func initResources() {
 	stats.InitStatsService()
 	audit.InitAuditService()
 
+	initQueue()
+
 	log.Println("Resources initialized successfully")
+}
+
+func initQueue() {
+	cfg := configs.GlobalConfig
+	if !cfg.CodeReview.Enabled {
+		log.Println("[Queue] Code review disabled, skipping queue init")
+		return
+	}
+	llm.InitProviders()
+	llm.InitProvidersFromDB()
+	queue.InitClient(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
+	go queue.StartWorker(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
+	log.Println("[Queue] Asynq client + worker initialized")
 }
 
 // startHTTPServer 启动 HTTP 服务器

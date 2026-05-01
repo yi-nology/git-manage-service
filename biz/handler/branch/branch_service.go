@@ -16,6 +16,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	"github.com/yi-nology/git-manage-service/biz/service/auth"
+	"github.com/yi-nology/git-manage-service/biz/service/branchrule"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -274,6 +275,13 @@ func Create(ctx context.Context, c *app.RequestContext) {
 	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
 	if err != nil {
 		response.NotFound(c, "repo not found")
+		return
+	}
+
+	skipRules := string(c.GetHeader("X-Skip-Branch-Rules")) == "true"
+	validation, err := branchrule.ValidateBranchName(req.GetRepoKey(), req.GetName(), req.GetBaseRef(), skipRules)
+	if err == nil && !validation.Valid {
+		response.BadRequest(c, fmt.Sprintf("分支规则校验失败: %s", validation.Errors[0].Message))
 		return
 	}
 

@@ -1,21 +1,19 @@
 <template>
   <div class="repo-detail-page" v-loading="loading">
-    <div class="page-header">
-      <div class="header-left">
-        <button class="back-btn" @click="$router.push('/local-repos')">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </button>
-        <h2>{{ repo?.name || '仓库详情' }}</h2>
-        <span v-if="currentVersion" class="version-tag">{{ currentVersion }}</span>
-      </div>
-      <div class="header-actions">
-        <button class="action-pill action-pill--green" @click="$router.push(`/local-repos/${repoKey}/branches`)">
-          <el-icon><Share /></el-icon> 分支管理
-        </button>
-        <button class="action-pill action-pill--amber" @click="$router.push(`/local-repos/${repoKey}/sync`)">
-          <el-icon><Refresh /></el-icon> 同步任务
-        </button>
-      </div>
+    <div class="page-header-wrap">
+      <PageHeader :title="repo?.name || '仓库详情'" show-back back-route="/local-repos">
+        <template #title-suffix>
+          <StatusBadge v-if="currentVersion" variant="success" :text="currentVersion" :show-dot="false" />
+        </template>
+        <template #actions>
+          <ActionPill variant="green" :icon="Share" @click="$router.push(`/local-repos/${repoKey}/branches`)">
+            分支管理
+          </ActionPill>
+          <ActionPill variant="amber" :icon="Refresh" @click="$router.push(`/local-repos/${repoKey}/sync`)">
+            同步任务
+          </ActionPill>
+        </template>
+      </PageHeader>
     </div>
 
     <div class="layout-container">
@@ -34,21 +32,20 @@
         </div>
       </div>
 
-      <!-- 右侧内容区域 -->
       <div class="content-area">
         <div v-show="activeTab === 'info'">
           <div v-if="repo" class="info-card">
             <div class="info-top-row">
               <div class="info-left-col">
                 <div class="info-section-header">
-                  <span class="info-section-title">基本信息</span>
-                  <button class="info-edit-btn" @click="openEditDialog">
-                    <el-icon><Edit /></el-icon> 编辑仓库
-                  </button>
+                  <SectionTitle title="基本信息" />
+                  <ActionPill variant="outline" :icon="Edit" @click="openEditDialog">
+                    编辑仓库
+                  </ActionPill>
                 </div>
                 <div class="info-row">
                   <div class="info-field"><span class="info-label">名称</span><span class="info-value info-value--bold">{{ repo.name }}</span></div>
-                  <div class="info-field"><span class="info-label">当前版本</span><span v-if="currentVersion" class="info-version-tag">{{ currentVersion }}</span><span v-else class="info-value">-</span></div>
+                  <div class="info-field"><span class="info-label">当前版本</span><StatusBadge v-if="currentVersion" variant="success" :text="currentVersion" :show-dot="false" /><span v-else class="info-value">-</span></div>
                 </div>
                 <div class="info-field"><span class="info-label">本地路径</span><span class="info-value mono">{{ repo.path }}</span></div>
                 <div class="info-row">
@@ -79,18 +76,18 @@
               <div class="info-divider"></div>
               <div class="scan-section">
                 <div class="info-section-header" style="margin-bottom:12px">
-                  <span class="info-section-title">远程配置</span>
+                  <SectionTitle title="远程配置" />
                   <span class="info-subtitle">来自 .git/config</span>
                 </div>
                 <div class="scan-remote-list">
                   <div v-for="r in scanData.remotes" :key="r.name" class="scan-remote-row">
                     <span class="remote-name">{{ r.name }}</span>
                     <span class="remote-url">{{ r.fetch_url }}</span>
-                    <span v-if="r.is_mirror" class="mirror-tag">Mirror</span>
+                    <StatusBadge v-if="r.is_mirror" variant="warning" text="Mirror" :show-dot="false" />
                   </div>
                 </div>
                 <div v-if="scanData.branches?.length" class="tracking-tags">
-                  <span v-for="b in scanData.branches" :key="b.name" class="track-tag">{{ b.name }} -> {{ b.upstream_ref }}</span>
+                  <StatusBadge v-for="b in scanData.branches" :key="b.name" variant="info" :text="`${b.name} -> ${b.upstream_ref}`" :show-dot="false" />
                 </div>
               </div>
             </template>
@@ -104,12 +101,10 @@
           @created="loadBindings"
         />
 
-        <!-- Spec 编辑器 -->
         <div v-show="activeTab === 'spec'">
           <SpecEditor ref="specEditorRef" :repo-key="repoKey" />
         </div>
-        
-        <!-- Git有效提交度量 -->
+
         <div v-show="activeTab === 'stats'">
           <el-card>
             <el-form inline class="filter-form">
@@ -151,7 +146,6 @@
 
               <GitStatsCharts :stats-data="statsData" />
 
-              <!-- Commit history table -->
               <el-card shadow="never" class="mt-4">
                 <template #header><span style="font-weight:600;font-size:14px">提交历史（最近100条）</span></template>
                 <el-table :data="commitHistory" border size="small" max-height="400">
@@ -172,7 +166,6 @@
           </el-card>
         </div>
 
-        <!-- 真实工程代码度量 -->
         <div v-show="activeTab === 'lines'">
           <el-card>
             <el-form inline class="filter-form">
@@ -229,7 +222,6 @@
           </el-card>
         </div>
 
-        <!-- 版本历史 -->
         <div v-show="activeTab === 'versions'">
           <el-card>
             <template #header>
@@ -288,37 +280,30 @@
           </el-card>
         </div>
 
-        <!-- 文件浏览 -->
         <div v-show="activeTab === 'files'">
           <FileBrowser :repo-key="repoKey" :branches="allRefs" />
         </div>
 
-        <!-- Commit 搜索 -->
         <div v-show="activeTab === 'commits'">
           <CommitSearch :repo-key="repoKey" :branches="allRefs" :authors="statsAuthors" />
         </div>
 
-        <!-- Stash 管理 -->
         <div v-show="activeTab === 'stash'">
           <StashManager :repo-key="repoKey" />
         </div>
 
-        <!-- Submodule -->
         <div v-show="activeTab === 'submodules'">
           <SubmoduleManager :repo-key="repoKey" />
         </div>
 
-        <!-- Patch 管理 -->
         <div v-show="activeTab === 'patches'">
           <PatchManager :repo-key="repoKey" />
         </div>
       </div>
     </div>
 
-    <!-- Edit Repo Dialog -->
     <el-dialog v-model="showEditDialog" title="编辑仓库" width="750px" destroy-on-close>
       <el-form :model="editForm" label-width="100px">
-        <!-- 基本信息 -->
         <el-form-item label="名称" required>
           <el-input v-model="editForm.name" placeholder="仓库名称" />
         </el-form-item>
@@ -384,7 +369,6 @@
           </div>
         </el-form-item>
 
-        <!-- Tracking Branches -->
         <el-form-item v-if="editTrackingBranches.length > 0" label="分支追踪">
           <div class="tracking-branches">
             <el-tag v-for="b in editTrackingBranches" :key="b.name" size="small" style="margin: 2px 4px;">
@@ -399,9 +383,6 @@
       </template>
     </el-dialog>
 
-
-
-    <!-- Exclude Config Dialog -->
     <el-dialog v-model="showExcludeDialog" title="排除配置" width="550px" destroy-on-close>
       <el-form label-width="100px">
         <el-form-item label="排除目录">
@@ -417,7 +398,6 @@
       </template>
     </el-dialog>
 
-    <!-- Create Tag Dialog -->
     <el-dialog v-model="showCreateTagDialog" title="创建版本标签" width="550px" destroy-on-close>
       <el-form :model="createTagForm" label-width="100px">
         <el-form-item label="版本类型">
@@ -452,7 +432,6 @@
       </template>
     </el-dialog>
 
-    <!-- Push Tag Dialog -->
     <el-dialog v-model="showPushTagDialog" :title="`推送标签: ${pushTagName}`" width="480px" destroy-on-close>
       <el-form label-width="90px">
         <el-form-item label="目标远端">
@@ -466,14 +445,14 @@
         <el-button type="primary" @click="handleSubmitPushTag" :loading="pushTagLoading">确认推送</el-button>
       </template>
     </el-dialog>
-    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Refresh, Edit, Search, Download, Setting, Plus, Top, Delete, CopyDocument, Connection, DocumentCopy, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link, Share } from '@element-plus/icons-vue'
+import { Refresh, Edit, Search, Download, Setting, Plus, Top, Delete, CopyDocument, Connection, DocumentCopy, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link, Share } from '@element-plus/icons-vue'
 import { getRepoDetail, scanRepo, updateRepo, fetchRepo } from '@/api/modules/repo'
 import { testConnection } from '@/api/modules/system'
 import { testCredential } from '@/api/modules/credential'
@@ -502,6 +481,11 @@ import type { RepoProviderBindingDTO } from '@/types/binding'
 import BindingPanel from '@/components/binding/BindingPanel.vue'
 import BindingDialog from '@/components/binding/BindingDialog.vue'
 import { useProviderStore } from '@/stores/useProviderStore'
+
+import PageHeader from '@/components/common/PageHeader.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import SectionTitle from '@/components/common/SectionTitle.vue'
 
 const providerStore = useProviderStore()
 
@@ -534,7 +518,6 @@ const sidebarItems = [
   { key: 'patches', label: 'Patch 管理', icon: DocumentCopy },
 ]
 
-// Stats
 const statsFilter = ref({ branch: '', author: '', since: '', until: '' })
 const lineStatsFilter = ref({ branch: '', author: '', since: '', until: '' })
 const statsBranches = ref<string[]>([])
@@ -544,19 +527,16 @@ const lineStatsData = ref<LineStatsResponse | null>(null)
 const lineStatsLoading = ref(false)
 const commitHistory = ref<{ hash: string; author: string; date: string; message: string }[]>([])
 
-// Versions
 const versionList = ref<VersionTag[]>([])
 const versionsLoading = ref(false)
 const fetchTagsLoading = ref(false)
 const remoteNames = ref<string[]>([])
 
-// 合并分支和 tags 供文件浏览和 commit 搜索使用
 const allRefs = computed(() => {
   const tags = (versionList.value || []).map(v => v.name)
   return [...(statsBranches.value || []), ...tags]
 })
 
-// Create Tag
 const showCreateTagDialog = ref(false)
 const createTagLoading = ref(false)
 const nextVersionInfo = ref<NextVersionInfo | null>(null)
@@ -568,13 +548,11 @@ const createTagForm = ref({
   push_remote: '',
 })
 
-// Push Tag
 const showPushTagDialog = ref(false)
 const pushTagName = ref('')
 const pushTagRemote = ref('origin')
 const pushTagLoading = ref(false)
 
-// Edit
 const showEditDialog = ref(false)
 const editSaving = ref(false)
 const editForm = ref({ name: '', path: '', remote_url: '' })
@@ -591,7 +569,6 @@ const remoteUrlErrors = ref<Record<number, string>>({})
 const editUrlMode = ref<'ssh' | 'https'>('ssh')
 const remoteUrlModes = ref<Record<number, 'ssh' | 'https'>>({})
 
-// Exclude config
 const showExcludeDialog = ref(false)
 const excludeDirsText = ref('')
 const excludePatternsText = ref('')
@@ -623,12 +600,10 @@ onMounted(async () => {
   }
 })
 
-// Load versions when tab switches
 watch(activeTab, (val) => {
   if (val === 'versions' && (versionList.value || []).length === 0) {
     loadVersions()
   }
-  // 切换到 spec tab 时刷新文件树（分支可能已切换）
   if (val === 'spec') {
     nextTick(() => {
       specEditorRef.value?.clearEditor()
@@ -637,14 +612,12 @@ watch(activeTab, (val) => {
   }
 })
 
-// 监听主 URL 协议切换，自动转换 URL
 watch(editUrlMode, (newMode, oldMode) => {
   if (oldMode && newMode !== oldMode && editForm.value.remote_url) {
     editForm.value.remote_url = convertGitUrl(editForm.value.remote_url, newMode)
   }
 })
 
-// 监听远程 URL 协议切换，自动转换 URL
 watch(remoteUrlModes, (newModes, oldModes) => {
   if (!oldModes) return
   for (const [idxStr, newMode] of Object.entries(newModes)) {
@@ -664,7 +637,6 @@ async function loadStats() {
       since: statsFilter.value.since || undefined,
       until: statsFilter.value.until || undefined,
     })
-    // Load commit history
     const res = await getStatsCommits(repoKey, {
       branch: statsFilter.value.branch || undefined,
       author: statsFilter.value.author || undefined,
@@ -685,7 +657,6 @@ async function loadLineStats() {
       until: lineStatsFilter.value.until || undefined,
     })
     lineStatsData.value = result
-    // 如果后端异步计算中，自动轮询
     if (result && result.status === 'processing') {
       lineStatsLoading.value = false
       pollLineStats()
@@ -712,7 +683,6 @@ function pollLineStats() {
       }
     } catch { /* ignore */ }
   }, 2000)
-  // 切换 tab 时不需要清理，因为 setTimeout 会自然结束
   void timer
 }
 
@@ -923,12 +893,10 @@ function openEditDialog() {
   editUrlError.value = ''
   remoteUrlErrors.value = {}
   remoteUrlModes.value = {}
-  // 检测主 URL 协议模式
   const mainProto = detectGitProtocol(repo.value.remote_url || '')
   editUrlMode.value = mainProto === 'http' ? 'https' : 'ssh'
   showEditDialog.value = true
 
-  // Scan repo to populate remotes & tracking branches
   if (repo.value.path) {
     scanRepo(repo.value.path).then(result => {
       editRemotes.value = (result.remotes || []).map(r => ({
@@ -936,12 +904,10 @@ function openEditDialog() {
         _testing: false,
       }))
       editTrackingBranches.value = result.branches || []
-      // 检测每个 remote 的协议模式
       editRemotes.value.forEach((r, i) => {
         const p = detectGitProtocol(r.fetch_url || '')
         remoteUrlModes.value[i] = p === 'http' ? 'https' : 'ssh'
       })
-      // Auto-fill remote_url from first remote if empty
       if (!editForm.value.remote_url && editRemotes.value.length > 0) {
         editForm.value.remote_url = editRemotes.value[0]!.fetch_url
         const p = detectGitProtocol(editForm.value.remote_url)
@@ -956,7 +922,6 @@ async function handleSaveEdit() {
     ElMessage.warning('名称和路径不能为空')
     return
   }
-  // 校验远程 URL
   if (editForm.value.remote_url) {
     const err = validateGitRemoteUrl(editForm.value.remote_url)
     if (err) {
@@ -964,7 +929,6 @@ async function handleSaveEdit() {
       return
     }
   }
-  // 校验各远程的 fetch_url
   for (let i = 0; i < editRemotes.value.length; i++) {
     const r = editRemotes.value[i]!
     if (r.fetch_url) {
@@ -987,7 +951,6 @@ async function handleSaveEdit() {
         is_mirror: r.is_mirror,
       }))
 
-    // Build remote_credentials map
     const rc: Record<string, number> = {}
     for (const [k, v] of Object.entries(editRemoteCredentials.value)) {
       if (v) rc[k] = v
@@ -1005,7 +968,6 @@ async function handleSaveEdit() {
     ElMessage.success('保存成功')
     showEditDialog.value = false
     repo.value = await getRepoDetail(repoKey)
-    // Refresh scan data
     if (repo.value?.path) {
       try {
         scanData.value = await scanRepo(repo.value.path)
@@ -1067,7 +1029,6 @@ function validateRemoteUrl(index: number) {
 
 function removeEditRemote(index: number) {
   editRemotes.value.splice(index, 1)
-  // 清理对应的错误和模式记录
   delete remoteUrlErrors.value[index]
   delete remoteUrlModes.value[index]
 }
@@ -1080,7 +1041,6 @@ async function testEditRemote(index: number) {
   }
   row._testing = true
   try {
-    // 优先使用配置的凭证
     const credentialId = editRemoteCredentials.value[row.name]
     if (credentialId) {
       const result = await testCredential(credentialId, row.fetch_url)
@@ -1090,7 +1050,6 @@ async function testEditRemote(index: number) {
         ElMessage.error('连接失败: ' + (result.message || '未知错误'))
       }
     } else if (editDefaultCredentialId.value) {
-      // 使用默认凭证
       const result = await testCredential(editDefaultCredentialId.value, row.fetch_url)
       if (result.success) {
         ElMessage.success(`${row.name || 'Remote'} 连接成功`)
@@ -1098,7 +1057,6 @@ async function testEditRemote(index: number) {
         ElMessage.error('连接失败: ' + (result.message || '未知错误'))
       }
     } else {
-      // 无凭证，使用基础测试
       const result = await testConnection(row.fetch_url)
       if (result.status === 'success') {
         ElMessage.success(`${row.name || 'Remote'} 连接成功`)
@@ -1165,10 +1123,15 @@ function handleNavSelect(key: string) {
 </script>
 
 <style scoped>
+.page-header-wrap {
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--border-color);
+}
+
 .info-card {
   border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-color-page);
+  border: 1px solid var(--border-color);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -1190,7 +1153,7 @@ function handleNavSelect(key: string) {
 
 .info-v-divider {
   width: 1px;
-  background: var(--border-color, #e5e7eb);
+  background: var(--border-color);
   align-self: stretch;
 }
 
@@ -1208,31 +1171,10 @@ function handleNavSelect(key: string) {
   align-items: center;
 }
 
-.info-section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
 .info-subtitle {
   font-size: 12px;
   color: var(--text-color-secondary, #94A3B8);
 }
-
-.info-edit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-  border: none;
-  font-size: 12px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.info-edit-btn:hover { opacity: 0.9; }
 
 .info-row {
   display: flex;
@@ -1256,33 +1198,24 @@ function handleNavSelect(key: string) {
   color: var(--text-color-primary);
 }
 .info-value--bold { font-weight: 500; }
-.info-value--accent { color: var(--accent-primary, #6366F1); font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; display: flex; align-items: center; gap: 8px; }
+.info-value--accent { color: var(--accent-primary); font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; display: flex; align-items: center; gap: 8px; }
 .info-value.mono { font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; font-size: 13px; }
-
-.info-version-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: #ECFDF5;
-  color: #10B981;
-  font-size: 12px;
-}
 
 .copy-btn-sm {
   padding: 2px 8px;
   border-radius: 4px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   background: transparent;
   font-size: 11px;
   color: var(--text-color-secondary);
   cursor: pointer;
   transition: all 0.2s;
 }
-.copy-btn-sm:hover { border-color: var(--accent-primary, #6366F1); color: var(--accent-primary, #6366F1); }
+.copy-btn-sm:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
 
 .info-divider {
   height: 1px;
-  background: var(--border-color, #e5e7eb);
+  background: var(--border-color);
   margin: 16px 0;
 }
 
@@ -1306,7 +1239,7 @@ function handleNavSelect(key: string) {
 
 .remote-name {
   font-weight: 600;
-  color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary);
   min-width: 60px;
 }
 
@@ -1317,14 +1250,6 @@ function handleNavSelect(key: string) {
   flex: 1;
 }
 
-.mirror-tag {
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: #FFFBEB;
-  color: #F59E0B;
-  font-size: 11px;
-}
-
 .tracking-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1332,17 +1257,9 @@ function handleNavSelect(key: string) {
   margin-top: 10px;
 }
 
-.track-tag {
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: #EEF2FF;
-  color: #6366F1;
-  font-size: 12px;
-}
-
 .platform-card-mini {
   padding: 16px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -1429,7 +1346,7 @@ function handleNavSelect(key: string) {
   align-items: center;
   gap: 8px;
   padding: 20px;
-  border: 1px dashed var(--border-color, #e5e7eb);
+  border: 1px dashed var(--border-color);
   border-radius: 8px;
   font-size: 13px;
   color: var(--text-color-secondary, #94A3B8);
@@ -1441,7 +1358,7 @@ function handleNavSelect(key: string) {
   gap: 6px;
   padding: 6px 14px;
   border-radius: 6px;
-  background: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
   color: #fff;
   border: none;
   font-size: 12px;
@@ -1449,99 +1366,6 @@ function handleNavSelect(key: string) {
   transition: opacity 0.2s;
 }
 .link-platform-btn:hover { opacity: 0.9; }
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 32px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-left h2 {
-  margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.version-tag {
-  display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--success-color);
-  background: #ECFDF5;
-  padding: 4px 10px;
-  border-radius: var(--border-radius-sm);
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-size-sm);
-  color: var(--text-color-secondary);
-  background: none;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-sm);
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.back-btn:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-size-sm);
-  padding: 8px 16px;
-  border-radius: var(--border-radius-md);
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-family: var(--font-family);
-}
-
-.action-pill--green {
-  background: #ECFDF5;
-  color: var(--success-color);
-}
-.action-pill--green:hover {
-  background: #D1FAE5;
-}
-
-.action-pill--primary {
-  background: var(--primary-color);
-  color: #FFFFFF;
-}
-.action-pill--primary:hover {
-  background: var(--primary-color-hover);
-}
-
-.action-pill--amber {
-  background: #FFFBEB;
-  color: var(--warning-color);
-}
-.action-pill--amber:hover {
-  background: #FEF3C7;
-}
 
 .layout-container {
   display: flex;
@@ -1583,12 +1407,12 @@ function handleNavSelect(key: string) {
 }
 
 .sidebar-item.active {
-  background: var(--primary-color);
-  color: #FFFFFF;
+  background: var(--accent-bg);
+  color: var(--accent-primary);
 }
 
 .sidebar-item.active .el-icon {
-  color: #FFFFFF;
+  color: var(--accent-primary);
 }
 
 .sidebar-item .el-icon {

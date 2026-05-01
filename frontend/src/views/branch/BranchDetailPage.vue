@@ -1,81 +1,43 @@
 <template>
   <div class="branch-detail-page" v-loading="loading">
-    <div class="page-header">
-      <div class="header-left">
-        <button class="back-btn" @click="$router.push(`/local-repos/${repoKey}/branches`)">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </button>
-        <h2>{{ branchName }}</h2>
-        <span v-if="isCurrent" class="current-tag">当前分支</span>
-      </div>
-      <div class="header-actions">
-        <button class="action-pill action-pill--primary" @click="$router.push(`/local-repos/${repoKey}/compare`)">
-          <el-icon><Switch /></el-icon> 对比/合并
-        </button>
-        <button class="action-pill action-pill--green" @click="handlePush">
-          <el-icon><Top /></el-icon> 推送远端
-        </button>
-        <button v-if="hasUncommitted" class="action-pill action-pill--amber" @click="showSubmitDialog = true">
-          <el-icon><Upload /></el-icon> 提交变更
-        </button>
-        <button class="action-pill action-pill--outline" @click="loadData">
-          <el-icon><Refresh /></el-icon> 刷新
-        </button>
-        <button v-if="!isCurrent" class="action-pill action-pill--danger" @click="handleDelete">
-          <el-icon><Delete /></el-icon> 删除分支
-        </button>
-      </div>
-    </div>
+    <PageHeader :title="branchName" show-back :back-route="`/local-repos/${repoKey}/branches`">
+      <template #title-suffix>
+        <StatusBadge v-if="isCurrent" variant="success" text="当前分支" :show-dot="false" />
+      </template>
+      <template #actions>
+        <ActionPill variant="primary" :icon="Switch" @click="$router.push(`/local-repos/${repoKey}/compare`)">对比/合并</ActionPill>
+        <ActionPill variant="green" :icon="Top" @click="handlePush">推送远端</ActionPill>
+        <ActionPill v-if="hasUncommitted" variant="amber" :icon="Upload" @click="showSubmitDialog = true">提交变更</ActionPill>
+        <ActionPill variant="outline" :icon="Refresh" @click="loadData">刷新</ActionPill>
+        <ActionPill v-if="!isCurrent" variant="danger" :icon="Delete" @click="handleDelete">删除分支</ActionPill>
+      </template>
+    </PageHeader>
 
     <div v-if="hasUncommitted" class="uncommitted-alert">
       <span class="alert-title">检测到未提交的变更</span>
       <pre class="status-text">{{ repoStatus }}</pre>
     </div>
 
-    <div class="stats-row">
-      <div class="stat-card">
-        <span class="stat-value">{{ statsData?.total_lines || 0 }}</span>
-        <span class="stat-label">总代码行数</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-value">{{ commits.length }}</span>
-        <span class="stat-label">提交总数</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-value">{{ statsData?.authors?.length || 0 }}</span>
-        <span class="stat-label">贡献者数</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-value">{{ fileTypeCount }}</span>
-        <span class="stat-label">文件类型</span>
-      </div>
-    </div>
+    <StatsRow :stats="branchStats" />
 
-    <h3 class="section-title">最近提交</h3>
+    <SectionTitle title="最近提交" />
 
-    <div class="commit-table-card" v-if="commits.length > 0">
-      <div class="table-header">
-        <span class="th" style="width:100px">Hash</span>
-        <span class="th" style="flex:1">信息</span>
-        <span class="th" style="width:120px">作者</span>
-        <span class="th" style="width:140px">时间</span>
-      </div>
-      <div v-for="c in commits" :key="c.hash" class="table-row">
-        <span class="td" style="width:100px">
-          <span class="hash-text">{{ c.hash?.substring(0, 8) }}</span>
-        </span>
-        <span class="td td-message" style="flex:1">{{ c.message }}</span>
-        <span class="td" style="width:120px">
-          <span class="author-name">{{ c.author }}</span>
-        </span>
-        <span class="td" style="width:140px">{{ formatRelativeTime(c.date) }}</span>
-      </div>
-    </div>
-    <div v-else class="empty-table">
-      <span class="text-muted">暂无提交记录</span>
-    </div>
+    <DataTable :columns="commitColumns" :data="commits" row-key="hash">
+      <template #cell-hash="{ row }">
+        <span class="hash-text">{{ row.hash?.substring(0, 8) }}</span>
+      </template>
+      <template #cell-message="{ row }">
+        <span class="td-message">{{ row.message }}</span>
+      </template>
+      <template #cell-author="{ row }">
+        <span class="author-name">{{ row.author }}</span>
+      </template>
+      <template #cell-date="{ row }">{{ formatRelativeTime(row.date) }}</template>
+      <template #empty>
+        <EmptyState title="暂无提交记录" />
+      </template>
+    </DataTable>
 
-    <!-- Push Dialog -->
     <el-dialog v-model="showPushDialog" :title="`推送分支: ${branchName}`" width="480px" destroy-on-close>
       <el-form label-width="90px">
         <el-form-item label="目标远端">
@@ -90,7 +52,6 @@
       </template>
     </el-dialog>
 
-    <!-- Submit Changes Dialog -->
     <el-dialog v-model="showSubmitDialog" title="提交变更" width="550px" destroy-on-close>
       <el-form :model="submitForm" label-width="110px">
         <el-form-item label="Author Name">
@@ -118,13 +79,20 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Switch, Top, Upload, Refresh, Delete } from '@element-plus/icons-vue'
+import { Switch, Top, Upload, Refresh, Delete, DataLine, Tickets, User, Files } from '@element-plus/icons-vue'
 import { pushBranch, deleteBranch, getBranchList } from '@/api/modules/branch'
 import { getRepoDetail, scanRepo } from '@/api/modules/repo'
 import { getStatsAnalyze, getStatsCommits } from '@/api/modules/stats'
 import { getRepoStatus, getRepoGitConfig, submitChanges } from '@/api/modules/system'
 import type { StatsResponse } from '@/types/stats'
 import { formatRelativeTime } from '@/utils/format'
+import PageHeader from '@/components/common/PageHeader.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import StatsRow from '@/components/common/StatsRow.vue'
+import SectionTitle from '@/components/common/SectionTitle.vue'
+import DataTable from '@/components/common/DataTable.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 
 interface CommitInfo {
   hash: string
@@ -169,30 +137,40 @@ const fileTypeCount = computed(() => {
   return types.size
 })
 
+const branchStats = computed(() => [
+  { label: '总代码行数', value: statsData.value?.total_lines || 0, icon: DataLine, color: '#6366F1' },
+  { label: '提交总数', value: commits.value.length, icon: Tickets, color: '#10B981' },
+  { label: '贡献者数', value: statsData.value?.authors?.length || 0, icon: User, color: '#F59E0B' },
+  { label: '文件类型', value: fileTypeCount.value, icon: Files, color: '#3B82F6' },
+])
+
+const commitColumns = [
+  { key: 'hash', label: 'Hash', width: '100px' },
+  { key: 'message', label: '信息', flex: 1 },
+  { key: 'author', label: '作者', width: '120px' },
+  { key: 'date', label: '时间', width: '140px' },
+]
+
 onMounted(() => loadData())
 
 async function loadData() {
   loading.value = true
   try {
-    // Check if this is the current branch
     try {
       const res = await getBranchList(repoKey, { type: 'local', page_size: 500 })
       const branch = (res.list || []).find((b) => b.name === branchName)
       isCurrent.value = branch?.is_current || false
     } catch { /* ignore */ }
 
-    // Load stats
     try {
       statsData.value = await getStatsAnalyze(repoKey, { branch: branchName })
     } catch { /* ignore */ }
 
-    // Load commits
     try {
       const res = await getStatsCommits(repoKey, { branch: branchName })
       commits.value = (Array.isArray(res) ? res : []).slice(0, 20)
     } catch { /* ignore */ }
 
-    // Load remotes
     try {
       const repo = await getRepoDetail(repoKey)
       if (repo?.path) {
@@ -201,14 +179,12 @@ async function loadData() {
       }
     } catch { /* ignore */ }
 
-    // Check uncommitted changes
     try {
       const status = await getRepoStatus(repoKey) as unknown as { status: string }
       repoStatus.value = status?.status || ''
       hasUncommitted.value = !!repoStatus.value && repoStatus.value.trim() !== ''
     } catch { /* ignore */ }
 
-    // Load git config for submit form
     try {
       const config = await getRepoGitConfig(repoKey) as unknown as { name: string; email: string }
       submitForm.value.author_name = config?.name || ''
@@ -279,117 +255,6 @@ async function handleSubmitChanges() {
   background: var(--bg-color);
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-left h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-color-secondary);
-  background: none;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-sm);
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.back-btn:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.current-tag {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  color: var(--success-color);
-  background: #ECFDF5;
-  padding: 2px 8px;
-  border-radius: var(--border-radius-sm);
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.action-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  padding: 8px 16px;
-  border-radius: var(--border-radius-md);
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-family: var(--font-family);
-}
-
-.action-pill--primary {
-  background: var(--primary-color);
-  color: #FFFFFF;
-}
-.action-pill--primary:hover {
-  background: var(--primary-color-hover);
-}
-
-.action-pill--green {
-  background: #ECFDF5;
-  color: var(--success-color);
-}
-.action-pill--green:hover {
-  background: #D1FAE5;
-}
-
-.action-pill--amber {
-  background: #FFFBEB;
-  color: var(--warning-color);
-}
-.action-pill--amber:hover {
-  background: #FEF3C7;
-}
-
-.action-pill--outline {
-  background: transparent;
-  color: var(--text-color-primary);
-  border: 1px solid var(--border-color);
-}
-.action-pill--outline:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.action-pill--danger {
-  background: #FEF2F2;
-  color: var(--danger-color);
-}
-.action-pill--danger:hover {
-  background: #FEE2E2;
-}
-
 .uncommitted-alert {
   background: #FFFBEB;
   border: 1px solid var(--warning-color);
@@ -415,81 +280,6 @@ async function handleSubmitChanges() {
   color: var(--text-color-secondary);
 }
 
-.stats-row {
-  display: flex;
-  gap: 16px;
-}
-
-.stat-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 20px;
-  background: var(--bg-color-page);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--text-color-secondary);
-}
-
-.section-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.commit-table-card {
-  border-radius: var(--border-radius-lg);
-  border: 1px solid var(--border-color);
-  background: var(--bg-color-page);
-  overflow: hidden;
-}
-
-.table-header {
-  display: flex;
-  align-items: center;
-  padding: 12px 20px;
-  background: var(--accent-bg);
-}
-
-.th {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-color-secondary);
-}
-
-.table-row {
-  display: flex;
-  align-items: center;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border-color);
-  transition: background var(--transition-fast);
-}
-
-.table-row:last-child {
-  border-bottom: none;
-}
-
-.table-row:hover {
-  background: var(--border-color-extra-light);
-}
-
-.td {
-  font-size: 13px;
-  color: var(--text-color-secondary);
-}
-
 .hash-text {
   font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
   font-size: 12px;
@@ -508,41 +298,9 @@ async function handleSubmitChanges() {
   font-size: 13px;
 }
 
-.empty-table {
-  padding: 40px;
-  text-align: center;
-}
-
-.text-muted {
-  font-size: 13px;
-  color: var(--text-color-placeholder);
-}
-
 @media (max-width: 768px) {
   .branch-detail-page {
     padding: var(--spacing-md);
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .stats-row {
-    flex-wrap: wrap;
-  }
-
-  .stat-card {
-    min-width: calc(50% - 12px);
-  }
-
-  .commit-table-card {
-    overflow-x: auto;
-  }
-
-  .table-header,
-  .table-row {
-    min-width: 600px;
   }
 }
 </style>

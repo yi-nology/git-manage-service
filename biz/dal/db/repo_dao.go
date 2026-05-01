@@ -2,6 +2,7 @@ package db
 
 import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"gorm.io/gorm"
 )
 
 type RepoDAO struct{}
@@ -38,6 +39,16 @@ func (d *RepoDAO) Save(repo *po.Repo) error {
 
 func (d *RepoDAO) Delete(repo *po.Repo) error {
 	return DB.Delete(repo).Error
+}
+
+func (d *RepoDAO) DeleteWithBindings(repo *po.Repo) error {
+	return DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&po.RepoProviderBinding{}).Where("repo_id = ? AND status = ?", repo.ID, "active").
+			Update("status", "deleted").Error; err != nil {
+			return err
+		}
+		return tx.Delete(repo).Error
+	})
 }
 
 // FindByID 根据ID查询仓库

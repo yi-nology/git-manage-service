@@ -23,6 +23,8 @@ func Register(r *server.Hertz) {
 			_v1 := _api.Group("/v1", _v1Mw()...)
 			{
 				_spec := _v1.Group("/spec", _specMw()...)
+				_spec.POST("/ai-assist", append(_aiassistspecMw(), spec.AIAssistSpec)...)
+				_spec.POST("/ai-fix", append(_aifixspecMw(), spec.AIFixSpec)...)
 				_spec.GET("/content", append(_getspeccontentMw(), spec.GetSpecContent)...)
 				_content := _spec.Group("/content", _contentMw()...)
 				_content.GET("/:path", append(_getspeccontentbypathMw(), spec.GetSpecContentByPath)...)
