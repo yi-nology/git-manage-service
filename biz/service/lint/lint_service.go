@@ -12,6 +12,7 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"github.com/yi-nology/git-manage-service/biz/service/llm"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
@@ -40,6 +41,8 @@ type LintIssue struct {
 	Column    int    `json:"column,omitempty"`
 	EndLine   int    `json:"endLine,omitempty"`
 	EndColumn int    `json:"endColumn,omitempty"`
+	Source    string `json:"source,omitempty"`
+	QuickFix  string `json:"quickFix,omitempty"`
 }
 
 type LintStats struct {
@@ -102,6 +105,33 @@ func (s *LintService) Lint(content string, ruleIDs []string) (*LintResult, error
 				case "info":
 					result.Stats.InfoCount++
 				}
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func (s *LintService) LintWithAI(ctx context.Context, content string, ruleIDs []string, mode string) (*LintResult, error) {
+	if mode == "" {
+		mode = "rule_only"
+	}
+
+	result, err := s.Lint(content, ruleIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	if (mode == "rule_and_ai" || mode == "ai_only") && llm.HasDefaultProvider() {
+		aiResult, aiErr := AILint(ctx, content, mode)
+		if aiErr == nil && aiResult != nil {
+			if mode == "ai_only" {
+				result = aiResult
+			} else {
+				result.Issues = append(result.Issues, aiResult.Issues...)
+				result.Stats.ErrorCount += aiResult.Stats.ErrorCount
+				result.Stats.WarningCount += aiResult.Stats.WarningCount
+				result.Stats.InfoCount += aiResult.Stats.InfoCount
 			}
 		}
 	}

@@ -1,0 +1,55 @@
+// idl/biz/webhook_event.proto - Webhook事件记录模块
+syntax = "proto3";
+
+package webhook_event;
+
+option go_package = "webhook_event";
+
+import "api.proto";
+import "common.proto";
+
+message WebhookEventInfo {
+  uint64 id = 1;
+  string event_type = 2;
+  string source = 3;
+  string status = 4;
+  string payload = 5;
+  string result = 6;
+  string error_message = 7;
+  int32 retry_count = 8;
+  string provider_name = 9;
+  string created_at = 10;
+  string updated_at = 11;
+}
+
+message ListWebhookEventsRequest {
+  string event_type = 1 [(api.query) = "event_type"];
+  string source = 2 [(api.query) = "source"];
+  string status = 3 [(api.query) = "status"];
+  int32 page = 4 [(api.query) = "page"];
+  int32 page_size = 5 [(api.query) = "page_size"];
+}
+
+message RetryWebhookEventRequest {
+  uint64 event_id = 1 [(api.body) = "event_id"];
+}
+
+message ListWebhookEventsResponse {
+  common.BaseResponse base = 1;
+  repeated WebhookEventInfo items = 2;
+  int64 total = 3;
+}
+
+message RetryWebhookEventResponse {
+  common.BaseResponse base = 1;
+  string message = 2;
+}
+
+service WebhookEventService {
+  rpc List(ListWebhookEventsRequest) returns (ListWebhookEventsResponse) {
+    option (api.get) = "/api/v1/webhook/events";
+  }
+  rpc Retry(RetryWebhookEventRequest) returns (RetryWebhookEventResponse) {
+    option (api.post) = "/api/v1/webhook/events/retry";
+  }
+}

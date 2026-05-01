@@ -456,3 +456,31 @@ func (g *githubProvider) CreateBranch(ctx context.Context, owner, repo, branch, 
 func (g *githubProvider) DeleteBranch(ctx context.Context, owner, repo, branch string) error {
 	return g.doRequest(ctx, "DELETE", fmt.Sprintf("/repos/%s/%s/git/refs/heads/%s", owner, repo, branch), nil, nil)
 }
+
+func (g *githubProvider) GetCRDiff(ctx context.Context, owner, repo string, number int) (*MergeDiff, error) {
+	return nil, fmt.Errorf("GetCRDiff not yet implemented for GitHub")
+}
+
+func (g *githubProvider) GetCRFiles(ctx context.Context, owner, repo string, number int) ([]*ChangedFile, error) {
+	return nil, fmt.Errorf("GetCRFiles not yet implemented for GitHub")
+}
+
+func (g *githubProvider) CreateNote(ctx context.Context, owner, repo string, number int, body string) (string, error) {
+	return "", fmt.Errorf("CreateNote not yet implemented for GitHub")
+}
+
+func (g *githubProvider) CreateDiscussion(ctx context.Context, owner, repo string, number int, opts DiscussionOptions) (string, error) {
+	return "", fmt.Errorf("CreateDiscussion not yet implemented for GitHub")
+}
+
+func (g *githubProvider) CreateCommitStatus(ctx context.Context, owner, repo, sha string, opts CommitStatusOptions) error {
+	return fmt.Errorf("CreateCommitStatus not yet implemented for GitHub")
+}
+
+func (g *githubProvider) GetFileContent(ctx context.Context, owner, repo, path, ref string) (string, error) {
+	return "", fmt.Errorf("GetFileContent not yet implemented for GitHub")
+}
+
+func (g *githubProvider) UpdateCRLabels(ctx context.Context, owner, repo string, number int, labels []string) error {
+	return fmt.Errorf("UpdateCRLabels not yet implemented for GitHub")
+}

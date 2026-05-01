@@ -1,0 +1,231 @@
+// idl/biz/settings.proto - 系统设置服务模块
+syntax = "proto3";
+
+package settings;
+
+option go_package = "settings";
+
+import "api.proto";
+import "common.proto";
+
+message LLMProviderInfo {
+  uint64 id = 1;
+  string name = 2;
+  string type = 3;
+  string base_url = 4;
+  string api_key = 5;
+  string model = 6;
+  int32 max_tokens = 7;
+  bool is_default = 8;
+  string created_at = 9;
+  string updated_at = 10;
+}
+
+message CodeReviewSettings {
+  bool enabled = 1;
+  bool auto_review_on_mr = 2;
+  bool block_on_high = 3;
+  int32 max_files = 4;
+  int32 max_diff_lines = 5;
+}
+
+message BranchRule {
+  uint64 id = 1;
+  string prefix = 2;
+  string display_name = 3;
+  repeated string source_branches = 4;
+  repeated string target_branches = 5;
+  bool require_task_id = 6;
+  string task_id_pattern = 7;
+  bool auto_delete_on_merge = 8;
+  bool allow_direct_push = 9;
+  bool require_code_review = 10;
+  int32 sort_order = 11;
+}
+
+message LinkedRepo {
+  string repo_key = 1;
+  string repo_name = 2;
+  string binding_id = 3;
+}
+
+message BranchRuleSet {
+  bool enabled = 1;
+  repeated BranchRule rules = 2;
+  repeated string protected_branches = 3;
+  bool use_custom_rules = 4;
+  string scope_type = 5;
+  repeated LinkedRepo linked_repos = 6;
+}
+
+message RemoteRepoBranchRuleSet {
+  uint64 provider_config_id = 1;
+  string platform_owner = 2;
+  string platform_repo = 3;
+  bool use_custom_rules = 4;
+  repeated BranchRule rules = 5;
+  repeated string protected_branches = 6;
+  repeated LinkedRepo linked_repos = 7;
+}
+
+message ListLLMProvidersRequest {}
+
+message ListLLMProvidersResponse {
+  common.BaseResponse base = 1;
+  repeated LLMProviderInfo data = 2;
+}
+
+message GetLLMProviderRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+message LLMProviderResponse {
+  common.BaseResponse base = 1;
+  LLMProviderInfo data = 2;
+}
+
+message CreateLLMProviderRequest {
+  string name = 1 [(api.body) = "name"];
+  string type = 2 [(api.body) = "type"];
+  string base_url = 3 [(api.body) = "base_url"];
+  string api_key = 4 [(api.body) = "api_key"];
+  string model = 5 [(api.body) = "model"];
+  int32 max_tokens = 6 [(api.body) = "max_tokens"];
+  bool is_default = 7 [(api.body) = "is_default"];
+}
+
+message UpdateLLMProviderRequest {
+  uint64 id = 1 [(api.path) = "id"];
+  string name = 2 [(api.body) = "name"];
+  string type = 3 [(api.body) = "type"];
+  string base_url = 4 [(api.body) = "base_url"];
+  string api_key = 5 [(api.body) = "api_key"];
+  string model = 6 [(api.body) = "model"];
+  int32 max_tokens = 7 [(api.body) = "max_tokens"];
+  bool is_default = 8 [(api.body) = "is_default"];
+}
+
+message DeleteLLMProviderRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+message SetDefaultLLMProviderRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+message TestLLMProviderRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+message TestLLMProviderResponse {
+  common.BaseResponse base = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message GetCodeReviewSettingsRequest {}
+
+message CodeReviewSettingsResponse {
+  common.BaseResponse base = 1;
+  CodeReviewSettings data = 2;
+}
+
+message UpdateCodeReviewSettingsRequest {
+  bool enabled = 1 [(api.body) = "enabled"];
+  bool auto_review_on_mr = 2 [(api.body) = "auto_review_on_mr"];
+  bool block_on_high = 3 [(api.body) = "block_on_high"];
+  int32 max_files = 4 [(api.body) = "max_files"];
+  int32 max_diff_lines = 5 [(api.body) = "max_diff_lines"];
+}
+
+message GetBranchRulesRequest {}
+
+message BranchRulesResponse {
+  common.BaseResponse base = 1;
+  BranchRuleSet data = 2;
+}
+
+message UpdateBranchRulesRequest {
+  bool enabled = 1 [(api.body) = "enabled"];
+  repeated BranchRule rules = 2 [(api.body) = "rules"];
+  repeated string protected_branches = 3 [(api.body) = "protected_branches"];
+}
+
+message ValidateBranchNameRequest {
+  string repo_key = 1 [(api.query) = "repo_key"];
+  string branch_name = 2 [(api.query) = "branch_name"];
+  string base_ref = 3 [(api.query) = "base_ref"];
+  bool skip_rules = 4 [(api.query) = "skip_rules"];
+}
+
+message ValidateBranchNameResponse {
+  common.BaseResponse base = 1;
+  bool valid = 2;
+  string message = 3;
+  string suggested_name = 4;
+}
+
+message GetRemoteRepoBranchRulesRequest {
+  uint64 provider_id = 1 [(api.path) = "provider_id"];
+  string owner = 2 [(api.path) = "owner"];
+  string repo = 3 [(api.path) = "repo"];
+}
+
+message RemoteRepoBranchRulesResponse {
+  common.BaseResponse base = 1;
+  RemoteRepoBranchRuleSet data = 2;
+}
+
+message UpdateRemoteRepoBranchRulesRequest {
+  uint64 provider_id = 1 [(api.path) = "provider_id"];
+  string owner = 2 [(api.path) = "owner"];
+  string repo = 3 [(api.path) = "repo"];
+  bool use_custom_rules = 4 [(api.body) = "use_custom_rules"];
+  repeated BranchRule rules = 5 [(api.body) = "rules"];
+  repeated string protected_branches = 6 [(api.body) = "protected_branches"];
+}
+
+service SettingsService {
+  rpc ListLLMProviders(ListLLMProvidersRequest) returns (ListLLMProvidersResponse) {
+    option (api.get) = "/api/v1/settings/llm-providers";
+  }
+  rpc GetLLMProvider(GetLLMProviderRequest) returns (LLMProviderResponse) {
+    option (api.get) = "/api/v1/settings/llm-providers/:id";
+  }
+  rpc CreateLLMProvider(CreateLLMProviderRequest) returns (LLMProviderResponse) {
+    option (api.post) = "/api/v1/settings/llm-providers";
+  }
+  rpc UpdateLLMProvider(UpdateLLMProviderRequest) returns (LLMProviderResponse) {
+    option (api.put) = "/api/v1/settings/llm-providers/:id";
+  }
+  rpc DeleteLLMProvider(DeleteLLMProviderRequest) returns (common.EmptyResponse) {
+    option (api.delete) = "/api/v1/settings/llm-providers/:id";
+  }
+  rpc SetDefaultLLMProvider(SetDefaultLLMProviderRequest) returns (common.EmptyResponse) {
+    option (api.put) = "/api/v1/settings/llm-providers/:id/default";
+  }
+  rpc TestLLMProvider(TestLLMProviderRequest) returns (TestLLMProviderResponse) {
+    option (api.post) = "/api/v1/settings/llm-providers/:id/test";
+  }
+  rpc GetCodeReviewSettings(GetCodeReviewSettingsRequest) returns (CodeReviewSettingsResponse) {
+    option (api.get) = "/api/v1/settings/code-review";
+  }
+  rpc UpdateCodeReviewSettings(UpdateCodeReviewSettingsRequest) returns (CodeReviewSettingsResponse) {
+    option (api.put) = "/api/v1/settings/code-review";
+  }
+  rpc GetBranchRules(GetBranchRulesRequest) returns (BranchRulesResponse) {
+    option (api.get) = "/api/v1/settings/branch-rules";
+  }
+  rpc UpdateBranchRules(UpdateBranchRulesRequest) returns (BranchRulesResponse) {
+    option (api.put) = "/api/v1/settings/branch-rules";
+  }
+  rpc ValidateBranchName(ValidateBranchNameRequest) returns (ValidateBranchNameResponse) {
+    option (api.get) = "/api/v1/settings/branch-rules/validate";
+  }
+  rpc GetRemoteRepoBranchRules(GetRemoteRepoBranchRulesRequest) returns (RemoteRepoBranchRulesResponse) {
+    option (api.get) = "/api/v1/branch-rules/remote-config/:provider_id/:owner/:repo";
+  }
+  rpc UpdateRemoteRepoBranchRules(UpdateRemoteRepoBranchRulesRequest) returns (RemoteRepoBranchRulesResponse) {
+    option (api.put) = "/api/v1/branch-rules/remote-config/:provider_id/:owner/:repo";
+  }
+}

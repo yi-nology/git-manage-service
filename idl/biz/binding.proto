@@ -1,0 +1,120 @@
+// idl/biz/binding.proto - 仓库平台绑定模块
+syntax = "proto3";
+
+package binding;
+
+option go_package = "binding";
+
+import "api.proto";
+import "common.proto";
+
+message BindingInfo {
+  uint64 id = 1;
+  string repo_key = 2;
+  uint64 provider_config_id = 3;
+  string platform = 4;
+  string platform_owner = 5;
+  string platform_repo = 6;
+  string remote_name = 7;
+  bool is_primary = 8;
+  string platform_repo_id = 9;
+  string created_at = 10;
+  string updated_at = 11;
+}
+
+message ListBindingsRequest {
+  string repo_key = 1 [(api.query) = "repo_key"];
+  uint64 provider_config_id = 2 [(api.query) = "provider_config_id"];
+}
+
+message GetBindingRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+message CreateBindingRequest {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  uint64 provider_config_id = 2 [(api.body) = "provider_config_id"];
+  string platform_owner = 3 [(api.body) = "platform_owner"];
+  string platform_repo = 4 [(api.body) = "platform_repo"];
+  string remote_name = 5 [(api.body) = "remote_name"];
+  bool is_primary = 6 [(api.body) = "is_primary"];
+  bool register_webhook = 7 [(api.body) = "register_webhook"];
+}
+
+message UpdateBindingRequest {
+  uint64 id = 1 [(api.path) = "id"];
+  string remote_name = 2 [(api.body) = "remote_name"];
+  bool is_primary = 3 [(api.body) = "is_primary"];
+  string platform_repo_id = 4 [(api.body) = "platform_repo_id"];
+}
+
+message DeleteBindingRequest {
+  uint64 id = 1 [(api.path) = "id"];
+  bool cleanup_webhook = 2 [(api.query) = "cleanup_webhook"];
+}
+
+message SetPrimaryRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+message AutoDetectRequest {
+  string repo_key = 1 [(api.body) = "repo_key"];
+}
+
+message AutoDetectResult {
+  uint64 provider_config_id = 1;
+  string platform = 2;
+  string platform_owner = 3;
+  string platform_repo = 4;
+  string remote_name = 5;
+  bool matched = 6;
+}
+
+message AutoDetectResponse {
+  common.BaseResponse base = 1;
+  repeated AutoDetectResult data = 2;
+}
+
+message WebhookRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+message BindingResponse {
+  common.BaseResponse base = 1;
+  BindingInfo data = 2;
+}
+
+message ListBindingsResponse {
+  common.BaseResponse base = 1;
+  repeated BindingInfo data = 2;
+}
+
+service BindingService {
+  rpc List(ListBindingsRequest) returns (ListBindingsResponse) {
+    option (api.get) = "/api/v1/bindings";
+  }
+  rpc Get(GetBindingRequest) returns (BindingResponse) {
+    option (api.get) = "/api/v1/bindings/:id";
+  }
+  rpc Create(CreateBindingRequest) returns (BindingResponse) {
+    option (api.post) = "/api/v1/bindings";
+  }
+  rpc Update(UpdateBindingRequest) returns (BindingResponse) {
+    option (api.put) = "/api/v1/bindings/:id";
+  }
+  rpc Delete(DeleteBindingRequest) returns (common.EmptyResponse) {
+    option (api.delete) = "/api/v1/bindings/:id";
+  }
+  rpc SetPrimary(SetPrimaryRequest) returns (BindingResponse) {
+    option (api.post) = "/api/v1/bindings/:id/set-primary";
+  }
+  rpc AutoDetect(AutoDetectRequest) returns (AutoDetectResponse) {
+    option (api.post) = "/api/v1/bindings/auto-detect";
+  }
+  rpc RegisterWebhook(WebhookRequest) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/bindings/:id/webhook";
+  }
+  rpc DeleteWebhook(WebhookRequest) returns (common.EmptyResponse) {
+    option (api.delete) = "/api/v1/bindings/:id/webhook";
+  }
+}

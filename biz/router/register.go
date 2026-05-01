@@ -10,20 +10,20 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
-	"github.com/yi-nology/git-manage-service/biz/handler/cr"
-	providerhandler "github.com/yi-nology/git-manage-service/biz/handler/provider"
-	webhookhandler "github.com/yi-nology/git-manage-service/biz/handler/webhook"
-	eventhandler "github.com/yi-nology/git-manage-service/biz/handler/webhook_event"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"
 	"github.com/yi-nology/git-manage-service/biz/router/binding"
 	"github.com/yi-nology/git-manage-service/biz/router/branch"
 	"github.com/yi-nology/git-manage-service/biz/router/commit"
+	"github.com/yi-nology/git-manage-service/biz/router/cr"
 	"github.com/yi-nology/git-manage-service/biz/router/credential"
 	"github.com/yi-nology/git-manage-service/biz/router/file"
 	"github.com/yi-nology/git-manage-service/biz/router/notification"
 	"github.com/yi-nology/git-manage-service/biz/router/patch"
+	"github.com/yi-nology/git-manage-service/biz/router/provider"
 	"github.com/yi-nology/git-manage-service/biz/router/repo"
+	review "github.com/yi-nology/git-manage-service/biz/router/review"
+	"github.com/yi-nology/git-manage-service/biz/router/settings"
 	"github.com/yi-nology/git-manage-service/biz/router/spec"
 	"github.com/yi-nology/git-manage-service/biz/router/sshkey"
 	"github.com/yi-nology/git-manage-service/biz/router/stash"
@@ -34,6 +34,8 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/router/tag"
 	"github.com/yi-nology/git-manage-service/biz/router/version"
 	"github.com/yi-nology/git-manage-service/biz/router/webhook"
+	"github.com/yi-nology/git-manage-service/biz/router/webhook_event"
+	settingsHandler "github.com/yi-nology/git-manage-service/biz/handler/settings"
 )
 
 // 嵌入的文件系统变量
@@ -50,11 +52,19 @@ func SetEmbedFS(public, docs fs.FS) {
 
 // GeneratedRegister registers all routes
 func GeneratedRegister(h *server.Hertz) {
-	// 全局 CORS 中间件
 	h.Use(middleware.CORS())
 
-	// 注册 Hz 生成的路由
+	//INSERT_POINT: DO NOT DELETE THIS LINE!
+	registerLLMPresetsRoute(h)
+	settings.Register(h)
+	webhook_event.Register(h)
+	provider.Register(h)
+	cr.Register(h)
+
+	review.Register(h)
 	audit.Register(h)
+
+	registerReviewRuleRoutes(h)
 	branch.Register(h)
 	commit.Register(h)
 	credential.Register(h)
@@ -73,38 +83,6 @@ func GeneratedRegister(h *server.Hertz) {
 	spec.Register(h)
 	stats.Register(h)
 	binding.Register(h)
-
-	// Provider Config CRUD
-	h.GET("/api/v1/providers", providerhandler.List)
-	h.GET("/api/v1/providers/:id", providerhandler.Get)
-	h.POST("/api/v1/providers", providerhandler.Create)
-	h.PUT("/api/v1/providers/:id", providerhandler.Update)
-	h.DELETE("/api/v1/providers/:id", providerhandler.Delete)
-	h.POST("/api/v1/providers/:id/test", providerhandler.Test)
-	h.GET("/api/v1/providers/:id/repos", providerhandler.ListRemoteRepos)
-	h.GET("/api/v1/providers/branches", providerhandler.ListRemoteBranches)
-	h.POST("/api/v1/providers/branches/create", providerhandler.CreateRemoteBranch)
-	h.POST("/api/v1/providers/branches/delete", providerhandler.DeleteRemoteBranch)
-
-	// Change Request (CR/MR) management
-	h.POST("/api/v1/cr/create", cr.Create)
-	h.GET("/api/v1/cr/detail", cr.Get)
-	h.GET("/api/v1/cr/list", cr.List)
-	h.POST("/api/v1/cr/merge", cr.Merge)
-	h.POST("/api/v1/cr/close", cr.Close)
-	h.POST("/api/v1/cr/sync", cr.Sync)
-	h.GET("/api/v1/cr/detect", cr.Detect)
-	h.GET("/api/v1/cr/remote/list", cr.ListByProvider)
-	h.POST("/api/v1/cr/remote/create", cr.CreateByProvider)
-	h.POST("/api/v1/cr/remote/merge", cr.MergeByProvider)
-	h.POST("/api/v1/cr/remote/close", cr.CloseByProvider)
-
-	// Webhook Events
-	h.GET("/api/v1/webhook/events", eventhandler.List)
-	h.POST("/api/v1/webhook/events/retry", eventhandler.Retry)
-
-	// Incoming webhook receiver
-	h.POST("/api/webhooks/receive", webhookhandler.Receive)
 
 	// 根路径
 	h.GET("/", func(ctx context.Context, c *app.RequestContext) {
@@ -182,7 +160,6 @@ func getContentType(path string) string {
 	if mimeType := mime.TypeByExtension(ext); mimeType != "" {
 		return mimeType
 	}
-	// 常用类型的后备
 	switch ext {
 	case ".html":
 		return "text/html; charset=utf-8"
@@ -197,4 +174,18 @@ func getContentType(path string) string {
 	default:
 		return "application/octet-stream"
 	}
+}
+
+func registerReviewRuleRoutes(h *server.Hertz) {
+	g := h.Group("/api/v1/settings/review-rules")
+	g.GET("", settingsHandler.ListReviewRules)
+	g.POST("", settingsHandler.CreateReviewRule)
+	g.PUT("/batch", settingsHandler.BatchUpdateReviewRules)
+	g.GET("/:rule_id", settingsHandler.GetReviewRule)
+	g.PUT("/:rule_id", settingsHandler.UpdateReviewRule)
+	g.DELETE("/:rule_id", settingsHandler.DeleteReviewRule)
+}
+
+func registerLLMPresetsRoute(h *server.Hertz) {
+	h.GET("/api/v1/settings/llm-providers/presets", settingsHandler.ListLLMPresets)
 }

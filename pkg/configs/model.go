@@ -1,13 +1,15 @@
 package configs
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Webhook  WebhookConfig  `mapstructure:"webhook"`
-	Rpc      RpcConfig      `mapstructure:"rpc"`
-	Storage  StorageConfig  `mapstructure:"storage"`
-	Lock     LockConfig     `mapstructure:"lock"`
-	Lint     LintConfig     `mapstructure:"lint"`
+	Server     ServerConfig        `mapstructure:"server"`
+	Database   DatabaseConfig      `mapstructure:"database"`
+	Webhook    WebhookConfig       `mapstructure:"webhook"`
+	Rpc        RpcConfig           `mapstructure:"rpc"`
+	Storage    StorageConfig       `mapstructure:"storage"`
+	Lock       LockConfig          `mapstructure:"lock"`
+	Lint       LintConfig          `mapstructure:"lint"`
+	CodeReview CodeReviewConfig    `mapstructure:"code_review"`
+	Redis      RedisConfig         `mapstructure:"redis"`
 }
 
 type ServerConfig struct {
@@ -58,5 +60,30 @@ type LockConfig struct {
 }
 
 type LintConfig struct {
-	EnableRpmlint bool `mapstructure:"enable_rpmlint"` // 是否启用 rpmlint（仅当系统安装时生效）
+	EnableRpmlint bool `mapstructure:"enable_rpmlint"`
+}
+
+type CodeReviewConfig struct {
+	Enabled        bool   `mapstructure:"enabled"`
+	DefaultLLM     string `mapstructure:"default_llm"`
+	MaxFiles       int    `mapstructure:"max_files"`
+	MaxDiffLines   int    `mapstructure:"max_diff_lines"`
+	AutoReviewOnMR bool   `mapstructure:"auto_review_on_mr"`
+	BlockOnHigh    bool   `mapstructure:"block_on_high"`
+	LLMProviders   []LLMProviderConfig `mapstructure:"llm_providers"`
+}
+
+type LLMProviderConfig struct {
+	Name      string `mapstructure:"name"`
+	Type      string `mapstructure:"type"`
+	BaseURL   string `mapstructure:"base_url"`
+	APIKey    string `mapstructure:"api_key"`
+	Model     string `mapstructure:"model"`
+	MaxTokens int    `mapstructure:"max_tokens"`
+}
+
+type RedisConfig struct {
+	Addr     string `mapstructure:"addr"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
 }

@@ -10,7 +10,7 @@ import {
   updateLintRule,
   commitSpec,
 } from '@/api/modules/spec'
-import type { LintIssue } from '@/types/spec'
+import type { LintIssue, LintMode } from '@/types/spec'
 
 export function useSpecEditor() {
   const store = useSpecStore()
@@ -18,6 +18,7 @@ export function useSpecEditor() {
   const lintingInProgress = ref(false)
   const savingInProgress = ref(false)
   const committingInProgress = ref(false)
+  const lintMode = ref<LintMode>('rule_only')
   let lintTimer: ReturnType<typeof setTimeout> | null = null
 
   async function loadFileTree() {
@@ -52,15 +53,21 @@ export function useSpecEditor() {
     }
   }
 
-  async function lintContent(content?: string) {
+  async function lintContent(content?: string, forceMode?: LintMode) {
     const contentToLint = content || store.content
     if (!contentToLint) return
 
     try {
       lintingInProgress.value = true
       const enabledRuleIds = store.getEnabledRuleIds()
-      const result = await lintSpec(contentToLint, enabledRuleIds)
-      store.setLintIssues(result.issues)
+      const mode = forceMode || lintMode.value
+      const result = await lintSpec(contentToLint, enabledRuleIds, mode)
+      store.setLintIssues(
+        result.issues.map((issue: any) => ({
+          ...issue,
+          source: issue.source || 'rule',
+        }))
+      )
     } catch (error) {
       showError('Linting 失败', error)
     } finally {
@@ -164,6 +171,7 @@ export function useSpecEditor() {
     lintingInProgress,
     savingInProgress,
     committingInProgress,
+    lintMode,
     loadFileTree,
     loadFile,
     lintContent,

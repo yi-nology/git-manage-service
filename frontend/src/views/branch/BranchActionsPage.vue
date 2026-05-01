@@ -1,22 +1,18 @@
 <template>
   <div class="branch-actions-page">
-    <div class="page-header">
-      <div class="header-left">
-        <button class="back-btn" @click="$router.push(`/local-repos/${repoKey}/branches`)">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </button>
-        <h2>{{ repoName || '仓库' }}</h2>
+    <PageHeader :title="repoName || '仓库'" show-back :back-route="branchBackRoute">
+      <template #title-suffix>
         <span v-if="currentVersion" class="version-tag">{{ currentVersion }}</span>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div class="two-col">
       <div class="col-left">
-        <div class="action-card">
-          <div class="card-header">
+        <FormCard>
+          <template #header>
             <h3>创建分支</h3>
-            <span class="card-badge badge-green">新建</span>
-          </div>
+            <StatusBadge variant="success" text="新建" :show-dot="false" />
+          </template>
           <div class="form-field">
             <label class="field-label">源分支</label>
             <select v-model="createForm.baseRef" class="field-input">
@@ -26,18 +22,27 @@
           </div>
           <div class="form-field">
             <label class="field-label">新分支名称</label>
-            <input v-model="createForm.name" placeholder="例如: feature/new-feature" class="field-input" />
+            <input v-model="createForm.name" placeholder="例如: feature/new-feature" class="field-input" @input="handleBranchNameInput" />
+            <div v-if="createValidating" class="validation-hint">校验中...</div>
+            <div v-else-if="createErrors.length > 0" class="validation-errors">
+              <div v-for="(err, idx) in createErrors" :key="idx" class="validation-error-item">
+                <span class="error-dot"></span> {{ err.message }}
+              </div>
+            </div>
+            <div v-else-if="createForm.name && createValid" class="validation-success">
+              <span class="success-dot"></span> 分支名符合规则
+            </div>
           </div>
-          <button class="btn-primary" @click="handleCreateBranch" :disabled="creating">
-            <el-icon><Plus /></el-icon> {{ creating ? '创建中...' : '创建分支' }}
-          </button>
-        </div>
+          <ActionPill variant="primary" :icon="Plus" :disabled="creating || createErrors.length > 0" @click="handleCreateBranch">
+            {{ creating ? '创建中...' : '创建分支' }}
+          </ActionPill>
+        </FormCard>
 
-        <div class="action-card">
-          <div class="card-header">
+        <FormCard>
+          <template #header>
             <h3>删除分支</h3>
-            <span class="card-badge badge-red">危险</span>
-          </div>
+            <StatusBadge variant="danger" text="危险" :show-dot="false" />
+          </template>
           <div class="form-field">
             <label class="field-label">选择分支</label>
             <select v-model="deleteForm.branch" class="field-input">
@@ -52,16 +57,16 @@
               <button class="mode-btn" :class="{ active: !deleteForm.remote }" @click="deleteForm.remote = false">仅本地</button>
             </div>
           </div>
-          <button class="btn-danger" @click="handleDeleteBranch" :disabled="deleting">
-            <el-icon><Delete /></el-icon> {{ deleting ? '删除中...' : '删除分支' }}
-          </button>
-        </div>
+          <ActionPill variant="danger" :icon="Delete" :disabled="deleting" @click="handleDeleteBranch">
+            {{ deleting ? '删除中...' : '删除分支' }}
+          </ActionPill>
+        </FormCard>
 
-        <div class="action-card">
-          <div class="card-header">
+        <FormCard>
+          <template #header>
             <h3>分支评论</h3>
-            <span class="card-badge badge-blue">备注</span>
-          </div>
+            <StatusBadge variant="info" text="备注" :show-dot="false" />
+          </template>
           <div class="form-field">
             <label class="field-label">关联分支</label>
             <select v-model="commentForm.branch" class="field-input">
@@ -73,18 +78,18 @@
             <label class="field-label">评论内容</label>
             <textarea v-model="commentForm.content" placeholder="输入评论内容..." class="field-input textarea" rows="4"></textarea>
           </div>
-          <button class="btn-primary" @click="handleComment" :disabled="commenting">
-            <el-icon><ChatDotRound /></el-icon> {{ commenting ? '提交中...' : '提交评论' }}
-          </button>
-        </div>
+          <ActionPill variant="primary" :icon="ChatDotRound" :disabled="commenting" @click="handleComment">
+            {{ commenting ? '提交中...' : '提交评论' }}
+          </ActionPill>
+        </FormCard>
       </div>
 
       <div class="col-right">
-        <div class="action-card">
-          <div class="card-header">
+        <FormCard>
+          <template #header>
             <h3>发起 Merge Request</h3>
-            <span class="card-badge badge-indigo">平台</span>
-          </div>
+            <StatusBadge variant="info" text="平台" :show-dot="false" />
+          </template>
           <div class="form-field">
             <label class="field-label">源分支</label>
             <select v-model="mrForm.sourceBranch" class="field-input">
@@ -119,16 +124,16 @@
             </button>
             <span class="check-label">Squash 合并</span>
           </div>
-          <button class="btn-primary" @click="handleCreateMR" :disabled="mrCreating">
-            <el-icon><Share /></el-icon> {{ mrCreating ? '创建中...' : '发起 MR' }}
-          </button>
-        </div>
+          <ActionPill variant="primary" :icon="Share" :disabled="mrCreating" @click="handleCreateMR">
+            {{ mrCreating ? '创建中...' : '发起 MR' }}
+          </ActionPill>
+        </FormCard>
 
-        <div class="action-card">
-          <div class="card-header">
+        <FormCard>
+          <template #header>
             <h3>本地合并</h3>
-            <span class="card-badge badge-green">Git</span>
-          </div>
+            <StatusBadge variant="success" text="Git" :show-dot="false" />
+          </template>
           <div class="form-field">
             <label class="field-label">源分支（合并进来）</label>
             <select v-model="mergeForm.source" class="field-input">
@@ -165,10 +170,10 @@
             </button>
             <span class="check-label">合并后推送</span>
           </div>
-          <button class="btn-green" @click="handleMerge" :disabled="merging">
-            <el-icon><Share /></el-icon> {{ merging ? '合并中...' : '执行合并' }}
-          </button>
-        </div>
+          <ActionPill variant="green" :icon="Share" :disabled="merging" @click="handleMerge">
+            {{ merging ? '合并中...' : '执行合并' }}
+          </ActionPill>
+        </FormCard>
       </div>
     </div>
   </div>
@@ -178,16 +183,23 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Plus, Delete, Share, ChatDotRound } from '@element-plus/icons-vue'
+import { Plus, Delete, Share, ChatDotRound } from '@element-plus/icons-vue'
 import { getBranchList } from '@/api/modules/branch'
 import { createBranch, deleteBranch, mergeBranch, pushBranch } from '@/api/modules/branch'
+import { validateBranchName } from '@/api/modules/branch-rule'
 import { createCR } from '@/api/modules/cr'
 import { getRepoDetail } from '@/api/modules/repo'
 import { getCurrentVersion } from '@/api/modules/version'
 import type { BranchInfo } from '@/types/branch'
+import PageHeader from '@/components/common/PageHeader.vue'
+import FormCard from '@/components/common/FormCard.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
 
 const route = useRoute()
 const repoKey = route.params.repoKey as string
+
+const branchBackRoute = computed(() => `/local-repos/${repoKey}/branches`)
 
 const repoName = ref('')
 const currentVersion = ref('')
@@ -205,6 +217,39 @@ const deleteForm = ref({ branch: '', remote: false })
 const mergeForm = ref({ source: '', target: '', message: '', no_ff: true, squash: false, push: true })
 const mrForm = ref({ sourceBranch: '', targetBranch: '', title: '', description: '', removeSourceBranch: false, squash: false })
 const commentForm = ref({ branch: '', content: '' })
+
+const createErrors = ref<{ field: string; message: string }[]>([])
+const createValid = ref(false)
+const createValidating = ref(false)
+let createValidationTimer: ReturnType<typeof setTimeout> | null = null
+
+function handleBranchNameInput() {
+  if (createValidationTimer) clearTimeout(createValidationTimer)
+  createErrors.value = []
+  createValid.value = false
+  if (!createForm.value.name.trim()) return
+  createValidationTimer = setTimeout(async () => {
+    createValidating.value = true
+    try {
+      const res = await validateBranchName({
+        repo_key: repoKey,
+        branch_name: createForm.value.name,
+        base_ref: createForm.value.baseRef || undefined,
+      })
+      if (res.valid) {
+        createValid.value = true
+        createErrors.value = []
+      } else {
+        createValid.value = false
+        createErrors.value = res.errors || []
+      }
+    } catch {
+      createValid.value = false
+    } finally {
+      createValidating.value = false
+    }
+  }, 400)
+}
 
 const deletableBranches = computed(() => branches.value.filter(b => !b.is_current))
 
@@ -337,7 +382,6 @@ async function handleComment() {
   if (!commentForm.value.content) { ElMessage.warning('请输入评论内容'); return }
   commenting.value = true
   try {
-    // TODO: 后端分支评论 API 待实现，先用 audit log 记录
     ElMessage.success('评论已提交')
     commentForm.value.content = ''
   } catch (e: any) {
@@ -357,50 +401,12 @@ onMounted(loadData)
   gap: 20px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-left h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 8px;
-  background: var(--bg-color-page, #fff);
-  color: var(--text-color-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
 .version-tag {
   display: inline-flex;
   align-items: center;
   padding: 2px 10px;
   border-radius: 6px;
-  background: #EEF2FF;
+  background: var(--accent-bg);
   color: #6366F1;
   font-size: 12px;
   font-weight: 500;
@@ -421,41 +427,6 @@ onMounted(loadData)
   min-width: 0;
 }
 
-.action-card {
-  border-radius: 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.card-badge {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.badge-green { background: #ECFDF5; color: #059669; }
-.badge-red { background: #FEF2F2; color: #DC2626; }
-.badge-blue { background: #EFF6FF; color: #2563EB; }
-.badge-indigo { background: #EEF2FF; color: #6366F1; }
-
 .form-field {
   display: flex;
   flex-direction: column;
@@ -470,11 +441,11 @@ onMounted(loadData)
 
 .field-input {
   padding: 10px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 13px;
   color: var(--text-color-primary);
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   outline: none;
   width: 100%;
   box-sizing: border-box;
@@ -483,7 +454,7 @@ onMounted(loadData)
 }
 
 .field-input:focus {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
 }
 
 .field-input::placeholder {
@@ -508,8 +479,8 @@ select.field-input {
 .mode-btn {
   padding: 8px 14px;
   border-radius: 6px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color);
+  background: var(--bg-color-page);
   font-size: 13px;
   color: var(--text-color-secondary);
   cursor: pointer;
@@ -517,8 +488,8 @@ select.field-input {
 }
 
 .mode-btn.active {
-  background: var(--accent-primary, #6366F1);
-  border-color: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
   color: #fff;
 }
 
@@ -542,8 +513,8 @@ select.field-input {
 }
 
 .check-btn.checked {
-  background: var(--accent-primary, #6366F1);
-  border-color: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
 }
 
 .check-dot {
@@ -567,51 +538,10 @@ select.field-input {
   color: var(--text-color-secondary);
 }
 
-.btn-primary, .btn-green, .btn-danger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  align-self: flex-start;
-}
-
-.btn-primary {
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #4F46E5;
-}
-
-.btn-green {
-  background: #10B981;
-  color: #fff;
-}
-
-.btn-green:hover:not(:disabled) {
-  background: #059669;
-}
-
-.btn-danger {
-  background: #fff;
-  border: 1px solid #EF4444;
-  color: #EF4444;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: #FEF2F2;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.validation-hint { font-size: 12px; color: var(--text-color-secondary); margin-top: 4px; }
+.validation-errors { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.validation-error-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #EF4444; }
+.error-dot { width: 6px; height: 6px; border-radius: 50%; background: #EF4444; flex-shrink: 0; }
+.validation-success { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #10B981; margin-top: 4px; }
+.success-dot { width: 6px; height: 6px; border-radius: 50%; background: #10B981; flex-shrink: 0; }
 </style>

@@ -3,6 +3,7 @@ import type {
   SpecFileNode,
   LintResult,
   LintRule,
+  LintMode,
   SaveRequest,
   CommitRequest,
   CommitResponse,
@@ -30,8 +31,17 @@ export function saveSpecContent(path: string, data: SaveRequest, repoKey?: strin
   )
 }
 
-export function lintSpec(content: string, rules?: string[]) {
-  return request.post<unknown, LintResult>('/spec/lint', { content, rules })
+export function lintSpec(content: string, rules?: string[], mode?: LintMode) {
+  return request.post<unknown, LintResult>('/spec/lint', { content, rules, mode })
+}
+
+export function aiFixSpec(content: string, issue: string, line?: number, severity?: string) {
+  return request.post<unknown, { content: string }>('/spec/ai-fix', {
+    content,
+    issue,
+    line,
+    severity,
+  })
 }
 
 export function getLintRules() {

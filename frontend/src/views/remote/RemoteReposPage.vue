@@ -1,27 +1,16 @@
 <template>
   <div class="remote-repos-page">
-    <div class="page-header">
-      <div class="header-left">
-        <h2>远端仓库管理</h2>
-        <p class="page-subtitle">浏览和管理所有已关联平台的远端仓库</p>
-      </div>
-      <div class="header-actions">
-        <button class="action-pill action-pill--outline" @click="loadData" :disabled="loading">
-          <el-icon><Refresh /></el-icon> 刷新
-        </button>
-      </div>
-    </div>
+    <PageHeader title="远端仓库管理" subtitle="浏览和管理所有已关联平台的远端仓库">
+      <template #actions>
+        <ActionPill variant="outline" :icon="Refresh" @click="loadData" :disabled="loading">刷新</ActionPill>
+      </template>
+    </PageHeader>
 
-    <div v-if="providers.length === 0 && !loading" class="empty-card">
-      <div class="empty-icon">
-        <el-icon :size="32"><Connection /></el-icon>
-      </div>
-      <div class="empty-text">暂无平台配置</div>
-      <p class="empty-hint">请先在「设置 → 平台配置」中添加 GitLab/GitHub/Gitea 平台</p>
-      <button class="action-pill action-pill--primary" @click="$router.push('/settings/platforms')">
-        <el-icon><Setting /></el-icon> 前往设置
-      </button>
-    </div>
+    <EmptyState v-if="providers.length === 0 && !loading" title="暂无平台配置" description="请先在「设置 → 平台配置」中添加 GitLab/GitHub/Gitea 平台">
+      <template #action>
+        <ActionPill variant="primary" :icon="Setting" @click="$router.push('/settings/platforms')">前往设置</ActionPill>
+      </template>
+    </EmptyState>
 
     <div v-else class="content-area">
       <div class="provider-tabs">
@@ -38,14 +27,9 @@
         </button>
       </div>
 
-      <div v-if="loading" class="loading-card">
-        <div class="loading-spinner"></div>
-        <span>加载中...</span>
-      </div>
+      <LoadingState v-if="loading" />
 
-      <div v-else-if="filteredRepos.length === 0" class="empty-card small">
-        <div class="empty-text">当前平台下暂无远端仓库</div>
-      </div>
+      <EmptyState v-else-if="filteredRepos.length === 0" title="当前平台下暂无远端仓库" />
 
       <div v-else class="repo-grid">
         <div v-for="repo in filteredRepos" :key="repo.id" class="repo-card">
@@ -59,9 +43,7 @@
               <h3>{{ repo.name }}</h3>
               <span class="repo-path">{{ repo.full_name }}</span>
             </div>
-            <span v-if="repo.linked" class="linked-badge">
-              <span class="dot-green"></span> 已关联
-            </span>
+            <StatusBadge v-if="repo.linked" variant="success" text="已关联" />
           </div>
           <div class="repo-card-meta">
             <div class="meta-item">
@@ -78,18 +60,10 @@
             </div>
           </div>
           <div class="repo-card-actions">
-            <button class="act-btn act-btn--primary" @click="handleGoDetail(repo)">
-              <el-icon><View /></el-icon> 查看详情
-            </button>
-            <button class="act-btn act-btn--outline" @click="handleGoCR(repo)">
-              CR/MR
-            </button>
-            <button v-if="!repo.linked" class="act-btn act-btn--outline" @click="handleClone(repo)">
-              <el-icon><Download /></el-icon> 克隆
-            </button>
-            <button v-if="!repo.linked" class="act-btn act-btn--outline" @click="handleLinkExisting(repo)">
-              <el-icon><Link /></el-icon> 关联已有仓库
-            </button>
+            <ActionPill variant="primary" :icon="View" small @click="handleGoDetail(repo)">查看详情</ActionPill>
+            <ActionPill variant="outline" small @click="handleGoCR(repo)">CR/MR</ActionPill>
+            <ActionPill v-if="!repo.linked" variant="outline" :icon="Download" small @click="handleClone(repo)">克隆</ActionPill>
+            <ActionPill v-if="!repo.linked" variant="outline" :icon="Link" small @click="handleLinkExisting(repo)">关联已有仓库</ActionPill>
           </div>
         </div>
       </div>
@@ -98,15 +72,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Refresh, Connection, Setting, FolderOpened, Download, View, Link } from '@element-plus/icons-vue'
+import { Refresh, Setting, FolderOpened, Download, View, Link } from '@element-plus/icons-vue'
 import { listProviderRepos } from '@/api/modules/provider'
 import { getRepoList } from '@/api/modules/repo'
 import type { RepoDTO } from '@/types/repo'
 import { createBinding } from '@/api/modules/binding'
 import { useProviderStore } from '@/stores/useProviderStore'
+import PageHeader from '@/components/common/PageHeader.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import LoadingState from '@/components/common/LoadingState.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 
 const providerStore = useProviderStore()
 
@@ -273,7 +252,6 @@ function handleGoCR(repo: RemoteRepo) {
   router.push({ name: 'RemoteRepoDetail', params: { providerId: String(activeProviderId.value), repoOwner: repo.full_name.split('/').slice(0, -1).join('/') || '-', repoName: repo.full_name.split('/').pop() || '' }, query: { tab: 'cr' } })
 }
 
-import { watch } from 'vue'
 watch(activeProviderId, () => {
   if (activeProviderId.value) loadRemoteRepos()
 })
@@ -288,66 +266,10 @@ onMounted(loadData)
   gap: 20px;
 }
 
-.page-header {
+.content-area {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.header-left h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.page-subtitle {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--text-color-secondary);
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.action-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.action-pill--primary {
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-}
-
-.action-pill--primary:hover {
-  background: #4F46E5;
-}
-
-.action-pill--outline {
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
-  color: var(--text-color-secondary);
-}
-
-.action-pill--outline:hover:not(:disabled) {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
-.action-pill:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .provider-tabs {
@@ -362,8 +284,8 @@ onMounted(loadData)
   gap: 6px;
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color);
+  background: var(--bg-color-page);
   font-size: 13px;
   color: var(--text-color-secondary);
   cursor: pointer;
@@ -371,8 +293,8 @@ onMounted(loadData)
 }
 
 .provider-tab.active {
-  background: var(--accent-primary, #6366F1);
-  border-color: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
   color: #fff;
 }
 
@@ -407,8 +329,8 @@ onMounted(loadData)
 
 .repo-card {
   border-radius: 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color);
+  background: var(--bg-color-page);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -451,27 +373,6 @@ onMounted(loadData)
   color: var(--text-color-secondary);
 }
 
-.linked-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: #ECFDF5;
-  color: #059669;
-  font-size: 11px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.dot-green {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10B981;
-  display: inline-block;
-}
-
 .repo-card-meta {
   display: flex;
   flex-direction: column;
@@ -499,7 +400,7 @@ onMounted(loadData)
   white-space: nowrap;
 }
 
-.meta-value.mono {
+.mono {
   font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
   font-size: 12px;
 }
@@ -507,93 +408,5 @@ onMounted(loadData)
 .repo-card-actions {
   display: flex;
   gap: 8px;
-}
-
-.act-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.act-btn--primary {
-  border: 1px solid var(--accent-primary, #6366F1);
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-}
-
-.act-btn--primary:hover {
-  background: #4F46E5;
-}
-
-.act-btn--outline {
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: transparent;
-  color: var(--text-color-secondary);
-}
-
-.act-btn--outline:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
-.empty-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 0;
-  gap: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
-}
-
-.empty-card.small {
-  padding: 40px 0;
-}
-
-.empty-icon {
-  color: var(--text-color-placeholder);
-}
-
-.empty-text {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text-color-primary);
-}
-
-.empty-hint {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-color-secondary);
-}
-
-.loading-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 0;
-  gap: 12px;
-  color: var(--text-color-secondary);
-  font-size: 13px;
-}
-
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--border-color, #e5e7eb);
-  border-top-color: var(--accent-primary, #6366F1);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 </style>

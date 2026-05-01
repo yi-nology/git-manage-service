@@ -1,56 +1,40 @@
 <template>
   <div class="ssh-keys-page">
-    <div class="title-row">
-      <div class="title-left">
-        <h2 class="page-title">SSH 密钥管理</h2>
-        <p class="page-subtitle">管理用于 Git 仓库认证的 SSH 密钥</p>
-      </div>
-      <button class="add-btn" @click="showCreateDialog">
-        <el-icon><Plus /></el-icon>
-        添加密钥
-      </button>
-    </div>
+    <PageHeader title="SSH 密钥管理" subtitle="管理用于 Git 仓库认证的 SSH 密钥">
+      <template #actions>
+        <ActionPill variant="primary" :icon="Plus" @click="showCreateDialog">
+          添加密钥
+        </ActionPill>
+      </template>
+    </PageHeader>
 
-    <div v-if="loading" class="loading-card">
-      <div class="loading-spinner"></div>
-      <span>加载中...</span>
-    </div>
-
-    <div v-else-if="sshKeys.length === 0" class="empty-card">
-      <div class="empty-icon">
-        <el-icon :size="32"><Unlock /></el-icon>
-      </div>
-      <div class="empty-text">暂无 SSH 密钥</div>
-      <div class="empty-sub">点击上方按钮添加第一把密钥</div>
-    </div>
-
-    <div v-else class="table-card">
-      <div class="table-header">
-        <span class="th" style="width:160px">名称</span>
-        <span class="th" style="width:100px">类型</span>
-        <span class="th" style="flex:1">指纹 (Fingerprint)</span>
-        <span class="th" style="width:160px">创建时间</span>
-        <span class="th" style="width:200px">操作</span>
-      </div>
-      <div v-for="key in sshKeys" :key="key.id" class="table-row">
-        <span class="td name-cell" style="width:160px">{{ key.name }}</span>
-        <span class="td" style="width:100px">
-          <span class="type-tag" :class="'type-' + keyTypeClass(key.key_type)">
-            {{ keyTypeLabel(key.key_type) }}
-          </span>
-        </span>
-        <span class="td fingerprint-cell" style="flex:1">{{ key.key_type ? key.key_type.toUpperCase() : '-' }}</span>
-        <span class="td" style="width:160px">{{ formatDate(key.created_at) }}</span>
-        <span class="td" style="width:200px">
-          <div class="action-btns">
-            <button class="action-btn btn-view" @click="showDetailDialog(key)">查看</button>
-            <button class="action-btn btn-edit" @click="showEditDialog(key)">编辑</button>
-            <button class="action-btn btn-test" @click="showTestDialog(key)">测试</button>
-            <button class="action-btn btn-delete" @click="handleDelete(key)">删除</button>
-          </div>
-        </span>
-      </div>
-    </div>
+    <DataTable :columns="columns" :data="sshKeys" row-key="id" :loading="loading">
+      <template #cell-name="{ row }">
+        <span class="name-cell">{{ row.name }}</span>
+      </template>
+      <template #cell-key_type="{ row }">
+        <StatusBadge
+          :variant="keyTypeClass(row.key_type)"
+          :text="keyTypeLabel(row.key_type)"
+          :show-dot="false"
+        />
+      </template>
+      <template #cell-fingerprint="{ row }">
+        <span class="fingerprint-cell">{{ row.key_type ? row.key_type.toUpperCase() : '-' }}</span>
+      </template>
+      <template #cell-created_at="{ row }">
+        {{ formatDate(row.created_at) }}
+      </template>
+      <template #row-actions="{ row }">
+        <ActionPill variant="outline" small @click="showDetailDialog(row)">查看</ActionPill>
+        <ActionPill variant="primary" small @click="showEditDialog(row)">编辑</ActionPill>
+        <ActionPill variant="green" small @click="showTestDialog(row)">测试</ActionPill>
+        <ActionPill variant="danger" small @click="handleDelete(row)">删除</ActionPill>
+      </template>
+      <template #empty>
+        <EmptyState title="暂无 SSH 密钥" description="点击上方按钮添加第一把密钥" />
+      </template>
+    </DataTable>
 
     <!-- 创建密钥对话框 -->
     <el-dialog v-model="createDialogVisible" title="新增 SSH 密钥" width="600px" destroy-on-close>
@@ -146,9 +130,11 @@
         <el-descriptions-item label="名称">{{ currentKey.name }}</el-descriptions-item>
         <el-descriptions-item label="描述">{{ currentKey.description || '-' }}</el-descriptions-item>
         <el-descriptions-item label="类型">
-          <span class="type-tag" :class="'type-' + keyTypeClass(currentKey.key_type)">
-            {{ keyTypeLabel(currentKey.key_type) }}
-          </span>
+          <StatusBadge
+            :variant="keyTypeClass(currentKey.key_type)"
+            :text="keyTypeLabel(currentKey.key_type)"
+            :show-dot="false"
+          />
         </el-descriptions-item>
         <el-descriptions-item label="密码保护">
           {{ currentKey.has_passphrase ? '是' : '否' }}
@@ -200,7 +186,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormRules } from 'element-plus'
-import { Plus, Unlock, CopyDocument, CircleCheck, CircleClose, Upload, Document } from '@element-plus/icons-vue'
+import { Plus, CopyDocument, CircleCheck, CircleClose, Upload, Document } from '@element-plus/icons-vue'
 import {
   listDBSSHKeys,
   createDBSSHKey,
@@ -212,6 +198,21 @@ import {
   type UpdateDBSSHKeyReq,
   type TestDBSSHKeyResp
 } from '@/api/modules/sshkey'
+import PageHeader from '@/components/common/PageHeader.vue'
+import DataTable from '@/components/common/DataTable.vue'
+import type { TableColumn } from '@/components/common/DataTable.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+
+type StatusVariant = 'success' | 'danger' | 'warning' | 'info' | 'running' | 'default'
+
+const columns: TableColumn[] = [
+  { key: 'name', label: '名称', width: '160px' },
+  { key: 'key_type', label: '类型', width: '100px' },
+  { key: 'fingerprint', label: '指纹 (Fingerprint)', flex: 1 },
+  { key: 'created_at', label: '创建时间', width: '160px' },
+]
 
 const loading = ref(false)
 const sshKeys = ref<DBSSHKey[]>([])
@@ -265,7 +266,7 @@ function keyTypeLabel(t: string): string {
   return KEY_TYPE_LABELS[t.toLowerCase()] ?? t.toUpperCase()
 }
 
-function keyTypeClass(t: string): string {
+function keyTypeClass(t: string): StatusVariant {
   if (!t) return 'info'
   const lower = t.toLowerCase()
   if (lower === 'ed25519') return 'success'
@@ -448,140 +449,6 @@ function formatDate(dateStr: string) {
   gap: 20px;
 }
 
-.title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.title-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.page-subtitle {
-  margin: 0;
-  font-size: 13px;
-  font-weight: normal;
-  color: var(--text-color-secondary);
-}
-
-.add-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: none;
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.add-btn:hover {
-  opacity: 0.9;
-}
-
-.loading-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 48px 24px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  color: var(--text-color-secondary);
-  font-size: 13px;
-}
-
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--border-color, #e5e7eb);
-  border-top-color: var(--accent-primary, #6366F1);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 48px 24px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-}
-
-.empty-icon {
-  color: var(--text-color-placeholder, #9ca3af);
-  margin-bottom: 4px;
-}
-
-.empty-text {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-color-primary);
-}
-
-.empty-sub {
-  font-size: 13px;
-  color: var(--text-color-secondary);
-}
-
-.table-card {
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  overflow: hidden;
-}
-
-.table-header {
-  display: flex;
-  align-items: center;
-  padding: 12px 20px;
-  background: var(--accent-bg, #EEF2FF);
-}
-
-.th {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-color-secondary);
-}
-
-.table-row {
-  display: flex;
-  align-items: center;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
-}
-
-.table-row:last-child {
-  border-bottom: none;
-}
-
-.td {
-  font-size: 13px;
-  color: var(--text-color-regular);
-}
-
 .name-cell {
   font-weight: 500;
   color: var(--text-color-primary);
@@ -593,86 +460,6 @@ function formatDate(dateStr: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.type-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: normal;
-}
-
-.type-tag.type-success {
-  background: #ECFDF5;
-  color: #10B981;
-}
-
-.type-tag.type-info {
-  background: #EEF2FF;
-  color: #6366F1;
-}
-
-.type-tag.type-warning {
-  background: #FFFBEB;
-  color: #F59E0B;
-}
-
-.type-tag.type-default {
-  background: var(--accent-bg, #EEF2FF);
-  color: var(--text-color-secondary);
-}
-
-.action-btns {
-  display: flex;
-  gap: 4px;
-}
-
-.action-btn {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  background: none;
-  transition: all 0.2s;
-}
-
-.btn-view {
-  color: var(--text-color-secondary);
-  border-color: var(--border-color, #e5e7eb);
-}
-
-.btn-view:hover {
-  background: var(--accent-bg, #EEF2FF);
-  color: var(--accent-primary, #6366F1);
-}
-
-.btn-edit {
-  color: #6366F1;
-  border-color: #6366F1;
-}
-
-.btn-edit:hover {
-  background: #EEF2FF;
-}
-
-.btn-test {
-  color: #10B981;
-  border-color: #10B981;
-}
-
-.btn-test:hover {
-  background: #ECFDF5;
-}
-
-.btn-delete {
-  color: #EF4444;
-  border-color: #EF4444;
-}
-
-.btn-delete:hover {
-  background: #FEF2F2;
 }
 
 .test-result {
@@ -702,8 +489,8 @@ function formatDate(dateStr: string) {
 .mode-btn {
   padding: 6px 14px;
   border-radius: 6px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color);
+  background: var(--bg-color-page);
   font-size: 12px;
   color: var(--text-color-secondary);
   cursor: pointer;
@@ -711,8 +498,8 @@ function formatDate(dateStr: string) {
 }
 
 .mode-btn.active {
-  background: var(--accent-primary, #6366F1);
-  border-color: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
   color: #fff;
 }
 
@@ -723,9 +510,9 @@ function formatDate(dateStr: string) {
   justify-content: center;
   gap: 8px;
   padding: 28px 20px;
-  border: 2px dashed var(--border-color, #e5e7eb);
+  border: 2px dashed var(--border-color);
   border-radius: 8px;
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 13px;
@@ -733,7 +520,7 @@ function formatDate(dateStr: string) {
 }
 
 .file-drop-zone:hover {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
   background: #FAFAFE;
 }
 
@@ -747,15 +534,15 @@ function formatDate(dateStr: string) {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .file-selected:hover {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
 }
 
 .file-name {

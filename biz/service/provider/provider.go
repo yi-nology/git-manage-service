@@ -33,6 +33,14 @@ type Provider interface {
 	ListBranches(ctx context.Context, owner, repo string) ([]*PlatformBranch, error)
 	CreateBranch(ctx context.Context, owner, repo, branch, ref string) (*PlatformBranch, error)
 	DeleteBranch(ctx context.Context, owner, repo, branch string) error
+
+	GetCRDiff(ctx context.Context, owner, repo string, number int) (*MergeDiff, error)
+	GetCRFiles(ctx context.Context, owner, repo string, number int) ([]*ChangedFile, error)
+	CreateNote(ctx context.Context, owner, repo string, number int, body string) (string, error)
+	CreateDiscussion(ctx context.Context, owner, repo string, number int, opts DiscussionOptions) (string, error)
+	CreateCommitStatus(ctx context.Context, owner, repo, sha string, opts CommitStatusOptions) error
+	GetFileContent(ctx context.Context, owner, repo, path, ref string) (string, error)
+	UpdateCRLabels(ctx context.Context, owner, repo string, number int, labels []string) error
 }
 
 type PlatformBranch struct {
@@ -155,4 +163,37 @@ type TestConnectionResult struct {
 	Platform  string `json:"platform"`
 	UserName  string `json:"user_name"`
 	Message   string `json:"message,omitempty"`
+}
+
+type MergeDiff struct {
+	Files    []*ChangedFile
+	TotalAdd int
+	TotalDel int
+	RawDiff  string
+}
+
+type ChangedFile struct {
+	OldPath   string `json:"old_path"`
+	NewPath   string `json:"new_path"`
+	Diff      string `json:"diff"`
+	Additions int    `json:"additions"`
+	Deletions int    `json:"deletions"`
+	IsNew     bool   `json:"new_file"`
+	IsDeleted bool   `json:"deleted_file"`
+	IsRenamed bool   `json:"renamed_file"`
+	IsBinary  bool   `json:"binary"`
+}
+
+type DiscussionOptions struct {
+	Body     string `json:"body"`
+	FilePath string `json:"file_path,omitempty"`
+	NewLine  int    `json:"new_line,omitempty"`
+	OldLine  int    `json:"old_line,omitempty"`
+}
+
+type CommitStatusOptions struct {
+	State       string `json:"state"`
+	Context     string `json:"context"`
+	Description string `json:"description"`
+	TargetURL   string `json:"target_url,omitempty"`
 }

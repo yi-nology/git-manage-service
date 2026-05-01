@@ -3,7 +3,10 @@
     <!-- 工具栏 -->
     <div class="toolbar">
       <el-select v-model="currentRef" placeholder="选择分支/Tag" style="width: 200px" @change="loadTree">
-        <el-option v-for="b in (branches || [])" :key="b" :label="b" :value="b" />
+        <el-option label="工作区" value="worktree" />
+        <el-option-group label="分支/标签">
+          <el-option v-for="b in (branches || [])" :key="b" :label="b" :value="b" />
+        </el-option-group>
       </el-select>
       <el-breadcrumb separator="/" class="path-breadcrumb">
         <el-breadcrumb-item @click="navigateTo('')">
@@ -102,9 +105,7 @@ const pathParts = computed(() => {
 })
 
 onMounted(() => {
-  if (props.branches && props.branches.length > 0) {
-    currentRef.value = props.branches[0]!
-  }
+  currentRef.value = 'worktree'
   loadTree()
 })
 

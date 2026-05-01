@@ -3,7 +3,6 @@ package spec
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,9 +11,12 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	spec "github.com/yi-nology/git-manage-service/biz/model/spec"
 
 	"github.com/yi-nology/git-manage-service/biz/service/audit"
+	gitSvc "github.com/yi-nology/git-manage-service/biz/service/git"
 	lintSvc "github.com/yi-nology/git-manage-service/biz/service/lint"
+	"github.com/yi-nology/git-manage-service/biz/service/llm"
 	specService "github.com/yi-nology/git-manage-service/biz/service/spec"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -34,7 +36,7 @@ func GetSpecTree(ctx context.Context, c *app.RequestContext) {
 
 	tree, err := buildSpecTree(repo.Path)
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
@@ -211,7 +213,7 @@ func GetSpecContentByPath(ctx context.Context, c *app.RequestContext) {
 	svc := specService.NewSpecService()
 	content, err := svc.GetSpecContent(repo.Path, path)
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
@@ -248,25 +250,15 @@ func SaveSpecContentByPath(ctx context.Context, c *app.RequestContext) {
 
 	err = svc.SaveSpecContent(repo.Path, req.Path, req.Content, req.Message)
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
 	if req.AutoCommit && req.Message != "" {
-		cmd := exec.Command("git", "add", req.Path)
-		cmd.Dir = repo.Path
-		if output, err := cmd.CombinedOutput(); err != nil {
-			response.InternalServerError(c, "Failed to stage: "+string(output))
+		gitService := gitSvc.NewGitService()
+		if err := gitService.AddAndCommit(repo.Path, req.Path, req.Message); err != nil {
+			response.InternalError(c, err)
 			return
-		}
-
-		cmd = exec.Command("git", "commit", "-m", req.Message)
-		cmd.Dir = repo.Path
-		if output, err := cmd.CombinedOutput(); err != nil {
-			if !strings.Contains(string(output), "nothing to commit") {
-				response.InternalServerError(c, "Failed to commit: "+string(output))
-				return
-			}
 		}
 	}
 
@@ -275,28 +267,29 @@ func SaveSpecContentByPath(ctx context.Context, c *app.RequestContext) {
 		"message": req.Message,
 	})
 
-	response.Success(c, map[string]string{
-		"message": "spec saved successfully",
-		"path":    req.Path,
+	response.Success(c, api.SaveSpecResponse{
+		Message: "spec saved successfully",
+		Path:    req.Path,
 	})
 }
 
 func LintSpec(ctx context.Context, c *app.RequestContext) {
-	var req api.LintRequest
+	var req spec.LintRequest
 	if err := c.BindAndValidate(&req); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
 
-	if req.Content == "" {
+	content := req.GetContent()
+	if content == "" {
 		response.BadRequest(c, "content is required")
 		return
 	}
 
 	lintService := lintSvc.NewLintService()
-	result, err := lintService.Lint(req.Content, req.Rules)
+	result, err := lintService.LintWithAI(ctx, content, req.GetRules(), req.GetMode())
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
@@ -306,7 +299,7 @@ func LintSpec(ctx context.Context, c *app.RequestContext) {
 func GetLintRules(ctx context.Context, c *app.RequestContext) {
 	rules, err := db.NewLintRuleDAO().FindAll()
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
@@ -376,7 +369,7 @@ func UpdateLintRule(ctx context.Context, c *app.RequestContext) {
 	}
 
 	if err := dao.Save(rule); err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
@@ -438,7 +431,7 @@ func CreateLintRule(ctx context.Context, c *app.RequestContext) {
 	}
 
 	if err := dao.Create(rule); err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
@@ -487,26 +480,15 @@ func CommitSpec(ctx context.Context, c *app.RequestContext) {
 	if req.Content != "" {
 		svc := specService.NewSpecService()
 		if err := svc.SaveSpecContent(repo.Path, req.Path, req.Content, ""); err != nil {
-			response.InternalServerError(c, err.Error())
+			response.InternalError(c, err)
 			return
 		}
 	}
 
-	cmd := exec.Command("git", "add", req.Path)
-	cmd.Dir = repo.Path
-	if output, err := cmd.CombinedOutput(); err != nil {
-		response.InternalServerError(c, "Failed to stage: "+string(output))
+	gitService := gitSvc.NewGitService()
+	if err := gitService.AddAndCommit(repo.Path, req.Path, req.Message); err != nil {
+		response.InternalError(c, err)
 		return
-	}
-
-	cmd = exec.Command("git", "commit", "-m", req.Message)
-	cmd.Dir = repo.Path
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		if !strings.Contains(string(output), "nothing to commit") {
-			response.InternalServerError(c, "Failed to commit: "+string(output))
-			return
-		}
 	}
 
 	audit.AuditSvc.Log(c, "COMMIT_SPEC", "repo:"+repo.Key, map[string]string{
@@ -514,9 +496,8 @@ func CommitSpec(ctx context.Context, c *app.RequestContext) {
 		"message": req.Message,
 	})
 
-	response.Success(c, map[string]string{
-		"message": "committed successfully",
-		"output":  string(output),
+	response.Success(c, api.CommitResponse{
+		Message: "committed successfully",
 	})
 }
 
@@ -538,7 +519,7 @@ func ListSpecFiles(ctx context.Context, c *app.RequestContext) {
 	svc := specService.NewSpecService()
 	files, err := svc.ListSpecFiles(repo.Path)
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
@@ -581,13 +562,13 @@ func GetSpecContent(ctx context.Context, c *app.RequestContext) {
 	svc := specService.NewSpecService()
 	content, err := svc.GetSpecContent(repo.Path, path)
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
-	response.Success(c, map[string]string{
-		"content": content,
-		"path":    path,
+	response.Success(c, api.SpecContentResponse{
+		Content: content,
+		Path:    path,
 	})
 }
 
@@ -606,12 +587,9 @@ func SaveSpecContent(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	svc := specService.NewSpecService()
-
-	// 先验证
-	validationResult := svc.ValidateSpec(req.Content)
-	if !validationResult.Valid && len(validationResult.Issues) > 0 {
-		// 如果有错误级别的 issue，阻止保存
+	lintService := lintSvc.NewLintService()
+	validationResult, err := lintService.Lint(req.Content, nil)
+	if err == nil && validationResult != nil {
 		for _, issue := range validationResult.Issues {
 			if issue.Severity == "error" {
 				response.BadRequest(c, "Spec validation failed: "+issue.Message)
@@ -620,31 +598,21 @@ func SaveSpecContent(ctx context.Context, c *app.RequestContext) {
 		}
 	}
 
+	svc := specService.NewSpecService()
+
 	// 保存文件
 	err = svc.SaveSpecContent(repo.Path, req.Path, req.Content, req.CommitMessage)
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
 	// 如果有 commit message，自动提交到 git
 	if req.CommitMessage != "" {
-		// 直接使用 git 命令
-		cmd := exec.Command("git", "add", req.Path)
-		cmd.Dir = repo.Path
-		if output, err := cmd.CombinedOutput(); err != nil {
-			response.InternalServerError(c, "Failed to stage: "+string(output))
+		gitService := gitSvc.NewGitService()
+		if err := gitService.AddAndCommit(repo.Path, req.Path, req.CommitMessage); err != nil {
+			response.InternalError(c, err)
 			return
-		}
-
-		cmd = exec.Command("git", "commit", "-m", req.CommitMessage)
-		cmd.Dir = repo.Path
-		if output, err := cmd.CombinedOutput(); err != nil {
-			// 如果没有改动，不算错误
-			if !strings.Contains(string(output), "nothing to commit") {
-				response.InternalServerError(c, "Failed to commit: "+string(output))
-				return
-			}
 		}
 	}
 
@@ -653,25 +621,23 @@ func SaveSpecContent(ctx context.Context, c *app.RequestContext) {
 		"commit_message": req.CommitMessage,
 	})
 
-	response.Success(c, map[string]interface{}{
-		"message":           "spec saved successfully",
-		"validation_result": validationResult,
+	response.Success(c, api.SaveWithValidationResponse{
+		Message:          "spec saved successfully",
+		ValidationResult: validationResult,
 	})
 }
 
 // ValidateSpec 验证 spec 文件
 // @router /api/v1/spec/validate [POST]
 func ValidateSpec(ctx context.Context, c *app.RequestContext) {
-	var req struct {
-		Content string `json:"content" form:"content"`
-	}
+	var req spec.ValidateSpecRequest
 	if err := c.BindAndValidate(&req); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
 
 	svc := specService.NewSpecService()
-	result := svc.ValidateSpec(req.Content)
+	result := svc.ValidateSpec(req.GetContent())
 
 	response.Success(c, result)
 }
@@ -703,7 +669,7 @@ func CreateSpecFile(ctx context.Context, c *app.RequestContext) {
 	svc := specService.NewSpecService()
 	path, err := svc.CreateSpecFileWithContent(repo.Path, req.Path, req.Name, req.Content)
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
@@ -711,9 +677,9 @@ func CreateSpecFile(ctx context.Context, c *app.RequestContext) {
 		"path": path,
 	})
 
-	response.Success(c, map[string]string{
-		"path":    path,
-		"message": "Spec 文件创建成功",
+	response.Success(c, api.CreateFileResponse{
+		Path:    path,
+		Message: "Spec 文件创建成功",
 	})
 }
 
@@ -735,26 +701,16 @@ func DeleteSpecFile(ctx context.Context, c *app.RequestContext) {
 	svc := specService.NewSpecService()
 	err = svc.DeleteSpecFile(repo.Path, req.Path)
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.InternalError(c, err)
 		return
 	}
 
 	// 如果有 commit message，自动提交
 	if req.CommitMessage != "" {
-		cmd := exec.Command("git", "add", req.Path)
-		cmd.Dir = repo.Path
-		if output, err := cmd.CombinedOutput(); err != nil {
-			response.InternalServerError(c, "Failed to stage: "+string(output))
+		gitService := gitSvc.NewGitService()
+		if err := gitService.RemoveAndCommit(repo.Path, req.Path, req.CommitMessage); err != nil {
+			response.InternalError(c, err)
 			return
-		}
-
-		cmd = exec.Command("git", "commit", "-m", req.CommitMessage)
-		cmd.Dir = repo.Path
-		if output, err := cmd.CombinedOutput(); err != nil {
-			if !strings.Contains(string(output), "nothing to commit") {
-				response.InternalServerError(c, "Failed to commit: "+string(output))
-				return
-			}
 		}
 	}
 
@@ -762,7 +718,59 @@ func DeleteSpecFile(ctx context.Context, c *app.RequestContext) {
 		"path": req.Path,
 	})
 
-	response.Success(c, map[string]string{
-		"message": "spec deleted",
+	response.Success(c, api.MessageResponse{
+		Message: "spec deleted",
 	})
+}
+
+func AIAssistSpec(ctx context.Context, c *app.RequestContext) {
+	var req spec.AIAssistRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	content := req.GetContent()
+	prompt := req.GetPrompt()
+	if content == "" || prompt == "" {
+		response.BadRequest(c, "content and prompt are required")
+		return
+	}
+
+	var history []llm.ChatMessage
+	for _, h := range req.GetHistory() {
+		history = append(history, llm.ChatMessage{Role: h.GetRole(), Content: h.GetContent()})
+	}
+
+	svc := specService.NewSpecService()
+	result, applyContent, err := svc.AIAssist(ctx, content, prompt, req.GetAction(), history)
+	if err != nil {
+		response.InternalError(c, err)
+		return
+	}
+
+	resp := api.AIAssistResponse{Result: result, ApplyContent: applyContent}
+	response.Success(c, resp)
+}
+
+func AIFixSpec(ctx context.Context, c *app.RequestContext) {
+	var req spec.AIFixRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	content := req.GetContent()
+	issue := req.GetIssue()
+	if content == "" || issue == "" {
+		response.BadRequest(c, "content and issue are required")
+		return
+	}
+
+	result, err := lintSvc.AIFix(ctx, content, issue, int(req.GetLine()), req.GetSeverity())
+	if err != nil {
+		response.InternalError(c, err)
+		return
+	}
+	response.Success(c, api.AIFixResponse{Content: result})
 }

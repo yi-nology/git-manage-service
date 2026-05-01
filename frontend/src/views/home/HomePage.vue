@@ -22,7 +22,7 @@
     </section>
 
     <section class="features-section">
-      <h2 class="section-title">功能特性</h2>
+      <SectionTitle title="功能特性" />
       <div class="features-grid">
         <div v-for="(row, ri) in featureRows" :key="ri" class="features-row">
           <div v-for="feat in row" :key="feat.title" class="feature-card">
@@ -39,7 +39,7 @@
     </section>
 
     <section class="tech-section">
-      <h2 class="section-title">技术栈</h2>
+      <SectionTitle title="技术栈" />
       <div class="tech-grid">
         <div class="tech-card">
           <h3>后端</h3>
@@ -63,7 +63,7 @@
     </section>
 
     <section class="version-section">
-      <h2 class="section-title">版本信息</h2>
+      <SectionTitle title="版本信息" />
       <div class="version-card" v-if="appInfo">
         <div class="version-item">
           <span class="version-label">应用名称</span>
@@ -82,10 +82,7 @@
           <span class="version-value mono">{{ appInfo.git_commit }}</span>
         </div>
       </div>
-      <div v-else class="version-card loading-card">
-        <div class="loading-spinner"></div>
-        <span>加载版本信息...</span>
-      </div>
+      <LoadingState v-else text="加载版本信息..." />
     </section>
 
     <footer class="home-footer">
@@ -102,6 +99,8 @@ import {
 } from '@element-plus/icons-vue'
 import { getAppInfo } from '@/api/modules/system'
 import type { AppInfo } from '@/api/modules/system'
+import SectionTitle from '@/components/common/SectionTitle.vue'
+import LoadingState from '@/components/common/LoadingState.vue'
 
 const appInfo = ref<AppInfo | null>(null)
 
@@ -182,11 +181,11 @@ onMounted(async () => {
   width: 64px;
   height: 64px;
   border-radius: 16px;
-  background: var(--accent-bg, #EEF2FF);
+  background: var(--accent-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary);
 }
 
 .hero-title {
@@ -225,7 +224,7 @@ onMounted(async () => {
 }
 
 .hero-btn-primary {
-  background: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
   color: #fff;
 }
 
@@ -234,22 +233,22 @@ onMounted(async () => {
 }
 
 .hero-btn-outline {
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-color-page);
+  border: 1px solid var(--border-color);
   color: var(--text-color-regular);
 }
 
 .hero-btn-outline:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
-.section-title {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-  margin: 0 0 20px;
-  font-family: 'Inter', -apple-system, sans-serif;
+.features-section,
+.tech-section,
+.version-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .features-grid {
@@ -266,9 +265,9 @@ onMounted(async () => {
 
 .feature-card {
   padding: 20px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--border-radius-md);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: flex-start;
   gap: 16px;
@@ -276,8 +275,8 @@ onMounted(async () => {
 }
 
 .feature-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
 }
 
 .feature-icon {
@@ -316,9 +315,9 @@ onMounted(async () => {
 
 .tech-card {
   padding: 24px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--border-radius-md);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
 }
 
 .tech-card h3 {
@@ -354,9 +353,9 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 20px;
   padding: 24px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--border-radius-md);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
 }
 
 .version-item {
@@ -378,33 +377,11 @@ onMounted(async () => {
 }
 
 .version-value.highlight {
-  color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary);
 }
 
 .version-value.mono {
   font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
-}
-
-.loading-card {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 24px;
-}
-
-.loading-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border-color, #e5e7eb);
-  border-top-color: var(--accent-primary, #6366F1);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 .home-footer {

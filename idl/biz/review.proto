@@ -1,0 +1,236 @@
+// idl/biz/review.proto - 代码评审服务
+
+syntax = "proto3";
+
+package review;
+
+option go_package = "review";
+
+import "api.proto";
+import "common.proto";
+
+// ReviewTask 评审任务实体
+message ReviewTask {
+  uint64 id = 1;
+  uint64 repo_id = 2;
+  uint64 provider_config_id = 3;
+  string platform = 4;
+  string event_type = 5;
+  string mr_iid = 6;
+  string source_branch = 7;
+  string target_branch = 8;
+  string commit_sha = 9;
+  string trigger_type = 10;
+  string trigger_user = 11;
+  string status = 12;
+  string risk_level = 13;
+  string summary = 14;
+  string error_message = 15;
+  string started_at = 16;
+  string finished_at = 17;
+  string created_at = 18;
+  string updated_at = 19;
+}
+
+// ReviewFinding 评审发现项
+message ReviewFinding {
+  uint64 id = 1;
+  uint64 task_id = 2;
+  string source = 3;
+  string rule_id = 4;
+  string severity = 5;
+  string file_path = 6;
+  int32 old_line = 7;
+  int32 new_line = 8;
+  string title = 9;
+  string message = 10;
+  string suggestion = 11;
+  string fingerprint = 12;
+}
+
+// MergeCheckResult 合并检查结果
+message MergeCheckResult {
+  uint64 id = 1;
+  uint64 repo_id = 2;
+  string mr_iid = 3;
+  string commit_sha = 4;
+  string check_type = 5;
+  string status = 6;
+  string risk_level = 7;
+  string message = 8;
+}
+
+// CreateReviewTaskRequest 创建评审任务请求
+message CreateReviewTaskRequest {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  uint64 provider_config_id = 2 [(api.body) = "provider_config_id"];
+  string mr_iid = 3 [(api.body) = "mr_iid"];
+  string commit_sha = 4 [(api.body) = "commit_sha"];
+  string trigger_type = 5 [(api.body) = "trigger_type"];
+}
+
+// GetReviewTaskRequest 获取评审任务请求
+message GetReviewTaskRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+// ListReviewTasksRequest 评审任务列表请求
+message ListReviewTasksRequest {
+  string repo_key = 1 [(api.query) = "repo_key"];
+  string status = 2 [(api.query) = "status"];
+  string mr_iid = 3 [(api.query) = "mr_iid"];
+  int32 page = 4 [(api.query) = "page"];
+  int32 page_size = 5 [(api.query) = "page_size"];
+}
+
+// ListReviewFindingsRequest 评审发现项列表请求
+message ListReviewFindingsRequest {
+  uint64 task_id = 1 [(api.path) = "task_id"];
+  string severity = 2 [(api.query) = "severity"];
+  string source = 3 [(api.query) = "source"];
+}
+
+// RetryReviewTaskRequest 重试评审任务请求
+message RetryReviewTaskRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+// CheckMergeRequest 合并检查请求
+message CheckMergeRequest {
+  string repo_key = 1 [(api.query) = "repo_key"];
+  string mr_iid = 2 [(api.query) = "mr_iid"];
+  string commit_sha = 3 [(api.query) = "commit_sha"];
+}
+
+// GetReviewConfigRequest 获取仓库评审配置请求
+message GetReviewConfigRequest {
+  string repo_key = 1 [(api.path) = "repo_key"];
+}
+
+// UpdateReviewConfigRequest 更新仓库评审配置请求
+message UpdateReviewConfigRequest {
+  string repo_key = 1 [(api.path) = "repo_key"];
+  string config_yaml = 2 [(api.body) = "config_yaml"];
+}
+
+// ReviewTaskResponse 评审任务响应
+message ReviewTaskResponse {
+  common.BaseResponse base = 1;
+  ReviewTask task = 2;
+}
+
+// ListReviewTasksResponse 评审任务列表响应
+message ListReviewTasksResponse {
+  common.BaseResponse base = 1;
+  repeated ReviewTask tasks = 2;
+  common.PaginationMeta pagination = 3;
+}
+
+// ListReviewFindingsResponse 评审发现项列表响应
+message ListReviewFindingsResponse {
+  common.BaseResponse base = 1;
+  repeated ReviewFinding findings = 2;
+}
+
+// MergeCheckResponse 合并检查响应
+message MergeCheckResponse {
+  common.BaseResponse base = 1;
+  bool mergeable = 2;
+  repeated MergeCheckResult checks = 3;
+}
+
+// ReviewConfigResponse 评审配置响应
+message ReviewConfigResponse {
+  common.BaseResponse base = 1;
+  string config_yaml = 2;
+}
+
+// ReviewRepoConfig 远端仓库审查配置
+message ReviewRepoConfig {
+  uint64 id = 1;
+  uint64 provider_config_id = 2;
+  string platform_owner = 3;
+  string platform_repo = 4;
+  bool enabled = 5;
+  bool block_on_high = 6;
+  bool auto_review_on_mr = 7;
+  string llm_provider = 8;
+  int32 max_files = 9;
+  int32 max_diff_lines = 10;
+  string rule_overrides_json = 11;
+  string scope_note = 12;
+  string created_at = 13;
+  string updated_at = 14;
+}
+
+// GetRemoteRepoConfigRequest 获取远端仓库审查配置请求
+message GetRemoteRepoConfigRequest {
+  uint64 provider_id = 1 [(api.path) = "provider_id"];
+  string owner = 2 [(api.path) = "owner"];
+  string repo = 3 [(api.path) = "repo"];
+}
+
+// RemoteRepoConfigResponse 远端仓库审查配置响应
+message RemoteRepoConfigResponse {
+  common.BaseResponse base = 1;
+  ReviewRepoConfig data = 2;
+}
+
+// UpdateRemoteRepoConfigRequest 更新远端仓库审查配置请求
+message UpdateRemoteRepoConfigRequest {
+  uint64 provider_id = 1 [(api.path) = "provider_id"];
+  string owner = 2 [(api.path) = "owner"];
+  string repo = 3 [(api.path) = "repo"];
+  bool enabled = 4 [(api.body) = "enabled"];
+  bool block_on_high = 5 [(api.body) = "block_on_high"];
+  bool auto_review_on_mr = 6 [(api.body) = "auto_review_on_mr"];
+  string llm_provider = 7 [(api.body) = "llm_provider"];
+  int32 max_files = 8 [(api.body) = "max_files"];
+  int32 max_diff_lines = 9 [(api.body) = "max_diff_lines"];
+  string rule_overrides_json = 10 [(api.body) = "rule_overrides_json"];
+  string scope_note = 11 [(api.body) = "scope_note"];
+}
+
+// ReviewService 代码评审服务
+service ReviewService {
+  // CreateTask 创建评审任务
+  rpc CreateTask(CreateReviewTaskRequest) returns (ReviewTaskResponse) {
+    option (api.post) = "/api/v1/reviews/tasks";
+  }
+  // GetTask 获取评审任务详情
+  rpc GetTask(GetReviewTaskRequest) returns (ReviewTaskResponse) {
+    option (api.get) = "/api/v1/reviews/tasks/:id";
+  }
+  // ListTasks 评审任务列表
+  rpc ListTasks(ListReviewTasksRequest) returns (ListReviewTasksResponse) {
+    option (api.get) = "/api/v1/reviews/tasks";
+  }
+  // ListFindings 评审发现项列表
+  rpc ListFindings(ListReviewFindingsRequest) returns (ListReviewFindingsResponse) {
+    option (api.get) = "/api/v1/reviews/tasks/:task_id/findings";
+  }
+  // RetryTask 重试评审任务
+  rpc RetryTask(RetryReviewTaskRequest) returns (ReviewTaskResponse) {
+    option (api.post) = "/api/v1/reviews/tasks/:id/retry";
+  }
+  // CheckMerge 合并检查
+  rpc CheckMerge(CheckMergeRequest) returns (MergeCheckResponse) {
+    option (api.get) = "/api/v1/merge-checks";
+  }
+  // GetReviewConfig 获取仓库评审配置
+  rpc GetReviewConfig(GetReviewConfigRequest) returns (ReviewConfigResponse) {
+    option (api.get) = "/api/v1/reviews/config/:repo_key";
+  }
+  // UpdateReviewConfig 更新仓库评审配置
+  rpc UpdateReviewConfig(UpdateReviewConfigRequest) returns (ReviewConfigResponse) {
+    option (api.put) = "/api/v1/reviews/config/:repo_key";
+  }
+  // GetRemoteRepoConfig 获取远端仓库审查配置
+  rpc GetRemoteRepoConfig(GetRemoteRepoConfigRequest) returns (RemoteRepoConfigResponse) {
+    option (api.get) = "/api/v1/review/remote-config/:provider_id/:owner/:repo";
+  }
+  // UpdateRemoteRepoConfig 更新远端仓库审查配置
+  rpc UpdateRemoteRepoConfig(UpdateRemoteRepoConfigRequest) returns (RemoteRepoConfigResponse) {
+    option (api.put) = "/api/v1/review/remote-config/:provider_id/:owner/:repo";
+  }
+}

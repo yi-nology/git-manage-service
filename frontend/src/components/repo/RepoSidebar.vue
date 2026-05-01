@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Search, Box, Link, DocumentCopy } from '@element-plus/icons-vue'
+import { InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Search, Box, Link, DocumentCopy, Checked } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   repoKey: string
@@ -37,6 +37,7 @@ const sidebarItems = [
   { key: 'stash', label: 'Stash 管理', icon: Box },
   { key: 'submodules', label: 'Submodule', icon: Link },
   { key: 'patches', label: 'Patch 管理', icon: DocumentCopy },
+  { key: 'review', label: '代码审查', icon: Checked },
 ]
 
 function handleClick(item: { key: string }) {
@@ -51,6 +52,7 @@ function handleClick(item: { key: string }) {
     stash: `/local-repos/${props.repoKey}`,
     submodules: `/local-repos/${props.repoKey}`,
     patches: `/local-repos/${props.repoKey}`,
+    review: `/local-repos/${props.repoKey}/review`,
   }
   const target = routeMap[item.key]
   if (target) router.push(target)
@@ -67,8 +69,8 @@ function handleClick(item: { key: string }) {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-color-page);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 8px;
   height: calc(100vh - 180px);
@@ -92,12 +94,12 @@ function handleClick(item: { key: string }) {
 }
 
 .sidebar-item.active {
-  background: var(--accent-primary, #6366F1);
-  color: #FFFFFF;
+  background: var(--accent-bg);
+  color: var(--accent-primary);
 }
 
 .sidebar-item.active .el-icon {
-  color: #FFFFFF;
+  color: var(--accent-primary);
 }
 
 .sidebar-item .el-icon {

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	conf "github.com/yi-nology/git-manage-service/pkg/configs"
@@ -195,5 +196,57 @@ func (s *GitService) PushWithDBKey(path, targetRemoteURL, sourceHash, targetBran
 	}
 
 	log.Printf("[INFO] Git push completed successfully")
+	return nil
+}
+
+func (s *GitService) AddAndCommit(repoPath string, filePath string, message string) error {
+	cmd := exec.Command("git", "add", "-A", "--", filePath)
+	cmd.Dir = repoPath
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git add failed: %w, output: %s", err, string(output))
+	}
+
+	cmd = exec.Command("git", "commit", "-m", message)
+	cmd.Dir = repoPath
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if strings.Contains(string(output), "nothing to commit") {
+			return nil
+		}
+		return fmt.Errorf("git commit failed: %w, output: %s", err, string(output))
+	}
+	return nil
+}
+
+func (s *GitService) RemoveAndCommit(repoPath string, filePath string, message string) error {
+	_, statErr := os.Stat(filepath.Join(repoPath, filePath))
+	var stageCmd *exec.Cmd
+	if os.IsNotExist(statErr) {
+		stageCmd = exec.Command("git", "add", "-A", "--", filePath)
+	} else {
+		stageCmd = exec.Command("git", "rm", "-f", "--", filePath)
+	}
+	stageCmd.Dir = repoPath
+	if output, err := stageCmd.CombinedOutput(); err != nil {
+		if !os.IsNotExist(statErr) && !strings.Contains(string(output), "did not match any files") {
+			return fmt.Errorf("git stage remove failed: %w, output: %s", err, string(output))
+		}
+	}
+
+	diffCmd := exec.Command("git", "diff", "--cached", "--quiet")
+	diffCmd.Dir = repoPath
+	if err := diffCmd.Run(); err == nil {
+		return nil
+	}
+
+	commitCmd := exec.Command("git", "commit", "-m", message)
+	commitCmd.Dir = repoPath
+	output, err := commitCmd.CombinedOutput()
+	if err != nil {
+		if strings.Contains(string(output), "nothing to commit") {
+			return nil
+		}
+		return fmt.Errorf("git commit failed: %w, output: %s", err, string(output))
+	}
 	return nil
 }

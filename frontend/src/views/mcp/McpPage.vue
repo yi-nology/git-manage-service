@@ -1,19 +1,12 @@
 <template>
   <div class="mcp-page">
-    <div class="title-row">
-      <div class="title-left">
-        <h2 class="page-title">MCP 配置</h2>
-        <p class="page-subtitle">多模型协作平台连接配置</p>
-      </div>
-    </div>
+    <PageHeader title="MCP 配置" subtitle="多模型协作平台连接配置" />
 
-    <div class="conn-card">
-      <div class="conn-header">
+    <FormCard>
+      <template #header>
         <span class="conn-title">连接参数</span>
-        <span class="conn-status" :class="mcpEnabled ? 'status-connected' : 'status-disconnected'">
-          {{ mcpEnabled ? '已连接' : '未连接' }}
-        </span>
-      </div>
+        <StatusBadge :variant="mcpEnabled ? 'success' : 'default'" :text="mcpEnabled ? '已连接' : '未连接'" />
+      </template>
       <div class="conn-row">
         <div class="conn-field">
           <label class="field-label">Host</label>
@@ -34,16 +27,21 @@
         </div>
       </div>
       <div class="conn-actions">
-        <button class="action-primary" @click="saveConfig">保存配置</button>
-        <button class="action-outline" @click="testConnection">测试连接</button>
+        <ActionPill variant="primary" @click="saveConfig">保存配置</ActionPill>
+        <ActionPill variant="outline" @click="testConnection">测试连接</ActionPill>
       </div>
-    </div>
+    </FormCard>
 
-    <div class="section-title">可用工具 ({{ tools.length }})</div>
+    <SectionTitle>可用工具 ({{ tools.length }})</SectionTitle>
 
     <div class="tools-grid">
       <div v-for="tool in tools" :key="tool.name" class="tool-card">
-        <span class="tool-name">{{ tool.name }}</span>
+        <div class="tool-header">
+          <span class="tool-icon" :style="{ background: toolMeta(tool.name).bg, color: toolMeta(tool.name).fg }">
+            {{ toolMeta(tool.name).initial }}
+          </span>
+          <span class="tool-name">{{ tool.name }}</span>
+        </div>
         <span class="tool-desc">{{ tool.desc }}</span>
       </div>
     </div>
@@ -52,6 +50,11 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import FormCard from '@/components/common/FormCard.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import SectionTitle from '@/components/common/SectionTitle.vue'
 
 const mcpEnabled = ref(false)
 
@@ -60,6 +63,26 @@ const mcpConfig = reactive({
   apiKey: '',
   port: 3002
 })
+
+const TOOL_META: Record<string, { initial: string; bg: string; fg: string }> = {
+  repo_list: { initial: 'R', bg: '#EEF2FF', fg: '#6366F1' },
+  repo_info: { initial: 'R', bg: '#EEF2FF', fg: '#6366F1' },
+  branch_list: { initial: 'B', bg: '#ECFDF5', fg: '#10B981' },
+  git_commit_search: { initial: 'C', bg: '#FFF7ED', fg: '#F97316' },
+  git_tag_create: { initial: 'T', bg: '#FDF2F8', fg: '#EC4899' },
+  git_diff: { initial: 'D', bg: '#FEF3C7', fg: '#D97706' },
+  git_push: { initial: 'P', bg: '#DBEAFE', fg: '#3B82F6' },
+  git_pull: { initial: 'P', bg: '#DBEAFE', fg: '#3B82F6' },
+  git_stash: { initial: 'S', bg: '#F3E8FF', fg: '#8B5CF6' },
+  git_merge: { initial: 'M', bg: '#E0F2FE', fg: '#0EA5E9' },
+  git_stats: { initial: 'G', bg: '#F0FDF4', fg: '#22C55E' },
+  sync_task: { initial: 'S', bg: '#FEF2F2', fg: '#EF4444' },
+  file_read: { initial: 'F', bg: '#F5F3FF', fg: '#7C3AED' },
+}
+
+function toolMeta(name: string) {
+  return TOOL_META[name] || { initial: name[0]?.toUpperCase() || '?', bg: '#F3F4F6', fg: '#6B7280' }
+}
 
 const tools = [
   { name: 'repo_list', desc: '列出仓库' },
@@ -94,68 +117,10 @@ const testConnection = () => {
   gap: 20px;
 }
 
-.title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.title-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.page-subtitle {
-  margin: 0;
-  font-size: 13px;
-  font-weight: normal;
-  color: var(--text-color-secondary);
-}
-
-.conn-card {
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.conn-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .conn-title {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-color-primary);
-}
-
-.conn-status {
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.conn-status.status-connected {
-  background: #ECFDF5;
-  color: #10B981;
-}
-
-.conn-status.status-disconnected {
-  background: var(--accent-bg, #EEF2FF);
-  color: var(--text-color-secondary);
 }
 
 .conn-row {
@@ -178,18 +143,18 @@ const testConnection = () => {
 
 .field-input {
   padding: 8px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
   color: var(--text-color-primary);
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   outline: none;
   width: 100%;
   box-sizing: border-box;
 }
 
 .field-input:focus {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
 }
 
 .toggle-row {
@@ -212,7 +177,7 @@ const testConnection = () => {
 }
 
 .toggle-btn.active {
-  background: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
 }
 
 .toggle-dot {
@@ -240,64 +205,44 @@ const testConnection = () => {
   gap: 8px;
 }
 
-.action-primary {
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: none;
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.action-primary:hover {
-  opacity: 0.9;
-}
-
-.action-outline {
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: none;
-  color: var(--text-color-regular);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-outline:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
 .tools-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;
 }
 
 .tool-card {
   border-radius: 8px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  padding: 12px;
+  background: var(--bg-color-page);
+  border: 1px solid var(--border-color);
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+}
+
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .tool-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary);
 }
 
 .tool-desc {

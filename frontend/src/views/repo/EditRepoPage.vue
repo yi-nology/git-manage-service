@@ -1,15 +1,8 @@
 <template>
   <div class="edit-repo-page">
-    <div class="title-row">
-      <div class="title-left">
-        <button class="back-btn" @click="router.push(`/local-repos/${repoKey}`)">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </button>
-        <h2 class="page-title">编辑仓库</h2>
-      </div>
-    </div>
+    <PageHeader title="编辑仓库" :showBack="true" :back-route="`/local-repos/${repoKey}`" />
 
-    <div class="form-card" v-if="!pageLoading">
+    <FormCard v-if="!pageLoading">
       <div class="form-field">
         <label class="field-label">仓库名称</label>
         <input v-model="editForm.name" placeholder="仓库名称" class="field-input" />
@@ -37,7 +30,7 @@
         <CredentialSelector v-model="editDefaultCredentialId" :url="editForm.remote_url" placeholder="选择默认凭证（可选）" />
       </div>
 
-      <div class="divider"></div>
+      <div class="spacer"></div>
 
       <div class="config-header">
         <span class="config-title">远程仓库配置</span>
@@ -75,7 +68,7 @@
       </button>
 
       <template v-if="editTrackingBranches.length > 0">
-        <div class="divider"></div>
+        <div class="spacer"></div>
         <div class="config-header">
           <span class="config-title">分支追踪</span>
         </div>
@@ -84,7 +77,7 @@
         </div>
       </template>
 
-      <div class="divider"></div>
+      <div class="spacer"></div>
 
       <div class="config-header">
         <span class="config-title">远端平台关联</span>
@@ -105,29 +98,23 @@
         @created="loadBindings"
       />
 
-      <div class="divider"></div>
-
-      <div class="form-actions">
-        <button class="action-pill pill-outline" @click="router.push(`/local-repos/${repoKey}`)">取消</button>
-        <button class="action-pill pill-primary" @click="handleSaveEdit" :disabled="editSaving">
-          <el-icon><Check /></el-icon>
+      <template #footer>
+        <ActionPill variant="outline" @click="router.push(`/local-repos/${repoKey}`)">取消</ActionPill>
+        <ActionPill variant="primary" :icon="Check" :disabled="editSaving" @click="handleSaveEdit">
           {{ editSaving ? '保存中...' : '保存' }}
-        </button>
-      </div>
-    </div>
+        </ActionPill>
+      </template>
+    </FormCard>
 
-    <div v-else class="loading-card">
-      <div class="loading-spinner"></div>
-      <span>加载中...</span>
-    </div>
+    <LoadingState v-else />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { ArrowLeft, Plus, Check, Delete, Connection } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Check, Delete, Connection } from '@element-plus/icons-vue'
 import { getRepoDetail, scanRepo, updateRepo } from '@/api/modules/repo'
 import { testConnection } from '@/api/modules/system'
 import { testCredential } from '@/api/modules/credential'
@@ -139,6 +126,10 @@ import BindingDialog from '@/components/binding/BindingDialog.vue'
 import { listBindings, deleteBinding, setPrimaryBinding, registerBindingWebhook, deleteBindingWebhook } from '@/api/modules/binding'
 import type { RepoProviderBindingDTO } from '@/types/binding'
 import { useProviderStore } from '@/stores/useProviderStore'
+import PageHeader from '@/components/common/PageHeader.vue'
+import FormCard from '@/components/common/FormCard.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import LoadingState from '@/components/common/LoadingState.vue'
 
 const providerStore = useProviderStore()
 
@@ -338,54 +329,6 @@ onMounted(async () => {
   gap: 20px;
 }
 
-.title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.title-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-color-secondary);
-  background: none;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 6px;
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.form-card {
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
 .form-field {
   display: flex;
   flex-direction: column;
@@ -393,25 +336,25 @@ onMounted(async () => {
 }
 
 .field-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-color-primary);
 }
 
 .field-input {
   padding: 10px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
   color: var(--text-color-primary);
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   outline: none;
   width: 100%;
   box-sizing: border-box;
 }
 
 .field-input:focus {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
 }
 
 .field-error {
@@ -426,7 +369,7 @@ onMounted(async () => {
 
 .proto-toggle {
   display: flex;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 6px 0 0 6px;
   overflow: hidden;
   flex-shrink: 0;
@@ -435,13 +378,13 @@ onMounted(async () => {
 .proto-btn {
   padding: 10px 14px;
   border: none;
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   font-size: 12px;
   font-weight: 500;
   color: var(--text-color-secondary);
   cursor: pointer;
   transition: all 0.2s;
-  border-right: 1px solid var(--border-color, #e5e7eb);
+  border-right: 1px solid var(--border-color);
 }
 
 .proto-btn:last-child {
@@ -449,7 +392,7 @@ onMounted(async () => {
 }
 
 .proto-btn.active {
-  background: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
   color: #fff;
 }
 
@@ -468,9 +411,8 @@ onMounted(async () => {
   border-left: none;
 }
 
-.divider {
-  height: 1px;
-  background: var(--border-color, #e5e7eb);
+.spacer {
+  height: 16px;
 }
 
 .config-header {
@@ -494,7 +436,7 @@ onMounted(async () => {
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 11px;
-  background: #EEF2FF;
+  background: var(--accent-bg);
   color: #6366F1;
 }
 
@@ -506,7 +448,7 @@ onMounted(async () => {
 
 .remote-card {
   padding: 16px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -535,7 +477,7 @@ onMounted(async () => {
   width: 34px;
   height: 34px;
   border-radius: 6px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   background: transparent;
   cursor: pointer;
   transition: all 0.2s;
@@ -544,12 +486,12 @@ onMounted(async () => {
 }
 
 .icon-btn--primary {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .icon-btn--primary:hover:not(:disabled) {
-  background: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
   color: #fff;
 }
 
@@ -586,7 +528,7 @@ onMounted(async () => {
   gap: 6px;
   padding: 10px 16px;
   border-radius: 8px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   background: transparent;
   font-size: 13px;
   color: var(--text-color-secondary);
@@ -596,8 +538,8 @@ onMounted(async () => {
 }
 
 .add-remote-btn:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .tracking-tags {
@@ -609,75 +551,9 @@ onMounted(async () => {
 .track-tag {
   padding: 4px 8px;
   border-radius: 4px;
-  background: #EEF2FF;
+  background: var(--accent-bg);
   color: #6366F1;
   font-size: 12px;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.action-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-pill:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pill-primary {
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-}
-
-.pill-primary:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.pill-outline {
-  background: transparent;
-  border: 1px solid var(--border-color, #e5e7eb);
-  color: var(--text-color-primary);
-}
-
-.pill-outline:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
-.loading-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 48px 24px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  color: var(--text-color-secondary);
-  font-size: 13px;
-}
-
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--border-color, #e5e7eb);
-  border-top-color: var(--accent-primary, #6366F1);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
 }
 
 .loading-spinner-sm {

@@ -1,15 +1,12 @@
 <template>
   <div class="add-credential-page">
-    <div class="title-row">
-      <div class="title-left">
-        <button class="back-btn" @click="router.push('/settings/credentials')">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </button>
-        <h2 class="page-title">{{ isEdit ? '编辑凭证' : '添加凭证' }}</h2>
-      </div>
-    </div>
+    <PageHeader
+      :title="isEdit ? '编辑凭证' : '添加凭证'"
+      :showBack="true"
+      backRoute="/settings/credentials"
+    />
 
-    <div class="form-card" v-if="!pageLoading">
+    <FormCard v-if="!pageLoading">
       <div class="form-field">
         <label class="field-label">凭证名称</label>
         <input v-model="form.name" placeholder="例如: GitHub SSH Key" class="field-input" />
@@ -97,19 +94,15 @@
         <div class="field-hint">当仓库 URL 匹配此模式时，系统将自动推荐该凭证。支持 * 通配符。</div>
       </div>
 
-      <div class="form-actions">
-        <button class="action-pill pill-outline" @click="router.push('/settings/credentials')">取消</button>
-        <button class="action-pill pill-primary" @click="handleSave" :disabled="saving">
-          <el-icon><Plus /></el-icon>
+      <template #footer>
+        <ActionPill variant="outline" @click="router.push('/settings/credentials')">取消</ActionPill>
+        <ActionPill variant="primary" :icon="Plus" :disabled="saving" @click="handleSave">
           {{ saving ? '保存中...' : (isEdit ? '保存凭证' : '创建凭证') }}
-        </button>
-      </div>
-    </div>
+        </ActionPill>
+      </template>
+    </FormCard>
 
-    <div v-else class="loading-card">
-      <div class="loading-spinner"></div>
-      <span>加载中...</span>
-    </div>
+    <LoadingState v-else />
   </div>
 </template>
 
@@ -117,10 +110,14 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Plus, Key, Lock, Ticket } from '@element-plus/icons-vue'
+import { Plus, Key, Lock, Ticket } from '@element-plus/icons-vue'
 import { createCredential, updateCredential, getCredential } from '@/api/modules/credential'
 import { listDBSSHKeys, type DBSSHKey } from '@/api/modules/sshkey'
 import type { CredentialType } from '@/types/credential'
+import PageHeader from '@/components/common/PageHeader.vue'
+import FormCard from '@/components/common/FormCard.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import LoadingState from '@/components/common/LoadingState.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -244,54 +241,6 @@ onMounted(async () => {
   gap: 20px;
 }
 
-.title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.title-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-color-secondary);
-  background: none;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 6px;
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.form-card {
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
 .form-field {
   display: flex;
   flex-direction: column;
@@ -306,18 +255,18 @@ onMounted(async () => {
 
 .field-input {
   padding: 10px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
   color: var(--text-color-primary);
-  background: var(--bg-color-page, #fff);
+  background: var(--bg-color-page);
   outline: none;
   width: 100%;
   box-sizing: border-box;
 }
 
 .field-input:focus {
-  border-color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
 }
 
 select.field-input {
@@ -343,8 +292,8 @@ select.field-input {
   gap: 6px;
   padding: 10px 16px;
   border-radius: 8px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color);
+  background: var(--bg-color-page);
   font-size: 13px;
   color: var(--text-color-secondary);
   cursor: pointer;
@@ -352,13 +301,13 @@ select.field-input {
 }
 
 .type-btn:hover:not(.disabled) {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .type-btn.active {
-  background: var(--accent-primary, #6366F1);
-  border-color: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
   color: #fff;
 }
 
@@ -369,7 +318,7 @@ select.field-input {
 
 .divider {
   height: 1px;
-  background: var(--border-color, #e5e7eb);
+  background: var(--border-color);
 }
 
 .config-header {
@@ -392,7 +341,7 @@ select.field-input {
 }
 
 .badge-ssh { background: #ECFDF5; color: #10B981; }
-.badge-http { background: #EEF2FF; color: #6366F1; }
+.badge-http { background: var(--accent-bg); color: #6366F1; }
 
 .mode-selector {
   display: flex;
@@ -402,8 +351,8 @@ select.field-input {
 .mode-btn {
   padding: 8px 14px;
   border-radius: 6px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff);
+  border: 1px solid var(--border-color);
+  background: var(--bg-color-page);
   font-size: 13px;
   color: var(--text-color-secondary);
   cursor: pointer;
@@ -411,78 +360,8 @@ select.field-input {
 }
 
 .mode-btn.active {
-  background: var(--accent-primary, #6366F1);
-  border-color: var(--accent-primary, #6366F1);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
   color: #fff;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.action-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-pill:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pill-primary {
-  background: var(--accent-primary, #6366F1);
-  color: #fff;
-}
-
-.pill-primary:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.pill-outline {
-  background: transparent;
-  border: 1px solid var(--border-color, #e5e7eb);
-  color: var(--text-color-primary);
-}
-
-.pill-outline:hover {
-  border-color: var(--accent-primary, #6366F1);
-  color: var(--accent-primary, #6366F1);
-}
-
-.loading-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 48px 24px;
-  border-radius: 12px;
-  background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  color: var(--text-color-secondary);
-  font-size: 13px;
-}
-
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--border-color, #e5e7eb);
-  border-top-color: var(--accent-primary, #6366F1);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 </style>

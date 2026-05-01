@@ -52,8 +52,7 @@ func Init() {
 		log.Fatal("failed to connect database: ", err)
 	}
 
-	migrator := DB.Migrator()
-	// 检查所有必需的表是否存在，包括代码质量相关的表
+		migrator := DB.Migrator()
 	if migrator.HasTable(&po.Repo{}) &&
 		migrator.HasTable(&po.SyncTask{}) &&
 		migrator.HasTable(&po.SyncRun{}) &&
@@ -73,12 +72,21 @@ func Init() {
 		migrator.HasTable(&po.ChangeRequest{}) &&
 		migrator.HasTable(&po.WebhookEvent{}) &&
 		migrator.HasTable(&po.WebhookRule{}) &&
-		migrator.HasTable(&po.RepoProviderBinding{}) {
+		migrator.HasTable(&po.RepoProviderBinding{}) &&
+		migrator.HasTable(&po.ReviewTask{}) &&
+		migrator.HasTable(&po.ReviewFinding{}) &&
+		migrator.HasTable(&po.ReviewComment{}) &&
+		migrator.HasTable(&po.MergeCheckResult{}) &&
+		migrator.HasTable(&po.ReviewRepoConfig{}) &&
+		migrator.HasTable(&po.LLMProvider{}) &&
+		migrator.HasTable(&po.BranchRuleSet{}) &&
+		migrator.HasTable(&po.BranchRuleOverride{}) &&
+		migrator.HasTable(&po.ReviewRule{}) {
 		log.Println("Database tables exist, skipping schema migration.")
 		return
 	}
 
-	err = DB.AutoMigrate(&po.Repo{}, &po.SyncTask{}, &po.SyncRun{}, &po.AuditLog{}, &po.SystemConfig{}, &po.CommitStat{}, &po.NotificationChannel{}, &po.NotificationEventTemplate{}, &po.SSHKey{}, &po.BackupRecord{}, &po.Credential{}, &po.LintRule{}, &po.CommitAnalysis{}, &po.CommitPattern{}, &po.SyncRecommendation{}, &po.ProviderConfig{}, &po.ChangeRequest{}, &po.WebhookEvent{}, &po.WebhookRule{}, &po.RepoProviderBinding{})
+	err = DB.AutoMigrate(&po.Repo{}, &po.SyncTask{}, &po.SyncRun{}, &po.AuditLog{}, &po.SystemConfig{}, &po.CommitStat{}, &po.NotificationChannel{}, &po.NotificationEventTemplate{}, &po.SSHKey{}, &po.BackupRecord{}, &po.Credential{}, &po.LintRule{}, &po.CommitAnalysis{}, &po.CommitPattern{}, &po.SyncRecommendation{}, &po.ProviderConfig{}, &po.ChangeRequest{}, &po.WebhookEvent{}, &po.WebhookRule{}, &po.RepoProviderBinding{}, &po.ReviewTask{}, &po.ReviewFinding{}, &po.ReviewComment{}, &po.MergeCheckResult{}, &po.ReviewRepoConfig{}, &po.LLMProvider{}, &po.BranchRuleSet{}, &po.BranchRuleOverride{}, &po.ReviewRule{})
 	if err != nil {
 		log.Fatal("failed to migrate database: ", err)
 	}

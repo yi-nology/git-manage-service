@@ -1,13 +1,6 @@
 <template>
   <div class="compare-page">
-    <div class="page-header">
-      <div class="header-left">
-        <button class="back-btn" @click="$router.push(`/local-repos/${repoKey}/branches`)">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </button>
-        <h2>分支对比 & 合并</h2>
-      </div>
-    </div>
+    <PageHeader title="分支对比 & 合并" show-back :back-route="branchBackRoute" />
 
     <div class="control-panel">
       <div class="branch-select-group">
@@ -33,12 +26,8 @@
         </div>
       </div>
       <div class="control-actions">
-        <button class="action-pill action-pill--primary" @click="handleCompare" :disabled="comparing">
-          <el-icon><Switch /></el-icon> 对比
-        </button>
-        <button class="action-pill action-pill--green" @click="openMergeDialog" :disabled="!compareResult || !canMerge">
-          <el-icon><Connection /></el-icon> 合并
-        </button>
+        <ActionPill variant="primary" :icon="Switch" :disabled="comparing" @click="handleCompare">对比</ActionPill>
+        <ActionPill variant="green" :icon="Connection" :disabled="!compareResult || !canMerge" @click="openMergeDialog">合并</ActionPill>
       </div>
     </div>
 
@@ -51,28 +40,15 @@
       description="Git 合并只能在本地分支上执行，请选择本地分支作为目标分支。"
     />
 
-    <div v-if="compareResult" class="stats-row">
-      <div class="stat-card">
-        <span class="stat-value">{{ compareResult.stat.FilesChanged }}</span>
-        <span class="stat-label">变更文件</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-value stat-value--green">+{{ compareResult.stat.Insertions }}</span>
-        <span class="stat-label">新增行数</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-value stat-value--red">-{{ compareResult.stat.Deletions }}</span>
-        <span class="stat-label">删除行数</span>
-      </div>
-      <div class="stat-card stat-card--action">
-        <button class="action-pill action-pill--outline" @click="handleDownloadPatch">
-          <el-icon><Download /></el-icon> 导出 Patch
-        </button>
+    <div v-if="compareResult" class="compare-stats">
+      <StatsRow :stats="compareStats" />
+      <div class="stat-action-card">
+        <ActionPill variant="outline" :icon="Download" @click="handleDownloadPatch">导出 Patch</ActionPill>
       </div>
     </div>
 
     <template v-if="compareResult">
-      <h3 class="section-title">变更文件列表</h3>
+      <SectionTitle title="变更文件列表" />
 
       <div class="file-table-card">
         <div class="table-header">
@@ -88,11 +64,11 @@
           @click="selectFile(f.path)"
         >
           <span class="td" style="width:80px">
-            <span class="status-tag" :class="`status-tag--${getFileStatusClass(f.status)}`">{{ f.status }}</span>
+            <StatusBadge :variant="getFileStatusVariant(f.status)" :text="f.status" :show-dot="false" />
           </span>
           <span class="td td-path" style="flex:1">{{ f.path }}</span>
           <span class="td" style="width:120px">
-            <span class="status-tag" :class="`status-tag--${getFileStatusClass(f.status)}`">{{ f.status === 'A' ? 'Added' : f.status === 'D' ? 'Deleted' : f.status === 'M' ? 'Modified' : f.status }}</span>
+            <StatusBadge :variant="getFileStatusVariant(f.status)" :text="getChangeLabel(f.status)" :show-dot="false" />
           </span>
         </div>
       </div>
@@ -109,11 +85,8 @@
       </div>
     </template>
 
-    <div v-if="!compareResult && !comparing" class="empty-state">
-      <span class="text-muted">请选择分支进行对比</span>
-    </div>
+    <EmptyState v-if="!compareResult && !comparing" title="请选择分支进行对比" />
 
-    <!-- Merge Dialog -->
     <el-dialog v-model="showMergeDialog" title="合并分支" width="550px" destroy-on-close>
       <p>
         即将合并 <strong>{{ sourceBranch }}</strong> 到 <strong>{{ targetBranch }}</strong>
@@ -167,14 +140,22 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Right, Switch, Connection, Download, Loading } from '@element-plus/icons-vue'
+import { Right, Switch, Connection, Download, Loading } from '@element-plus/icons-vue'
 import { getBranchList, compareBranches, getBranchDiff, getBranchPatch, checkMerge, mergeBranch } from '@/api/modules/branch'
 import type { MergeCheckResult, BranchInfo } from '@/types/branch'
 import * as Diff2Html from 'diff2html'
 import 'diff2html/bundles/css/diff2html.min.css'
+import PageHeader from '@/components/common/PageHeader.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
+import StatsRow from '@/components/common/StatsRow.vue'
+import SectionTitle from '@/components/common/SectionTitle.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 
 const route = useRoute()
 const repoKey = route.params.repoKey as string
+
+const branchBackRoute = computed(() => `/local-repos/${repoKey}/branches`)
 
 const allBranches = ref<BranchInfo[]>([])
 const sourceBranch = ref('')
@@ -192,22 +173,28 @@ const mergeCheckResult = ref<MergeCheckResult | null>(null)
 const merging = ref(false)
 const mergeForm = ref({ message: '' })
 
-// 分离本地和远程分支
-const localBranches = computed(() => 
+const localBranches = computed(() =>
   allBranches.value.filter(b => b.type === 'local').map(b => b.name)
 )
-const remoteBranches = computed(() => 
+const remoteBranches = computed(() =>
   allBranches.value.filter(b => b.type === 'remote').map(b => b.name)
 )
 
-// 判断是否是远程分支
 function isRemoteBranch(name: string): boolean {
   return remoteBranches.value.includes(name)
 }
 
-// 是否可以合并：目标分支必须是本地分支
 const canMerge = computed(() => {
   return targetBranch.value && !isRemoteBranch(targetBranch.value)
+})
+
+const compareStats = computed(() => {
+  if (!compareResult.value) return []
+  return [
+    { label: '变更文件', value: String(compareResult.value.stat.FilesChanged) },
+    { label: '新增行数', value: `+${compareResult.value.stat.Insertions}` },
+    { label: '删除行数', value: `-${compareResult.value.stat.Deletions}` },
+  ]
 })
 
 onMounted(async () => {
@@ -221,12 +208,19 @@ watch(diffViewMode, () => {
   if (currentFile.value) selectFile(currentFile.value)
 })
 
-function getFileStatusClass(status: string): string {
-  if (status === 'A') return 'added'
-  if (status === 'D') return 'deleted'
-  if (status === 'M') return 'modified'
-  if (status === 'R') return 'renamed'
-  return ''
+function getFileStatusVariant(status: string): 'success' | 'danger' | 'warning' | 'info' | 'running' | 'default' {
+  if (status === 'A') return 'success'
+  if (status === 'D') return 'danger'
+  if (status === 'M') return 'info'
+  if (status === 'R') return 'warning'
+  return 'default'
+}
+
+function getChangeLabel(status: string): string {
+  if (status === 'A') return 'Added'
+  if (status === 'D') return 'Deleted'
+  if (status === 'M') return 'Modified'
+  return status
 }
 
 async function handleCompare() {
@@ -315,44 +309,6 @@ async function handleMerge() {
   background: var(--bg-color);
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-left h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-color-secondary);
-  background: none;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-sm);
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.back-btn:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
 .control-panel {
   display: flex;
   align-items: center;
@@ -399,91 +355,23 @@ async function handleMerge() {
   flex-shrink: 0;
 }
 
-.action-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 10px 20px;
-  border-radius: var(--border-radius-md);
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-family: var(--font-family);
-}
-
-.action-pill:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.action-pill--primary {
-  background: var(--primary-color);
-  color: #FFFFFF;
-}
-.action-pill--primary:hover:not(:disabled) {
-  background: var(--primary-color-hover);
-}
-
-.action-pill--green {
-  background: #ECFDF5;
-  color: var(--success-color);
-}
-.action-pill--green:hover:not(:disabled) {
-  background: #D1FAE5;
-}
-
-.action-pill--outline {
-  background: transparent;
-  color: var(--text-color-primary);
-  border: 1px solid var(--border-color);
-}
-
-.stats-row {
+.compare-stats {
   display: flex;
   gap: 16px;
 }
 
-.stat-card {
+.compare-stats :deep(.stats-row) {
   flex: 1;
+}
+
+.stat-action-card {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
   padding: 16px;
   background: var(--bg-color-page);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-lg);
-}
-
-.stat-card--action {
-  justify-content: center;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.stat-value--green {
-  color: var(--success-color);
-}
-
-.stat-value--red {
-  color: var(--danger-color);
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--text-color-secondary);
-}
-
-.section-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-color-primary);
 }
 
 .file-table-card {
@@ -532,51 +420,11 @@ async function handleMerge() {
   color: var(--text-color-secondary);
 }
 
-.status-tag {
-  display: inline-block;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: var(--border-radius-sm);
-}
-
-.status-tag--added {
-  background: #ECFDF5;
-  color: var(--success-color);
-}
-
-.status-tag--deleted {
-  background: #FEF2F2;
-  color: var(--danger-color);
-}
-
-.status-tag--modified {
-  background: #EEF2FF;
-  color: var(--primary-color);
-}
-
-.status-tag--renamed {
-  background: #FFFBEB;
-  color: var(--warning-color);
-}
-
 .td-path {
   color: var(--text-color-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.td-mono {
-  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: 13px;
-}
-
-.stat-add {
-  color: var(--success-color);
-}
-
-.stat-del {
-  color: var(--danger-color);
 }
 
 .diff-section {
@@ -605,16 +453,6 @@ async function handleMerge() {
   padding: 0;
 }
 
-.empty-state {
-  padding: 40px;
-  text-align: center;
-}
-
-.text-muted {
-  font-size: 13px;
-  color: var(--text-color-placeholder);
-}
-
 @media (max-width: 768px) {
   .compare-page {
     padding: var(--spacing-md);
@@ -633,11 +471,11 @@ async function handleMerge() {
     transform: rotate(90deg);
   }
 
-  .stats-row {
+  .compare-stats {
     flex-wrap: wrap;
   }
 
-  .stat-card {
+  .compare-stats :deep(.stat-card) {
     min-width: calc(50% - 12px);
   }
 }

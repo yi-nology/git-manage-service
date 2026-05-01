@@ -1,6 +1,7 @@
 package webhookevent
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"regexp"
@@ -10,7 +11,9 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"github.com/yi-nology/git-manage-service/biz/service/codereview"
 	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
 func List(eventType, source, status string, page, pageSize int) ([]api.WebhookEventDTO, int, error) {
@@ -141,6 +144,8 @@ func applyRules(event *po.WebhookEvent) {
 			triggerSync(rule.ActionConfig)
 		case "notify":
 			log.Printf("Webhook rule %s: notify action triggered for event %s", rule.Name, event.EventID)
+		case "code_review":
+			triggerCodeReview(event)
 		}
 	}
 
@@ -157,6 +162,44 @@ func triggerSync(config map[string]interface{}) {
 		return
 	}
 	log.Printf("Webhook rule triggered sync for task: %s", taskKey)
+}
+
+func triggerCodeReview(event *po.WebhookEvent) {
+	if !configs.GlobalConfig.CodeReview.Enabled {
+		return
+	}
+	if !configs.GlobalConfig.CodeReview.AutoReviewOnMR {
+		return
+	}
+	if event.RepoID == 0 || event.PlatformCRNumber == 0 {
+		return
+	}
+
+	repo, err := db.NewRepoDAO().FindByID(event.RepoID)
+	if err != nil {
+		log.Printf("[CodeReview] trigger: repo %d not found: %v", event.RepoID, err)
+		return
+	}
+
+	if repo.ProviderConfigID != 0 && repo.PlatformOwner != "" && repo.PlatformRepo != "" {
+		repoCfg, err := db.NewReviewRepoConfigDAO().FindByRemoteRepo(repo.ProviderConfigID, repo.PlatformOwner, repo.PlatformRepo)
+		if err == nil && !repoCfg.AutoReviewOnMR {
+			return
+		}
+	}
+
+	mrIID := fmt.Sprintf("%d", event.PlatformCRNumber)
+	commitSHA := ""
+	if event.Payload != nil {
+		if sha, ok := event.Payload["commit_sha"].(string); ok {
+			commitSHA = sha
+		}
+	}
+
+	_, err = codereview.CreateTask(context.Background(), repo.Key, event.ProviderConfigID, mrIID, commitSHA, "webhook")
+	if err != nil {
+		log.Printf("[CodeReview] trigger: failed to create task: %v", err)
+	}
 }
 
 func matchPattern(pattern, value string) bool {

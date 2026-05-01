@@ -10,20 +10,27 @@ export interface SpecFileNode {
 export interface LintIssue {
   line: number
   column?: number
-  end_line?: number
-  end_column?: number
+  endLine?: number
+  endColumn?: number
   message: string
   severity: 'error' | 'warning' | 'info'
-  rule_id: string
-  rule_name: string
+  ruleId: string
+  ruleName?: string
+  source?: 'rule' | 'ai'
+  quickFix?: string
 }
 
 export interface LintResult {
+  file?: string
   issues: LintIssue[]
-  error_count: number
-  warning_count: number
-  info_count: number
+  stats: {
+    errorCount: number
+    warningCount: number
+    infoCount: number
+  }
 }
+
+export type LintMode = 'rule_only' | 'rule_and_ai' | 'ai_only'
 
 export type RuleCategory = 'required' | 'style' | 'best-practice' | 'custom'
 

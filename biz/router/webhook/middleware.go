@@ -35,3 +35,8 @@ func _triggersyncbytokenMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _receiveMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

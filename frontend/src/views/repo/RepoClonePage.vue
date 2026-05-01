@@ -1,13 +1,6 @@
 <template>
   <div class="clone-page">
-    <div class="title-row">
-      <div class="title-left">
-        <button class="back-btn" @click="$router.push('/local-repos')">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </button>
-        <h2 class="page-title">克隆远程仓库</h2>
-      </div>
-    </div>
+    <PageHeader title="克隆远程仓库" :showBack="true" backRoute="/local-repos" />
 
     <div class="steps-bar">
       <div class="step" :class="{ active: step >= 0, current: step === 0 }">
@@ -26,7 +19,7 @@
       </div>
     </div>
 
-    <div class="form-card" v-if="!taskId">
+    <FormCard v-if="!taskId">
       <div class="form-field">
         <label class="field-label">远程仓库地址</label>
         <div class="proto-row">
@@ -59,20 +52,21 @@
         <input v-model="form.name" placeholder="可选，默认从 URL 推断" class="field-input" />
       </div>
 
-      <div class="form-actions">
-        <button class="action-pill pill-outline" @click="$router.push('/local-repos')">取消</button>
-        <button class="action-pill pill-primary" @click="handleClone" :disabled="cloning || !form.remote_url || !form.local_path">
-          <el-icon><ArrowRight /></el-icon>
+      <template #footer>
+        <ActionPill variant="outline" @click="$router.push('/local-repos')">取消</ActionPill>
+        <ActionPill variant="primary" :icon="ArrowRight" :disabled="cloning || !form.remote_url || !form.local_path" @click="handleClone">
           {{ cloning ? '克隆中...' : '开始克隆' }}
-        </button>
-      </div>
-    </div>
+        </ActionPill>
+      </template>
+    </FormCard>
 
-    <div class="form-card" v-if="taskId">
-      <div class="section-header">
-        <span class="section-title">克隆进度</span>
-        <span class="status-pill" :class="'status-' + taskStatus">{{ statusLabel }}</span>
-      </div>
+    <FormCard v-if="taskId">
+      <template #header>
+        <div class="section-header">
+          <span class="section-title">克隆进度</span>
+          <span class="status-pill" :class="'status-' + taskStatus">{{ statusLabel }}</span>
+        </div>
+      </template>
 
       <div v-if="progressLines.length" class="progress-logs">
         <div v-for="(line, i) in progressLines" :key="i" class="log-line">{{ line }}</div>
@@ -80,13 +74,13 @@
 
       <div v-if="taskStatus === 'done'" class="result-row">
         <span class="result-text">克隆成功！</span>
-        <button class="action-pill pill-primary" @click="$router.push('/local-repos')">查看仓库列表</button>
+        <ActionPill variant="primary" @click="$router.push('/local-repos')">查看仓库列表</ActionPill>
       </div>
 
       <div v-if="taskStatus === 'failed'" class="result-row">
         <span class="result-text result-text--error">克隆失败: {{ taskError }}</span>
       </div>
-    </div>
+    </FormCard>
   </div>
 </template>
 
@@ -94,11 +88,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { ArrowRight } from '@element-plus/icons-vue'
 import { cloneRepo, getCloneTask, selectDirectory } from '@/api/modules/repo'
 import type { CloneRepoReq } from '@/types/repo'
 import CredentialSelector from '@/components/credential/CredentialSelector.vue'
 import { validateGitRemoteUrl, detectGitProtocol, extractRepoName, convertGitUrl } from '@/utils/git'
+import PageHeader from '@/components/common/PageHeader.vue'
+import FormCard from '@/components/common/FormCard.vue'
+import ActionPill from '@/components/common/ActionPill.vue'
 
 type UrlMode = 'ssh' | 'https'
 
@@ -235,23 +232,10 @@ onUnmounted(() => { stopPolling() })
   gap: 20px;
 }
 
-.title-row { display: flex; align-items: center; justify-content: space-between; }
-.title-left { display: flex; align-items: center; gap: 12px; }
-
-.back-btn {
-  display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
-  color: var(--text-color-secondary); background: none;
-  border: 1px solid var(--border-color, #e5e7eb); border-radius: 6px;
-  padding: 6px 12px; cursor: pointer; transition: all 0.2s;
-}
-.back-btn:hover { border-color: var(--accent-primary, #6366F1); color: var(--accent-primary, #6366F1); }
-
-.page-title { margin: 0; font-size: 24px; font-weight: 600; color: var(--text-color-primary); }
-
 .steps-bar {
   display: flex; align-items: center; justify-content: center; gap: 0;
-  padding: 16px 24px; background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px;
+  padding: 16px 24px; background: var(--bg-color-page);
+  border-radius: 12px;
 }
 
 .step { display: flex; align-items: center; gap: 8px; opacity: 0.4; transition: opacity 0.2s; }
@@ -260,43 +244,37 @@ onUnmounted(() => { stopPolling() })
 .step-num {
   display: flex; align-items: center; justify-content: center;
   width: 24px; height: 24px; border-radius: 12px;
-  font-size: 12px; font-weight: 600; background: var(--border-color, #e5e7eb); color: var(--text-color-secondary);
+  font-size: 12px; font-weight: 600; background: var(--border-color); color: var(--text-color-secondary);
 }
-.step.active .step-num { background: var(--accent-primary, #6366F1); color: #fff; }
+.step.active .step-num { background: var(--accent-primary); color: #fff; }
 
 .step-text { font-size: 13px; font-weight: 500; color: var(--text-color-primary); }
 
-.step-line { width: 80px; height: 2px; background: var(--border-color, #e5e7eb); margin: 0 8px; transition: background 0.2s; }
-.step-line.filled { background: var(--accent-primary, #6366F1); }
-
-.form-card {
-  border-radius: 12px; background: var(--bg-color-page, #fff);
-  border: 1px solid var(--border-color, #e5e7eb); padding: 24px;
-  display: flex; flex-direction: column; gap: 16px;
-}
+.step-line { width: 80px; height: 2px; background: var(--border-color); margin: 0 8px; transition: background 0.2s; }
+.step-line.filled { background: var(--accent-primary); }
 
 .form-field { display: flex; flex-direction: column; gap: 8px; }
 
-.field-label { font-size: 13px; font-weight: 500; color: var(--text-color-primary); }
+.field-label { font-size: 14px; font-weight: 500; color: var(--text-color-primary); }
 
 .field-input {
-  padding: 10px 12px; border: 1px solid var(--border-color, #e5e7eb);
+  padding: 10px 12px; border: 1px solid var(--border-color);
   border-radius: 6px; font-size: 13px; color: var(--text-color-primary);
-  background: var(--bg-color-page, #fff); outline: none; width: 100%; box-sizing: border-box;
+  background: var(--bg-color-page); outline: none; width: 100%; box-sizing: border-box;
   transition: border-color 0.2s;
 }
-.field-input:focus { border-color: var(--accent-primary, #6366F1); }
+.field-input:focus { border-color: var(--accent-primary); }
 .field-input.is-error { border-color: #EF4444; }
 .field-input::placeholder { color: var(--text-color-placeholder, #9ca3af); }
 
 .proto-row { display: flex; gap: 8px; }
 
 .proto-btn {
-  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-color-page, #fff); font-size: 13px; color: var(--text-color-secondary);
+  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-color);
+  background: var(--bg-color-page); font-size: 13px; color: var(--text-color-secondary);
   cursor: pointer; transition: all 0.2s;
 }
-.proto-btn.active { background: var(--accent-primary, #6366F1); border-color: var(--accent-primary, #6366F1); color: #fff; }
+.proto-btn.active { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
 
 .url-input-row { display: flex; align-items: center; gap: 8px; }
 
@@ -311,8 +289,8 @@ onUnmounted(() => { stopPolling() })
 .input-with-btn .field-input { flex: 1; }
 
 .browse-btn {
-  padding: 10px 16px; border-radius: 6px; background: #EEF2FF;
-  border: none; font-size: 13px; color: var(--accent-primary, #6366F1);
+  padding: 10px 16px; border-radius: 6px; background: var(--accent-bg);
+  border: none; font-size: 13px; color: var(--accent-primary);
   cursor: pointer; transition: opacity 0.2s; white-space: nowrap;
 }
 .browse-btn:hover { opacity: 0.8; }
@@ -327,23 +305,9 @@ onUnmounted(() => { stopPolling() })
   display: inline-block; padding: 4px 8px; border-radius: 9999px;
   font-size: 11px; font-weight: 500; text-align: center;
 }
-.status-running { background: #EEF2FF; color: #6366F1; }
+.status-running { background: var(--accent-bg); color: #6366F1; }
 .status-done { background: #ECFDF5; color: #059669; }
 .status-failed { background: #FEF2F2; color: #DC2626; }
-
-.form-actions { display: flex; justify-content: flex-end; gap: 8px; }
-
-.action-pill {
-  display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500;
-  padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s;
-}
-.action-pill:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.pill-primary { background: var(--accent-primary, #6366F1); color: #fff; }
-.pill-primary:hover:not(:disabled) { opacity: 0.9; }
-
-.pill-outline { background: transparent; border: 1px solid var(--border-color, #e5e7eb); color: var(--text-color-primary); }
-.pill-outline:hover { border-color: var(--accent-primary, #6366F1); color: var(--accent-primary, #6366F1); }
 
 .progress-logs {
   background: #F8F9FC; border-radius: 6px; padding: 12px;
