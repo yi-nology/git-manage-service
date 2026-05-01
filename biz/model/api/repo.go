@@ -139,3 +139,32 @@ func NewRepoDTO(r po.Repo) RepoDTO {
 		UpdatedAt:           r.UpdatedAt,
 	}
 }
+
+type RepoHealthReport struct {
+	GitDirSize      string           `json:"gitDirSize"`
+	GitDirSizeBytes int64            `json:"gitDirSizeBytes"`
+	LooseObjects    int64            `json:"looseObjects"`
+	PackFiles       int              `json:"packFiles"`
+	InPackObjects   int64            `json:"inPackObjects"`
+	CommitCount     int64            `json:"commitCount"`
+	BranchCount     int              `json:"branchCount"`
+	TagCount        int              `json:"tagCount"`
+	LargeFiles      []LargeFileEntry `json:"largeFiles"`
+}
+
+type LargeFileEntry struct {
+	Path        string `json:"path"`
+	Size        string `json:"size"`
+	SizeBytes   int64  `json:"sizeBytes"`
+	Exists      bool   `json:"exists"`
+	CommitCount int    `json:"commitCount"`
+}
+
+type SlimRequest struct {
+	Paths        []string `json:"paths"`
+	AddGitignore bool     `json:"addGitignore"`
+}
+
+type MaintenanceTaskResponse struct {
+	TaskID string `json:"taskId"`
+}

@@ -1,0 +1,46 @@
+syntax = "proto2";
+
+package maintenance;
+
+import "api.proto";
+import "common.proto";
+
+option go_package = "/maintenance";
+
+message HealthRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+}
+
+message SlimRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    repeated string paths = 2 [(api.body) = "paths"];
+    optional bool add_gitignore = 3 [(api.body) = "add_gitignore"];
+}
+
+message GitignoreRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    repeated string paths = 2 [(api.body) = "paths"];
+}
+
+message MaintenanceTaskResponse {
+    optional common.BaseResponse base = 1;
+    optional string task_id = 2;
+}
+
+service MaintenanceService {
+    rpc Health(HealthRequest) returns (MaintenanceTaskResponse) {
+        option (api.get) = "/api/v1/repo/:repo_key/maintenance/health";
+    }
+
+    rpc Slim(SlimRequest) returns (MaintenanceTaskResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/maintenance/slim";
+    }
+
+    rpc GC(HealthRequest) returns (MaintenanceTaskResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/maintenance/gc";
+    }
+
+    rpc Gitignore(GitignoreRequest) returns (MaintenanceTaskResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/maintenance/gitignore";
+    }
+}

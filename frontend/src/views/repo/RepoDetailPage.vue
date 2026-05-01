@@ -299,6 +299,75 @@
         <div v-show="activeTab === 'patches'">
           <PatchManager :repo-key="repoKey" />
         </div>
+
+        <div v-show="activeTab === 'slim'" class="slim-section">
+          <div class="slim-header">
+            <SectionTitle title="仓库瘦身" />
+            <div class="slim-actions">
+              <el-button type="primary" :icon="Refresh" :loading="slimLoading" @click="loadSlimHealth">开始体检</el-button>
+              <el-button :icon="Delete" @click="handleGc" :loading="gcLoading" :disabled="!slimReport">垃圾回收</el-button>
+            </div>
+          </div>
+
+          <div v-if="!slimReport && !slimLoading" class="slim-empty">
+            <el-empty description="点击「开始体检」扫描仓库健康状态和历史大文件" />
+          </div>
+
+          <div v-if="slimLoading" class="slim-loading">
+            <el-icon class="is-loading" :size="24"><Refresh /></el-icon>
+            <span>正在扫描仓库...</span>
+          </div>
+
+          <template v-if="slimReport && !slimLoading">
+            <div class="slim-stats">
+              <div class="stat-card"><span class="stat-value">{{ slimReport.gitDirSize }}</span><span class="stat-label">.git 目录</span></div>
+              <div class="stat-card"><span class="stat-value">{{ slimReport.commitCount }}</span><span class="stat-label">提交数</span></div>
+              <div class="stat-card"><span class="stat-value">{{ slimReport.looseObjects }}</span><span class="stat-label">松散对象</span></div>
+              <div class="stat-card"><span class="stat-value">{{ slimReport.packFiles }}</span><span class="stat-label">Pack 文件</span></div>
+              <div class="stat-card"><span class="stat-value">{{ slimReport.branchCount }}</span><span class="stat-label">分支</span></div>
+              <div class="stat-card"><span class="stat-value">{{ slimReport.tagCount }}</span><span class="stat-label">标签</span></div>
+            </div>
+
+            <div class="slim-files-header">
+              <SectionTitle title="历史大文件" />
+              <span class="slim-files-hint">仅显示 &gt; 1MB 的文件</span>
+            </div>
+
+            <el-table :data="slimReport.largeFiles" style="width: 100%" @selection-change="handleSlimSelection" empty-text="未发现大于 1MB 的文件">
+              <el-table-column type="selection" width="50" />
+              <el-table-column prop="path" label="文件路径" min-width="300">
+                <template #default="{ row }"><span class="mono">{{ row.path }}</span></template>
+              </el-table-column>
+              <el-table-column prop="size" label="大小" width="120" />
+              <el-table-column label="状态" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="row.exists ? 'success' : 'info'" size="small">{{ row.exists ? '存在' : '已删除' }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="commitCount" label="涉及提交" width="100" />
+            </el-table>
+
+            <div v-if="slimSelected.length > 0" class="slim-bottom-bar">
+              <span>已选 {{ slimSelected.length }} 个文件，预计可清理 {{ formatFileSize(slimSelected.reduce((s, f) => s + f.sizeBytes, 0)) }}</span>
+              <div class="slim-bottom-actions">
+                <el-button @click="handleAddGitignore" :loading="gitignoreLoading">加入 .gitignore</el-button>
+                <el-button type="danger" @click="handleSlimConfirm">从历史中删除</el-button>
+              </div>
+            </div>
+
+            <div v-if="slimTaskId" class="slim-task-progress">
+              <SectionTitle title="任务进度" />
+              <el-alert v-if="slimTaskStatus === 'failed'" :title="slimTaskError" type="error" show-icon :closable="false" />
+              <el-alert v-else-if="slimTaskStatus === 'success'" title="操作完成" type="success" show-icon :closable="false" />
+              <template v-else>
+                <el-progress :percentage="100" :indeterminate="true" />
+                <div class="slim-logs">
+                  <div v-for="(log, i) in slimTaskLogs" :key="i" class="slim-log-line">{{ log }}</div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
       </div>
     </div>
 
@@ -452,7 +521,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Edit, Search, Download, Setting, Plus, Top, Delete, CopyDocument, Connection, DocumentCopy, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link, Share } from '@element-plus/icons-vue'
+import { Refresh, Edit, Search, Download, Setting, Plus, Top, Delete, CopyDocument, Connection, DocumentCopy, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link, Share, Operation } from '@element-plus/icons-vue'
 import { getRepoDetail, scanRepo, updateRepo, fetchRepo } from '@/api/modules/repo'
 import { testConnection } from '@/api/modules/system'
 import { testCredential } from '@/api/modules/credential'
@@ -481,6 +550,8 @@ import type { RepoProviderBindingDTO } from '@/types/binding'
 import BindingPanel from '@/components/binding/BindingPanel.vue'
 import BindingDialog from '@/components/binding/BindingDialog.vue'
 import { useProviderStore } from '@/stores/useProviderStore'
+import { getRepoHealth, slimRepo, gcRepo, addGitignore as addGitignoreApi, getTaskStatus } from '@/api/modules/maintenance'
+import type { RepoHealthReport, LargeFileEntry } from '@/api/modules/maintenance'
 
 import PageHeader from '@/components/common/PageHeader.vue'
 import ActionPill from '@/components/common/ActionPill.vue'
@@ -516,6 +587,7 @@ const sidebarItems = [
   { key: 'stash', label: 'Stash 管理', icon: Box },
   { key: 'submodules', label: 'Submodule', icon: Link },
   { key: 'patches', label: 'Patch 管理', icon: DocumentCopy },
+  { key: 'slim', label: '仓库瘦身', icon: Operation },
 ]
 
 const statsFilter = ref({ branch: '', author: '', since: '', until: '' })
@@ -1120,6 +1192,122 @@ function handleNavSelect(key: string) {
     activeTab.value = key
   }
 }
+
+const slimLoading = ref(false)
+const slimReport = ref<RepoHealthReport | null>(null)
+const slimSelected = ref<LargeFileEntry[]>([])
+const slimTaskId = ref('')
+const slimTaskStatus = ref('')
+const slimTaskError = ref('')
+const slimTaskLogs = ref<string[]>([])
+const gcLoading = ref(false)
+const gitignoreLoading = ref(false)
+let slimPollTimer: ReturnType<typeof setInterval> | null = null
+
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024 * 1024) return (bytes / 1024 / 1024 / 1024).toFixed(1) + ' GB'
+  if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return bytes + ' B'
+}
+
+async function loadSlimHealth() {
+  slimLoading.value = true
+  slimTaskId.value = ''
+  slimTaskStatus.value = ''
+  try {
+    const data = await getRepoHealth(repoKey) as any
+    slimReport.value = data
+  } catch (e: any) {
+    ElMessage.error('体检失败: ' + (e.message || '未知错误'))
+  } finally {
+    slimLoading.value = false
+  }
+}
+
+function handleSlimSelection(rows: LargeFileEntry[]) {
+  slimSelected.value = rows
+}
+
+async function handleAddGitignore() {
+  const paths = slimSelected.value.map(f => f.path)
+  gitignoreLoading.value = true
+  try {
+    await addGitignoreApi(repoKey, paths)
+    ElMessage.success(`已将 ${paths.length} 个文件添加到 .gitignore`)
+  } catch (e: any) {
+    ElMessage.error('添加失败: ' + (e.message || '未知错误'))
+  } finally {
+    gitignoreLoading.value = false
+  }
+}
+
+async function handleSlimConfirm() {
+  const paths = slimSelected.value.map(f => f.path)
+  const totalSize = slimSelected.value.reduce((sum, f) => sum + f.sizeBytes, 0)
+
+  try {
+    await ElMessageBox.confirm(
+      `即将从历史中删除 ${paths.length} 个文件 (${formatFileSize(totalSize)})，此操作会重写 git 历史，不可恢复！`,
+      '确认瘦身',
+      { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch { return }
+
+  try {
+    const res = await slimRepo(repoKey, paths, true) as any
+    slimTaskId.value = res.taskId
+    slimTaskStatus.value = 'running'
+    slimTaskLogs.value = []
+    slimTaskError.value = ''
+    pollSlimTask()
+  } catch (e: any) {
+    ElMessage.error('瘦身失败: ' + (e.message || '未知错误'))
+  }
+}
+
+async function handleGc() {
+  gcLoading.value = true
+  try {
+    await ElMessageBox.confirm('执行 git gc --aggressive --prune=now？', '垃圾回收', { type: 'warning' })
+  } catch { gcLoading.value = false; return }
+
+  try {
+    const res = await gcRepo(repoKey) as any
+    slimTaskId.value = res.taskId
+    slimTaskStatus.value = 'running'
+    slimTaskLogs.value = []
+    slimTaskError.value = ''
+    pollSlimTask()
+  } catch (e: any) {
+    ElMessage.error('GC 失败: ' + (e.message || '未知错误'))
+  } finally {
+    gcLoading.value = false
+  }
+}
+
+function pollSlimTask() {
+  if (slimPollTimer) clearInterval(slimPollTimer)
+  slimPollTimer = setInterval(async () => {
+    try {
+      const task = await getTaskStatus(slimTaskId.value) as any
+      slimTaskStatus.value = task.status
+      slimTaskLogs.value = task.progress || []
+      slimTaskError.value = task.error || ''
+      if (task.status === 'success' || task.status === 'failed') {
+        if (slimPollTimer) clearInterval(slimPollTimer)
+        slimPollTimer = null
+        if (task.status === 'success') {
+          ElMessage.success('操作完成')
+          loadSlimHealth()
+        }
+      }
+    } catch {
+      if (slimPollTimer) clearInterval(slimPollTimer)
+      slimPollTimer = null
+    }
+  }, 2000)
+}
 </script>
 
 <style scoped>
@@ -1570,4 +1758,20 @@ function handleNavSelect(key: string) {
     min-height: auto;
   }
 }
+
+.slim-section { display: flex; flex-direction: column; gap: 20px; }
+.slim-header { display: flex; justify-content: space-between; align-items: center; }
+.slim-actions { display: flex; gap: 8px; }
+.slim-loading { display: flex; align-items: center; gap: 8px; padding: 40px 0; justify-content: center; color: var(--text-color-secondary); }
+.slim-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.stat-card { display: flex; flex-direction: column; align-items: center; padding: 16px 8px; background: var(--surface-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); }
+.stat-value { font-size: 18px; font-weight: 600; color: var(--text-color-primary); }
+.stat-label { font-size: 12px; color: var(--text-color-secondary); margin-top: 4px; }
+.slim-files-header { display: flex; justify-content: space-between; align-items: center; }
+.slim-files-hint { font-size: 12px; color: var(--text-color-secondary); }
+.slim-bottom-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-color-page); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); font-size: 14px; color: var(--text-color-regular); }
+.slim-bottom-actions { display: flex; align-items: center; gap: 12px; }
+.slim-task-progress { margin-top: 8px; }
+.slim-logs { max-height: 200px; overflow-y: auto; background: var(--surface-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 12px; margin-top: 8px; font-family: monospace; font-size: 13px; }
+.slim-log-line { padding: 2px 0; color: var(--text-color-regular); }
 </style>
