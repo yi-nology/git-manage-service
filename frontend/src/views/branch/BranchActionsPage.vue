@@ -186,6 +186,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Share, ChatDotRound } from '@element-plus/icons-vue'
 import { getBranchList } from '@/api/modules/branch'
 import { createBranch, deleteBranch, mergeBranch, pushBranch } from '@/api/modules/branch'
+import { showGitError } from '@/utils/git'
 import { validateBranchName } from '@/api/modules/branch-rule'
 import { createCR } from '@/api/modules/cr'
 import { getRepoDetail } from '@/api/modules/repo'
@@ -341,7 +342,7 @@ async function handleMerge() {
         await pushBranch(repoKey, mergeForm.value.target, ['origin'])
         ElMessage.success('已推送到远程')
       } catch (e: any) {
-        ElMessage.warning('推送失败: ' + (e?.message || ''))
+        showGitError(e, '推送')
       }
     }
     loadData()

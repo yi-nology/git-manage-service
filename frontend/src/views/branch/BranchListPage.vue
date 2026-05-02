@@ -226,6 +226,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Edit, Select, Top, Bottom, Switch, Download, CircleCheck, PriceTag, View, RefreshRight, Close, SetUp } from '@element-plus/icons-vue'
 import { getBranchList, createBranch, deleteBranch, updateBranch, checkoutBranch, pushBranch, pullBranch, createTag } from '@/api/modules/branch'
+import { showGitError } from '@/utils/git'
 import { fetchRepo, scanRepo } from '@/api/modules/repo'
 import { validateBranchName } from '@/api/modules/branch-rule'
 import { getRepoDetail } from '@/api/modules/repo'
@@ -447,7 +448,9 @@ async function handlePullRemote(remoteName: string) {
     await pullBranch(repoKey, localName)
     ElMessage.success(`已同步本地分支 ${localName}`)
     await loadBranches()
-  } catch { /* handled */ }
+  } catch (e) {
+    showGitError(e, '同步分支')
+  }
 }
 
 function handlePush(name: string) {
@@ -467,7 +470,9 @@ async function handleSubmitPush() {
     ElMessage.success('推送成功')
     showPushDialog.value = false
     await loadBranches()
-  } catch { /* handled */ }
+  } catch (e) {
+    showGitError(e, '推送分支')
+  }
 }
 
 async function handlePull(name: string) {
@@ -475,7 +480,9 @@ async function handlePull(name: string) {
     await pullBranch(repoKey, name)
     ElMessage.success('拉取成功')
     await loadBranches()
-  } catch { /* handled */ }
+  } catch (e) {
+    showGitError(e, '拉取分支')
+  }
 }
 
 async function handleCreate() {

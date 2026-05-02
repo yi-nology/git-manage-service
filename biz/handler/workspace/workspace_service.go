@@ -33,6 +33,80 @@ func GetWorkspaceStatus(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, result)
 }
 
+func PushCurrent(ctx context.Context, c *app.RequestContext) {
+	var req struct {
+		RepoKey string `json:"repo_key" vd:"len($)>0"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
+	if err != nil {
+		response.NotFound(c, "repo not found")
+		return
+	}
+
+	gitSvc := git.NewGitService()
+	if err := gitSvc.PushCurrent(repo.Path); err != nil {
+		response.InternalServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, nil)
+}
+
+func RemoveTracking(ctx context.Context, c *app.RequestContext) {
+	var req struct {
+		RepoKey string   `json:"repo_key" vd:"len($)>0"`
+		Files   []string `json:"files"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
+	if err != nil {
+		response.NotFound(c, "repo not found")
+		return
+	}
+
+	gitSvc := git.NewGitService()
+	if err := gitSvc.RemoveTracking(repo.Path, req.Files); err != nil {
+		response.InternalServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, nil)
+}
+
+func AddToGitignore(ctx context.Context, c *app.RequestContext) {
+	var req struct {
+		RepoKey  string   `json:"repo_key" vd:"len($)>0"`
+		Patterns []string `json:"patterns"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
+	if err != nil {
+		response.NotFound(c, "repo not found")
+		return
+	}
+
+	gitSvc := git.NewGitService()
+	if err := gitSvc.AddToGitignore(repo.Path, req.Patterns); err != nil {
+		response.InternalServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, nil)
+}
+
 func GetWorkspaceDiff(ctx context.Context, c *app.RequestContext) {
 	var req workspace.GetWorkspaceDiffReq
 	if err := c.BindAndValidate(&req); err != nil {

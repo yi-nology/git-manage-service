@@ -604,3 +604,29 @@ func isBinaryFile(path string) bool {
 	}
 	return binaryExts[ext]
 }
+
+func (s *GitService) RemoveTracking(repoPath string, files []string) error {
+	for _, f := range files {
+		_, err := s.RunCommand(repoPath, "rm", "--cached", f)
+		if err != nil {
+			return fmt.Errorf("rm --cached %s: %w", f, err)
+		}
+	}
+	return nil
+}
+
+func (s *GitService) AddToGitignore(repoPath string, patterns []string) error {
+	gitignorePath := filepath.Join(repoPath, ".gitignore")
+	f, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("open .gitignore: %w", err)
+	}
+	defer f.Close()
+
+	for _, p := range patterns {
+		if _, err := f.WriteString(p + "\n"); err != nil {
+			return fmt.Errorf("write .gitignore: %w", err)
+		}
+	}
+	return nil
+}

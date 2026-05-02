@@ -438,7 +438,7 @@ func (s *GitService) CheckoutBranch(path, branch string) error {
 
 	// 先尝试查找本地分支引用
 	refName := plumbing.ReferenceName("refs/heads/" + branch)
-	ref, err := r.Reference(refName, true)
+	_, err = r.Reference(refName, true)
 	if err != nil {
 		// 如果本地分支不存在，尝试从远程分支创建
 		remoteRefName := plumbing.ReferenceName("refs/remotes/origin/" + branch)
@@ -458,7 +458,6 @@ func (s *GitService) CheckoutBranch(path, branch string) error {
 
 	// 本地分支存在，直接 checkout
 	return w.Checkout(&git.CheckoutOptions{
-		Hash:   ref.Hash(),
 		Branch: refName,
 		Force:  true,
 	})

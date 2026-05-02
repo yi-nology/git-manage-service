@@ -138,3 +138,24 @@ export function aiResolveConflict(repoKey: string, file: string, oursContent: st
     hint
   })
 }
+
+export function pushCurrent(repoKey: string, remote = '') {
+  return request.post('/workspace/push', {
+    repo_key: repoKey,
+    remote,
+  })
+}
+
+export function removeTracking(repoKey: string, files: string[]) {
+  return request.post('/workspace/remove-tracking', {
+    repo_key: repoKey,
+    files,
+  })
+}
+
+export function addToGitignore(repoKey: string, patterns: string[]) {
+  return request.post('/workspace/gitignore', {
+    repo_key: repoKey,
+    patterns,
+  })
+}

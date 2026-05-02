@@ -69,6 +69,21 @@ export function extractRepoName(url: string): string {
   return match?.[1] || ''
 }
 
+import { ElMessage } from 'element-plus'
+
+export function showGitError(e: any, operation: string) {
+  const msg = typeof e === 'string' ? e : e?.message || ''
+  if (/auth|credential|401|403|permission denied/i.test(msg)) {
+    ElMessage.error(`${operation}失败：认证错误，请检查凭据设置`)
+  } else if (/timeout/i.test(msg)) {
+    ElMessage.error(`${operation}失败：连接超时`)
+  } else if (/network|fetch|ECONNREFUSED/i.test(msg)) {
+    ElMessage.error(`${operation}失败：网络错误`)
+  } else {
+    ElMessage.error(`${operation}失败：${msg || '未知错误'}`)
+  }
+}
+
 /**
  * 转换 Git URL 协议
  * @param url 原始 URL

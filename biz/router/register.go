@@ -40,6 +40,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/router/webhook"
 	"github.com/yi-nology/git-manage-service/biz/router/webhook_event"
 	workspace "github.com/yi-nology/git-manage-service/biz/router/workspace"
+	workspaceHandler "github.com/yi-nology/git-manage-service/biz/handler/workspace"
 )
 
 // 嵌入的文件系统变量
@@ -60,6 +61,7 @@ func GeneratedRegister(h *server.Hertz) {
 
 	//INSERT_POINT: DO NOT DELETE THIS LINE!
 	workspace.Register(h)
+	registerWorkspaceCustomRoutes(h)
 
 	author.Register(h)
 	registerAuthorCustomRoutes(h)
@@ -205,4 +207,11 @@ func registerAuthorCustomRoutes(h *server.Hertz) {
 	g := h.Group("/api/v1/repo/:repo_key/author")
 	g.POST("/ai", authorHandler.AuthorAI)
 	g.POST("/chat", authorHandler.AuthorChat)
+}
+
+func registerWorkspaceCustomRoutes(h *server.Hertz) {
+	g := h.Group("/api/v1/workspace")
+	g.POST("/untrack", workspaceHandler.RemoveTracking)
+	g.POST("/gitignore", workspaceHandler.AddToGitignore)
+	g.POST("/push", workspaceHandler.PushCurrent)
 }

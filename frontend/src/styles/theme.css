@@ -64,6 +64,22 @@
   --z-index-modal: 1050;
   --z-index-popover: 1060;
   --z-index-tooltip: 1070;
+
+  /* Diff colors */
+  --diff-num-bg: #f1f8ff;
+  --diff-num-color: rgba(27, 31, 35, 0.3);
+  --diff-num-border: #e1e4e8;
+  --diff-hunk-bg: #f1f8ff;
+  --diff-hunk-color: rgba(27, 31, 35, 0.7);
+  --diff-add-bg: #e6ffed;
+  --diff-add-marker-bg: #cdffd8;
+  --diff-add-marker-color: #22863a;
+  --diff-add-num-bg: #cdffd8;
+  --diff-del-bg: #ffeef0;
+  --diff-del-marker-bg: #fdb8c0;
+  --diff-del-marker-color: #cb2431;
+  --diff-del-num-bg: #fdb8c0;
+  --diff-ctx-color: #24292e;
 }
 
 .dark {
@@ -97,6 +113,22 @@
   --box-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --box-shadow-md: 0 2px 4px 0 rgba(0, 0, 0, 0.4);
   --box-shadow-lg: 0 4px 12px 0 rgba(0, 0, 0, 0.5);
+
+  /* Diff colors - dark */
+  --diff-num-bg: #161b22;
+  --diff-num-color: rgba(230, 237, 243, 0.4);
+  --diff-num-border: #30363d;
+  --diff-hunk-bg: #161b22;
+  --diff-hunk-color: rgba(230, 237, 243, 0.6);
+  --diff-add-bg: #1b2f1b;
+  --diff-add-marker-bg: #234523;
+  --diff-add-marker-color: #3fb950;
+  --diff-add-num-bg: #234523;
+  --diff-del-bg: #3a1a1a;
+  --diff-del-marker-bg: #5c2121;
+  --diff-del-marker-color: #f85149;
+  --diff-del-num-bg: #5c2121;
+  --diff-ctx-color: #c9d1d9;
 }
 
 /* 统一元素样式 */

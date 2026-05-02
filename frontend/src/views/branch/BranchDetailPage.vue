@@ -81,6 +81,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Switch, Top, Upload, Refresh, Delete, DataLine, Tickets, User, Files } from '@element-plus/icons-vue'
 import { pushBranch, deleteBranch, getBranchList } from '@/api/modules/branch'
+import { showGitError } from '@/utils/git'
 import { getRepoDetail, scanRepo } from '@/api/modules/repo'
 import { getStatsAnalyze, getStatsCommits } from '@/api/modules/stats'
 import { getRepoStatus, getRepoGitConfig, submitChanges } from '@/api/modules/system'
@@ -210,7 +211,9 @@ async function handleSubmitPush() {
     await pushBranch(repoKey, branchName, pushRemotes.value)
     ElMessage.success('推送成功')
     showPushDialog.value = false
-  } catch { /* handled */ }
+  } catch (e) {
+    showGitError(e, '推送分支')
+  }
 }
 
 async function handleDelete() {

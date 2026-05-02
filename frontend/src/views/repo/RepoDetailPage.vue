@@ -280,8 +280,8 @@
           </el-card>
         </div>
 
-        <div v-show="activeTab === 'files'">
-          <FileBrowser :repo-key="repoKey" :branches="allRefs" />
+        <div v-show="activeTab === 'files'" style="height: 100%; min-height: 600px;">
+          <FileExplorer :repo-key="repoKey" />
         </div>
 
         <div v-show="activeTab === 'commits'">
@@ -290,10 +290,6 @@
 
         <div v-show="activeTab === 'stash'">
           <StashManager :repo-key="repoKey" />
-        </div>
-
-        <div v-show="activeTab === 'workspace'" style="height: 100%; min-height: 600px;">
-          <WorkspacePanel :repo-key="repoKey" />
         </div>
 
         <div v-show="activeTab === 'submodules'">
@@ -472,15 +468,15 @@ import { getStatsAnalyze, getStatsAuthors, getStatsBranches, getStatsCommits, ge
 import { getVersionList, getCurrentVersion, getNextVersion } from '@/api/modules/version'
 import type { VersionTag, NextVersionInfo } from '@/api/modules/version'
 import { createTag, deleteTag, pushTag } from '@/api/modules/branch'
+import { showGitError } from '@/utils/git'
 import type { RepoDTO, ScanResult, GitRemote, TrackingBranch } from '@/types/repo'
 import type { StatsResponse, LineStatsResponse } from '@/types/stats'
 import { formatDate, formatRelativeTime } from '@/utils/format'
 import GitStatsCharts from '@/components/stats/GitStatsCharts.vue'
 import LineStatsCharts from '@/components/stats/LineStatsCharts.vue'
-import FileBrowser from '@/components/repo/FileBrowser.vue'
+import FileExplorer from '@/components/repo/FileExplorer.vue'
 import CommitSearch from '@/components/repo/CommitSearch.vue'
 import StashManager from '@/components/repo/StashManager.vue'
-import WorkspacePanel from '@/components/repo/WorkspacePanel.vue'
 import SubmoduleManager from '@/components/repo/SubmoduleManager.vue'
 import PatchManager from '@/components/patch/PatchManager.vue'
 import CredentialSelector from '@/components/credential/CredentialSelector.vue'
@@ -526,10 +522,9 @@ const sidebarItems = [
   { key: 'stats', label: 'Git 有效提交度量', icon: DataAnalysis },
   { key: 'lines', label: '真实工程代码度量', icon: Files },
   { key: 'versions', label: '版本历史', icon: Timer },
-  { key: 'files', label: '文件浏览', icon: Folder },
+  { key: 'files', label: '文件', icon: Folder },
   { key: 'commits', label: 'Commit 搜索', icon: Search },
   { key: 'stash', label: 'Stash 管理', icon: Box },
-  { key: 'workspace', label: '工作区', icon: Grid },
   { key: 'submodules', label: 'Submodule', icon: Link },
   { key: 'patches', label: 'Patch 管理', icon: DocumentCopy },
   { key: 'slim', label: '仓库瘦身', icon: Operation },
@@ -593,7 +588,7 @@ const excludePatternsText = ref('')
 
  onMounted(async () => {
   if (route.query.tab && typeof route.query.tab === 'string') {
-    activeTab.value = route.query.tab
+    activeTab.value = route.query.tab === 'workspace' ? 'files' : route.query.tab
   }
   loading.value = true
   try {
@@ -797,8 +792,7 @@ async function handleSubmitPushTag() {
     ElMessage.success(`标签 ${pushTagName.value} 已推送到 ${pushTagRemote.value}`)
     showPushTagDialog.value = false
   } catch (e: unknown) {
-    const err = e as { message?: string }
-    ElMessage.error('推送标签失败: ' + (err.message || '未知错误'))
+    showGitError(e, '推送标签')
   } finally {
     pushTagLoading.value = false
   }
