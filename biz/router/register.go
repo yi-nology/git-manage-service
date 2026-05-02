@@ -13,6 +13,7 @@ import (
 	settingsHandler "github.com/yi-nology/git-manage-service/biz/handler/settings"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"
+	author "github.com/yi-nology/git-manage-service/biz/router/author"
 	"github.com/yi-nology/git-manage-service/biz/router/binding"
 	"github.com/yi-nology/git-manage-service/biz/router/branch"
 	"github.com/yi-nology/git-manage-service/biz/router/commit"
@@ -56,6 +57,8 @@ func GeneratedRegister(h *server.Hertz) {
 	h.Use(middleware.CORS())
 
 	//INSERT_POINT: DO NOT DELETE THIS LINE!
+	author.Register(h)
+
 	maintenance.Register(h)
 
 	registerLLMPresetsRoute(h)

@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import { Key, Lock, Bell, Connection, MagicStick, SetUp, Cpu } from '@element-plus/icons-vue'
+import { Key, Lock, Bell, Connection, MagicStick, SetUp, Cpu, User } from '@element-plus/icons-vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 
 const cards = [
@@ -26,6 +26,7 @@ const cards = [
   { title: '通知渠道', desc: '配置邮件、钉钉、微信等通知方式', icon: Bell, color: 'amber', route: '/settings/notification-channels' },
   { title: '平台配置', desc: '管理 GitLab/GitHub/Gitea 平台集成', icon: Connection, color: 'blue', route: '/settings/platforms' },
   { title: '分支规则', desc: '定义分支命名前缀和保护规则', icon: SetUp, color: 'teal', route: '/settings/branch-rules' },
+  { title: 'Git 作者', desc: '管理 Git 提交身份和别名，修复历史提交作者', icon: User, color: 'green', route: '/settings/author' },
 ]
 </script>
 
@@ -77,6 +78,7 @@ const cards = [
 .card-icon--purple { background: #F3E8FF; color: #8B5CF6; }
 .card-icon--violet { background: #EDE9FE; color: #7C3AED; }
 .card-icon--teal { background: #F0FDFA; color: #14B8A6; }
+.card-icon--green { background: #ECFDF5; color: #10B981; }
 
 .card-title {
   margin: 0;

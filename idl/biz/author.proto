@@ -1,0 +1,102 @@
+syntax = "proto2";
+
+package author;
+
+import "api.proto";
+import "common.proto";
+
+option go_package = "/author";
+
+message ListIdentitiesRequest {}
+
+message CreateIdentityRequest {
+    optional string canonical_name = 1 [(api.body) = "canonical_name"];
+    optional string canonical_email = 2 [(api.body) = "canonical_email"];
+    optional string aliases_json = 3 [(api.body) = "aliases_json"];
+}
+
+message UpdateIdentityRequest {
+    optional uint32 id = 1 [(api.path) = "id"];
+    optional string canonical_name = 2 [(api.body) = "canonical_name"];
+    optional string canonical_email = 3 [(api.body) = "canonical_email"];
+    optional string aliases_json = 4 [(api.body) = "aliases_json"];
+}
+
+message DeleteIdentityRequest {
+    optional uint32 id = 1 [(api.path) = "id"];
+}
+
+message ActivateIdentityRequest {
+    optional uint32 id = 1 [(api.path) = "id"];
+}
+
+message RepoAuthorConfigRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+}
+
+message SetRepoAuthorConfigRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    optional uint32 identity_id = 2 [(api.body) = "identity_id"];
+    optional bool clear = 3 [(api.body) = "clear"];
+}
+
+message ScanAuthorRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+}
+
+message FixAuthorAllRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    optional string push_remote = 2 [(api.body) = "push_remote"];
+}
+
+message FixAuthorRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    repeated string commit_hashes = 2 [(api.body) = "commit_hashes"];
+    optional string push_remote = 3 [(api.body) = "push_remote"];
+}
+
+message AuthorGenericResponse {
+    optional common.BaseResponse base = 1;
+}
+
+service AuthorService {
+    rpc ListIdentities(ListIdentitiesRequest) returns (AuthorGenericResponse) {
+        option (api.get) = "/api/v1/author/identities";
+    }
+
+    rpc CreateIdentity(CreateIdentityRequest) returns (AuthorGenericResponse) {
+        option (api.post) = "/api/v1/author/identities";
+    }
+
+    rpc UpdateIdentity(UpdateIdentityRequest) returns (AuthorGenericResponse) {
+        option (api.put) = "/api/v1/author/identities/:id";
+    }
+
+    rpc DeleteIdentity(DeleteIdentityRequest) returns (AuthorGenericResponse) {
+        option (api.delete) = "/api/v1/author/identities/:id";
+    }
+
+    rpc ActivateIdentity(ActivateIdentityRequest) returns (AuthorGenericResponse) {
+        option (api.post) = "/api/v1/author/identities/:id/activate";
+    }
+
+    rpc GetRepoAuthorConfig(RepoAuthorConfigRequest) returns (AuthorGenericResponse) {
+        option (api.get) = "/api/v1/repo/:repo_key/author/config";
+    }
+
+    rpc SetRepoAuthorConfig(SetRepoAuthorConfigRequest) returns (AuthorGenericResponse) {
+        option (api.put) = "/api/v1/repo/:repo_key/author/config";
+    }
+
+    rpc ScanAuthor(ScanAuthorRequest) returns (AuthorGenericResponse) {
+        option (api.get) = "/api/v1/repo/:repo_key/author/scan";
+    }
+
+    rpc FixAuthorAll(FixAuthorAllRequest) returns (AuthorGenericResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/author/fix-all";
+    }
+
+    rpc FixAuthor(FixAuthorRequest) returns (AuthorGenericResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/author/fix";
+    }
+}

@@ -14,6 +14,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 )
 
 type channelWriter struct {
@@ -522,6 +523,19 @@ func (s *GitService) Commit(path, message, authorName, authorEmail string) error
 	}
 
 	// Use provided author info, or fallback to default
+	if authorName == "" || authorEmail == "" {
+		if r, _ := db.NewRepoDAO().FindByPath(path); r != nil {
+			authorSvc := NewAuthorService()
+			if name, email := authorSvc.GetEffectiveAuthor(r.ID); name != "" && email != "" {
+				if authorName == "" {
+					authorName = name
+				}
+				if authorEmail == "" {
+					authorEmail = email
+				}
+			}
+		}
+	}
 	if authorName == "" {
 		authorName = "Git Manage Service"
 	}

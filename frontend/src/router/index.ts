@@ -206,6 +206,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '分支规则管理' },
       },
       {
+        path: 'settings/author',
+        name: 'AuthorSettings',
+        component: () => import('@/views/settings/AuthorSettingsPage.vue'),
+        meta: { title: 'Git 作者管理' },
+      },
+      {
         path: 'mcp',
         name: 'MCP',
         component: () => import('@/views/mcp/McpPage.vue'),

@@ -29,6 +29,7 @@ type Repo struct {
 	PlatformRepoID   string `gorm:"size:100" json:"platform_repo_id"`
 	PlatformOwner    string `gorm:"size:200" json:"platform_owner"`
 	PlatformRepo     string `gorm:"size:200" json:"platform_repo"`
+	AuthorIdentityID *uint  `gorm:"index" json:"author_identity_id"`
 }
 
 func (Repo) TableName() string {
