@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   listIdentities,
@@ -11,8 +11,10 @@ import {
   scanAuthor,
   fixAuthorAll,
   fixAuthor,
+  authorAI,
+  authorChat,
 } from '@/api/modules/author'
-import type { AuthorIdentityDTO, AliasEntry, RepoAuthorConfigDTO, MismatchedCommit } from '@/api/modules/author'
+import type { AuthorIdentityDTO, AliasEntry, RepoAuthorConfigDTO, MismatchedCommit, AliasSuggestionResult, MergeSuggestionResult, RiskAssessmentResult, ChatMessageDTO } from '@/api/modules/author'
 import { getTaskStatus } from '@/api/modules/maintenance'
 
 export function useAuthorIdentity() {
@@ -22,14 +24,14 @@ export function useAuthorIdentity() {
   async function loadIdentities() {
     loading.value = true
     try {
-      identities.value = (await listIdentities() as any) || []
+      identities.value = (await listIdentities()) as AuthorIdentityDTO[] || []
     } catch { identities.value = [] }
     finally { loading.value = false }
   }
 
   async function handleCreate(data: { canonicalName: string; canonicalEmail: string; aliases: AliasEntry[] }) {
     try {
-      await createIdentity(data) as any
+      await createIdentity(data)
       ElMessage.success('身份创建成功')
       await loadIdentities()
     } catch (e: any) {
@@ -39,7 +41,7 @@ export function useAuthorIdentity() {
 
   async function handleUpdate(id: number, data: { canonicalName: string; canonicalEmail: string; aliases: AliasEntry[] }) {
     try {
-      await updateIdentity(id, data) as any
+      await updateIdentity(id, data)
       ElMessage.success('身份更新成功')
       await loadIdentities()
     } catch (e: any) {
@@ -52,7 +54,7 @@ export function useAuthorIdentity() {
       await ElMessageBox.confirm('确认删除此身份？关联的仓库将恢复使用全局默认。', '删除身份', { type: 'warning' })
     } catch { return }
     try {
-      await deleteIdentity(id) as any
+      await deleteIdentity(id)
       ElMessage.success('删除成功')
       await loadIdentities()
     } catch (e: any) {
@@ -62,7 +64,7 @@ export function useAuthorIdentity() {
 
   async function handleActivate(id: number) {
     try {
-      await activateIdentity(id) as any
+      await activateIdentity(id)
       ElMessage.success('已激活并更新 ~/.gitconfig')
       await loadIdentities()
     } catch (e: any) {
@@ -97,10 +99,17 @@ export function useAuthorFix(repoKey: string) {
 
   let pollTimer: ReturnType<typeof setInterval> | null = null
 
+  function stopPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer)
+      pollTimer = null
+    }
+  }
+
   async function loadRepoConfig() {
     configLoading.value = true
     try {
-      repoConfig.value = await getRepoAuthorConfig(repoKey) as any
+      repoConfig.value = (await getRepoAuthorConfig(repoKey)) as RepoAuthorConfigDTO || null
     } catch { repoConfig.value = null }
     finally { configLoading.value = false }
   }
@@ -108,9 +117,9 @@ export function useAuthorFix(repoKey: string) {
   async function setConfig(identityId: number | null) {
     try {
       if (identityId === null) {
-        await setRepoAuthorConfig(repoKey, null, true) as any
+        await setRepoAuthorConfig(repoKey, null, true)
       } else {
-        await setRepoAuthorConfig(repoKey, identityId) as any
+        await setRepoAuthorConfig(repoKey, identityId)
       }
       ElMessage.success('仓库作者身份已更新')
       await loadRepoConfig()
@@ -122,9 +131,9 @@ export function useAuthorFix(repoKey: string) {
   async function scan() {
     scanLoading.value = true
     try {
-      const result = await scanAuthor(repoKey) as any
-      scanResult.value = result.commits || []
-      totalCommits.value = result.totalCommits || 0
+      const result = (await scanAuthor(repoKey)) as any
+      scanResult.value = result?.commits || []
+      totalCommits.value = result?.totalCommits || 0
     } catch (e: any) {
       ElMessage.error('扫描失败: ' + (e.message || '未知错误'))
     } finally {
@@ -134,15 +143,8 @@ export function useAuthorFix(repoKey: string) {
 
   async function fixAll(pushRemote = '') {
     try {
-      await ElMessageBox.confirm(
-        '即将重写所有匹配提交的作者信息。此操作不可恢复！' + (pushRemote ? '\n\n修复后将 force push 到 ' + pushRemote : ''),
-        '确认一键修复',
-        { confirmButtonText: '确认修复', cancelButtonText: '取消', type: 'warning' }
-      )
-    } catch { return }
-    try {
-      const res = await fixAuthorAll(repoKey, pushRemote) as any
-      taskId.value = res.taskId
+      const res = (await fixAuthorAll(repoKey, pushRemote)) as any
+      taskId.value = res?.taskId || ''
       taskStatus.value = 'running'
       taskLogs.value = []
       taskError.value = ''
@@ -158,16 +160,9 @@ export function useAuthorFix(repoKey: string) {
       return
     }
     try {
-      await ElMessageBox.confirm(
-        `即将修复 ${selectedCommits.value.length} 个提交的作者信息。此操作不可恢复！` + (pushRemote ? '\n\n修复后将 force push 到 ' + pushRemote : ''),
-        '确认修复选中',
-        { confirmButtonText: '确认修复', cancelButtonText: '取消', type: 'warning' }
-      )
-    } catch { return }
-    try {
       const hashes = selectedCommits.value.map(c => c.hash)
-      const res = await fixAuthor(repoKey, hashes, pushRemote) as any
-      taskId.value = res.taskId
+      const res = (await fixAuthor(repoKey, hashes, pushRemote)) as any
+      taskId.value = res?.taskId || ''
       taskStatus.value = 'running'
       taskLogs.value = []
       taskError.value = ''
@@ -178,24 +173,22 @@ export function useAuthorFix(repoKey: string) {
   }
 
   function startPolling() {
-    if (pollTimer) clearInterval(pollTimer)
+    stopPolling()
     pollTimer = setInterval(async () => {
       try {
-        const task = await getTaskStatus(taskId.value) as any
-        taskStatus.value = task.status
-        taskLogs.value = task.progress || []
-        taskError.value = task.error || ''
-        if (task.status === 'success' || task.status === 'failed') {
-          if (pollTimer) clearInterval(pollTimer)
-          pollTimer = null
+        const task = (await getTaskStatus(taskId.value)) as any
+        taskStatus.value = task?.status || ''
+        taskLogs.value = task?.progress || []
+        taskError.value = task?.error || ''
+        if (task?.status === 'success' || task?.status === 'failed') {
+          stopPolling()
           if (task.status === 'success') {
             ElMessage.success('作者修复完成')
             scan()
           }
         }
       } catch {
-        if (pollTimer) clearInterval(pollTimer)
-        pollTimer = null
+        stopPolling()
       }
     }, 2000)
   }
@@ -204,22 +197,100 @@ export function useAuthorFix(repoKey: string) {
     selectedCommits.value = rows
   }
 
+  onUnmounted(() => {
+    stopPolling()
+  })
+
   return {
-    repoConfig,
-    configLoading,
-    scanResult,
-    scanLoading,
-    totalCommits,
-    selectedCommits,
-    taskId,
-    taskStatus,
-    taskLogs,
-    taskError,
-    loadRepoConfig,
-    setConfig,
-    scan,
-    fixAll,
-    fixSelected,
-    handleSelection,
+    repoConfig, configLoading, scanResult, scanLoading, totalCommits, selectedCommits,
+    taskId, taskStatus, taskLogs, taskError,
+    loadRepoConfig, setConfig, scan, fixAll, fixSelected, handleSelection,
+  }
+}
+
+export function useAuthorAI(repoKey: string) {
+  const aiLoading = ref(false)
+  const aiAnalysis = ref('')
+  const aiSuggestion = ref<AliasSuggestionResult | null>(null)
+  const aiMerge = ref<MergeSuggestionResult | null>(null)
+  const aiRisk = ref<RiskAssessmentResult | null>(null)
+
+  const chatMessages = ref<ChatMessageDTO[]>([])
+  const chatLoading = ref(false)
+
+  async function smartSuggest() {
+    aiLoading.value = true
+    aiSuggestion.value = null
+    try {
+      const res = (await authorAI(repoKey, 'suggest')) as any
+      aiSuggestion.value = res?.suggest || null
+    } catch (e: any) {
+      ElMessage.error('AI 推荐失败: ' + (e.message || '请检查 LLM 配置'))
+    } finally {
+      aiLoading.value = false
+    }
+  }
+
+  async function analyzeScan(scanData: { commits: MismatchedCommit[]; totalCommits: number; matchCount: number }) {
+    aiLoading.value = true
+    aiAnalysis.value = ''
+    try {
+      const res = (await authorAI(repoKey, 'analyze', { scan: scanData })) as any
+      aiAnalysis.value = res?.result || ''
+    } catch (e: any) {
+      ElMessage.error('AI 分析失败: ' + (e.message || '请检查 LLM 配置'))
+    } finally {
+      aiLoading.value = false
+    }
+  }
+
+  async function suggestMerges() {
+    aiLoading.value = true
+    aiMerge.value = null
+    try {
+      const res = (await authorAI(repoKey, 'merge')) as any
+      aiMerge.value = res?.merge || null
+    } catch (e: any) {
+      ElMessage.error('AI 分析失败: ' + (e.message || '请检查 LLM 配置'))
+    } finally {
+      aiLoading.value = false
+    }
+  }
+
+  async function assessRisk(commits: MismatchedCommit[]) {
+    aiLoading.value = true
+    aiRisk.value = null
+    try {
+      const res = (await authorAI(repoKey, 'risk', { commits })) as any
+      aiRisk.value = res?.risk || null
+    } catch (e: any) {
+      ElMessage.error('AI 风险评估失败: ' + (e.message || '请检查 LLM 配置'))
+    } finally {
+      aiLoading.value = false
+    }
+  }
+
+  async function sendChat(prompt: string) {
+    chatLoading.value = true
+    chatMessages.value.push({ role: 'user', content: prompt })
+    try {
+      const res = (await authorChat(repoKey, prompt, chatMessages.value.slice(-10))) as any
+      const answer = res?.result || '无回复'
+      chatMessages.value.push({ role: 'assistant', content: answer })
+    } catch (e: any) {
+      chatMessages.value.push({ role: 'assistant', content: '抱歉，AI 调用失败: ' + (e.message || '请检查 LLM 配置') })
+    } finally {
+      chatLoading.value = false
+    }
+  }
+
+  function clearChat() {
+    chatMessages.value = []
+  }
+
+  return {
+    aiLoading, aiAnalysis, aiSuggestion, aiMerge, aiRisk,
+    chatMessages, chatLoading,
+    smartSuggest, analyzeScan, suggestMerges, assessRisk, sendChat, clearChat,
   }
 }

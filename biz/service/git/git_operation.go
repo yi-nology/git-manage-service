@@ -526,7 +526,7 @@ func (s *GitService) Commit(path, message, authorName, authorEmail string) error
 	if authorName == "" || authorEmail == "" {
 		if r, _ := db.NewRepoDAO().FindByPath(path); r != nil {
 			authorSvc := NewAuthorService()
-			if name, email := authorSvc.GetEffectiveAuthor(r.ID); name != "" && email != "" {
+			if name, email, _ := authorSvc.GetEffectiveAuthor(r.ID); name != "" && email != "" {
 				if authorName == "" {
 					authorName = name
 				}

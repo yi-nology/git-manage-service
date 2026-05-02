@@ -740,7 +740,7 @@ const ruleSearch = ref('')
 const showCreateRuleDialog = ref(false)
 const creatingRule = ref(false)
 const newRuleFormRef = ref()
-const newRule = ref({ id: '', name: '', description: '', severity: 'warning', pattern: '', enabled: true })
+const newRule = ref({ id: '', name: '', description: '', category: 'custom' as const, severity: 'warning' as const, pattern: '', enabled: true })
 const filteredRules = computed(() => {
   if (!ruleSearch.value) return rules.value
   const s = ruleSearch.value.toLowerCase()
@@ -758,12 +758,15 @@ async function handleToggleRule(rule: LintRule) {
 }
 
 async function handleCreateRule() {
+  if (newRuleFormRef.value) {
+    await newRuleFormRef.value.validate().catch(() => { throw new Error('validation failed') })
+  }
   try {
     creatingRule.value = true
     await createLintRule({ ...newRule.value })
     ElMessage.success('规则创建成功')
     showCreateRuleDialog.value = false
-    newRule.value = { id: '', name: '', description: '', severity: 'warning', pattern: '', enabled: true }
+    newRule.value = { id: '', name: '', description: '', category: 'custom' as const, severity: 'warning' as const, pattern: '', enabled: true }
     await loadRules()
   } catch { ElMessage.error('创建规则失败') }
   finally { creatingRule.value = false }

@@ -97,3 +97,66 @@ export function fixAuthor(repoKey: string, commitHashes: string[], pushRemote = 
     push_remote: pushRemote,
   })
 }
+
+// --- AI ---
+
+export interface AliasSuggestion {
+  identityId: number
+  identityName: string
+  aliasName: string
+  aliasEmail: string
+  confidence: 'high' | 'medium' | 'low'
+  reason: string
+}
+
+export interface AliasSuggestionResult {
+  suggestions: AliasSuggestion[]
+  summary: string
+}
+
+export interface MergeCandidate {
+  keepId: number
+  keepName: string
+  mergeIds: number[]
+  mergeNames: string
+  reason: string
+}
+
+export interface MergeSuggestionResult {
+  merges: MergeCandidate[]
+  summary: string
+}
+
+export interface RiskFactor {
+  level: string
+  description: string
+  recommendation: string
+}
+
+export interface RiskAssessmentResult {
+  riskLevel: 'low' | 'medium' | 'high'
+  summary: string
+  factors: RiskFactor[]
+  recommendations: string[]
+}
+
+export interface AuthorAIResponse {
+  action: string
+  result?: string
+  suggest?: AliasSuggestionResult
+  merge?: MergeSuggestionResult
+  risk?: RiskAssessmentResult
+}
+
+export function authorAI(repoKey: string, action: string, data?: Record<string, unknown>) {
+  return request.post<AuthorAIResponse>(`/repo/${repoKey}/author/ai`, { action, repoKey, ...data })
+}
+
+export interface ChatMessageDTO {
+  role: string
+  content: string
+}
+
+export function authorChat(repoKey: string, prompt: string, history: ChatMessageDTO[] = []) {
+  return request.post<{ result: string }>(`/repo/${repoKey}/author/chat`, { repoKey, prompt, history })
+}
