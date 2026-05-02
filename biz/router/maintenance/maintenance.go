@@ -30,6 +30,9 @@ func Register(r *server.Hertz) {
 						_maintenance.POST("/gc", append(_gcMw(), maintenance.GC)...)
 						_maintenance.POST("/gitignore", append(_gitignoreMw(), maintenance.Gitignore)...)
 						_maintenance.GET("/health", append(_healthMw(), maintenance.Health)...)
+						_maintenance.GET("/records", append(_listrecordsMw(), maintenance.ListRecords)...)
+						_records := _maintenance.Group("/records", _recordsMw()...)
+						_records.GET("/:id", append(_getrecordMw(), maintenance.GetRecord)...)
 						_maintenance.POST("/slim", append(_slimMw(), maintenance.Slim)...)
 					}
 				}

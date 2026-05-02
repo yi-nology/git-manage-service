@@ -1,14 +1,18 @@
 package git
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
 type MaintenanceService struct{}
@@ -17,17 +21,15 @@ func NewMaintenanceService() *MaintenanceService {
 	return &MaintenanceService{}
 }
 
-func (s *MaintenanceService) AnalyzeHealth(repoPath string) (*api.RepoHealthReport, error) {
-	report := &api.RepoHealthReport{}
-
+func (s *MaintenanceService) TakeSnapshot(repoPath string) *api.MaintenanceSnapshotDTO {
+	snap := &api.MaintenanceSnapshotDTO{}
 	gitDir := filepath.Join(repoPath, ".git")
 	if info, err := os.Stat(gitDir); err == nil && info.IsDir() {
 		if size, err := dirSize(gitDir); err == nil {
-			report.GitDirSize = formatSize(size)
-			report.GitDirSizeBytes = size
+			snap.GitDirSize = formatSize(size)
+			snap.GitDirSizeBytes = size
 		}
 	}
-
 	cmd := exec.Command("git", "count-objects", "-v")
 	cmd.Dir = repoPath
 	if output, err := cmd.CombinedOutput(); err == nil {
@@ -40,41 +42,55 @@ func (s *MaintenanceService) AnalyzeHealth(repoPath string) (*api.RepoHealthRepo
 			val := strings.TrimSpace(parts[1])
 			switch key {
 			case "count":
-				report.LooseObjects, _ = strconv.ParseInt(val, 10, 64)
+				snap.LooseObjects, _ = strconv.ParseInt(val, 10, 64)
 			case "packs":
-				report.PackFiles, _ = strconv.Atoi(val)
+				snap.PackFiles, _ = strconv.Atoi(val)
 			case "in-pack":
-				if n, err := strconv.ParseInt(val, 10, 64); err == nil {
-					report.InPackObjects = n
-				}
+				snap.InPackObjects, _ = strconv.ParseInt(val, 10, 64)
 			}
 		}
 	}
-
 	cmd = exec.Command("git", "rev-list", "--count", "HEAD")
 	cmd.Dir = repoPath
 	if output, err := cmd.CombinedOutput(); err == nil {
-		report.CommitCount, _ = strconv.ParseInt(strings.TrimSpace(string(output)), 10, 64)
+		snap.CommitCount, _ = strconv.ParseInt(strings.TrimSpace(string(output)), 10, 64)
 	}
-
 	cmd = exec.Command("git", "branch", "--list")
 	cmd.Dir = repoPath
 	if output, err := cmd.CombinedOutput(); err == nil {
-		report.BranchCount = len(strings.Split(strings.TrimSpace(string(output)), "\n"))
+		snap.BranchCount = len(strings.Split(strings.TrimSpace(string(output)), "\n"))
 		if strings.TrimSpace(string(output)) == "" {
-			report.BranchCount = 0
+			snap.BranchCount = 0
 		}
 	}
-
 	cmd = exec.Command("git", "tag", "--list")
 	cmd.Dir = repoPath
 	if output, err := cmd.CombinedOutput(); err == nil {
-		report.TagCount = len(strings.Split(strings.TrimSpace(string(output)), "\n"))
+		snap.TagCount = len(strings.Split(strings.TrimSpace(string(output)), "\n"))
 		if strings.TrimSpace(string(output)) == "" {
-			report.TagCount = 0
+			snap.TagCount = 0
 		}
 	}
+	return snap
+}
 
+func (s *MaintenanceService) AnalyzeHealth(repoPath string) (*api.RepoHealthReport, error) {
+	snap := s.TakeSnapshot(repoPath)
+	report := &api.RepoHealthReport{
+		GitDirSize:      snap.GitDirSize,
+		GitDirSizeBytes: snap.GitDirSizeBytes,
+		LooseObjects:    snap.LooseObjects,
+		PackFiles:       snap.PackFiles,
+		InPackObjects:   snap.InPackObjects,
+		CommitCount:     snap.CommitCount,
+		BranchCount:     snap.BranchCount,
+		TagCount:        snap.TagCount,
+	}
+	largeFiles, err := s.FindLargeFiles(repoPath, 0)
+	if err != nil {
+		return report, nil
+	}
+	report.LargeFiles = largeFiles
 	return report, nil
 }
 
@@ -82,21 +98,18 @@ func (s *MaintenanceService) FindLargeFiles(repoPath string, threshold int64) ([
 	if threshold <= 0 {
 		threshold = 1 * 1024 * 1024
 	}
-
 	cmd := exec.Command("git", "rev-list", "--objects", "--all")
 	cmd.Dir = repoPath
 	revOutput, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("git rev-list failed: %w", err)
 	}
-
 	cmd = exec.Command("git", "cat-file", "--batch-check", "--batch-all-objects")
 	cmd.Dir = repoPath
 	batchOutput, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("git cat-file failed: %w", err)
 	}
-
 	blobSize := make(map[string]int64)
 	for _, line := range strings.Split(string(batchOutput), "\n") {
 		fields := strings.Fields(line)
@@ -106,7 +119,6 @@ func (s *MaintenanceService) FindLargeFiles(repoPath string, threshold int64) ([
 			}
 		}
 	}
-
 	fileBlobs := make(map[string][]string)
 	for _, line := range strings.Split(string(revOutput), "\n") {
 		fields := strings.Fields(line)
@@ -118,13 +130,11 @@ func (s *MaintenanceService) FindLargeFiles(repoPath string, threshold int64) ([
 			}
 		}
 	}
-
 	type fileStat struct {
 		path    string
 		maxSize int64
 		count   int
 	}
-
 	var stats []fileStat
 	for path, shas := range fileBlobs {
 		var maxSz int64
@@ -137,7 +147,6 @@ func (s *MaintenanceService) FindLargeFiles(repoPath string, threshold int64) ([
 			stats = append(stats, fileStat{path: path, maxSize: maxSz, count: len(shas)})
 		}
 	}
-
 	for i := 0; i < len(stats); i++ {
 		for j := i + 1; j < len(stats); j++ {
 			if stats[j].maxSize > stats[i].maxSize {
@@ -145,11 +154,9 @@ func (s *MaintenanceService) FindLargeFiles(repoPath string, threshold int64) ([
 			}
 		}
 	}
-
 	if len(stats) > 50 {
 		stats = stats[:50]
 	}
-
 	var result []api.LargeFileEntry
 	for _, st := range stats {
 		_, err := os.Stat(filepath.Join(repoPath, st.path))
@@ -161,35 +168,42 @@ func (s *MaintenanceService) FindLargeFiles(repoPath string, threshold int64) ([
 			CommitCount: st.count,
 		})
 	}
-
 	return result, nil
 }
 
 func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGitignore bool, taskID string) error {
 	tm := GlobalTaskManager
-	tm.AppendLog(taskID, "开始仓库瘦身...")
-
-	if addGitignore {
-		tm.AppendLog(taskID, "更新 .gitignore...")
-		if err := appendToGitignore(repoPath, paths); err != nil {
-			tm.AppendLog(taskID, "警告: 更新 .gitignore 失败: "+err.Error())
+	dao := db.NewMaintenanceDAO()
+	appendLog := func(msg string) {
+		tm.AppendLog(taskID, msg)
+		record, _ := dao.FindByTaskID(taskID)
+		if record != nil {
+			t, ok := tm.GetTask(taskID)
+			if ok {
+				logJSON, _ := json.Marshal(t.Progress)
+				dao.UpdateProgress(taskID, string(logJSON))
+			}
 		}
 	}
-
-	tm.AppendLog(taskID, "执行 filter-branch 清除历史文件...")
+	appendLog("开始仓库瘦身...")
+	if addGitignore {
+		appendLog("更新 .gitignore...")
+		if err := appendToGitignore(repoPath, paths); err != nil {
+			appendLog("警告: 更新 .gitignore 失败: " + err.Error())
+		}
+	}
+	appendLog("执行 filter-branch 清除历史文件...")
 	args := []string{"filter-branch", "--force", "--index-filter"}
 	indexFilter := "git rm --cached --ignore-unmatch " + strings.Join(paths, " ")
 	args = append(args, indexFilter, "--prune-empty", "--", "--all")
-
 	cmd := exec.Command("git", args...)
 	cmd.Dir = repoPath
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("filter-branch failed: %w, output: %s", err, string(output))
 	}
-	tm.AppendLog(taskID, "filter-branch 完成")
-
-	tm.AppendLog(taskID, "更新指向旧 commit 的 tags...")
+	appendLog("filter-branch 完成")
+	appendLog("更新指向旧 commit 的 tags...")
 	cmd = exec.Command("git", "tag", "-l")
 	cmd.Dir = repoPath
 	tagOutput, _ := cmd.CombinedOutput()
@@ -204,7 +218,6 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 			continue
 		}
 		commit := strings.TrimSpace(string(commitHash))
-
 		cmd = exec.Command("git", "ls-tree", "-r", commit)
 		cmd.Dir = repoPath
 		treeOut, err := cmd.CombinedOutput()
@@ -220,11 +233,10 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 		}
 		if needsUpdate {
 			exec.Command("git", "tag", "-f", tag, "HEAD").Run()
-			tm.AppendLog(taskID, "更新 tag: "+tag)
+			appendLog("更新 tag: " + tag)
 		}
 	}
-
-	tm.AppendLog(taskID, "清理 backup refs...")
+	appendLog("清理 backup refs...")
 	cmd = exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/original/")
 	cmd.Dir = repoPath
 	refsOutput, _ := cmd.CombinedOutput()
@@ -233,40 +245,52 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 			exec.Command("git", "update-ref", "-d", ref).Run()
 		}
 	}
-
-	tm.AppendLog(taskID, "清理 reflog...")
+	appendLog("清理 reflog...")
 	exec.Command("git", "reflog", "expire", "--expire=now", "--all").Run()
-
-	tm.AppendLog(taskID, "执行 gc --prune=now ...")
+	appendLog("执行 gc --prune=now ...")
 	cmd = exec.Command("git", "gc", "--prune=now", "--aggressive")
 	cmd.Dir = repoPath
 	gcOutput, gcErr := cmd.CombinedOutput()
 	if gcErr != nil {
-		tm.AppendLog(taskID, "gc 警告: "+string(gcOutput))
+		appendLog("gc 警告: " + string(gcOutput))
 	} else {
-		tm.AppendLog(taskID, "gc 完成")
+		appendLog("gc 完成")
 	}
-
-	tm.AppendLog(taskID, "仓库瘦身完成！")
+	afterSnap := s.TakeSnapshot(repoPath)
+	afterJSON, _ := json.Marshal(afterSnap)
+	dao.UpdateStatus(taskID, "success", "", string(afterJSON))
+	appendLog("仓库瘦身完成！")
 	return nil
 }
 
 func (s *MaintenanceService) GarbageCollect(repoPath string, taskID string) error {
 	tm := GlobalTaskManager
-	tm.AppendLog(taskID, "开始垃圾回收...")
-
-	tm.AppendLog(taskID, "清理 reflog...")
+	dao := db.NewMaintenanceDAO()
+	appendLog := func(msg string) {
+		tm.AppendLog(taskID, msg)
+		record, _ := dao.FindByTaskID(taskID)
+		if record != nil {
+			t, ok := tm.GetTask(taskID)
+			if ok {
+				logJSON, _ := json.Marshal(t.Progress)
+				dao.UpdateProgress(taskID, string(logJSON))
+			}
+		}
+	}
+	appendLog("开始垃圾回收...")
+	appendLog("清理 reflog...")
 	exec.Command("git", "reflog", "expire", "--expire=now", "--all").Run()
-
-	tm.AppendLog(taskID, "执行 git gc --aggressive --prune=now ...")
+	appendLog("执行 git gc --aggressive --prune=now ...")
 	cmd := exec.Command("git", "gc", "--aggressive", "--prune=now")
 	cmd.Dir = repoPath
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("git gc failed: %w, output: %s", err, string(output))
 	}
-
-	tm.AppendLog(taskID, "垃圾回收完成！")
+	afterSnap := s.TakeSnapshot(repoPath)
+	afterJSON, _ := json.Marshal(afterSnap)
+	dao.UpdateStatus(taskID, "success", "", string(afterJSON))
+	appendLog("垃圾回收完成！")
 	return nil
 }
 
@@ -274,15 +298,32 @@ func (s *MaintenanceService) AddToGitignore(repoPath string, paths []string) err
 	return appendToGitignore(repoPath, paths)
 }
 
+func CreateMaintenanceRecord(repoID uint, opType string, repoPath string) (*po.MaintenanceRecord, error) {
+	svc := NewMaintenanceService()
+	beforeSnap := svc.TakeSnapshot(repoPath)
+	beforeJSON, _ := json.Marshal(beforeSnap)
+	now := time.Now()
+	record := &po.MaintenanceRecord{
+		RepoID:         repoID,
+		Type:           opType,
+		Status:         "pending",
+		TriggerBy:      "manual",
+		SnapshotBefore: string(beforeJSON),
+		StartedAt:      &now,
+	}
+	if err := db.NewMaintenanceDAO().Create(record); err != nil {
+		return nil, err
+	}
+	return record, nil
+}
+
 func appendToGitignore(repoPath string, paths []string) error {
 	gitignorePath := filepath.Join(repoPath, ".gitignore")
-
 	var existing []byte
 	existing, err := os.ReadFile(gitignorePath)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-
 	content := string(existing)
 	var newLines []string
 	for _, p := range paths {
@@ -292,27 +333,22 @@ func appendToGitignore(repoPath string, paths []string) error {
 		}
 		newLines = append(newLines, line)
 	}
-
 	if len(newLines) == 0 {
 		return nil
 	}
-
 	suffix := "\n"
 	if len(existing) == 0 || !strings.HasSuffix(content, "\n") {
 		suffix = "\n"
 	}
-
 	f, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-
 	f.WriteString(suffix + "# Auto-added by repo slim\n")
 	for _, line := range newLines {
 		f.WriteString(line + "\n")
 	}
-
 	return nil
 }
 

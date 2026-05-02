@@ -2,13 +2,17 @@ package maintenance
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/google/uuid"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	maintenance "github.com/yi-nology/git-manage-service/biz/model/maintenance"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
@@ -69,14 +73,43 @@ func Slim(ctx context.Context, c *app.RequestContext) {
 	taskID := uuid.New().String()
 	git.GlobalTaskManager.AddTask(taskID)
 
+	paramsJSON, _ := json.Marshal(map[string]interface{}{
+		"paths":         paths,
+		"addGitignore":  req.GetAddGitignore(),
+	})
+
+	record, err := git.CreateMaintenanceRecord(repo.ID, "slim", repo.Path)
+	if err != nil {
+		response.InternalError(c, err)
+		return
+	}
+	db.NewMaintenanceDAO().UpdateProgress(taskID, "")
+	db.NewMaintenanceDAO().UpdateStatus(taskID, "running", "", "")
+
 	go func() {
 		svc := git.NewMaintenanceService()
 		if err := svc.SlimHistory(repo.Path, paths, req.GetAddGitignore(), taskID); err != nil {
 			git.GlobalTaskManager.UpdateStatus(taskID, "failed", err.Error())
+			now := time.Now()
+			dao := db.NewMaintenanceDAO()
+			rec, _ := dao.FindByTaskID(taskID)
+			if rec != nil {
+				rec.Status = "failed"
+				rec.ErrorMessage = err.Error()
+				rec.TaskID = taskID
+				rec.ParamsJSON = string(paramsJSON)
+				rec.FinishedAt = &now
+				dao.Update(rec)
+			}
 			return
 		}
 		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
 	}()
+
+	dao := db.NewMaintenanceDAO()
+	record.TaskID = taskID
+	record.ParamsJSON = string(paramsJSON)
+	dao.Update(record)
 
 	audit.AuditSvc.Log(c, "REPO_SLIM", "repo:"+repo.Key, map[string]string{
 		"files": strings.Join(paths, ","),
@@ -101,14 +134,35 @@ func GC(ctx context.Context, c *app.RequestContext) {
 	taskID := uuid.New().String()
 	git.GlobalTaskManager.AddTask(taskID)
 
+	record, err := git.CreateMaintenanceRecord(repo.ID, "gc", repo.Path)
+	if err != nil {
+		response.InternalError(c, err)
+		return
+	}
+	db.NewMaintenanceDAO().UpdateStatus(taskID, "running", "", "")
+
 	go func() {
 		svc := git.NewMaintenanceService()
 		if err := svc.GarbageCollect(repo.Path, taskID); err != nil {
 			git.GlobalTaskManager.UpdateStatus(taskID, "failed", err.Error())
+			now := time.Now()
+			dao := db.NewMaintenanceDAO()
+			rec, _ := dao.FindByTaskID(taskID)
+			if rec != nil {
+				rec.Status = "failed"
+				rec.ErrorMessage = err.Error()
+				rec.TaskID = taskID
+				rec.FinishedAt = &now
+				dao.Update(rec)
+			}
 			return
 		}
 		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
 	}()
+
+	dao := db.NewMaintenanceDAO()
+	record.TaskID = taskID
+	dao.Update(record)
 
 	audit.AuditSvc.Log(c, "REPO_GC", "repo:"+repo.Key, nil)
 
@@ -145,4 +199,123 @@ func Gitignore(ctx context.Context, c *app.RequestContext) {
 	})
 
 	response.Success(c, api.MessageResponse{Message: "已添加到 .gitignore"})
+}
+
+func ListRecords(ctx context.Context, c *app.RequestContext) {
+	var req maintenance.ListRecordsRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
+	if err != nil {
+		response.NotFound(c, "repo not found")
+		return
+	}
+
+	page := int(req.GetPage())
+	pageSize := int(req.GetPageSize())
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+
+	records, total, err := db.NewMaintenanceDAO().ListByRepoID(repo.ID, page, pageSize)
+	if err != nil {
+		response.InternalError(c, err)
+		return
+	}
+
+	dtos := make([]api.MaintenanceRecordDTO, 0, len(records))
+	for _, r := range records {
+		dto := convertRecordToDTO(&r)
+		dtos = append(dtos, dto)
+	}
+
+	response.Success(c, api.MaintenanceRecordListResponse{
+		Records:  dtos,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	})
+}
+
+func GetRecord(ctx context.Context, c *app.RequestContext) {
+	var req maintenance.GetRecordRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	_, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
+	if err != nil {
+		response.NotFound(c, "repo not found")
+		return
+	}
+
+	record, err := db.NewMaintenanceDAO().FindByID(uint(req.GetId()))
+	if err != nil {
+		response.NotFound(c, "record not found")
+		return
+	}
+
+	response.Success(c, convertRecordToDTO(record))
+}
+
+func convertRecordToDTO(r *po.MaintenanceRecord) api.MaintenanceRecordDTO {
+	dto := api.MaintenanceRecordDTO{
+		ID:           r.ID,
+		Type:         r.Type,
+		Status:       r.Status,
+		TriggerBy:    r.TriggerBy,
+		ParamsJSON:   r.ParamsJSON,
+		ErrorMessage: r.ErrorMessage,
+		StartedAt:    r.StartedAt,
+		FinishedAt:   r.FinishedAt,
+		CreatedAt:    r.CreatedAt,
+	}
+
+	if r.SnapshotBefore != "" {
+		var snap api.MaintenanceSnapshotDTO
+		if json.Unmarshal([]byte(r.SnapshotBefore), &snap) == nil {
+			dto.SnapshotBefore = &snap
+		}
+	}
+	if r.SnapshotAfter != "" {
+		var snap api.MaintenanceSnapshotDTO
+		if json.Unmarshal([]byte(r.SnapshotAfter), &snap) == nil {
+			dto.SnapshotAfter = &snap
+		}
+	}
+
+	if dto.SnapshotBefore != nil && dto.SnapshotAfter != nil {
+		saved := dto.SnapshotBefore.GitDirSizeBytes - dto.SnapshotAfter.GitDirSizeBytes
+		dto.SavedBytes = saved
+		if dto.SnapshotBefore.GitDirSizeBytes > 0 {
+			dto.SavedPercent = float64(saved) / float64(dto.SnapshotBefore.GitDirSizeBytes) * 100
+		}
+	}
+
+	if r.StartedAt != nil && r.FinishedAt != nil {
+		d := r.FinishedAt.Sub(*r.StartedAt)
+		dto.Duration = formatDuration(d)
+	} else if r.StartedAt != nil {
+		d := time.Since(*r.StartedAt)
+		dto.Duration = formatDuration(d)
+	}
+
+	return dto
+}
+
+func formatDuration(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%.1fs", d.Seconds())
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%.1fmin", d.Minutes())
+	}
+	return fmt.Sprintf("%.1fh", d.Hours())
 }

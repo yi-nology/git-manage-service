@@ -81,12 +81,13 @@ func Init() {
 		migrator.HasTable(&po.LLMProvider{}) &&
 		migrator.HasTable(&po.BranchRuleSet{}) &&
 		migrator.HasTable(&po.BranchRuleOverride{}) &&
-		migrator.HasTable(&po.ReviewRule{}) {
+		migrator.HasTable(&po.ReviewRule{}) &&
+		migrator.HasTable(&po.AuthorIdentity{}) {
 		log.Println("Database tables exist, skipping schema migration.")
 		return
 	}
 
-	err = DB.AutoMigrate(&po.Repo{}, &po.SyncTask{}, &po.SyncRun{}, &po.AuditLog{}, &po.SystemConfig{}, &po.CommitStat{}, &po.NotificationChannel{}, &po.NotificationEventTemplate{}, &po.SSHKey{}, &po.BackupRecord{}, &po.Credential{}, &po.LintRule{}, &po.CommitAnalysis{}, &po.CommitPattern{}, &po.SyncRecommendation{}, &po.ProviderConfig{}, &po.ChangeRequest{}, &po.WebhookEvent{}, &po.WebhookRule{}, &po.RepoProviderBinding{}, &po.ReviewTask{}, &po.ReviewFinding{}, &po.ReviewComment{}, &po.MergeCheckResult{}, &po.ReviewRepoConfig{}, &po.LLMProvider{}, &po.BranchRuleSet{}, &po.BranchRuleOverride{}, &po.ReviewRule{})
+	err = DB.AutoMigrate(&po.Repo{}, &po.SyncTask{}, &po.SyncRun{}, &po.AuditLog{}, &po.SystemConfig{}, &po.CommitStat{}, &po.NotificationChannel{}, &po.NotificationEventTemplate{}, &po.SSHKey{}, &po.BackupRecord{}, &po.Credential{}, &po.LintRule{}, &po.CommitAnalysis{}, &po.CommitPattern{}, &po.SyncRecommendation{}, &po.ProviderConfig{}, &po.ChangeRequest{}, &po.WebhookEvent{}, &po.WebhookRule{}, &po.RepoProviderBinding{}, &po.ReviewTask{}, &po.ReviewFinding{}, &po.ReviewComment{}, &po.MergeCheckResult{}, &po.ReviewRepoConfig{}, &po.LLMProvider{}, &po.BranchRuleSet{}, &po.BranchRuleOverride{}, &po.ReviewRule{}, &po.MaintenanceRecord{}, &po.AuthorIdentity{})
 	if err != nil {
 		log.Fatal("failed to migrate database: ", err)
 	}

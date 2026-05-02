@@ -27,6 +27,17 @@ message MaintenanceTaskResponse {
     optional string task_id = 2;
 }
 
+message ListRecordsRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    optional int32 page = 2 [(api.query) = "page"];
+    optional int32 page_size = 3 [(api.query) = "page_size"];
+}
+
+message GetRecordRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    optional uint32 id = 2 [(api.path) = "id"];
+}
+
 service MaintenanceService {
     rpc Health(HealthRequest) returns (MaintenanceTaskResponse) {
         option (api.get) = "/api/v1/repo/:repo_key/maintenance/health";
@@ -42,5 +53,13 @@ service MaintenanceService {
 
     rpc Gitignore(GitignoreRequest) returns (MaintenanceTaskResponse) {
         option (api.post) = "/api/v1/repo/:repo_key/maintenance/gitignore";
+    }
+
+    rpc ListRecords(ListRecordsRequest) returns (MaintenanceTaskResponse) {
+        option (api.get) = "/api/v1/repo/:repo_key/maintenance/records";
+    }
+
+    rpc GetRecord(GetRecordRequest) returns (MaintenanceTaskResponse) {
+        option (api.get) = "/api/v1/repo/:repo_key/maintenance/records/:id";
     }
 }

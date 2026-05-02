@@ -55,3 +55,18 @@ func _slimMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _recordsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _listrecordsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _getrecordMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
