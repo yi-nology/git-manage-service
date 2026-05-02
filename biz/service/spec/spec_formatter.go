@@ -24,21 +24,27 @@ const (
 )
 
 type Section struct {
-	Type     SectionType
-	Name     string
-	Lines    []string
-	SubPkg   string
+	Type   SectionType
+	Name   string
+	Lines  []string
+	SubPkg string
 }
 
 type FormatOptions struct {
-	Curlify         bool
-	RemoveClean     bool
-	RemoveBuildRoot bool
-	RemoveGroup     bool
-	LicenseSPDX     bool
-	SortDeps        bool
-	TabToSpaces     bool
-	IndentSize      int
+	Curlify          bool
+	RemoveClean      bool
+	RemoveBuildRoot  bool
+	RemoveGroup      bool
+	LicenseSPDX      bool
+	SortDeps         bool
+	TabToSpaces      bool
+	IndentSize       int
+	PreambleOrder    bool
+	AlignValues      bool
+	PathMacros       bool
+	UtilMacros       bool
+	CommonCleanup    bool
+	ConditionalTrim  bool
 }
 
 type FormatChange struct {
@@ -59,35 +65,13 @@ func DefaultFormatOptions() FormatOptions {
 		SortDeps:        true,
 		TabToSpaces:     true,
 		IndentSize:      4,
+		PreambleOrder:   true,
+		AlignValues:     true,
+		PathMacros:      true,
+		UtilMacros:      true,
+		CommonCleanup:   true,
+		ConditionalTrim: true,
 	}
-}
-
-var sectionHeaders = []string{
-	"%description",
-	"%prep",
-	"%build",
-	"%install",
-	"%check",
-	"%clean",
-	"%files",
-	"%changelog",
-	"%package",
-	"%post",
-	"%postun",
-	"%pre",
-	"%preun",
-	"%posttrans",
-	"%pretrans",
-	"%triggerin",
-	"%triggerun",
-	"%triggerpostun",
-	"%verifyscript",
-	"%filetriggerin",
-	"%filetriggerun",
-	"%filetriggerpostun",
-	"%transfiletriggerin",
-	"%transfiletriggerun",
-	"%transfiletriggerpostun",
 }
 
 var macroWhitelist = map[string]bool{
@@ -128,107 +112,40 @@ var macroWhitelist = map[string]bool{
 }
 
 var licenseMap = map[string]string{
-	"GPL":                      "GPL-1.0-only",
-	"GPLv1":                    "GPL-1.0-only",
-	"GPL v1":                   "GPL-1.0-only",
-	"GPL2":                     "GPL-2.0-only",
-	"GPLv2":                    "GPL-2.0-only",
-	"GPL v2":                   "GPL-2.0-only",
-	"GPLv2+":                   "GPL-2.0-or-later",
-	"GPL v2+":                  "GPL-2.0-or-later",
-	"GPL v2 or later":          "GPL-2.0-or-later",
-	"GPL3":                     "GPL-3.0-only",
-	"GPLv3":                    "GPL-3.0-only",
-	"GPL v3":                   "GPL-3.0-only",
-	"GPLv3+":                   "GPL-3.0-or-later",
-	"GPL v3+":                  "GPL-3.0-or-later",
-	"GPL v3 or later":          "GPL-3.0-or-later",
-	"LGPL":                     "LGPL-2.0-only",
-	"LGPLv2":                   "LGPL-2.0-only",
-	"LGPL v2":                  "LGPL-2.0-only",
-	"LGPLv2+":                  "LGPL-2.0-or-later",
-	"LGPL v2+":                 "LGPL-2.0-or-later",
-	"LGPL2.1":                  "LGPL-2.1-only",
-	"LGPLv2.1":                 "LGPL-2.1-only",
-	"LGPL v2.1":                "LGPL-2.1-only",
-	"LGPLv2.1+":                "LGPL-2.1-or-later",
-	"LGPL v2.1+":               "LGPL-2.1-or-later",
-	"LGPL3":                    "LGPL-3.0-only",
-	"LGPLv3":                   "LGPL-3.0-only",
-	"LGPL v3":                  "LGPL-3.0-only",
-	"LGPLv3+":                  "LGPL-3.0-or-later",
-	"LGPL v3+":                 "LGPL-3.0-or-later",
-	"AGPL":                     "AGPL-3.0-only",
-	"AGPLv3":                   "AGPL-3.0-only",
-	"AGPL v3":                  "AGPL-3.0-only",
-	"AGPLv3+":                  "AGPL-3.0-or-later",
-	"MIT License":              "MIT",
-	"MIT license":              "MIT",
-	"The MIT License":          "MIT",
-	"BSD":                      "BSD-3-Clause",
-	"BSD License":              "BSD-3-Clause",
-	"BSD license":              "BSD-3-Clause",
-	"New BSD License":          "BSD-3-Clause",
-	"New BSD license":          "BSD-3-Clause",
-	"3-Clause BSD":             "BSD-3-Clause",
-	"Revised BSD":              "BSD-3-Clause",
-	"2-Clause BSD":             "BSD-2-Clause",
-	"Simplified BSD":           "BSD-2-Clause",
-	"Apache":                   "Apache-2.0",
-	"Apache License":           "Apache-2.0",
-	"Apache 2":                 "Apache-2.0",
-	"Apache 2.0":               "Apache-2.0",
-	"ASL 2.0":                  "Apache-2.0",
-	"ASL2":                     "Apache-2.0",
-	"Apache Software License":  "Apache-2.0",
-	"Artistic":                 "Artistic-1.0-Perl",
-	"Artistic License":         "Artistic-1.0-Perl",
-	"Artistic 2.0":             "Artistic-2.0",
-	"Boost":                    "BSL-1.0",
-	"Boost Software License":   "BSL-1.0",
-	"BSL":                      "BSL-1.0",
-	"CDDL":                     "CDDL-1.0",
-	"CDDLv1":                   "CDDL-1.0",
-	"CDDL 1.0":                 "CDDL-1.0",
-	"EPL":                      "EPL-1.0",
-	"EPL 1.0":                  "EPL-1.0",
-	"EPL 2.0":                  "EPL-2.0",
-	"MPL":                      "MPL-2.0",
-	"MPLv2":                    "MPL-2.0",
-	"MPL 2.0":                  "MPL-2.0",
-	"MPLv1.1":                  "MPL-1.1",
-	"MPL 1.1":                  "MPL-1.1",
-	"ISC License":              "ISC",
-	"ISC license":              "ISC",
-	"PSF":                      "Python-2.0",
-	"Python":                   "Python-2.0",
-	"Python License":           "Python-2.0",
-	"PSF License":              "Python-2.0",
-	"ZPL":                      "ZPL-2.1",
-	"Zope":                     "ZPL-2.1",
-	"WTFPL":                    "WTFPL",
-	"Unlicense":                "Unlicense",
-	"Public Domain":            "LicenseRef-Public-Domain",
-	"public domain":            "LicenseRef-Public-Domain",
-	"LGPLv2+ with exceptions":  "LGPL-2.1-or-later WITH GCC-exception-2.0",
+	"GPL": "GPL-1.0-only", "GPLv1": "GPL-1.0-only", "GPL v1": "GPL-1.0-only",
+	"GPL2": "GPL-2.0-only", "GPLv2": "GPL-2.0-only", "GPL v2": "GPL-2.0-only",
+	"GPLv2+": "GPL-2.0-or-later", "GPL v2+": "GPL-2.0-or-later", "GPL v2 or later": "GPL-2.0-or-later",
+	"GPL3": "GPL-3.0-only", "GPLv3": "GPL-3.0-only", "GPL v3": "GPL-3.0-only",
+	"GPLv3+": "GPL-3.0-or-later", "GPL v3+": "GPL-3.0-or-later", "GPL v3 or later": "GPL-3.0-or-later",
+	"LGPL": "LGPL-2.0-only", "LGPLv2": "LGPL-2.0-only", "LGPL v2": "LGPL-2.0-only",
+	"LGPLv2+": "LGPL-2.0-or-later", "LGPL v2+": "LGPL-2.0-or-later",
+	"LGPL2.1": "LGPL-2.1-only", "LGPLv2.1": "LGPL-2.1-only", "LGPL v2.1": "LGPL-2.1-only",
+	"LGPLv2.1+": "LGPL-2.1-or-later", "LGPL v2.1+": "LGPL-2.1-or-later",
+	"LGPL3": "LGPL-3.0-only", "LGPLv3": "LGPL-3.0-only", "LGPL v3": "LGPL-3.0-only",
+	"LGPLv3+": "LGPL-3.0-or-later", "LGPL v3+": "LGPL-3.0-or-later",
+	"AGPL": "AGPL-3.0-only", "AGPLv3": "AGPL-3.0-only", "AGPL v3": "AGPL-3.0-only", "AGPLv3+": "AGPL-3.0-or-later",
+	"MIT License": "MIT", "MIT license": "MIT", "The MIT License": "MIT",
+	"BSD": "BSD-3-Clause", "BSD License": "BSD-3-Clause", "BSD license": "BSD-3-Clause",
+	"New BSD License": "BSD-3-Clause", "3-Clause BSD": "BSD-3-Clause", "Revised BSD": "BSD-3-Clause",
+	"2-Clause BSD": "BSD-2-Clause", "Simplified BSD": "BSD-2-Clause",
+	"Apache": "Apache-2.0", "Apache License": "Apache-2.0", "Apache 2": "Apache-2.0",
+	"Apache 2.0": "Apache-2.0", "ASL 2.0": "Apache-2.0", "ASL2": "Apache-2.0",
+	"Artistic": "Artistic-1.0-Perl", "Artistic License": "Artistic-1.0-Perl", "Artistic 2.0": "Artistic-2.0",
+	"Boost": "BSL-1.0", "Boost Software License": "BSL-1.0", "BSL": "BSL-1.0",
+	"CDDL": "CDDL-1.0", "CDDLv1": "CDDL-1.0",
+	"EPL": "EPL-1.0", "EPL 2.0": "EPL-2.0",
+	"MPL": "MPL-2.0", "MPLv2": "MPL-2.0",
+	"ISC License": "ISC", "ISC license": "ISC",
+	"PSF": "Python-2.0", "Python License": "Python-2.0",
+	"ZPL": "ZPL-2.1", "WTFPL": "WTFPL", "Unlicense": "Unlicense",
+	"Public Domain": "LicenseRef-Public-Domain", "public domain": "LicenseRef-Public-Domain",
 }
 
 var depTags = []string{
-	"BuildRequires",
-	"Requires",
-	"Recommends",
-	"Suggests",
-	"Supplements",
-	"Enhances",
-	"Conflicts",
-	"Obsoletes",
-	"Provides",
-	"Requires(pre)",
-	"Requires(post)",
-	"Requires(preun)",
-	"Requires(postun)",
-	"Requires(pretrans)",
-	"Requires(posttrans)",
+	"BuildRequires", "Requires", "Recommends", "Suggests", "Supplements",
+	"Enhances", "Conflicts", "Obsoletes", "Provides",
+	"Requires(pre)", "Requires(post)", "Requires(preun)", "Requires(postun)",
+	"Requires(pretrans)", "Requires(posttrans)",
 }
 
 var depTagPrefixes []string
@@ -239,13 +156,73 @@ func init() {
 	}
 }
 
+var preambleTagOrder = map[string]int{
+	"define": 0, "global": 1,
+	"bcond_with": 2, "bcond_without": 3,
+	"Name": 10, "Epoch": 11, "Version": 12, "Release": 13,
+	"Summary": 14, "License": 15, "Group": 16,
+	"URL": 20, "Url": 21,
+	"Source": 30, "Source0": 30, "Source1": 31, "Source2": 32, "Source3": 33,
+	"Source4": 34, "Source5": 35, "Source6": 36, "Source7": 37, "Source8": 38, "Source9": 39,
+	"Patch": 40, "Patch0": 40, "Patch1": 41, "Patch2": 42, "Patch3": 43,
+	"Patch4": 44, "Patch5": 45, "Patch6": 46, "Patch7": 47, "Patch8": 48, "Patch9": 49,
+	"BuildRequires": 60, "BuildConflicts": 61,
+	"Requires": 70, "Requires(pre)": 71, "Requires(post)": 72, "Requires(preun)": 73,
+	"Requires(postun)": 74, "Requires(pretrans)": 75, "Requires(posttrans)": 76,
+	"Recommends": 80, "Suggests": 81, "Enhances": 82, "Supplements": 83,
+	"Conflicts": 90, "Obsoletes": 91, "Provides": 92,
+	"BuildArch": 100, "ExclusiveArch": 101, "ExcludeArch": 102,
+	"Vendor": 110, "Packager": 111,
+}
+
+var pathToMacro = []struct{ From, To string }{
+	{"/usr/bin", "%{_bindir}"},
+	{"/usr/sbin", "%{_sbindir}"},
+	{"/usr/libexec", "%{_libexecdir}"},
+	{"/usr/include", "%{_includedir}"},
+	{"/usr/share", "%{_datadir}"},
+	{"/usr/share/man", "%{_mandir}"},
+	{"/usr/share/info", "%{_infodir}"},
+	{"/usr/share/doc/packages", "%{_docdir}"},
+	{"/etc/init.d", "%{_initddir}"},
+	{"/etc", "%{_sysconfdir}"},
+	{"/var", "%{_localstatedir}"},
+	{"/usr", "%{_prefix}"},
+}
+
+var utilMacroMap = map[string]string{
+	"__make": "make", "__rm": "rm", "__cp": "cp", "__mv": "mv",
+	"__install": "install", "__mkdir_p": "mkdir -p", "__mkdir": "mkdir",
+	"__ln_s": "ln -s", "__chmod": "chmod", "__chown": "chown",
+	"__sed": "sed", "__awk": "awk", "__grep": "grep", "__cat": "cat",
+	"__id_u": "id -u", "__cc": "gcc", "__cxx": "g++",
+	"__ln_t": "ln", "__tar": "tar", "__gzip": "gzip",
+	"__bzip2": "bzip2", "__xz": "xz", "__lzma": "xz --format-lzma",
+}
+
 var (
-	reMacroNoBrace = regexp.MustCompile(`%([A-Za-z_][A-Za-z0-9_]*)`)
-	reConditionTag = regexp.MustCompile(`^(BuildRequires|Requires|Recommends|Suggests|Supplements|Enhances|Conflicts|Obsoletes|Provides)(\([^)]*\))?\s*:\s*(.*)`)
-	reLicenseTag   = regexp.MustCompile(`^(License)\s*:\s*(.*)`)
-	reGroupTag     = regexp.MustCompile(`^(?i)Group\s*:`)
-	reBuildRootTag = regexp.MustCompile(`^(?i)BuildRoot\s*:`)
+	reMacroNoBrace  = regexp.MustCompile(`%([A-Za-z_][A-Za-z0-9_]*)`)
+	reConditionTag  = regexp.MustCompile(`^(BuildRequires|Requires|Recommends|Suggests|Supplements|Enhances|Conflicts|Obsoletes|Provides)(\([^)]*\))?\s*:\s*(.*)`)
+	reLicenseTag    = regexp.MustCompile(`^(?i)License\s*:\s*(.*)`)
+	reGroupTag      = regexp.MustCompile(`^(?i)Group\s*:`)
+	reBuildRootTag  = regexp.MustCompile(`^(?i)BuildRoot\s*:`)
 	reSectionHeader = regexp.MustCompile(`^%([a-zA-Z][a-zA-Z0-9_]*)\s*(.*)`)
+	reTagColon      = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*(\([^)]*\))?)\s*:\s*(.*)`)
+	reSetupLine     = regexp.MustCompile(`^%setup\s+(.*)`)
+	rePatchLine     = regexp.MustCompile(`^%patch(\d*)\s+(.*)`)
+	reMakeLine      = regexp.MustCompile(`^(make)\b(.*)`)
+	reRmBuildRoot   = regexp.MustCompile(`(?i)rm\s+-rf\s+.(?:RPM_BUILD_ROOT|\{RPM_BUILD_ROOT\}|\{buildroot\}|buildroot)`)
+	reDefAttrLine   = regexp.MustCompile(`^%defattr\(\s*-?\s*,\s*root\s*,\s*root\s*[-,\s]*\)`)
+	reUtilMacroRe   = regexp.MustCompile(`%\{(__\w+)\}`)
+	reBuildRootVar  = regexp.MustCompile(`\$(?:RPM_BUILD_ROOT|\{RPM_BUILD_ROOT\})`)
+	reOptFlagsVar   = regexp.MustCompile(`\$(?:RPM_OPT_FLAGS|\{RPM_OPT_FLAGS\})`)
+	reDeprecatedGrep = regexp.MustCompile(`\b(egrep|fgrep)\b`)
+	reDepOperator   = regexp.MustCompile(`(>=|<=|>|<|=)\s*([=<>)])`)
+	reMakeinstall   = regexp.MustCompile(`%makeinstall\b`)
+	reMakeDestdir   = regexp.MustCompile(`make\s+.*DESTDIR=%\{?buildroot\}?.*install`)
+	reSetupQn       = regexp.MustCompile(`-qn\s+`)
+	rePatchP0       = regexp.MustCompile(`\s+-p0\b`)
+	reNoSourcePatch = regexp.MustCompile(`^(Source|Patch)\s*:`)
 )
 
 type SpecFormatter struct{}
@@ -255,11 +232,15 @@ func NewSpecFormatter() *SpecFormatter {
 }
 
 func (f *SpecFormatter) Format(content string, opts FormatOptions) (string, []FormatChange, error) {
-	var changes []FormatChange
+	if strings.Contains(content, "nospeccleaner") {
+		return content, nil, nil
+	}
 
+	var changes []FormatChange
 	lines := strings.Split(content, "\n")
 
-	sections := f.parseSections(lines)
+	multilineRanges := f.findMultilineDefines(lines)
+	sections := f.parseSections(lines, multilineRanges)
 
 	var result []string
 	firstSection := true
@@ -278,13 +259,27 @@ func (f *SpecFormatter) Format(content string, opts FormatOptions) (string, []Fo
 		var formatted []string
 		switch sec.Type {
 		case SectionPreamble:
-			formatted = f.formatPreamble(sec.Lines, opts, &changes, lines)
+			formatted = f.formatPreamble(sec.Lines, opts, &changes)
 		case SectionDescription:
 			formatted = f.formatDescription(sec.Lines, opts, &changes)
+		case SectionPrep:
+			formatted = f.formatPrep(sec.Lines, opts, &changes)
+		case SectionBuild, SectionCheck:
+			formatted = f.formatBuild(sec.Lines, opts, &changes)
+		case SectionInstall:
+			formatted = f.formatInstall(sec.Lines, opts, &changes)
+		case SectionFiles:
+			formatted = f.formatFiles(sec.Lines, opts, &changes)
+		case SectionPackage:
+			formatted = f.formatPreamble(sec.Lines, opts, &changes)
 		case SectionChangelog:
 			formatted = sec.Lines
 		default:
 			formatted = f.formatScriptlet(sec.Lines, opts, &changes)
+		}
+
+		if opts.ConditionalTrim {
+			formatted = f.trimConditionals(formatted, &changes)
 		}
 
 		if !firstSection {
@@ -296,8 +291,35 @@ func (f *SpecFormatter) Format(content string, opts FormatOptions) (string, []Fo
 	}
 
 	result = f.normalizeTrailingNewlines(result)
-
 	return strings.Join(result, "\n"), changes, nil
+}
+
+type lineRange struct{ start, end int }
+
+func (f *SpecFormatter) findMultilineDefines(lines []string) []lineRange {
+	var ranges []lineRange
+	for i := 0; i < len(lines); i++ {
+		trimmed := strings.TrimSpace(lines[i])
+		if strings.HasPrefix(trimmed, "%define ") || strings.HasPrefix(trimmed, "%global ") {
+			if strings.HasSuffix(trimmed, "\\") {
+				start := i
+				for i < len(lines)-1 && strings.HasSuffix(strings.TrimSpace(lines[i]), "\\") {
+					i++
+				}
+				ranges = append(ranges, lineRange{start, i})
+			}
+		}
+	}
+	return ranges
+}
+
+func isInMultiline(lineIdx int, ranges []lineRange) bool {
+	for _, r := range ranges {
+		if lineIdx >= r.start && lineIdx <= r.end {
+			return true
+		}
+	}
+	return false
 }
 
 func (f *SpecFormatter) lineNumberOf(allLines []string, firstLine string, sectionIdx int) int {
@@ -309,37 +331,34 @@ func (f *SpecFormatter) lineNumberOf(allLines []string, firstLine string, sectio
 	return sectionIdx + 1
 }
 
-func (f *SpecFormatter) parseSections(lines []string) []Section {
+func (f *SpecFormatter) parseSections(lines []string, multilineRanges []lineRange) []Section {
 	var sections []Section
-
 	if len(lines) == 0 {
 		return sections
 	}
 
 	current := Section{Type: SectionPreamble, Lines: []string{}}
 
-	for _, line := range lines {
+	for idx, line := range lines {
 		trimmed := strings.TrimSpace(line)
+
+		if isInMultiline(idx, multilineRanges) {
+			current.Lines = append(current.Lines, line)
+			continue
+		}
 
 		if strings.HasPrefix(trimmed, "%") && !strings.HasPrefix(trimmed, "%%") {
 			matches := reSectionHeader.FindStringSubmatch(trimmed)
 			if matches != nil {
 				secName := strings.ToLower(matches[1])
-
 				if isSectionKeyword(secName) {
-					if len(current.Lines) > 0 {
-						sections = append(sections, current)
-					} else {
-						sections = append(sections, current)
-					}
-
+					sections = append(sections, current)
 					sType := sectionTypeFromName(secName)
 					current = Section{
 						Type: sType,
 						Name: trimmed,
 						Lines: []string{line},
 					}
-
 					if secName == "package" && len(matches) > 2 {
 						current.SubPkg = strings.TrimSpace(matches[2])
 					}
@@ -354,7 +373,6 @@ func (f *SpecFormatter) parseSections(lines []string) []Section {
 	if len(current.Lines) > 0 {
 		sections = append(sections, current)
 	}
-
 	return sections
 }
 
@@ -363,8 +381,7 @@ func isSectionKeyword(name string) bool {
 	case "description", "prep", "build", "install", "check", "clean",
 		"files", "changelog", "package",
 		"post", "postun", "pre", "preun", "posttrans", "pretrans",
-		"triggerin", "triggerun", "triggerpostun",
-		"verifyscript",
+		"triggerin", "triggerun", "triggerpostun", "verifyscript",
 		"filetriggerin", "filetriggerun", "filetriggerpostun",
 		"transfiletriggerin", "transfiletriggerun", "transfiletriggerpostun":
 		return true
@@ -397,9 +414,66 @@ func sectionTypeFromName(name string) SectionType {
 	}
 }
 
-func (f *SpecFormatter) formatPreamble(lines []string, opts FormatOptions, changes *[]FormatChange, allLines []string) []string {
-	var result []string
+func (f *SpecFormatter) commonCleanup(line string, opts FormatOptions) string {
+	if opts.CommonCleanup {
+		line = reBuildRootVar.ReplaceAllString(line, "%{buildroot}")
+		line = reOptFlagsVar.ReplaceAllString(line, "%{optflags}")
+		line = reDeprecatedGrep.ReplaceAllStringFunc(line, func(m string) string {
+			if m == "egrep" {
+				return "grep -E"
+			}
+			return "grep -F"
+		})
+	}
 
+	if opts.PathMacros {
+		for _, pm := range pathToMacro {
+			if strings.Contains(line, pm.From) {
+				line = strings.ReplaceAll(line, pm.From, pm.To)
+			}
+		}
+	}
+
+	if opts.UtilMacros {
+		line = reUtilMacroRe.ReplaceAllStringFunc(line, func(m string) string {
+			sub := reUtilMacroRe.FindStringSubmatch(m)
+			if len(sub) >= 2 {
+				if replacement, ok := utilMacroMap[sub[1]]; ok {
+					return replacement
+				}
+			}
+			return m
+		})
+	}
+
+	return line
+}
+
+func (f *SpecFormatter) basicLineCleanup(line string, opts FormatOptions, lineNum int, changes *[]FormatChange) string {
+	if opts.TabToSpaces {
+		line = strings.ReplaceAll(line, "\t", strings.Repeat(" ", opts.IndentSize))
+	}
+	line = strings.TrimRight(line, " \t")
+	line = f.commonCleanup(line, opts)
+
+	if opts.Curlify {
+		newLine := f.curlifyLine(line)
+		if newLine != line {
+			*changes = append(*changes, FormatChange{
+				Line:   lineNum,
+				Type:   "modified",
+				Before: line,
+				After:  newLine,
+				Reason: "normalized macro brackets",
+			})
+			line = newLine
+		}
+	}
+	return line
+}
+
+func (f *SpecFormatter) formatPreamble(lines []string, opts FormatOptions, changes *[]FormatChange) []string {
+	var result []string
 	depGroups := make(map[string][]string)
 	var depOrder []string
 	inDeps := false
@@ -408,26 +482,30 @@ func (f *SpecFormatter) formatPreamble(lines []string, opts FormatOptions, chang
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 
-		if opts.TabToSpaces {
-			line = strings.ReplaceAll(line, "\t", strings.Repeat(" ", opts.IndentSize))
+		if strings.HasPrefix(trimmed, "#") || trimmed == "" {
+			if inDeps {
+				flushDeps(&result, depGroups, depOrder, changes, opts)
+				depGroups = make(map[string][]string)
+				depOrder = nil
+				inDeps = false
+			}
+			result = append(result, line)
+			continue
 		}
+
+		line = strings.ReplaceAll(line, "\t", strings.Repeat(" ", opts.IndentSize))
 		line = strings.TrimRight(line, " \t")
 
 		if opts.RemoveBuildRoot && reBuildRootTag.MatchString(trimmed) {
 			*changes = append(*changes, FormatChange{
-				Line:   i + 1,
-				Type:   "removed",
-				Before: trimmed,
+				Line: i + 1, Type: "removed", Before: trimmed,
 				Reason: "removed deprecated BuildRoot field",
 			})
 			continue
 		}
-
 		if opts.RemoveGroup && reGroupTag.MatchString(trimmed) {
 			*changes = append(*changes, FormatChange{
-				Line:   i + 1,
-				Type:   "removed",
-				Before: trimmed,
+				Line: i + 1, Type: "removed", Before: trimmed,
 				Reason: "removed deprecated Group field",
 			})
 			continue
@@ -435,21 +513,32 @@ func (f *SpecFormatter) formatPreamble(lines []string, opts FormatOptions, chang
 
 		if opts.LicenseSPDX {
 			if m := reLicenseTag.FindStringSubmatch(trimmed); m != nil {
-				licenseVal := strings.TrimSpace(m[2])
+				licenseVal := strings.TrimSpace(m[1])
 				if fixed, ok := licenseMap[licenseVal]; ok {
-					before := trimmed
-					trimmed = "License: " + fixed
-					line = "License: " + fixed
 					*changes = append(*changes, FormatChange{
-						Line:   i + 1,
-						Type:   "modified",
-						Before: before,
-						After:  trimmed,
+						Line: i + 1, Type: "modified", Before: trimmed,
+						After:  "License: " + fixed,
 						Reason: fmt.Sprintf("normalized License to SPDX: %s -> %s", licenseVal, fixed),
 					})
+					line = "License: " + fixed
+					trimmed = line
 				}
 			}
 		}
+
+		if reNoSourcePatch.MatchString(trimmed) {
+			newLine := reNoSourcePatch.ReplaceAllString(trimmed, "${1}0:")
+			if newLine != trimmed {
+				*changes = append(*changes, FormatChange{
+					Line: i + 1, Type: "modified", Before: trimmed, After: newLine,
+					Reason: "normalized Source/Patch to explicit number 0",
+				})
+				line = newLine
+				trimmed = newLine
+			}
+		}
+
+		line = f.commonCleanup(line, opts)
 
 		if isDepTag(trimmed) {
 			m := reConditionTag.FindStringSubmatch(trimmed)
@@ -459,19 +548,15 @@ func (f *SpecFormatter) formatPreamble(lines []string, opts FormatOptions, chang
 					tag += m[2]
 				}
 				value := strings.TrimSpace(m[3])
+				value = f.normalizeDepOps(value)
 
 				if inDeps && tag != lastDepTag {
-					inDeps = false
 					flushDeps(&result, depGroups, depOrder, changes, opts)
 					depGroups = make(map[string][]string)
 					depOrder = nil
 				}
-
-				if !inDeps {
-					inDeps = true
-				}
+				inDeps = true
 				lastDepTag = tag
-
 				if _, exists := depGroups[tag]; !exists {
 					depOrder = append(depOrder, tag)
 				}
@@ -491,16 +576,12 @@ func (f *SpecFormatter) formatPreamble(lines []string, opts FormatOptions, chang
 			newLine := f.curlifyLine(line)
 			if newLine != line {
 				*changes = append(*changes, FormatChange{
-					Line:   i + 1,
-					Type:   "modified",
-					Before: line,
-					After:  newLine,
+					Line: i + 1, Type: "modified", Before: line, After: newLine,
 					Reason: "normalized macro brackets",
 				})
 				line = newLine
 			}
 		}
-
 		result = append(result, line)
 	}
 
@@ -508,7 +589,15 @@ func (f *SpecFormatter) formatPreamble(lines []string, opts FormatOptions, chang
 		flushDeps(&result, depGroups, depOrder, changes, opts)
 	}
 
-	return f.collapseBlankLines(result)
+	result = f.collapseBlankLines(result)
+
+	if opts.PreambleOrder {
+		result = f.orderPreamble(result, changes)
+	}
+	if opts.AlignValues {
+		result = f.alignTagValues(result, changes)
+	}
+	return result
 }
 
 func flushDeps(result *[]string, groups map[string][]string, order []string, changes *[]FormatChange, opts FormatOptions) {
@@ -519,15 +608,13 @@ func flushDeps(result *[]string, groups map[string][]string, order []string, cha
 			deps = sortUniq(deps)
 			if len(deps) < origLen {
 				*changes = append(*changes, FormatChange{
-					Line:   len(*result) + 1,
-					Type:   "reordered",
+					Line: len(*result) + 1, Type: "reordered",
 					Reason: fmt.Sprintf("sorted and deduplicated %s (%d -> %d)", tag, origLen, len(deps)),
 				})
 			}
 		}
 		for _, dep := range deps {
-			line := tag + ": " + dep
-			*result = append(*result, line)
+			*result = append(*result, tag+": "+dep)
 		}
 	}
 }
@@ -558,26 +645,326 @@ func isDepTag(line string) bool {
 	return false
 }
 
+func (f *SpecFormatter) normalizeDepOps(dep string) string {
+	dep = strings.ReplaceAll(dep, "=<", "<=")
+	dep = strings.ReplaceAll(dep, "=>", ">=")
+	return dep
+}
+
+type preambleEntry struct {
+	line     string
+	tag      string
+	tagOrder int
+	isDefine bool
+	isBcond  bool
+	isCond   bool
+	isComment bool
+	original int
+}
+
+func (f *SpecFormatter) orderPreamble(lines []string, changes *[]FormatChange) []string {
+	var entries []preambleEntry
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		entry := preambleEntry{line: line, tagOrder: 999, original: i}
+
+		if trimmed == "" {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#") {
+			entry.isComment = true
+			entries = append(entries, entry)
+			continue
+		}
+		if strings.HasPrefix(trimmed, "%define ") || strings.HasPrefix(trimmed, "%global ") {
+			entry.isDefine = true
+			entry.tagOrder = 0
+			entries = append(entries, entry)
+			continue
+		}
+		if strings.HasPrefix(trimmed, "%bcond_") {
+			entry.isBcond = true
+			entry.tagOrder = 2
+			entries = append(entries, entry)
+			continue
+		}
+		if strings.HasPrefix(trimmed, "%if") || strings.HasPrefix(trimmed, "%else") || strings.HasPrefix(trimmed, "%endif") {
+			entry.isCond = true
+			entries = append(entries, entry)
+			continue
+		}
+
+		matches := reTagColon.FindStringSubmatch(trimmed)
+		if matches != nil {
+			entry.tag = matches[1]
+			if order, ok := preambleTagOrder[matches[1]]; ok {
+				entry.tagOrder = order
+			} else {
+				for prefix, order := range preambleTagOrder {
+					if strings.HasPrefix(matches[1], prefix) {
+						entry.tagOrder = order
+						break
+					}
+				}
+			}
+		}
+		if isDepTag(trimmed) {
+			matches := reConditionTag.FindStringSubmatch(trimmed)
+			if matches != nil {
+				tag := matches[1]
+				if order, ok := preambleTagOrder[tag]; ok {
+					entry.tagOrder = order
+				}
+			}
+		}
+		entries = append(entries, entry)
+	}
+
+	sort.SliceStable(entries, func(i, j int) bool {
+		a, b := entries[i], entries[j]
+		if a.isDefine != b.isDefine {
+			return a.isDefine
+		}
+		if a.isBcond != b.isBcond {
+			return a.isBcond
+		}
+		if a.tagOrder != b.tagOrder {
+			return a.tagOrder < b.tagOrder
+		}
+		return a.original < b.original
+	})
+
+	reordered := false
+	for i, e := range entries {
+		if e.original != i {
+			reordered = true
+			break
+		}
+	}
+	if reordered {
+		*changes = append(*changes, FormatChange{
+			Type:   "reordered",
+			Reason: "reordered preamble tags to canonical order",
+		})
+	}
+
+	var result []string
+	for _, e := range entries {
+		result = append(result, e.line)
+	}
+	return result
+}
+
+func (f *SpecFormatter) alignTagValues(lines []string, changes *[]FormatChange) []string {
+	var tagLines []int
+	maxTagLen := 0
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "%") {
+			continue
+		}
+		matches := reTagColon.FindStringSubmatch(trimmed)
+		if matches != nil {
+			tagPart := matches[1] + ":"
+			if len(tagPart) > maxTagLen {
+				maxTagLen = len(tagPart)
+			}
+			tagLines = append(tagLines, i)
+		}
+	}
+	if maxTagLen == 0 || len(tagLines) < 2 {
+		return lines
+	}
+
+	result := make([]string, len(lines))
+	copy(result, lines)
+	aligned := false
+
+	for _, i := range tagLines {
+		matches := reTagColon.FindStringSubmatch(result[i])
+		if matches == nil {
+			continue
+		}
+		tagPart := matches[1] + ":"
+		value := matches[3]
+		if len(tagPart) < maxTagLen {
+			padding := strings.Repeat(" ", maxTagLen-len(tagPart))
+			newLine := tagPart + padding + " " + value
+			if newLine != result[i] {
+				if !aligned {
+					*changes = append(*changes, FormatChange{
+						Type:   "modified",
+						Reason: fmt.Sprintf("aligned tag values to column %d", maxTagLen+1),
+					})
+					aligned = true
+				}
+				result[i] = newLine
+			}
+		}
+	}
+	return result
+}
+
 func (f *SpecFormatter) formatDescription(lines []string, opts FormatOptions, changes *[]FormatChange) []string {
 	var result []string
 	for i, line := range lines {
-		if opts.TabToSpaces {
-			line = strings.ReplaceAll(line, "\t", strings.Repeat(" ", opts.IndentSize))
+		line = f.basicLineCleanup(line, opts, i+1, changes)
+		if i > 0 && strings.HasPrefix(strings.TrimSpace(line), "Author(s):") {
+			break
 		}
-		line = strings.TrimRight(line, " \t")
-		if i > 0 && opts.Curlify {
-			newLine := f.curlifyLine(line)
-			if newLine != line {
+		result = append(result, line)
+	}
+	return f.collapseBlankLines(result)
+}
+
+func (f *SpecFormatter) formatPrep(lines []string, opts FormatOptions, changes *[]FormatChange) []string {
+	var result []string
+	for i, line := range lines {
+		line = f.basicLineCleanup(line, opts, i+1, changes)
+		trimmed := strings.TrimSpace(line)
+
+		if strings.HasPrefix(trimmed, "%setup ") {
+			if reSetupQn.MatchString(trimmed) {
+				newLine := reSetupQn.ReplaceAllString(line, "-q -n ")
 				*changes = append(*changes, FormatChange{
-					Line:   i + 1,
-					Type:   "modified",
-					Before: line,
-					After:  newLine,
-					Reason: "normalized macro brackets",
+					Line: i + 1, Type: "modified", Before: line, After: newLine,
+					Reason: "split %setup -qn to -q -n",
 				})
 				line = newLine
 			}
 		}
+
+		if rePatchLine.MatchString(trimmed) {
+			newLine := rePatchP0.ReplaceAllString(line, "")
+			if newLine != line {
+				*changes = append(*changes, FormatChange{
+					Line: i + 1, Type: "modified", Before: line, After: strings.TrimSpace(newLine),
+					Reason: "removed redundant -p0 from %patch",
+				})
+				line = strings.TrimSpace(newLine)
+			}
+			matches := rePatchLine.FindStringSubmatch(strings.TrimSpace(line))
+			if matches != nil && matches[1] == "" {
+				newLine := strings.Replace(line, "%patch ", "%patch0 ", 1)
+				*changes = append(*changes, FormatChange{
+					Line: i + 1, Type: "modified", Before: line, After: newLine,
+					Reason: "normalized bare %patch to %patch0",
+				})
+				line = newLine
+			} else if strings.TrimSpace(line) == "%patch" {
+				newLine := strings.Replace(line, "%patch", "%patch0", 1)
+				*changes = append(*changes, FormatChange{
+					Line: i + 1, Type: "modified", Before: line, After: newLine,
+					Reason: "normalized bare %patch to %patch0",
+				})
+				line = newLine
+			}
+		}
+
+		result = append(result, line)
+	}
+	return f.collapseBlankLines(result)
+}
+
+func (f *SpecFormatter) formatBuild(lines []string, opts FormatOptions, changes *[]FormatChange) []string {
+	var result []string
+	for i, line := range lines {
+		line = f.basicLineCleanup(line, opts, i+1, changes)
+		trimmed := strings.TrimSpace(line)
+
+		if reMakeLine.MatchString(trimmed) && !strings.Contains(trimmed, "$(MAKE)") && !strings.Contains(trimmed, "`make") {
+			newLine := reMakeLine.ReplaceAllString(line, "%make_build$2")
+			*changes = append(*changes, FormatChange{
+				Line: i + 1, Type: "modified", Before: line, After: newLine,
+				Reason: "replaced make with %make_build",
+			})
+			line = newLine
+		}
+
+		_ = trimmed
+		result = append(result, line)
+	}
+	return f.collapseBlankLines(result)
+}
+
+func (f *SpecFormatter) formatInstall(lines []string, opts FormatOptions, changes *[]FormatChange) []string {
+	var result []string
+	for i, line := range lines {
+		line = f.basicLineCleanup(line, opts, i+1, changes)
+		trimmed := strings.TrimSpace(line)
+
+		if reRmBuildRoot.MatchString(trimmed) {
+			*changes = append(*changes, FormatChange{
+				Line: i + 1, Type: "removed", Before: trimmed,
+				Reason: "removed redundant rm -rf %{buildroot}",
+			})
+			continue
+		}
+
+		if reMakeinstall.MatchString(trimmed) {
+			newLine := reMakeinstall.ReplaceAllString(line, "%make_install")
+			*changes = append(*changes, FormatChange{
+				Line: i + 1, Type: "modified", Before: trimmed, After: "%make_install",
+				Reason: "replaced %makeinstall with %make_install",
+			})
+			line = newLine
+		}
+
+		if reMakeDestdir.MatchString(trimmed) {
+			newLine := "%make_install"
+			*changes = append(*changes, FormatChange{
+				Line: i + 1, Type: "modified", Before: trimmed, After: newLine,
+				Reason: "replaced make DESTDIR install with %make_install",
+			})
+			line = newLine
+		}
+
+		result = append(result, line)
+	}
+	return f.collapseBlankLines(result)
+}
+
+func (f *SpecFormatter) formatFiles(lines []string, opts FormatOptions, changes *[]FormatChange) []string {
+	var result []string
+	for i, line := range lines {
+		line = f.basicLineCleanup(line, opts, i+1, changes)
+		trimmed := strings.TrimSpace(line)
+
+		if reDefAttrLine.MatchString(trimmed) {
+			*changes = append(*changes, FormatChange{
+				Line: i + 1, Type: "removed", Before: trimmed,
+				Reason: "removed redundant %defattr(-,root,root)",
+			})
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "%doc ") {
+			parts := strings.SplitN(trimmed, " ", 2)
+			if len(parts) == 2 {
+				files := strings.Fields(parts[1])
+				var docFiles, licenseFiles []string
+				for _, fn := range files {
+					upper := strings.ToUpper(fn)
+					if strings.Contains(upper, "LICENSE") || strings.Contains(upper, "LICENCE") || strings.Contains(upper, "COPYING") {
+						licenseFiles = append(licenseFiles, fn)
+					} else {
+						docFiles = append(docFiles, fn)
+					}
+				}
+				if len(licenseFiles) > 0 {
+					*changes = append(*changes, FormatChange{
+						Line: i + 1, Type: "modified", Before: trimmed,
+						Reason: "extracted license files from %doc to %license",
+					})
+					if len(docFiles) > 0 {
+						result = append(result, "%doc "+strings.Join(docFiles, " "))
+					}
+					result = append(result, "%license "+strings.Join(licenseFiles, " "))
+					continue
+				}
+			}
+		}
+
 		result = append(result, line)
 	}
 	return f.collapseBlankLines(result)
@@ -586,23 +973,7 @@ func (f *SpecFormatter) formatDescription(lines []string, opts FormatOptions, ch
 func (f *SpecFormatter) formatScriptlet(lines []string, opts FormatOptions, changes *[]FormatChange) []string {
 	var result []string
 	for i, line := range lines {
-		if opts.TabToSpaces {
-			line = strings.ReplaceAll(line, "\t", strings.Repeat(" ", opts.IndentSize))
-		}
-		line = strings.TrimRight(line, " \t")
-		if opts.Curlify {
-			newLine := f.curlifyLine(line)
-			if newLine != line {
-				*changes = append(*changes, FormatChange{
-					Line:   i + 1,
-					Type:   "modified",
-					Before: line,
-					After:  newLine,
-					Reason: "normalized macro brackets",
-				})
-				line = newLine
-			}
-		}
+		line = f.basicLineCleanup(line, opts, i+1, changes)
 		result = append(result, line)
 	}
 	return f.collapseBlankLines(result)
@@ -615,35 +986,42 @@ func (f *SpecFormatter) curlifyLine(line string) string {
 			return match
 		}
 		name := sub[1]
-
-		if macroWhitelist[name] {
+		if macroWhitelist[name] || name[0] == '_' {
 			return match
 		}
-
-		if name[0] == '_' {
+		if len(name) == 1 && name[0] >= '0' && name[0] <= '9' {
 			return match
 		}
-
-		if len(name) == 1 && (name[0] >= '0' && name[0] <= '9') {
-			return match
-		}
-
 		if isSectionKeyword(name) {
 			return match
 		}
-
-		if name == "define" || name == "global" || name == "with" || name == "without" {
-			return match
-		}
-
 		return "%{" + name + "}"
 	})
+}
+
+func (f *SpecFormatter) trimConditionals(lines []string, changes *[]FormatChange) []string {
+	var result []string
+	prevWasCond := false
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		isCond := strings.HasPrefix(trimmed, "%if") || strings.HasPrefix(trimmed, "%else") || strings.HasPrefix(trimmed, "%endif")
+		isBlank := trimmed == ""
+
+		if isBlank && prevWasCond {
+			continue
+		}
+
+		result = append(result, line)
+		prevWasCond = isCond
+	}
+
+	return result
 }
 
 func (f *SpecFormatter) collapseBlankLines(lines []string) []string {
 	var result []string
 	prevBlank := false
-
 	for _, line := range lines {
 		isBlank := strings.TrimSpace(line) == ""
 		if isBlank && prevBlank {
@@ -652,7 +1030,6 @@ func (f *SpecFormatter) collapseBlankLines(lines []string) []string {
 		result = append(result, line)
 		prevBlank = isBlank
 	}
-
 	return result
 }
 

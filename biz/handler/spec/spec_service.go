@@ -793,14 +793,20 @@ func FormatSpec(ctx context.Context, c *app.RequestContext) {
 	}
 
 	opts := specService.FormatOptions{
-		Curlify:         req.GetCurlify(),
-		RemoveClean:     req.GetRemoveClean(),
-		RemoveBuildRoot: req.GetRemoveBuildRoot(),
-		RemoveGroup:     req.GetRemoveGroup(),
-		LicenseSPDX:     req.GetLicenseSpdx(),
-		SortDeps:        req.GetSortDeps(),
-		TabToSpaces:     req.GetTabToSpaces(),
-		IndentSize:      int(req.GetIndentSize()),
+		Curlify:          req.GetCurlify(),
+		RemoveClean:      req.GetRemoveClean(),
+		RemoveBuildRoot:  req.GetRemoveBuildRoot(),
+		RemoveGroup:      req.GetRemoveGroup(),
+		LicenseSPDX:      req.GetLicenseSpdx(),
+		SortDeps:         req.GetSortDeps(),
+		TabToSpaces:      req.GetTabToSpaces(),
+		IndentSize:       int(req.GetIndentSize()),
+		PreambleOrder:    req.GetPreambleOrder(),
+		AlignValues:      req.GetAlignValues(),
+		PathMacros:       req.GetPathMacros(),
+		UtilMacros:       req.GetUtilMacros(),
+		CommonCleanup:    req.GetCommonCleanup(),
+		ConditionalTrim:  req.GetConditionalTrim(),
 	}
 
 	formatter := specService.NewSpecFormatter()

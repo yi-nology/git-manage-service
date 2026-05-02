@@ -91,13 +91,13 @@ function formatSize(bytes: number): string {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #1e1e1e;
-  border-right: 1px solid #333;
+  background: var(--bg-color-page, #fff);
+  border-right: 1px solid var(--border-color, #E2E8F0);
 }
 
 .tree-header {
   padding: 16px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border-color, #E2E8F0);
 }
 
 .el-scrollbar {
@@ -126,20 +126,20 @@ function formatSize(bytes: number): string {
 }
 
 .file-size {
-  color: #888;
+  color: var(--text-color-secondary, #64748B);
   font-size: 12px;
 }
 
 :deep(.el-tree) {
   background: transparent;
-  color: #d4d4d4;
+  color: var(--text-color-regular, #475569);
 }
 
 :deep(.el-tree-node__content:hover) {
-  background-color: #2a2d2e;
+  background-color: var(--surface-hover, #F8F9FC);
 }
 
 :deep(.el-tree-node.is-current > .el-tree-node__content) {
-  background-color: #094771;
+  background-color: var(--accent-bg, #EEF2FF);
 }
 </style>

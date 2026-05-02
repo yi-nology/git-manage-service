@@ -23,7 +23,7 @@ onMounted(() => {
   editor = monaco.editor.create(editorContainer.value, {
     value: store.content,
     language: 'rpmspec',
-    theme: 'vs-dark',
+    theme: 'vs',
     fontSize: 14,
     minimap: { enabled: true },
     automaticLayout: true,

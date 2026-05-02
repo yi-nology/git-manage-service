@@ -204,10 +204,6 @@ type CreateFileResponse struct {
 	Message string `json:"message"`
 }
 
-type MessageResponse struct {
-	Message string `json:"message"`
-}
-
 type AIAssistResponse struct {
 	Result       string `json:"result"`
 	ApplyContent string `json:"applyContent,omitempty"`
@@ -230,7 +226,24 @@ type FormatChangeDTO struct {
 	Reason string `json:"reason"`
 }
 
+type FormatOptionsDTO struct {
+	Curlify          bool `json:"curlify"`
+	RemoveClean      bool `json:"removeClean"`
+	RemoveBuildRoot  bool `json:"removeBuildRoot"`
+	RemoveGroup      bool `json:"removeGroup"`
+	LicenseSPDX      bool `json:"licenseSpdx"`
+	SortDeps         bool `json:"sortDeps"`
+	TabToSpaces      bool `json:"tabToSpaces"`
+	IndentSize       int  `json:"indentSize"`
+	PreambleOrder    bool `json:"preambleOrder"`
+	AlignValues      bool `json:"alignValues"`
+	PathMacros       bool `json:"pathMacros"`
+	UtilMacros       bool `json:"utilMacros"`
+	CommonCleanup    bool `json:"commonCleanup"`
+	ConditionalTrim  bool `json:"conditionalTrim"`
+}
+
 type FormatResponse struct {
-	Content string             `json:"content"`
-	Changes []FormatChangeDTO  `json:"changes"`
+	Content string            `json:"content"`
+	Changes []FormatChangeDTO `json:"changes"`
 }

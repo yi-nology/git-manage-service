@@ -318,6 +318,12 @@ message FormatSpecRequest {
     optional bool sort_deps = 7 [default = true];
     optional bool tab_to_spaces = 8 [default = true];
     optional int32 indent_size = 9 [default = 4];
+    optional bool preamble_order = 10 [default = true];
+    optional bool align_values = 11 [default = true];
+    optional bool path_macros = 12 [default = true];
+    optional bool util_macros = 13 [default = true];
+    optional bool common_cleanup = 14 [default = true];
+    optional bool conditional_trim = 15 [default = true];
 }
 
 // 格式化变更

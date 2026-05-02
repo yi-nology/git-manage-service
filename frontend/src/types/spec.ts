@@ -76,6 +76,12 @@ export interface FormatOptions {
   sortDeps?: boolean
   tabToSpaces?: boolean
   indentSize?: number
+  preambleOrder?: boolean
+  alignValues?: boolean
+  pathMacros?: boolean
+  utilMacros?: boolean
+  commonCleanup?: boolean
+  conditionalTrim?: boolean
 }
 
 export interface FormatChange {

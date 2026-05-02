@@ -12,14 +12,15 @@
         <el-button
           size="small"
           :type="showAIPanel ? 'primary' : 'default'"
+          :class="{ 'ai-active-btn': showAIPanel }"
           @click="showAIPanel = !showAIPanel"
         >
-          <el-icon><MagicStick /></el-icon> AI 辅助
+          <el-icon><MagicStick /></el-icon> AI
         </el-button>
-        <el-button size="small" @click="showRuleManager = true">
-          <el-icon><Setting /></el-icon> 规则
+        <el-button size="small" type="primary" @click="showFormatOptions = true">
+          <el-icon><MagicStick /></el-icon> 格式化
         </el-button>
-        <el-dropdown split-button size="small" @click="handleLint">
+        <el-dropdown split-button size="small" class="tb-outline-btn" @click="handleLint">
           <el-icon><DocumentChecked /></el-icon> 检查
           <template #dropdown>
             <el-dropdown-menu>
@@ -29,22 +30,15 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-        <el-dropdown split-button size="small" @click="handleFormat">
-          <el-icon><MagicStick /></el-icon> 格式化
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item @click="showFormatOptions = true">格式化选项</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-        <el-button size="small" @click="loadFileTree">
-          <el-icon><Refresh /></el-icon>
+        <el-button size="small" @click="showRuleManager = true" class="tb-outline-btn">
+          <el-icon><Setting /></el-icon> 规则
         </el-button>
         <el-button
           size="small"
           :disabled="!isDirty || hasErrors()"
           :loading="savingInProgress"
           @click="saveCurrentFile"
+          class="tb-outline-btn"
         >
           <el-icon><Download /></el-icon> 保存
         </el-button>
@@ -60,95 +54,6 @@
     </div>
 
     <div class="editor-layout">
-      <div class="file-tree-panel">
-        <div class="tree-header">
-          <el-input
-            v-model="filterText"
-            placeholder="搜索文件"
-            clearable
-            size="small"
-            :prefix-icon="Search"
-          />
-        </div>
-        <el-scrollbar>
-          <el-tree
-            ref="treeRef"
-            :data="fileTree"
-            :props="{ label: 'name', children: 'children' }"
-            :filter-node-method="filterNode"
-            node-key="path"
-            highlight-current
-            :expand-on-click-node="false"
-            @node-click="handleNodeClick"
-          >
-            <template #default="{ node, data }">
-              <span class="custom-tree-node">
-                <el-icon v-if="data.is_dir" class="folder-icon"><Folder /></el-icon>
-                <el-icon v-else class="file-icon"><Document /></el-icon>
-                <span class="node-label">{{ node.label }}</span>
-              </span>
-            </template>
-          </el-tree>
-          <div v-if="fileTree.length === 0 && !loading" class="empty-tree-container">
-            <el-empty description="此仓库暂无 .spec 文件">
-              <el-button type="primary" @click="showInitDialog = true">
-                <el-icon><Plus /></el-icon> 初始化 Spec 文件
-              </el-button>
-            </el-empty>
-          </div>
-        </el-scrollbar>
-      </div>
-
-      <div class="editor-panel">
-        <div class="monaco-container" ref="monacoContainer">
-          <div v-if="!content" class="empty-editor">
-            <el-empty description="请选择 .spec 文件" />
-          </div>
-        </div>
-        <div class="problems-panel">
-          <div class="problems-header">
-            <span>问题 ({{ lintIssues.length }})</span>
-            <el-tag v-if="errorCount > 0" type="danger" size="small">{{ errorCount }} 错误</el-tag>
-            <el-tag v-if="warningCount > 0" type="warning" size="small">{{ warningCount }} 警告</el-tag>
-          </div>
-          <el-scrollbar>
-            <div v-if="lintIssues.length === 0" class="no-problems">
-              <el-icon><CircleCheck /></el-icon>
-              <span>没有问题</span>
-            </div>
-            <div
-              v-for="(issue, idx) in lintIssues"
-              :key="`${issue.line}-${idx}`"
-              class="problem-item"
-              :class="`problem-${issue.severity}`"
-              @click="goToLine(issue.line, issue.column)"
-            >
-              <el-icon v-if="issue.severity === 'error'" color="#f56c6c"><CircleClose /></el-icon>
-              <el-icon v-else-if="issue.severity === 'warning'" color="#e6a23c"><WarningFilled /></el-icon>
-              <el-icon v-else color="#909399"><InfoFilled /></el-icon>
-              <div class="problem-body">
-                <div class="problem-msg">
-                  <span>{{ issue.message }}</span>
-                  <el-tag v-if="issue.source === 'ai'" size="small" class="ai-badge">AI</el-tag>
-                </div>
-                <div class="problem-meta">
-                  <span>Line {{ issue.line }}</span>
-                </div>
-                <div v-if="issue.quickFix && issue.source === 'ai'" class="problem-fix">
-                  <span class="fix-hint">{{ issue.quickFix }}</span>
-                  <el-button
-                    size="small"
-                    type="primary"
-                    :loading="fixingIndex === idx"
-                    @click.stop="handleAIFix(issue, idx)"
-                  >修复</el-button>
-                </div>
-              </div>
-            </div>
-          </el-scrollbar>
-        </div>
-      </div>
-
       <div v-if="showAIPanel" class="ai-chat-panel">
         <div class="ai-chat-header">
           <div class="ai-mode-switch">
@@ -248,6 +153,95 @@
             :disabled="!aiInput.trim()"
             @click="sendAIMessage"
           >{{ aiMode === 'agent' ? '执行' : '发送' }}</el-button>
+        </div>
+      </div>
+
+      <div class="file-tree-panel">
+        <div class="tree-header">
+          <el-input
+            v-model="filterText"
+            placeholder="搜索文件"
+            clearable
+            size="small"
+            :prefix-icon="Search"
+          />
+        </div>
+        <el-scrollbar>
+          <el-tree
+            ref="treeRef"
+            :data="fileTree"
+            :props="{ label: 'name', children: 'children' }"
+            :filter-node-method="filterNode"
+            node-key="path"
+            highlight-current
+            :expand-on-click-node="false"
+            @node-click="handleNodeClick"
+          >
+            <template #default="{ node, data }">
+              <span class="custom-tree-node">
+                <el-icon v-if="data.is_dir" class="folder-icon"><Folder /></el-icon>
+                <el-icon v-else class="file-icon"><Document /></el-icon>
+                <span class="node-label">{{ node.label }}</span>
+              </span>
+            </template>
+          </el-tree>
+          <div v-if="fileTree.length === 0 && !loading" class="empty-tree-container">
+            <el-empty description="此仓库暂无 .spec 文件">
+              <el-button type="primary" @click="showInitDialog = true">
+                <el-icon><Plus /></el-icon> 初始化 Spec 文件
+              </el-button>
+            </el-empty>
+          </div>
+        </el-scrollbar>
+      </div>
+
+      <div class="editor-panel">
+        <div class="monaco-container" ref="monacoContainer">
+          <div v-if="!content" class="empty-editor">
+            <el-empty description="请选择 .spec 文件" />
+          </div>
+        </div>
+        <div class="problems-panel">
+          <div class="problems-header">
+            <span>问题 ({{ lintIssues.length }})</span>
+            <el-tag v-if="errorCount > 0" type="danger" size="small">{{ errorCount }} 错误</el-tag>
+            <el-tag v-if="warningCount > 0" type="warning" size="small">{{ warningCount }} 警告</el-tag>
+          </div>
+          <el-scrollbar>
+            <div v-if="lintIssues.length === 0" class="no-problems">
+              <el-icon><CircleCheck /></el-icon>
+              <span>没有问题</span>
+            </div>
+            <div
+              v-for="(issue, idx) in lintIssues"
+              :key="`${issue.line}-${idx}`"
+              class="problem-item"
+              :class="`problem-${issue.severity}`"
+              @click="goToLine(issue.line, issue.column)"
+            >
+              <el-icon v-if="issue.severity === 'error'" color="#f56c6c"><CircleClose /></el-icon>
+              <el-icon v-else-if="issue.severity === 'warning'" color="#e6a23c"><WarningFilled /></el-icon>
+              <el-icon v-else color="#909399"><InfoFilled /></el-icon>
+              <div class="problem-body">
+                <div class="problem-msg">
+                  <span>{{ issue.message }}</span>
+                  <el-tag v-if="issue.source === 'ai'" size="small" class="ai-badge">AI</el-tag>
+                </div>
+                <div class="problem-meta">
+                  <span>Line {{ issue.line }}</span>
+                </div>
+                <div v-if="issue.quickFix && issue.source === 'ai'" class="problem-fix">
+                  <span class="fix-hint">{{ issue.quickFix }}</span>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    :loading="fixingIndex === idx"
+                    @click.stop="handleAIFix(issue, idx)"
+                  >修复</el-button>
+                </div>
+              </div>
+            </div>
+          </el-scrollbar>
         </div>
       </div>
     </div>
@@ -361,67 +355,170 @@
     </el-dialog>
 
     <!-- 格式化预览 -->
-    <el-dialog v-model="showFormatPreview" title="格式化预览" width="700px" :close-on-click-modal="false">
-      <div v-if="formatChanges.length > 0" class="format-changes-list">
-        <div class="format-stats">
-          <span>共 {{ formatChanges.length }} 处变更</span>
+    <el-dialog v-model="showFormatPreview" width="1000px" :close-on-click-modal="false" :show-close="false" class="fmt-preview-dialog">
+      <template #header>
+        <div class="fmt-diff-header">
+          <span class="fmt-diff-title">格式化预览 — {{ formatChanges.length }} 处变更</span>
+          <div class="fmt-diff-stats">
+            <span class="added">+{{ formatAddedLines }} 行</span>
+            <span class="removed">-{{ formatRemovedLines }} 行</span>
+          </div>
         </div>
-        <el-scrollbar max-height="350px">
-          <div v-for="(ch, idx) in formatChanges" :key="idx" class="format-change-item">
-            <div class="format-change-header">
-              <el-tag :type="ch.type === 'removed' ? 'danger' : ch.type === 'modified' ? 'warning' : 'info'" size="small">
-                {{ { removed: '删除', modified: '修改', reordered: '排序' }[ch.type] || ch.type }}
-              </el-tag>
-              <span class="format-change-reason">{{ ch.reason }}</span>
+      </template>
+      <div class="fmt-diff-tabs">
+        <span :class="['fmt-tab', { active: fmtPreviewTab === 'changes' }]" @click="fmtPreviewTab = 'changes'">变更列表</span>
+        <span :class="['fmt-tab', { active: fmtPreviewTab === 'diff' }]" @click="fmtPreviewTab = 'diff'">并排对比</span>
+      </div>
+      <div v-if="fmtPreviewTab === 'changes'" class="fmt-diff-body">
+        <div v-if="formatChanges.length > 0" class="fmt-changes-list">
+          <el-scrollbar max-height="420px">
+            <div v-for="(ch, idx) in formatChanges" :key="idx" class="fmt-change-card">
+              <div class="fmt-change-head">
+                <span :class="['fmt-change-tag', `fmt-tag-${ch.type}`]">
+                  {{ { removed: '删除', modified: '修改', reordered: '排序' }[ch.type] || ch.type }}
+                </span>
+                <span class="fmt-change-reason">{{ ch.reason }}</span>
+              </div>
+              <div v-if="ch.before" class="fmt-change-line fmt-line-removed">- {{ ch.before }}</div>
+              <div v-if="ch.after" class="fmt-change-line fmt-line-added">+ {{ ch.after }}</div>
             </div>
-            <div v-if="ch.before" class="format-change-before">- {{ ch.before }}</div>
-            <div v-if="ch.after" class="format-change-after">+ {{ ch.after }}</div>
+          </el-scrollbar>
+        </div>
+        <div v-else class="fmt-no-changes">
+          <el-icon :size="28" color="#10B981"><CircleCheck /></el-icon>
+          <span>无需格式化，文件已符合规范</span>
+        </div>
+      </div>
+      <div v-else class="fmt-diff-body">
+        <el-scrollbar max-height="420px">
+          <div class="fmt-side-by-side">
+            <div class="fmt-side-col">
+              <div class="fmt-side-title">原始文件</div>
+              <pre class="fmt-side-content">{{ content }}</pre>
+            </div>
+            <div class="fmt-side-col">
+              <div class="fmt-side-title">格式化后</div>
+              <pre class="fmt-side-content">{{ formatResult }}</pre>
+            </div>
           </div>
         </el-scrollbar>
       </div>
-      <div v-else class="format-no-changes">
-        <el-icon :size="28" color="#10B981"><CircleCheck /></el-icon>
-        <span>无需格式化，文件已符合规范</span>
-      </div>
       <template #footer>
-        <el-button @click="showFormatPreview = false">取消</el-button>
-        <el-button type="primary" :disabled="formatChanges.length === 0" @click="applyFormatResult">应用格式化</el-button>
+        <div class="fmt-diff-footer">
+          <el-button class="fmt-btn-outline" @click="showFormatPreview = false">取消</el-button>
+          <el-button type="primary" :disabled="formatChanges.length === 0" @click="applyFormatResult">应用格式化</el-button>
+        </div>
       </template>
     </el-dialog>
 
     <!-- 格式化选项 -->
-    <el-dialog v-model="showFormatOptions" title="格式化选项" width="500px" :close-on-click-modal="false">
-      <el-form label-width="160px">
-        <el-form-item label="宏括号规范化">
+    <el-dialog v-model="showFormatOptions" width="520px" :close-on-click-modal="false" :show-close="false" class="fmt-opt-dialog">
+      <template #header>
+        <div class="fmt-opt-header">
+          <span class="fmt-opt-title">格式化选项</span>
+          <el-button text size="small" @click="showFormatOptions = false">
+            <el-icon :size="16" color="var(--text-color-secondary, #64748B)"><Close /></el-icon>
+          </el-button>
+        </div>
+      </template>
+      <div class="fmt-opt-body">
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">宏括号规范化</span>
+            <span class="fmt-opt-desc">将 %macro 转为 %{macro}，排除白名单关键字</span>
+          </div>
           <el-switch v-model="formatOpts.curlify" />
-          <span class="form-tip">将 %macro 转为 %{macro}</span>
-        </el-form-item>
-        <el-form-item label="删除 %clean 段">
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">删除 %clean 段</span>
+            <span class="fmt-opt-desc">现代 RPM 不再需要 %clean section</span>
+          </div>
           <el-switch v-model="formatOpts.removeClean" />
-          <span class="form-tip">现代 RPM 不再需要 %clean</span>
-        </el-form-item>
-        <el-form-item label="删除 BuildRoot">
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">删除 BuildRoot</span>
+            <span class="fmt-opt-desc">现代 RPM 已废弃 BuildRoot 字段</span>
+          </div>
           <el-switch v-model="formatOpts.removeBuildRoot" />
-          <span class="form-tip">现代 RPM 已废弃 BuildRoot</span>
-        </el-form-item>
-        <el-form-item label="删除 Group 字段">
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">删除 Group 字段</span>
+            <span class="fmt-opt-desc">现代 RPM 不再使用 Group 分类</span>
+          </div>
           <el-switch v-model="formatOpts.removeGroup" />
-        </el-form-item>
-        <el-form-item label="License SPDX 修正">
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">License SPDX 修正</span>
+            <span class="fmt-opt-desc">将非标准 License 名修正为 SPDX 标识符</span>
+          </div>
           <el-switch v-model="formatOpts.licenseSpdx" />
-          <span class="form-tip">将非标准 License 名修正为 SPDX 标识</span>
-        </el-form-item>
-        <el-form-item label="依赖排序去重">
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">依赖排序去重</span>
+            <span class="fmt-opt-desc">BuildRequires/Requires 按字母排序并去重</span>
+          </div>
           <el-switch v-model="formatOpts.sortDeps" />
-          <span class="form-tip">BuildRequires/Requires 排序并去重</span>
-        </el-form-item>
-        <el-form-item label="Tab 转空格">
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">Tab 转空格</span>
+            <span class="fmt-opt-desc">所有 Tab 替换为空格</span>
+          </div>
           <el-switch v-model="formatOpts.tabToSpaces" />
-        </el-form-item>
-      </el-form>
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">Preamble 标签排序</span>
+            <span class="fmt-opt-desc">按 RPM 规范顺序重排 Name/Version/BuildRequires 等</span>
+          </div>
+          <el-switch v-model="formatOpts.preambleOrder" />
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">标签值对齐</span>
+            <span class="fmt-opt-desc">统一冒号后缩进，提升可读性</span>
+          </div>
+          <el-switch v-model="formatOpts.alignValues" />
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">路径宏替换</span>
+            <span class="fmt-opt-desc">硬编码路径 → RPM 宏 (如 /usr/bin → %{_bindir})</span>
+          </div>
+          <el-switch v-model="formatOpts.pathMacros" />
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">工具宏展开</span>
+            <span class="fmt-opt-desc">%{__make} → make, %{__rm} → rm 等</span>
+          </div>
+          <el-switch v-model="formatOpts.utilMacros" />
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">通用清理</span>
+            <span class="fmt-opt-desc">$RPM_BUILD_ROOT → %{buildroot}, egrep → grep -E</span>
+          </div>
+          <el-switch v-model="formatOpts.commonCleanup" />
+        </div>
+        <div class="fmt-opt-row">
+          <div class="fmt-opt-label">
+            <span class="fmt-opt-name">条件块空行压缩</span>
+            <span class="fmt-opt-desc">移除 %if/%else/%endif 后的多余空行</span>
+          </div>
+          <el-switch v-model="formatOpts.conditionalTrim" />
+        </div>
+      </div>
       <template #footer>
-        <el-button @click="showFormatOptions = false">关闭</el-button>
-        <el-button type="primary" @click="showFormatOptions = false; handleFormat()">应用并格式化</el-button>
+        <div class="fmt-opt-footer">
+          <el-button class="fmt-btn-outline" @click="showFormatOptions = false">关闭</el-button>
+          <el-button type="primary" @click="showFormatOptions = false; handleFormat()">应用并格式化</el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -431,7 +528,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Search, Folder, Document, Refresh, DocumentChecked, Download,
+  Search, Folder, Document, DocumentChecked, Download,
   CircleCheck, CircleClose, WarningFilled, InfoFilled, Plus,
   MagicStick, Close, Delete, User, Setting, Promotion,
 } from '@element-plus/icons-vue'
@@ -539,7 +636,7 @@ function initMonaco() {
     }
   })
   editorInstance = monaco.editor.create(monacoContainer.value, {
-    value: content.value, language: 'rpmspec', theme: 'vs-dark',
+    value: content.value, language: 'rpmspec', theme: 'vs',
     automaticLayout: true, fontSize: 14, lineNumbers: 'on',
     minimap: { enabled: true }, scrollBeyondLastLine: false,
   })
@@ -759,6 +856,10 @@ const aiLoading = ref(false)
 const activeAction = ref('')
 const messagesRef = ref<HTMLDivElement>()
 const aiMode = ref<'chat' | 'agent'>('chat')
+
+watch(showAIPanel, () => {
+  nextTick(() => { if (editorInstance) editorInstance.layout() })
+})
 const pendingAgentContent = ref('')
 
 const agentDiffText = computed(() => {
@@ -847,6 +948,9 @@ const showFormatPreview = ref(false)
 const showFormatOptions = ref(false)
 const formatChanges = ref<FormatChange[]>([])
 const formatResult = ref('')
+const fmtPreviewTab = ref<'changes' | 'diff'>('changes')
+const formatAddedLines = computed(() => formatChanges.value.filter(c => c.after).length)
+const formatRemovedLines = computed(() => formatChanges.value.filter(c => c.before).length)
 const formatOpts = ref({
   curlify: true,
   removeClean: true,
@@ -856,6 +960,12 @@ const formatOpts = ref({
   sortDeps: true,
   tabToSpaces: true,
   indentSize: 4,
+  preambleOrder: true,
+  alignValues: true,
+  pathMacros: true,
+  utilMacros: true,
+  commonCleanup: true,
+  conditionalTrim: true,
 })
 
 async function handleFormat() {
@@ -885,15 +995,19 @@ function applyFormatResult() {
 </script>
 
 <style scoped>
-.spec-editor-container { height: calc(100vh - 220px); display: flex; flex-direction: column; background: var(--bg-color-page, #fff); color: var(--text-color-primary, #1E293B); border: 1px solid var(--border-color, #E2E8F0); border-radius: var(--border-radius-lg, 12px); overflow: hidden; }
+.spec-editor-container { height: 100%; display: flex; flex-direction: column; background: var(--bg-color-page, #fff); color: var(--text-color-primary, #1E293B); border: 1px solid var(--border-color, #E2E8F0); border-radius: var(--border-radius-lg, 12px); overflow: hidden; }
 .toolbar { height: 50px; padding: 0 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color, #E2E8F0); background: var(--bg-color-page, #fff); }
 .toolbar-left { display: flex; align-items: center; gap: 12px; }
 .toolbar-left h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-color-primary, #1E293B); }
 .current-file { display: flex; align-items: center; gap: 8px; color: var(--text-color-secondary, #64748B); font-size: 13px; }
 .toolbar-right { display: flex; gap: 8px; align-items: center; }
-.editor-layout { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+.toolbar-right .ai-active-btn, .toolbar-right .ai-active-btn:focus { background: #7C3AED !important; border-color: #7C3AED !important; color: #fff !important; }
+.tb-outline-btn { color: var(--text-color-regular, #475569) !important; border-color: var(--border-color, #E2E8F0) !important; background: transparent !important; }
+.tb-outline-btn:hover { border-color: var(--primary-color, #6366F1) !important; color: var(--primary-color, #6366F1) !important; }
+.tb-outline-btn.is-disabled { color: var(--text-color-placeholder, #94A3B8) !important; border-color: var(--border-color-light, #F1F5F9) !important; }
+.editor-layout { flex: 1; display: flex; overflow: hidden; min-height: 0; min-width: 0; }
 
-.file-tree-panel { width: 250px; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border-color, #E2E8F0); background: var(--bg-color-page, #fff); }
+.file-tree-panel { width: 220px; min-width: 160px; flex: 0 0 auto; display: flex; flex-direction: column; border-right: 1px solid var(--border-color, #E2E8F0); background: var(--bg-color-page, #fff); overflow: hidden; }
 .tree-header { padding: 12px; border-bottom: 1px solid var(--border-color, #E2E8F0); }
 .file-tree-panel :deep(.el-tree) { background: transparent; color: var(--text-color-regular, #475569); }
 .file-tree-panel :deep(.el-tree-node__content:hover) { background-color: var(--surface-hover, #F8F9FC); }
@@ -905,7 +1019,7 @@ function applyFormatResult() {
 
 .editor-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .monaco-container { flex: 1; min-height: 0; position: relative; }
-.empty-editor { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #1e1e1e; }
+.empty-editor { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-color-page, #fff); }
 
 .problems-panel { height: 200px; border-top: 1px solid var(--border-color, #E2E8F0); display: flex; flex-direction: column; background: var(--bg-color-page, #fff); }
 .problems-header { height: 36px; padding: 0 12px; display: flex; align-items: center; gap: 8px; background: var(--bg-color, #F8F9FC); border-bottom: 1px solid var(--border-color, #E2E8F0); font-size: 13px; font-weight: 500; color: var(--text-color-primary, #1E293B); }
@@ -928,7 +1042,7 @@ function applyFormatResult() {
 .empty-tree-container :deep(.el-empty__description) { color: var(--text-color-secondary, #64748B); }
 
 /* AI Chat Panel */
-.ai-chat-panel { width: 360px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid var(--border-color, #E2E8F0); background: var(--bg-color-page, #fff); overflow: hidden; min-height: 0; }
+.ai-chat-panel { width: 360px; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border-color, #E2E8F0); background: var(--bg-color-page, #fff); overflow: hidden; min-height: 0; }
 .ai-chat-header { height: 42px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color, #E2E8F0); background: var(--bg-color, #F8F9FC); }
 .ai-mode-switch { display: flex; background: var(--bg-color-page, #fff); border: 1px solid var(--border-color, #E2E8F0); border-radius: 6px; padding: 2px; gap: 2px; }
 .ai-mode-btn { padding: 3px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; color: var(--text-color-secondary, #64748B); transition: all 0.15s; user-select: none; }
@@ -955,7 +1069,7 @@ function applyFormatResult() {
 .ai-message-content { font-size: 12px; line-height: 1.5; padding: 8px 10px; border-radius: 10px; word-break: break-word; }
 .ai-message--user .ai-message-content { background: var(--primary-color, #6366F1); color: #fff; border-top-right-radius: 3px; }
 .ai-message--assistant .ai-message-content { background: var(--bg-color, #F8F9FC); color: var(--text-color-regular, #475569); border: 1px solid var(--border-color-light, #F1F5F9); border-top-left-radius: 3px; }
-.ai-message-content :deep(pre) { background: #1e1e1e; color: #d4d4d4; padding: 6px 10px; border-radius: 4px; overflow-x: auto; margin: 6px 0; font-size: 11px; }
+.ai-message-content :deep(pre) { background: var(--bg-color, #F8F9FC); color: var(--text-color-regular, #475569); padding: 6px 10px; border-radius: 4px; overflow-x: auto; margin: 6px 0; font-size: 11px; border: 1px solid var(--border-color-light, #F1F5F9); }
 .ai-message-content :deep(code) { font-family: 'Consolas', monospace; font-size: 11px; background: var(--bg-color, #F8F9FC); padding: 1px 4px; border-radius: 3px; }
 .ai-message-content :deep(strong) { color: var(--primary-color, #6366F1); }
 .ai-message-actions { margin-top: 6px; }
@@ -975,21 +1089,71 @@ function applyFormatResult() {
 .rm-toolbar { display: flex; gap: 12px; margin-bottom: 16px; }
 
 /* Commit Dialog */
-.diff-preview { width: 100%; background: #1e1e1e; border: 1px solid var(--border-color, #E2E8F0); border-radius: 6px; overflow: hidden; }
-.diff-stats { padding: 8px 12px; border-bottom: 1px solid #333; font-size: 13px; color: #d4d4d4; }
+.diff-preview { width: 100%; background: var(--bg-color, #F8F9FC); border: 1px solid var(--border-color, #E2E8F0); border-radius: 6px; overflow: hidden; }
+.diff-stats { padding: 8px 12px; border-bottom: 1px solid var(--border-color, #E2E8F0); font-size: 13px; color: var(--text-color-regular, #475569); }
 .added { color: #22c55e; margin-right: 12px; }
 .removed { color: #ef4444; }
-.diff-content { padding: 12px; margin: 0; font-size: 12px; font-family: 'Consolas', monospace; color: #d4d4d4; line-height: 1.5; }
+.diff-content { padding: 12px; margin: 0; font-size: 12px; font-family: 'Consolas', monospace; color: var(--text-color-regular, #475569); line-height: 1.5; }
 
-.form-tip { margin-top: 4px; font-size: 12px; color: var(--text-color-secondary, #64748B); }
+/* Format Options Dialog */
+.fmt-opt-dialog :deep(.el-dialog) { background: var(--bg-color-page, #FFFFFF); border: 1px solid var(--border-color, #E2E8F0); border-radius: 12px; overflow: hidden; }
+.fmt-opt-dialog :deep(.el-dialog__header) { margin: 0; padding: 0; }
+.fmt-opt-dialog :deep(.el-dialog__body) { padding: 0; }
+.fmt-opt-dialog :deep(.el-dialog__footer) { padding: 0; }
 
-/* Format Preview */
-.format-changes-list { display: flex; flex-direction: column; gap: 8px; }
-.format-stats { font-size: 13px; color: var(--text-color-secondary, #64748B); padding-bottom: 8px; border-bottom: 1px solid var(--border-color-light, #F1F5F9); }
-.format-change-item { padding: 8px 12px; background: var(--bg-color, #F8F9FC); border-radius: 6px; border: 1px solid var(--border-color-light, #F1F5F9); }
-.format-change-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.format-change-reason { font-size: 12px; color: var(--text-color-secondary, #64748B); }
-.format-change-before { font-family: 'Consolas', monospace; font-size: 12px; color: #ef4444; padding: 2px 0; white-space: pre-wrap; word-break: break-all; }
-.format-change-after { font-family: 'Consolas', monospace; font-size: 12px; color: #22c55e; padding: 2px 0; white-space: pre-wrap; word-break: break-all; }
-.format-no-changes { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: var(--success-color, #10B981); font-size: 14px; }
+/* Format Preview Dialog */
+.fmt-preview-dialog :deep(.el-dialog) { background: var(--bg-color-page, #FFFFFF); border: 1px solid var(--border-color, #E2E8F0); border-radius: 12px; overflow: hidden; }
+.fmt-preview-dialog :deep(.el-dialog__header) { margin: 0; padding: 0; }
+.fmt-preview-dialog :deep(.el-dialog__body) { padding: 0; }
+.fmt-preview-dialog :deep(.el-dialog__footer) { padding: 0; }
+</style>
+
+<style>
+.fmt-opt-dialog .el-dialog { background: var(--bg-color-page, #FFFFFF) !important; border: 1px solid var(--border-color, #E2E8F0); border-radius: 12px; overflow: hidden; }
+.fmt-opt-dialog .el-dialog__header { margin: 0; padding: 0; }
+.fmt-opt-dialog .el-dialog__body { padding: 0; }
+.fmt-opt-dialog .el-dialog__footer { padding: 0; }
+.fmt-opt-header { height: 48px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-color, #F8F9FC); border-bottom: 1px solid var(--border-color, #E2E8F0); }
+.fmt-opt-title { font-size: 14px; font-weight: 600; color: var(--text-color-primary, #1E293B); }
+.fmt-opt-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+.fmt-opt-row { display: flex; align-items: center; justify-content: space-between; }
+.fmt-opt-label { display: flex; flex-direction: column; gap: 2px; max-width: 380px; }
+.fmt-opt-name { font-size: 13px; font-weight: 500; color: var(--text-color-primary, #1E293B); }
+.fmt-opt-desc { font-size: 11px; color: var(--text-color-secondary, #64748B); }
+.fmt-opt-row .el-switch { --el-switch-on-color: #6366F1; --el-switch-off-color: #CBD5E1; }
+.fmt-opt-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 0 20px; height: 56px; align-items: center; background: var(--bg-color, #F8F9FC); border-top: 1px solid var(--border-color, #E2E8F0); border-radius: 0 0 12px 12px; }
+.fmt-btn-outline { color: var(--text-color-regular, #475569) !important; border-color: var(--border-color, #E2E8F0) !important; background: transparent !important; }
+.fmt-btn-outline:hover { border-color: var(--primary-color, #6366F1) !important; color: var(--primary-color, #6366F1) !important; }
+
+.fmt-preview-dialog .el-dialog { background: var(--bg-color-page, #FFFFFF) !important; border: 1px solid var(--border-color, #E2E8F0); border-radius: 12px; overflow: hidden; }
+.fmt-preview-dialog .el-dialog__header { margin: 0; padding: 0; }
+.fmt-preview-dialog .el-dialog__body { padding: 0; }
+.fmt-preview-dialog .el-dialog__footer { padding: 0; }
+.fmt-diff-header { height: 48px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-color, #F8F9FC); border-bottom: 1px solid var(--border-color, #E2E8F0); border-radius: 12px 12px 0 0; }
+.fmt-diff-title { font-size: 14px; font-weight: 600; color: var(--text-color-primary, #1E293B); }
+.fmt-diff-stats { display: flex; gap: 12px; font-size: 12px; font-weight: 500; }
+.fmt-diff-stats .added { color: #22C55E; }
+.fmt-diff-stats .removed { color: #EF4444; }
+.fmt-diff-tabs { height: 36px; padding: 0 20px; display: flex; gap: 16px; align-items: center; background: var(--bg-color-page, #FFFFFF); border-bottom: 1px solid var(--border-color, #E2E8F0); }
+.fmt-tab { font-size: 12px; color: var(--text-color-secondary, #64748B); cursor: pointer; transition: color 0.15s; }
+.fmt-tab:hover { color: var(--text-color-primary, #1E293B); }
+.fmt-tab.active { color: #6366F1; font-weight: 500; }
+.fmt-diff-body { padding: 16px; min-height: 200px; }
+.fmt-changes-list { display: flex; flex-direction: column; gap: 10px; }
+.fmt-change-card { padding: 10px 14px; background: var(--bg-color, #F8F9FC); border: 1px solid var(--border-color, #E2E8F0); border-radius: 6px; display: flex; flex-direction: column; gap: 6px; }
+.fmt-change-head { display: flex; align-items: center; gap: 8px; }
+.fmt-change-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; color: #fff; }
+.fmt-tag-removed { background: #EF4444; }
+.fmt-tag-modified { background: #F59E0B; }
+.fmt-tag-reordered { background: #6366F1; }
+.fmt-change-reason { font-size: 11px; color: var(--text-color-secondary, #64748B); }
+.fmt-change-line { font-family: 'Consolas', 'Courier New', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; }
+.fmt-line-removed { color: #EF4444; }
+.fmt-line-added { color: #22C55E; }
+.fmt-no-changes { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: #10B981; font-size: 14px; }
+.fmt-diff-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 0 20px; height: 56px; align-items: center; background: var(--bg-color, #F8F9FC); border-top: 1px solid var(--border-color, #E2E8F0); border-radius: 0 0 12px 12px; }
+.fmt-side-by-side { display: flex; gap: 12px; }
+.fmt-side-col { flex: 1; min-width: 0; background: var(--bg-color, #F8F9FC); border: 1px solid var(--border-color, #E2E8F0); border-radius: 6px; overflow: hidden; }
+.fmt-side-title { padding: 8px 14px; font-size: 12px; font-weight: 500; color: var(--text-color-secondary, #64748B); background: var(--bg-color, #F8F9FC); border-bottom: 1px solid var(--border-color, #E2E8F0); }
+.fmt-side-content { margin: 0; padding: 12px 14px; font-size: 11px; font-family: 'Consolas', 'Courier New', monospace; color: var(--text-color-regular, #475569); line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
 </style>
