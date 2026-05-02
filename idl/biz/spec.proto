@@ -83,6 +83,15 @@ service SpecService {
     rpc FormatSpec(FormatSpecRequest) returns (FormatSpecResponse) {
         option (api.post) = "/api/v1/spec/format";
     }
+
+    // 配置 API
+    rpc GetSpecConfig(GetSpecConfigRequest) returns (SpecConfigResponse) {
+        option (api.get) = "/api/v1/spec/config";
+    }
+
+    rpc SaveSpecConfig(SaveSpecConfigRequest) returns (SpecConfigResponse) {
+        option (api.put) = "/api/v1/spec/config";
+    }
 }
 
 // Spec 树响应
@@ -340,4 +349,43 @@ message FormatSpecResponse {
     optional common.BaseResponse base = 1;
     optional string content = 2;
     repeated FormatChange changes = 3;
+}
+
+// Spec 配置请求
+message GetSpecConfigRequest {}
+
+message SpecFormatOptionsConfig {
+    optional bool curlify = 1;
+    optional bool remove_clean = 2;
+    optional bool remove_build_root = 3;
+    optional bool remove_group = 4;
+    optional bool license_spdx = 5;
+    optional bool sort_deps = 6;
+    optional bool tab_to_spaces = 7;
+    optional int32 indent_size = 8;
+    optional bool preamble_order = 9;
+    optional bool align_values = 10;
+    optional bool path_macros = 11;
+    optional bool util_macros = 12;
+    optional bool common_cleanup = 13;
+    optional bool conditional_trim = 14;
+}
+
+message SpecAIConfig {
+    optional string default_action = 1;
+    optional string system_prompt = 2;
+    optional bool auto_fix = 3;
+}
+
+message SpecConfigResponse {
+    optional common.BaseResponse base = 1;
+    optional string default_template = 2;
+    optional SpecFormatOptionsConfig format_options = 3;
+    optional SpecAIConfig ai_config = 4;
+}
+
+message SaveSpecConfigRequest {
+    optional string default_template = 1;
+    optional SpecFormatOptionsConfig format_options = 2;
+    optional SpecAIConfig ai_config = 3;
 }

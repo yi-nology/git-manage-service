@@ -4,6 +4,7 @@ package review
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -37,6 +38,8 @@ func CreateTask(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
+	c.Set("audit_target", "repo:"+req.RepoKey)
+	c.Set("audit_details", map[string]string{"mr_iid": req.MRIID, "trigger": req.TriggerType})
 	pkgresponse.Success(c, api.NewReviewTaskDTO(*task))
 }
 
@@ -185,6 +188,7 @@ func UpdateReviewConfig(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
+	c.Set("audit_target", "repo:"+repoKey)
 	pkgresponse.Success(c, map[string]string{"config_yaml": req.ConfigYAML})
 }
 
@@ -230,6 +234,7 @@ func UpdateRemoteRepoConfig(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
+	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", providerID, owner, repo))
 	pkgresponse.Success(c, result)
 }
 

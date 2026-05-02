@@ -37,6 +37,8 @@ func Register(r *server.Hertz) {
 					_repo_key := _repo.Group("/:repo_key", _repo_keyMw()...)
 					{
 						_author0 := _repo_key.Group("/author", _author0Mw()...)
+						_author0.POST("/ai", append(_authoraiMw(), author.AuthorAI)...)
+						_author0.POST("/chat", append(_authorchatMw(), author.AuthorChat)...)
 						_author0.GET("/config", append(_getrepoauthorconfigMw(), author.GetRepoAuthorConfig)...)
 						_author0.PUT("/config", append(_setrepoauthorconfigMw(), author.SetRepoAuthorConfig)...)
 						_author0.POST("/fix", append(_fixauthorMw(), author.FixAuthor)...)

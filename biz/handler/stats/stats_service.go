@@ -267,6 +267,7 @@ func SaveLineStatsConfig(ctx context.Context, c *app.RequestContext) {
 	lineCounter := statsSvc.GetLineCounter()
 	lineCounter.ClearCache(repo.Path)
 
+	c.Set("audit_target", "repo:"+repo.Key)
 	response.Success(c, map[string]string{
 		"message": "配置已保存，下次统计将使用新配置",
 	})

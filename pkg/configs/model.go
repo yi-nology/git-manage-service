@@ -1,15 +1,16 @@
 package configs
 
 type Config struct {
-	Server     ServerConfig        `mapstructure:"server"`
-	Database   DatabaseConfig      `mapstructure:"database"`
-	Webhook    WebhookConfig       `mapstructure:"webhook"`
-	Rpc        RpcConfig           `mapstructure:"rpc"`
-	Storage    StorageConfig       `mapstructure:"storage"`
-	Lock       LockConfig          `mapstructure:"lock"`
-	Lint       LintConfig          `mapstructure:"lint"`
-	CodeReview CodeReviewConfig    `mapstructure:"code_review"`
-	Redis      RedisConfig         `mapstructure:"redis"`
+	Server     ServerConfig     `mapstructure:"server"`
+	Database   DatabaseConfig   `mapstructure:"database"`
+	Webhook    WebhookConfig    `mapstructure:"webhook"`
+	Rpc        RpcConfig        `mapstructure:"rpc"`
+	Storage    StorageConfig    `mapstructure:"storage"`
+	Lock       LockConfig       `mapstructure:"lock"`
+	Lint       LintConfig       `mapstructure:"lint"`
+	CodeReview CodeReviewConfig `mapstructure:"code_review"`
+	Redis      RedisConfig      `mapstructure:"redis"`
+	Prometheus PrometheusConfig `mapstructure:"prometheus"`
 }
 
 type ServerConfig struct {
@@ -64,12 +65,12 @@ type LintConfig struct {
 }
 
 type CodeReviewConfig struct {
-	Enabled        bool   `mapstructure:"enabled"`
-	DefaultLLM     string `mapstructure:"default_llm"`
-	MaxFiles       int    `mapstructure:"max_files"`
-	MaxDiffLines   int    `mapstructure:"max_diff_lines"`
-	AutoReviewOnMR bool   `mapstructure:"auto_review_on_mr"`
-	BlockOnHigh    bool   `mapstructure:"block_on_high"`
+	Enabled        bool                `mapstructure:"enabled"`
+	DefaultLLM     string              `mapstructure:"default_llm"`
+	MaxFiles       int                 `mapstructure:"max_files"`
+	MaxDiffLines   int                 `mapstructure:"max_diff_lines"`
+	AutoReviewOnMR bool                `mapstructure:"auto_review_on_mr"`
+	BlockOnHigh    bool                `mapstructure:"block_on_high"`
 	LLMProviders   []LLMProviderConfig `mapstructure:"llm_providers"`
 }
 
@@ -86,4 +87,10 @@ type RedisConfig struct {
 	Addr     string `mapstructure:"addr"`
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
+}
+
+type PrometheusConfig struct {
+	Enabled bool   `mapstructure:"enabled"`
+	Port    int    `mapstructure:"port"`
+	Path    string `mapstructure:"path"`
 }

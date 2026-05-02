@@ -100,3 +100,13 @@ func _scanauthorMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _authoraiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _authorchatMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

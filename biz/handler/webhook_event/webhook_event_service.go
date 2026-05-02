@@ -2,6 +2,7 @@ package webhook_event
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
@@ -48,5 +49,6 @@ func Retry(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to retry event: "+err.Error())
 		return
 	}
+	c.Set("audit_target", fmt.Sprintf("webhook_event:%d", req.EventID))
 	pkgresponse.Success(c, map[string]string{"message": "Event retried"})
 }

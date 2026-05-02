@@ -16,7 +16,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	systemModel "github.com/yi-nology/git-manage-service/biz/model/system"
-	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	"github.com/yi-nology/git-manage-service/biz/service/auth"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/appinfo"
@@ -310,12 +309,7 @@ func SubmitChanges(ctx context.Context, c *app.RequestContext) {
 		msg += " and pushed to remote"
 	}
 
-	audit.AuditSvc.Log(c, "SUBMIT_CHANGES", "repo:"+repo.Key, map[string]interface{}{
-		"message": req.Message,
-		"push":    req.Push,
-		"files":   req.Files,
-	})
-
+	c.Set("audit_target", "repo:"+repo.Key)
 	response.Success(c, map[string]string{"message": msg})
 }
 

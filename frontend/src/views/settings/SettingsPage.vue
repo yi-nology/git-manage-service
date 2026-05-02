@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import { Key, Lock, Bell, Connection, MagicStick, SetUp, Cpu, User } from '@element-plus/icons-vue'
+import { Key, Lock, Bell, Connection, MagicStick, SetUp, Cpu, User, Document } from '@element-plus/icons-vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 
 const cards = [
@@ -27,6 +27,7 @@ const cards = [
   { title: '平台配置', desc: '管理 GitLab/GitHub/Gitea 平台集成', icon: Connection, color: 'blue', route: '/settings/platforms' },
   { title: '分支规则', desc: '定义分支命名前缀和保护规则', icon: SetUp, color: 'teal', route: '/settings/branch-rules' },
   { title: 'Git 作者', desc: '管理 Git 提交身份和别名，修复历史提交作者', icon: User, color: 'green', route: '/settings/author' },
+  { title: 'Spec 全局配置', desc: '管理 Spec 文件的默认模板、Lint 规则、格式化选项和 AI 辅助配置', icon: Document, color: 'indigo', route: '/settings/spec' },
 ]
 </script>
 

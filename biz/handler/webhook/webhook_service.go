@@ -13,7 +13,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	webhook "github.com/yi-nology/git-manage-service/biz/model/webhook"
-	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	"github.com/yi-nology/git-manage-service/biz/service/provider"
 	"github.com/yi-nology/git-manage-service/biz/service/sync"
 	"github.com/yi-nology/git-manage-service/biz/service/webhookevent"
@@ -56,10 +55,8 @@ func TriggerSync(ctx context.Context, c *app.RequestContext) {
 		syncSvc.ExecuteSyncWithTrigger(task, po.TriggerSourceWebhook)
 	}()
 
-	audit.AuditSvc.Log(c, "WEBHOOK_TRIGGER", "task:"+task.Key, map[string]string{
-		"run_id": runID,
-	})
-
+	c.Set("audit_target", "task:"+task.Key)
+	c.Set("audit_details", map[string]string{"task_key": taskKey})
 	response.Success(c, map[string]interface{}{
 		"run_id":   runID,
 		"task_key": task.Key,
@@ -103,10 +100,7 @@ func TriggerSyncByToken(ctx context.Context, c *app.RequestContext) {
 		syncSvc.ExecuteSyncWithTrigger(task, po.TriggerSourceWebhook)
 	}()
 
-	audit.AuditSvc.Log(c, "WEBHOOK_TRIGGER_BY_TOKEN", "task:"+task.Key, map[string]string{
-		"run_id": runID,
-	})
-
+	c.Set("audit_target", "task:"+task.Key)
 	response.Success(c, map[string]interface{}{
 		"run_id":   runID,
 		"task_key": task.Key,
@@ -171,11 +165,8 @@ func Receive(ctx context.Context, c *app.RequestContext) {
 		}
 	}()
 
-	audit.AuditSvc.Log(c, "WEBHOOK_RECEIVED", event.Type, map[string]string{
-		"event_id": event.ID,
-		"source":   string(event.Source),
-	})
-
+	body, _ := c.Body()
+	c.Set("audit_target", string(body))
 	response.Accepted(c, "Webhook received", map[string]interface{}{
 		"event_id":   event.ID,
 		"event_type": event.Type,

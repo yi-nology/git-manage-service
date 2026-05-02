@@ -83,3 +83,15 @@ redis:
   addr: "localhost:6379"
   password: ""
   db: 0
+
+# 9. Prometheus Configuration
+prometheus:
+  # Enable Prometheus metrics export
+  # Default: false
+  enabled: false
+  # Prometheus metrics server port (separate from main HTTP server)
+  # Default: 9091
+  port: 9091
+  # Metrics endpoint path
+  # Default: /metrics
+  path: "/metrics"

@@ -36,7 +36,6 @@
         </div>
       </template>
 
-      <!-- 进度条 -->
       <div v-if="seriesStats && seriesStats.total_patches > 0" class="progress-section">
         <el-progress
           :percentage="getProgress()"
@@ -50,7 +49,6 @@
         </div>
       </div>
 
-      <!-- Patch 列表 -->
       <el-table :data="patches" v-loading="loading" stripe border size="small">
         <el-table-column prop="sequence" label="序号" width="70" align="center">
           <template #default="{ row }">
@@ -84,9 +82,9 @@
           <template #default="{ row }">
             <el-button size="small" @click="viewPatch(row)">查看</el-button>
             <el-button size="small" type="primary" @click="downloadPatch(row)">下载</el-button>
-            <el-button 
-              size="small" 
-              type="success" 
+            <el-button
+              size="small"
+              type="success"
               @click="openApplyDialog(row)"
               :disabled="!row.can_apply && !row.is_applied"
             >
@@ -103,167 +101,13 @@
       </el-table>
     </el-card>
 
-    <!-- 生成 Patch 对话框 -->
-    <el-dialog v-model="showGenerateDialog" title="生成 Patch" width="700px" destroy-on-close @open="loadDialogData">
-      <el-form :model="generateForm" label-width="120px">
-        <el-form-item label="生成方式">
-          <el-radio-group v-model="generateMode">
-            <el-radio value="range">分支/Tag/Commit 范围</el-radio>
-            <el-radio value="commits">选择 Commits</el-radio>
-          </el-radio-group>
-        </el-form-item>
+    <PatchGenerateDialog
+      v-model="showGenerateDialog"
+      :repo-key="repoKey"
+      :patches="patches"
+      @generated="loadPatches"
+    />
 
-        <template v-if="generateMode === 'range'">
-          <el-form-item label="基准（起点）">
-            <el-select
-              v-model="generateForm.base"
-              filterable
-              allow-create
-              placeholder="选择或输入基准（分支/Tag/Commit）"
-              style="width: 100%"
-            >
-              <el-option-group label="分支">
-                <el-option
-                  v-for="branch in branches"
-                  :key="branch.name"
-                  :label="branch.name"
-                  :value="branch.name"
-                />
-              </el-option-group>
-              <el-option-group label="Tags">
-                <el-option
-                  v-for="tag in tags"
-                  :key="tag"
-                  :label="tag"
-                  :value="tag"
-                />
-              </el-option-group>
-              <el-option-group label="最近 Commits">
-                <el-option
-                  v-for="commit in recentCommits"
-                  :key="commit.hash"
-                  :label="`${commit.short_hash} - ${commit.message.slice(0, 50)}`"
-                  :value="commit.hash"
-                />
-              </el-option-group>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="目标（终点）">
-            <el-select
-              v-model="generateForm.target"
-              filterable
-              allow-create
-              placeholder="选择或输入目标（分支/Tag/Commit）"
-              style="width: 100%"
-            >
-              <el-option-group label="分支">
-                <el-option
-                  v-for="branch in branches"
-                  :key="branch.name"
-                  :label="branch.name"
-                  :value="branch.name"
-                />
-              </el-option-group>
-              <el-option-group label="Tags">
-                <el-option
-                  v-for="tag in tags"
-                  :key="tag"
-                  :label="tag"
-                  :value="tag"
-                />
-              </el-option-group>
-              <el-option-group label="最近 Commits">
-                <el-option
-                  v-for="commit in recentCommits"
-                  :key="commit.hash"
-                  :label="`${commit.short_hash} - ${commit.message.slice(0, 50)}`"
-                  :value="commit.hash"
-                />
-              </el-option-group>
-            </el-select>
-          </el-form-item>
-        </template>
-
-        <template v-else>
-          <el-form-item label="选择 Commits">
-            <el-select
-              v-model="selectedCommits"
-              multiple
-              filterable
-              placeholder="选择要生成 patch 的 commits（可多选）"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="commit in recentCommits"
-                :key="commit.hash"
-                :label="`${commit.short_hash} - ${commit.message.slice(0, 60)} (${commit.author_name})`"
-                :value="commit.hash"
-              />
-            </el-select>
-            <div class="hint">提示：可多选，按 Ctrl/Cmd 点击选择多个</div>
-          </el-form-item>
-        </template>
-
-        <el-divider />
-
-        <el-form-item label="保存选项">
-          <el-checkbox v-model="savePatch">保存到项目</el-checkbox>
-        </el-form-item>
-
-        <template v-if="savePatch">
-          <el-form-item label="文件名" required>
-            <el-input v-model="patchName" placeholder="输入描述，如: feature-login、fix-bug">
-              <template #prepend>{{ getNextPatchPrefix() }}</template>
-              <template #append>.patch</template>
-            </el-input>
-            <div class="hint">系统自动生成序号，你只需输入描述部分</div>
-          </el-form-item>
-          <el-form-item label="保存路径">
-            <el-select
-              v-model="selectedPath"
-              filterable
-              allow-create
-              placeholder="选择或输入保存路径（默认: patches/）"
-              style="width: 100%"
-            >
-              <el-option label="patches/ (默认)" value="patches" />
-              <el-option
-                v-for="dir in repoDirs"
-                :key="dir.path"
-                :label="dir.path + '/'"
-                :value="dir.path"
-              />
-            </el-select>
-            <div class="path-hint">
-              💡 建议使用默认的 <code>patches/</code> 目录
-              <el-button size="small" link @click="selectedPath = 'patches'">重置为默认</el-button>
-            </div>
-          </el-form-item>
-          <el-form-item>
-            <el-checkbox v-model="autoCommit">立即提交到 Git</el-checkbox>
-          </el-form-item>
-          <el-form-item v-if="autoCommit" label="提交消息">
-            <el-input
-              v-model="commitMessage"
-              placeholder="如: chore: add feature-xxx patch"
-            />
-            <div class="hint">快捷选项：
-              <el-button size="small" link @click="commitMessage = 'chore: add patch for ' + (patchName || 'feature')">chore: add patch</el-button>
-              <el-button size="small" link @click="commitMessage = 'feat: add patch'">feat: add patch</el-button>
-            </div>
-          </el-form-item>
-        </template>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="showGenerateDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleGenerate" :loading="generating">
-          {{ savePatch ? '生成并保存' : '生成并下载' }}
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 查看 Patch 对话框 -->
     <el-dialog v-model="showViewDialog" title="Patch 内容" width="800px" destroy-on-close>
       <el-input
         v-model="patchContent"
@@ -278,7 +122,6 @@
       </template>
     </el-dialog>
 
-    <!-- 应用 Patch 对话框 -->
     <el-dialog v-model="showApplyDialog" title="应用 Patch" width="700px" destroy-on-close>
       <el-alert v-if="!patchStats" type="info" :closable="false" class="mb-4">
         应用 Patch 将修改工作区文件，请确保已提交或暂存当前更改。
@@ -337,8 +180,6 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, CircleCheck, Clock, Warning, ArrowRight, Finished } from '@element-plus/icons-vue'
 import {
-  generatePatch,
-  savePatch as savePatchApi,
   listPatches,
   getPatchContent,
   getPatchDownloadUrl,
@@ -346,14 +187,9 @@ import {
   checkPatch,
   deletePatch,
 } from '@/api/modules/patch'
-import { getBranchList } from '@/api/modules/branch'
-import { getTagList } from '@/api/modules/branch'
-import { searchCommits } from '@/api/modules/commit'
-import { getFileTree } from '@/api/modules/file'
 import type { PatchInfoDTO, PatchStatsDTO } from '@/types/patch'
-import type { BranchInfo } from '@/types/branch'
-import type { CommitDetail } from '@/api/modules/commit'
 import { useNotification } from '@/composables/useNotification'
+import PatchGenerateDialog from './PatchGenerateDialog.vue'
 
 const props = defineProps<{
   repoKey: string
@@ -365,33 +201,11 @@ const loading = ref(false)
 const patches = ref<PatchInfoDTO[]>([])
 const seriesStats = ref<any>(null)
 
-// 生成
 const showGenerateDialog = ref(false)
-const generateMode = ref<'range' | 'commits'>('range')
-const generateForm = ref({
-  base: '',
-  target: '',
-  commits: [] as string[],
-})
-const selectedCommits = ref<string[]>([])
-const savePatch = ref(true)
-const patchName = ref('')
-const selectedPath = ref('')
-const autoCommit = ref(false)
-const commitMessage = ref('')
-const generating = ref(false)
 
-// 选择器数据
-const branches = ref<BranchInfo[]>([])
-const tags = ref<string[]>([])
-const recentCommits = ref<CommitDetail[]>([])
-const repoDirs = ref<any[]>([])
-
-// 查看
 const showViewDialog = ref(false)
 const patchContent = ref('')
 
-// 应用
 const showApplyDialog = ref(false)
 const applyForm = ref({
   patchPath: '',
@@ -410,15 +224,12 @@ async function loadPatches() {
   loading.value = true
   try {
     const result = await listPatches(props.repoKey)
-    // 确保 result 是数组
     patches.value = Array.isArray(result) ? result : []
 
-    // 计算统计信息
     const applied = patches.value.filter(p => p.is_applied).length
     const pending = patches.value.filter(p => !p.is_applied && p.can_apply).length
     const conflict = patches.value.filter(p => !p.is_applied && !p.can_apply).length
 
-    // 找到下一个待应用的 patch
     const nextIndex = patches.value.findIndex(p => !p.is_applied && p.can_apply)
 
     seriesStats.value = {
@@ -438,145 +249,8 @@ async function loadPatches() {
   }
 }
 
-async function loadDialogData() {
-  // 加载分支列表
-  try {
-    const res = await getBranchList(props.repoKey, { page_size: 100 })
-    branches.value = res.list || []
-  } catch (e) {
-    console.error('Failed to load branches:', e)
-  }
-
-  // 加载 tag 列表
-  try {
-    tags.value = await getTagList(props.repoKey)
-  } catch (e) {
-    console.error('Failed to load tags:', e)
-  }
-
-  // 加载最近 commits
-  try {
-    const res = await searchCommits(props.repoKey, { page_size: 50 })
-    recentCommits.value = res.commits
-  } catch (e) {
-    console.error('Failed to load commits:', e)
-  }
-
-  // 加载仓库目录（用于选择保存路径）
-  try {
-    const res = await getFileTree(props.repoKey, { recursive: true })
-    repoDirs.value = buildPathTree(res.entries)
-    // 默认选中 patches 目录
-    if (!selectedPath.value) {
-      selectedPath.value = 'patches'
-    }
-  } catch (e) {
-    console.error('Failed to load file tree:', e)
-  }
-}
-
-function buildPathTree(entries: any[]): any[] {
-  // 只提取目录，构建简洁的目录列表
-  const dirs: any[] = []
-
-  entries.forEach((e: any) => {
-    if (e.type === 'dir') {
-      // 排除隐藏目录和常见不需要的目录
-      const path = e.path
-      if (!path.startsWith('.') &&
-          !path.includes('node_modules') &&
-          !path.includes('vendor') &&
-          !path.includes('dist') &&
-          !path.includes('build')) {
-        dirs.push({
-          path: path,
-          name: path.split('/').pop() || path,
-        })
-      }
-    }
-  })
-
-  // 按路径排序
-  dirs.sort((a, b) => a.path.localeCompare(b.path))
-
-  return dirs
-}
-
 function openGenerateDialog() {
-  generateForm.value = { base: '', target: '', commits: [] }
-  selectedCommits.value = []
-  savePatch.value = true
-  patchName.value = ''
-  selectedPath.value = ''
-  autoCommit.value = false
-  commitMessage.value = ''
-  generateMode.value = 'range'
   showGenerateDialog.value = true
-}
-
-async function handleGenerate() {
-  // 验证
-  if (generateMode.value === 'range') {
-    if (!generateForm.value.base || !generateForm.value.target) {
-      ElMessage.warning('请选择基准和目标')
-      return
-    }
-  } else {
-    if (selectedCommits.value.length === 0) {
-      ElMessage.warning('请选择至少一个 Commit')
-      return
-    }
-    generateForm.value.commits = selectedCommits.value
-  }
-
-  if (savePatch.value && !patchName.value.trim()) {
-    ElMessage.warning('请填写文件名描述')
-    return
-  }
-
-  if (savePatch.value && autoCommit.value && !commitMessage.value.trim()) {
-    ElMessage.warning('请填写提交消息')
-    return
-  }
-
-  generating.value = true
-  try {
-    const req: any = { repo_key: props.repoKey }
-    if (generateMode.value === 'range') {
-      req.base = generateForm.value.base
-      req.target = generateForm.value.target
-    } else {
-      req.commits = generateForm.value.commits
-    }
-
-    const result = await generatePatch(req)
-    const content = result.content
-
-    if (savePatch.value) {
-      // 保存到项目
-      const prefix = getNextPatchPrefix()
-      const fullName = prefix + (patchName.value.endsWith('.patch') ? patchName.value : patchName.value + '.patch')
-
-      await savePatchApi({
-        repo_key: props.repoKey,
-        patch_name: fullName,
-        patch_content: content,
-        custom_path: selectedPath.value || undefined,
-        commit_message: autoCommit.value ? commitMessage.value : undefined,
-      })
-      showSuccess('Patch 已保存' + (autoCommit.value ? '并提交到 Git' : ''))
-      loadPatches()
-    } else {
-      // 下载
-      downloadContent(content, patchName.value || 'patch.patch')
-    }
-
-    showGenerateDialog.value = false
-  } catch (e: any) {
-    showError('生成失败', e)
-  } finally {
-    generating.value = false
-  }
 }
 
 async function viewPatch(patch: PatchInfoDTO) {
@@ -594,16 +268,6 @@ function downloadPatch(patch: PatchInfoDTO) {
   window.open(url, '_blank')
 }
 
-function downloadContent(content: string, filename: string) {
-  const blob = new Blob([content], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
 async function openApplyDialog(patch: PatchInfoDTO) {
   applyForm.value = {
     patchPath: patch.path,
@@ -614,7 +278,6 @@ async function openApplyDialog(patch: PatchInfoDTO) {
   patchStats.value = null
   showApplyDialog.value = true
 
-  // 自动检查 patch 是否可以应用
   try {
     patchStats.value = await checkPatch(props.repoKey, patch.path)
   } catch (e: any) {
@@ -671,27 +334,6 @@ function getNextPatchName(): string {
   return patch ? patch.name : ''
 }
 
-function getNextPatchPrefix(): string {
-  // 自动生成下一个 patch 的序号前缀
-  // 例如：如果已有 001-base.patch, 002-feature.patch
-  // 则下一个前缀为 003-
-  if (!patches.value || patches.value.length === 0) {
-    return '001-'
-  }
-
-  // 找到最大的序号
-  let maxSeq = 0
-  patches.value.forEach(p => {
-    if (p.sequence > maxSeq) {
-      maxSeq = p.sequence
-    }
-  })
-
-  // 下一个序号
-  const nextSeq = maxSeq + 1
-  return String(nextSeq).padStart(3, '0') + '-'
-}
-
 async function applyNextPatch() {
   if (!seriesStats.value || seriesStats.value.next_patch_index < 0) {
     ElMessage.warning('没有待应用的 patch')
@@ -721,7 +363,6 @@ async function applyAllPending() {
       }
     )
 
-    // 依次应用所有待应用的 patch
     if (!patches.value || !Array.isArray(patches.value)) {
       ElMessage.error('Patch 列表数据异常')
       return
@@ -773,48 +414,10 @@ function formatSize(bytes: number): string {
   gap: 8px;
 }
 
-.path-hint {
-  font-size: var(--font-size-xs);
-  color: var(--text-color-secondary);
-  margin-top: var(--spacing-xs);
-}
-
-.path-hint code {
-  padding: 2px 6px;
-  background: var(--border-color-light);
-  border-radius: 3px;
-  font-family: 'Monaco', 'Menlo', monospace;
-}
-
-.hint {
-  font-size: var(--font-size-xs);
-  color: var(--text-color-secondary);
-  margin-top: var(--spacing-xs);
-}
-
-.patch-content :deep(textarea) {
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: 12px;
-}
-
-.mb-4 {
-  margin-bottom: 16px;
-}
-
-.error-detail {
-  margin-top: 8px;
-  font-size: 12px;
-  white-space: pre-wrap;
-}
-
-.stat-output {
-  margin-top: var(--spacing-sm);
-  padding: var(--spacing-sm);
-  background: var(--bg-color);
-  border-radius: var(--border-radius-sm);
-  font-size: var(--font-size-xs);
-  max-height: 200px;
-  overflow: auto;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .patch-name {
@@ -845,15 +448,34 @@ function formatSize(bytes: number): string {
   margin-left: 8px;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.patch-content :deep(textarea) {
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 12px;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.error-detail {
+  margin-top: 8px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.stat-output {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--bg-color);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-xs);
+  max-height: 200px;
+  overflow: auto;
+}
+
+.hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-color-secondary);
+  margin-top: var(--spacing-xs);
 }
 </style>

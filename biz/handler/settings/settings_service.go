@@ -3,13 +3,14 @@ package settings
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	settings "github.com/yi-nology/git-manage-service/biz/model/settings"
-	settingssvc "github.com/yi-nology/git-manage-service/biz/service/settings"
 	"github.com/yi-nology/git-manage-service/biz/service/branchrule"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
+	settingssvc "github.com/yi-nology/git-manage-service/biz/service/settings"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -174,6 +175,7 @@ func UpdateCodeReviewSettings(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "failed to persist settings: "+err.Error())
 		return
 	}
+	c.Set("audit_details", map[string]interface{}{"enabled": dto.Enabled, "auto_review": dto.AutoReviewOnMR})
 	pkgresponse.Success(c, dto)
 }
 
@@ -207,6 +209,7 @@ func UpdateBranchRules(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
+	c.Set("audit_details", map[string]interface{}{"rules_count": len(dto.Rules)})
 	pkgresponse.Success(c, result)
 }
 
@@ -261,6 +264,7 @@ func UpdateRemoteRepoBranchRules(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
+	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", uint(req.ProviderId), req.Owner, req.Repo))
 	pkgresponse.Success(c, result)
 }
 
@@ -326,6 +330,7 @@ func CreateReviewRule(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
+	c.Set("audit_target", "review_rule:"+result.ID)
 	pkgresponse.Success(c, result)
 }
 
@@ -382,6 +387,7 @@ func BatchUpdateReviewRules(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
+	c.Set("audit_details", map[string]interface{}{"count": len(dtos)})
 	rules, _ := settingssvc.ListReviewRules()
 	pkgresponse.Success(c, rules)
 }

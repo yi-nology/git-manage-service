@@ -49,6 +49,10 @@ func LoadConfig(configPaths []string, configName string, configType string) (Con
 	v.SetDefault("redis.addr", "localhost:6379")
 	v.SetDefault("redis.db", 0)
 
+	v.SetDefault("prometheus.enabled", false)
+	v.SetDefault("prometheus.port", 9091)
+	v.SetDefault("prometheus.path", "/metrics")
+
 	// Environment variables override
 	// 支持环境变量覆盖，如 STORAGE_TYPE, LOCK_REDIS_ADDR 等
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

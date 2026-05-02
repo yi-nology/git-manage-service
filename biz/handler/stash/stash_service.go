@@ -8,7 +8,6 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	stash "github.com/yi-nology/git-manage-service/biz/model/stash"
-	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -73,9 +72,6 @@ func SaveStash(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "STASH_SAVE", "repo:"+repo.Key, map[string]string{
-		"message": req.Message,
-	})
 	response.Success(c, map[string]string{"message": "stash saved"})
 }
 
@@ -100,9 +96,6 @@ func ApplyStash(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "STASH_APPLY", "repo:"+repo.Key, map[string]interface{}{
-		"index": req.Index,
-	})
 	response.Success(c, map[string]string{"message": "stash applied"})
 }
 
@@ -127,9 +120,6 @@ func PopStash(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "STASH_POP", "repo:"+repo.Key, map[string]interface{}{
-		"index": req.Index,
-	})
 	response.Success(c, map[string]string{"message": "stash popped"})
 }
 
@@ -154,9 +144,6 @@ func DropStash(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "STASH_DROP", "repo:"+repo.Key, map[string]interface{}{
-		"index": req.Index,
-	})
 	response.Success(c, map[string]string{"message": "stash dropped"})
 }
 
@@ -181,6 +168,5 @@ func ClearStash(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "STASH_CLEAR", "repo:"+repo.Key, nil)
 	response.Success(c, map[string]string{"message": "all stashes cleared"})
 }

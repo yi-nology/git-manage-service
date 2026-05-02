@@ -130,3 +130,43 @@ func _createllmproviderMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _listllmpresetsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _review_rulesMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _listreviewrulesMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _batchupdatereviewrulesMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _deletereviewruleMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _getreviewruleMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _updatereviewruleMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _createreviewruleMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

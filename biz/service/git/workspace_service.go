@@ -1,12 +1,9 @@
 package git
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -277,90 +274,6 @@ func (s *GitService) CommitChanges(repoPath string, files []string, stageAll boo
 	return result, nil
 }
 
-func (s *GitService) PullWithResolve(repoPath, remote, branch string, fetchOnly bool) (*api.PullResult, error) {
-	if remote == "" {
-		remote = "origin"
-	}
-
-	err := s.Fetch(repoPath, remote, nil)
-	if err != nil {
-		return nil, fmt.Errorf("fetch: %w", err)
-	}
-
-	result := &api.PullResult{
-		Status: "fetched",
-	}
-
-	if fetchOnly {
-		return result, nil
-	}
-
-	if branch == "" {
-		branch, _ = s.GetHeadBranch(repoPath)
-	}
-
-	remoteBranch := fmt.Sprintf("%s/%s", remote, branch)
-	head, _ := s.GetHeadBranch(repoPath)
-
-	mergeResult, err := s.MergeDryRun(repoPath, remoteBranch, head)
-	if err != nil {
-		result.Status = "error"
-		return result, nil
-	}
-
-	if !mergeResult.Success {
-		result.Status = "conflicts"
-		result.Conflicts = mergeResult.Conflicts
-		return result, nil
-	}
-
-	err = s.Merge(repoPath, remoteBranch, head, fmt.Sprintf("Merge pull from %s/%s", remote, branch), false, false)
-	if err != nil {
-		result.Status = "error"
-		return result, nil
-	}
-
-	result.Status = "success"
-	result.BehindPulled = true
-	return result, nil
-}
-
-func (s *GitService) GetConflictDetail(repoPath, filePath string) (*api.ConflictDetail, error) {
-	absPath := filepath.Join(repoPath, filePath)
-	content, err := os.ReadFile(absPath)
-	if err != nil {
-		return nil, fmt.Errorf("read file: %w", err)
-	}
-
-	detail := &api.ConflictDetail{
-		Path:           filePath,
-		ConflictMarker: string(content),
-	}
-
-	ours, _ := s.readMergeStage(repoPath, filePath, 2)
-	theirs, _ := s.readMergeStage(repoPath, filePath, 3)
-	base, _ := s.readMergeBase(repoPath, filePath)
-
-	detail.OursContent = ours
-	detail.TheirsContent = theirs
-	detail.BaseContent = base
-
-	return detail, nil
-}
-
-func (s *GitService) MarkConflictResolved(repoPath, filePath, resolvedContent string, stage bool) error {
-	absPath := filepath.Join(repoPath, filePath)
-	err := os.WriteFile(absPath, []byte(resolvedContent), 0644)
-	if err != nil {
-		return fmt.Errorf("write file: %w", err)
-	}
-
-	if stage {
-		return s.StageFiles(repoPath, []string{filePath}, false)
-	}
-	return nil
-}
-
 func (s *GitService) readableStatus(code string) string {
 	switch code {
 	case "A":
@@ -435,176 +348,6 @@ func (s *GitService) getAheadBehind(r *git.Repository, head *plumbing.Reference)
 	return ahead, behind
 }
 
-func (s *GitService) readMergeStage(repoPath, filePath string, stage int) (string, error) {
-	r, err := s.openRepo(repoPath)
-	if err != nil {
-		return "", err
-	}
-	obj, err := r.Storer.Index()
-	if err != nil {
-		return "", err
-	}
-	for _, e := range obj.Entries {
-		if e.Name == filePath {
-			blob, err := r.BlobObject(e.Hash)
-			if err != nil {
-				continue
-			}
-			reader, err := blob.Reader()
-			if err != nil {
-				continue
-			}
-			defer reader.Close()
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(reader)
-			return buf.String(), nil
-		}
-	}
-	return "", nil
-}
-
-func (s *GitService) readMergeBase(repoPath, filePath string) (string, error) {
-	r, err := s.openRepo(repoPath)
-	if err != nil {
-		return "", err
-	}
-
-	headRef, err := r.Head()
-	if err != nil {
-		return "", err
-	}
-
-	mergeHeadBytes, err := os.ReadFile(filepath.Join(repoPath, ".git", "MERGE_HEAD"))
-	if err != nil {
-		return "", err
-	}
-
-	mergeHash := plumbing.NewHash(strings.TrimSpace(string(mergeHeadBytes)))
-
-	headCommit, err := r.CommitObject(headRef.Hash())
-	if err != nil {
-		return "", err
-	}
-	mergeCommit, err := r.CommitObject(mergeHash)
-	if err != nil {
-		return "", err
-	}
-
-	baseCommits, err := headCommit.MergeBase(mergeCommit)
-	if err != nil || len(baseCommits) == 0 {
-		return "", err
-	}
-
-	baseFile, err := baseCommits[0].File(filePath)
-	if err != nil {
-		return "", nil
-	}
-
-	return baseFile.Contents()
-}
-
-func (s *GitService) generateDiff(from, to, filePath string) string {
-	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("--- a/%s\n", filePath))
-	buf.WriteString(fmt.Sprintf("+++ b/%s\n", filePath))
-
-	fromLines := splitLines(from)
-	toLines := splitLines(to)
-
-	ops := s.computeDiffOps(fromLines, toLines)
-	lineNum := 1
-	for _, op := range ops {
-		switch op.kind {
-		case ' ':
-			buf.WriteString(fmt.Sprintf(" %s\n", op.line))
-			lineNum++
-		case '+':
-			buf.WriteString(fmt.Sprintf("+%s\n", op.line))
-		case '-':
-			buf.WriteString(fmt.Sprintf("-%s\n", op.line))
-			lineNum++
-		}
-	}
-
-	return buf.String()
-}
-
-type diffOp struct {
-	kind byte
-	line string
-}
-
-func (s *GitService) computeDiffOps(from, to []string) []diffOp {
-	var ops []diffOp
-	fi, ti := 0, 0
-	for fi < len(from) && ti < len(to) {
-		if from[fi] == to[ti] {
-			ops = append(ops, diffOp{' ', from[fi]})
-			fi++
-			ti++
-		} else {
-			ops = append(ops, diffOp{'-', from[fi]})
-			fi++
-		}
-	}
-	for fi < len(from) {
-		ops = append(ops, diffOp{'-', from[fi]})
-		fi++
-	}
-	for ti < len(to) {
-		ops = append(ops, diffOp{'+', to[ti]})
-		ti++
-	}
-	return ops
-}
-
-func countDiffStats(diff string) (additions, deletions int) {
-	scanner := bufio.NewScanner(strings.NewReader(diff))
-	for scanner.Scan() {
-		line := scanner.Text()
-		if len(line) > 0 {
-			if line[0] == '+' && !strings.HasPrefix(line, "+++") {
-				additions++
-			} else if line[0] == '-' && !strings.HasPrefix(line, "---") {
-				deletions++
-			}
-		}
-	}
-	return
-}
-
-func splitLines(s string) []string {
-	if s == "" {
-		return nil
-	}
-	var lines []string
-	scanner := bufio.NewScanner(strings.NewReader(s))
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	return lines
-}
-
-func countLines(f *object.File) int {
-	c, err := f.Contents()
-	if err != nil {
-		return 0
-	}
-	return len(splitLines(c))
-}
-
-func isBinaryFile(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	binaryExts := map[string]bool{
-		".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".bmp": true,
-		".ico": true, ".svg": true, ".pdf": true, ".zip": true, ".tar": true,
-		".gz": true, ".exe": true, ".dll": true, ".so": true, ".dylib": true,
-		".woff": true, ".woff2": true, ".ttf": true, ".eot": true, ".mp3": true,
-		".mp4": true, ".avi": true, ".mov": true, ".wasm": true,
-	}
-	return binaryExts[ext]
-}
-
 func (s *GitService) RemoveTracking(repoPath string, files []string) error {
 	for _, f := range files {
 		_, err := s.RunCommand(repoPath, "rm", "--cached", f)
@@ -629,4 +372,16 @@ func (s *GitService) AddToGitignore(repoPath string, patterns []string) error {
 		}
 	}
 	return nil
+}
+
+func (s *GitService) GetWorkspaceDiffRaw(repoPath string, file string) (string, error) {
+	args := []string{"diff", "--stat", "--patch"}
+	if file != "" {
+		args = append(args, "--", file)
+	}
+	out, err := s.RunCommand(repoPath, args...)
+	if err != nil {
+		return "", fmt.Errorf("git diff: %w", err)
+	}
+	return out, nil
 }

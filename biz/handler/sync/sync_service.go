@@ -12,7 +12,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	syncModel "github.com/yi-nology/git-manage-service/biz/model/sync"
-	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	syncSvc "github.com/yi-nology/git-manage-service/biz/service/sync"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -103,7 +102,7 @@ func CreateTask(ctx context.Context, c *app.RequestContext) {
 	}
 
 	syncSvc.CronSvc.UpdateTask(task)
-	audit.AuditSvc.Log(c, "CREATE", "task:"+task.Key, task)
+	c.Set("audit_target", "task:"+task.Key)
 	response.Success(c, api.NewSyncTaskDTO(task))
 }
 
@@ -143,7 +142,7 @@ func UpdateTask(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	syncSvc.CronSvc.UpdateTask(*task)
-	audit.AuditSvc.Log(c, "UPDATE", "task:"+task.Key, task)
+	c.Set("audit_target", "task:"+task.Key)
 
 	response.Success(c, api.NewSyncTaskDTO(*task))
 }
@@ -166,7 +165,7 @@ func DeleteTask(ctx context.Context, c *app.RequestContext) {
 
 	taskDAO.Delete(task)
 	syncSvc.CronSvc.RemoveTask(task.ID)
-	audit.AuditSvc.Log(c, "DELETE", "task:"+task.Key, nil)
+	c.Set("audit_target", "task:"+req.Key)
 
 	response.Success(c, map[string]string{"message": "deleted"})
 }
@@ -185,7 +184,7 @@ func RunTask(ctx context.Context, c *app.RequestContext) {
 		svc.RunTask(req.TaskKey)
 	}()
 
-	audit.AuditSvc.Log(c, "SYNC", "task_key:"+req.TaskKey, nil)
+	c.Set("audit_target", "task:"+req.TaskKey)
 	response.Success(c, map[string]string{"status": "started"})
 }
 
@@ -222,7 +221,6 @@ func ExecuteSync(ctx context.Context, c *app.RequestContext) {
 		svc.ExecuteSync(&task)
 	}()
 
-	audit.AuditSvc.Log(c, "SYNC_ADHOC", "task:"+task.Key, task)
 	response.Success(c, map[string]string{"status": "started", "task_key": task.Key})
 }
 
@@ -316,6 +314,7 @@ func PreviewSync(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
+	c.Set("audit_target", "task_key:"+req.RepoKey)
 	response.Success(c, preview)
 }
 
@@ -375,6 +374,6 @@ func BatchSync(ctx context.Context, c *app.RequestContext) {
 		}
 	}()
 
-	audit.AuditSvc.Log(c, "SYNC_BATCH", "tasks:"+strconv.Itoa(len(req.TaskKeys)), req.TaskKeys)
+	c.Set("audit_details", map[string]interface{}{"task_keys": req.TaskKeys})
 	response.Success(c, map[string]string{"status": "started", "tasks_count": strconv.Itoa(len(req.TaskKeys))})
 }

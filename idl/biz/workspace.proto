@@ -43,6 +43,22 @@ service WorkspaceService {
   rpc AIResolveConflict(AIResolveConflictReq) returns (AIResolveConflictResp) {
     option (api.post) = "/api/v1/workspace/ai-resolve";
   }
+
+  rpc PushCurrent(PushCurrentReq) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/workspace/push";
+  }
+
+  rpc RemoveTracking(RemoveTrackingReq) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/workspace/untrack";
+  }
+
+  rpc AddToGitignore(AddToGitignoreReq) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/workspace/gitignore";
+  }
+
+  rpc GenerateCommitMessage(GenerateCommitMessageReq) returns (GenerateCommitMessageResp) {
+    option (api.post) = "/api/v1/workspace/generate-commit-msg";
+  }
 }
 
 message FileStatus {
@@ -181,4 +197,27 @@ message AIResolvedFile {
 message AIResolveConflictResp {
   common.BaseResponse base = 1;
   AIResolvedFile resolved = 2;
+}
+
+message PushCurrentReq {
+  string repo_key = 1 [(api.body) = "repo_key"];
+}
+
+message RemoveTrackingReq {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  repeated string files = 2 [(api.body) = "files"];
+}
+
+message AddToGitignoreReq {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  repeated string patterns = 2 [(api.body) = "patterns"];
+}
+
+message GenerateCommitMessageReq {
+  string repo_key = 1 [(api.body) = "repo_key"];
+}
+
+message GenerateCommitMessageResp {
+  common.BaseResponse base = 1;
+  string message = 2;
 }

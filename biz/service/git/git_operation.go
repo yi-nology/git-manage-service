@@ -4,17 +4,13 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
-	"os/exec"
 	"strings"
-	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/yi-nology/git-manage-service/biz/dal/db"
 )
 
 type channelWriter struct {
@@ -50,7 +46,6 @@ func (s *GitService) Fetch(path, remote string, progress io.Writer) error {
 		return err
 	}
 
-	// Get remote URL to detect auth
 	var auth transport.AuthMethod
 	rem, err := r.Remote(remote)
 	if err == nil {
@@ -60,7 +55,6 @@ func (s *GitService) Fetch(path, remote string, progress io.Writer) error {
 		}
 	}
 
-	// 只在auth不为nil时传递认证信息
 	fetchOptions := &git.FetchOptions{
 		RemoteName: remote,
 		Progress:   progress,
@@ -91,7 +85,6 @@ func (s *GitService) FetchWithAuth(path, remoteURL, authType, authKey, authSecre
 		return err
 	}
 
-	// Create a temporary remote to fetch from the URL
 	remote := git.NewRemote(r.Storer, &config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{remoteURL},
@@ -108,14 +101,12 @@ func (s *GitService) FetchWithAuth(path, remoteURL, authType, authKey, authSecre
 	return err
 }
 
-// FetchWithAuthMethod 使用已解析的认证方法进行 fetch
 func (s *GitService) FetchWithAuthMethod(path, remoteURL string, auth transport.AuthMethod, progress io.Writer, extraArgs ...string) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
 	}
 
-	// Create a temporary remote to fetch from the URL
 	remote := git.NewRemote(r.Storer, &config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{remoteURL},
@@ -159,7 +150,6 @@ func (s *GitService) CloneWithProgress(remoteURL, localPath, authType, authKey, 
 	return err
 }
 
-// CloneWithAuthMethod 使用已解析的认证方法进行克隆
 func (s *GitService) CloneWithAuthMethod(remoteURL, localPath string, auth transport.AuthMethod, progressChan chan string) error {
 	if auth == nil {
 		auth = s.detectSSHAuth(remoteURL)
@@ -183,7 +173,6 @@ func (s *GitService) GetCommitHash(path, remote, branch string) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	// Only resolve as remote reference (do NOT fallback to local branch)
 	refName := plumbing.ReferenceName(fmt.Sprintf("refs/remotes/%s/%s", remote, branch))
 	ref, err := r.Reference(refName, true)
 	if err != nil {
@@ -211,62 +200,6 @@ func (s *GitService) IsAncestor(path, ancestor, descendant string) (bool, error)
 	}
 
 	return c1.IsAncestor(c2)
-}
-
-func parsePushOptions(options []string) *git.PushOptions {
-	opts := &git.PushOptions{}
-	opts.Options = make(map[string]string)
-
-	for _, o := range options {
-		if o == "-f" || o == "--force" {
-			opts.Force = true
-		} else if o == "--prune" {
-			opts.Prune = true
-		} else if strings.HasPrefix(o, "--push-option=") {
-			// --push-option=key=value
-			kv := strings.TrimPrefix(o, "--push-option=")
-			parts := strings.SplitN(kv, "=", 2)
-			if len(parts) == 2 {
-				opts.Options[parts[0]] = parts[1]
-			}
-		}
-	}
-	return opts
-}
-
-func (s *GitService) Push(path, targetRemote, sourceHash, targetBranch string, options []string, progress io.Writer) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	// sourceHash might be a commit hash. We need to map it to the remote branch.
-	// git push remote hash:refs/heads/branch
-	refSpec := config.RefSpec(fmt.Sprintf("%s:refs/heads/%s", sourceHash, targetBranch))
-
-	// Detect Auth
-	var auth transport.AuthMethod
-	rem, err := r.Remote(targetRemote)
-	if err == nil {
-		urls := rem.Config().URLs
-		if len(urls) > 0 {
-			auth = s.detectSSHAuth(urls[0])
-		}
-	}
-
-	pushOpts := parsePushOptions(options)
-	pushOpts.RemoteName = targetRemote
-	pushOpts.RefSpecs = []config.RefSpec{refSpec}
-	if auth != nil {
-		pushOpts.Auth = auth
-	}
-	pushOpts.Progress = progress
-
-	err = r.Push(pushOpts)
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
-	return err
 }
 
 func (s *GitService) GetBranches(path string) ([]string, error) {
@@ -297,7 +230,6 @@ func (s *GitService) GetCommits(path, branch, since, until string) (string, erro
 		return "", err
 	}
 
-	// Resolve branch
 	commit, err := s.resolveCommit(r, branch)
 	if err != nil {
 		return "", err
@@ -309,18 +241,13 @@ func (s *GitService) GetCommits(path, branch, since, until string) (string, erro
 	}
 
 	var sb strings.Builder
-	// Format: %H|%an|%ae|%ad|%s (Hash|AuthorName|AuthorEmail|Date|Subject)
 	forEachErr := cIter.ForEach(func(c *object.Commit) error {
-		// Filter by since/until if needed (parsing dates is annoying)
-		// For now, skip date filtering or implement it.
-		// since/until are strings like "2023-01-01".
-
 		line := fmt.Sprintf("%s|%s|%s|%s|%s\n",
 			c.Hash.String(),
 			c.Author.Name,
 			c.Author.Email,
-			c.Author.When.Format("2006-01-02 15:04:05 -0700"),    // ISO-ish
-			strings.TrimSpace(strings.Split(c.Message, "\n")[0]), // Subject
+			c.Author.When.Format("2006-01-02 15:04:05 -0700"),
+			strings.TrimSpace(strings.Split(c.Message, "\n")[0]),
 		)
 		sb.WriteString(line)
 		return nil
@@ -332,69 +259,12 @@ func (s *GitService) GetCommits(path, branch, since, until string) (string, erro
 	return sb.String(), nil
 }
 
-func (s *GitService) PushWithAuth(path, targetRemoteURL, sourceHash, targetBranch, authType, authKey, authSecret string, options []string, progress io.Writer) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	auth, err := s.getAuth(authType, authKey, authSecret)
-	if err != nil {
-		return err
-	}
-
-	remote := git.NewRemote(r.Storer, &config.RemoteConfig{
-		Name: "anonymous",
-		URLs: []string{targetRemoteURL},
-	})
-
-	refSpec := config.RefSpec(fmt.Sprintf("%s:refs/heads/%s", sourceHash, targetBranch))
-
-	pushOpts := parsePushOptions(options)
-	pushOpts.Auth = auth
-	pushOpts.RefSpecs = []config.RefSpec{refSpec}
-	pushOpts.Progress = progress
-
-	err = remote.Push(pushOpts)
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
-	return err
-}
-
-// PushWithAuthMethod 使用已解析的认证方法进行 push
-func (s *GitService) PushWithAuthMethod(path, targetRemoteURL, sourceHash, targetBranch string, auth transport.AuthMethod, options []string, progress io.Writer) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	remote := git.NewRemote(r.Storer, &config.RemoteConfig{
-		Name: "anonymous",
-		URLs: []string{targetRemoteURL},
-	})
-
-	refSpec := config.RefSpec(fmt.Sprintf("%s:refs/heads/%s", sourceHash, targetBranch))
-
-	pushOpts := parsePushOptions(options)
-	pushOpts.Auth = auth
-	pushOpts.RefSpecs = []config.RefSpec{refSpec}
-	pushOpts.Progress = progress
-
-	err = remote.Push(pushOpts)
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
-	return err
-}
-
 func (s *GitService) GetRepoFiles(path, branch string) ([]string, error) {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return nil, err
 	}
 
-	// Resolve branch to commit -> tree
 	commit, err := s.resolveCommit(r, branch)
 	if err != nil {
 		return nil, err
@@ -426,222 +296,6 @@ func (s *GitService) BlameFile(path, branch, file string) (*git.BlameResult, err
 	return git.Blame(commit, file)
 }
 
-func (s *GitService) CheckoutBranch(path, branch string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		return err
-	}
-
-	// 先尝试查找本地分支引用
-	refName := plumbing.ReferenceName("refs/heads/" + branch)
-	_, err = r.Reference(refName, true)
-	if err != nil {
-		// 如果本地分支不存在，尝试从远程分支创建
-		remoteRefName := plumbing.ReferenceName("refs/remotes/origin/" + branch)
-		remoteRef, err := r.Reference(remoteRefName, true)
-		if err != nil {
-			return fmt.Errorf("branch %s not found (local or remote)", branch)
-		}
-
-		// 从远程分支创建本地分支
-		return w.Checkout(&git.CheckoutOptions{
-			Hash:   remoteRef.Hash(),
-			Branch: refName,
-			Create: true,
-			Force:  true,
-		})
-	}
-
-	// 本地分支存在，直接 checkout
-	return w.Checkout(&git.CheckoutOptions{
-		Branch: refName,
-		Force:  true,
-	})
-}
-
-func (s *GitService) GetStatus(path string) (string, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return "", err
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		return "", err
-	}
-	status, err := w.Status()
-	if err != nil {
-		return "", err
-	}
-	return status.String(), nil
-}
-
-func (s *GitService) AddAll(path string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		return err
-	}
-	// Add(".") in go-git
-	_, err = w.Add(".")
-	return err
-}
-
-// AddFiles stages specific files for commit
-func (s *GitService) AddFiles(path string, files []string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		return err
-	}
-	for _, f := range files {
-		if _, err := w.Add(f); err != nil {
-			return fmt.Errorf("failed to add %s: %w", f, err)
-		}
-	}
-	return nil
-}
-
-func (s *GitService) Commit(path, message, authorName, authorEmail string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		return err
-	}
-
-	// Use provided author info, or fallback to default
-	if authorName == "" || authorEmail == "" {
-		if r, _ := db.NewRepoDAO().FindByPath(path); r != nil {
-			authorSvc := NewAuthorService()
-			if name, email, _ := authorSvc.GetEffectiveAuthor(r.ID); name != "" && email != "" {
-				if authorName == "" {
-					authorName = name
-				}
-				if authorEmail == "" {
-					authorEmail = email
-				}
-			}
-		}
-	}
-	if authorName == "" {
-		authorName = "Git Manage Service"
-	}
-	if authorEmail == "" {
-		authorEmail = "git-manage@example.com"
-	}
-
-	_, err = w.Commit(message, &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  authorName,
-			Email: authorEmail,
-			When:  time.Now(),
-		},
-	})
-	return err
-}
-
-func (s *GitService) PushCurrent(path string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	// Detect Auth for default remote (origin)
-	var auth transport.AuthMethod
-	rem, err := r.Remote("origin")
-	if err == nil {
-		urls := rem.Config().URLs
-		if len(urls) > 0 {
-			auth = s.detectSSHAuth(urls[0])
-		}
-	}
-
-	err = r.Push(&git.PushOptions{
-		Auth: auth,
-	})
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
-	return err
-}
-
-func (s *GitService) Reset(path string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		return err
-	}
-	return w.Reset(&git.ResetOptions{Mode: git.MixedReset})
-}
-
-func (s *GitService) GetLogIterator(path, branch string) (object.CommitIter, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return nil, err
-	}
-	hash, err := r.ResolveRevision(plumbing.Revision(branch))
-	if err != nil {
-		return nil, err
-	}
-	return r.Log(&git.LogOptions{From: *hash})
-}
-
-func (s *GitService) GetLogStats(path, branch string) (string, error) {
-	// git log --numstat --no-merges --pretty=format:"COMMIT|%H|%aN|%aE|%at" <branch>
-	return s.RunCommand(path, "log", "--numstat", "--no-merges", "--pretty=format:COMMIT|%H|%aN|%aE|%at", branch)
-}
-
-func (s *GitService) GetLogStatsStream(path, branch string) (io.ReadCloser, error) {
-	// git log --numstat --no-merges --pretty=format:"COMMIT|%H|%aN|%aE|%at" <branch>
-	cmd := exec.Command("git", "log", "--numstat", "--no-merges", "--pretty=format:COMMIT|%H|%aN|%aE|%at", branch)
-	cmd.Dir = path
-	// Prevent password prompts and force English output
-	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-
-	return &cmdStream{
-		cmd:    cmd,
-		stdout: stdout,
-	}, nil
-}
-
-type cmdStream struct {
-	cmd    *exec.Cmd
-	stdout io.ReadCloser
-}
-
-func (c *cmdStream) Read(p []byte) (n int, err error) {
-	return c.stdout.Read(p)
-}
-
-func (c *cmdStream) Close() error {
-	_ = c.stdout.Close()
-	return c.cmd.Wait()
-}
-
 func (s *GitService) GetCommit(path, hashStr string) (*object.Commit, error) {
 	r, err := s.openRepo(path)
 	if err != nil {
@@ -653,7 +307,6 @@ func (s *GitService) GetCommit(path, hashStr string) (*object.Commit, error) {
 func (s *GitService) resolveCommit(r *git.Repository, rev string) (*object.Commit, error) {
 	hash, err := r.ResolveRevision(plumbing.Revision(rev))
 	if err != nil {
-		// Try adding refs/heads/ if simple name failed and it doesn't already look like a ref
 		if !strings.HasPrefix(rev, "refs/") {
 			h, err2 := r.ResolveRevision(plumbing.Revision("refs/heads/" + rev))
 			if err2 == nil {
@@ -701,10 +354,8 @@ func (s *GitService) GetHeadBranch(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// refs/heads/master -> master
 	if head.Name().IsBranch() {
 		return head.Name().Short(), nil
 	}
-	// Detached HEAD or other state
 	return head.Hash().String(), nil
 }

@@ -6,10 +6,8 @@ import (
 	"encoding/hex"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -433,141 +431,6 @@ func (lc *LineCounter) generateCacheKey(repoPath string, config CountConfig) str
 
 	hash := md5.Sum([]byte(configStr))
 	return "lines:" + repoPath + ":" + hex.EncodeToString(hash[:8])
-}
-
-// BlameLineInfo git blame 行信息
-type BlameLineInfo struct {
-	Author    string
-	Email     string
-	Timestamp int64
-}
-
-// isGitRepo 检查目录是否是 git 仓库
-func (lc *LineCounter) isGitRepo(repoPath string) bool {
-	gitDir := filepath.Join(repoPath, ".git")
-	info, err := os.Stat(gitDir)
-	return err == nil && info.IsDir()
-}
-
-// getGitBlameInfo 获取文件的 git blame 信息
-func (lc *LineCounter) getGitBlameInfo(repoPath, filePath, branch string) (map[int]*BlameLineInfo, error) {
-	// 构建 git blame 命令
-	args := []string{"blame", "--line-porcelain"}
-	if branch != "" {
-		args = append(args, branch, "--")
-	}
-
-	// 获取相对路径
-	relPath, err := filepath.Rel(repoPath, filePath)
-	if err != nil {
-		relPath = filePath
-	}
-	args = append(args, relPath)
-
-	cmd := exec.Command("git", args...)
-	cmd.Dir = repoPath
-
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-
-	return lc.parseBlameOutput(string(output))
-}
-
-// parseBlameOutput 解析 git blame --line-porcelain 输出
-func (lc *LineCounter) parseBlameOutput(output string) (map[int]*BlameLineInfo, error) {
-	result := make(map[int]*BlameLineInfo)
-	lines := strings.Split(output, "\n")
-
-	var currentLine int
-	var currentInfo *BlameLineInfo
-
-	for i := 0; i < len(lines); i++ {
-		line := lines[i]
-
-		// 提交哈希行 (40字符的hex + 行号信息)
-		if len(line) >= 40 && isHexString(line[:40]) {
-			parts := strings.Fields(line)
-			if len(parts) >= 3 {
-				lineNum, _ := strconv.Atoi(parts[2])
-				currentLine = lineNum
-				currentInfo = &BlameLineInfo{}
-			}
-			continue
-		}
-
-		if currentInfo == nil {
-			continue
-		}
-
-		// 解析作者信息
-		if strings.HasPrefix(line, "author ") {
-			currentInfo.Author = strings.TrimPrefix(line, "author ")
-		} else if strings.HasPrefix(line, "author-mail ") {
-			email := strings.TrimPrefix(line, "author-mail ")
-			email = strings.Trim(email, "<>")
-			currentInfo.Email = email
-		} else if strings.HasPrefix(line, "author-time ") {
-			timestamp, _ := strconv.ParseInt(strings.TrimPrefix(line, "author-time "), 10, 64)
-			currentInfo.Timestamp = timestamp
-		} else if strings.HasPrefix(line, "\t") {
-			// 代码行内容行，表示当前blame块结束
-			if currentLine > 0 && currentInfo != nil {
-				result[currentLine] = currentInfo
-			}
-			currentInfo = nil
-		}
-	}
-
-	return result, nil
-}
-
-// isHexString 检查字符串是否为十六进制
-func isHexString(s string) bool {
-	for _, c := range s {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-			return false
-		}
-	}
-	return true
-}
-
-// shouldCountLine 判断某一行是否应该被统计（基于作者和时间过滤）
-func (lc *LineCounter) shouldCountLine(info *BlameLineInfo, config CountConfig) bool {
-	if info == nil {
-		return true // 无blame信息时默认统计
-	}
-
-	// 作者过滤
-	if config.Author != "" {
-		authorMatch := strings.Contains(strings.ToLower(info.Author), strings.ToLower(config.Author)) ||
-			strings.Contains(strings.ToLower(info.Email), strings.ToLower(config.Author))
-		if !authorMatch {
-			return false
-		}
-	}
-
-	// 时间范围过滤
-	if config.Since != "" {
-		sinceTime, err := time.Parse("2006-01-02", config.Since)
-		if err == nil && info.Timestamp < sinceTime.Unix() {
-			return false
-		}
-	}
-
-	if config.Until != "" {
-		untilTime, err := time.Parse("2006-01-02", config.Until)
-		if err == nil {
-			// until 日期包含当天，所以加1天
-			untilTime = untilTime.Add(24 * time.Hour)
-			if info.Timestamp >= untilTime.Unix() {
-				return false
-			}
-		}
-	}
-
-	return true
 }
 
 // ClearCache 清除缓存

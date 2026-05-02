@@ -101,4 +101,12 @@ export function formatSpec(content: string, options?: FormatOptions) {
   })
 }
 
+export function getSpecConfig() {
+  return request.get<unknown, any>('/spec/config')
+}
+
+export function saveSpecConfig(data: any) {
+  return request.put<unknown, any>('/spec/config', data)
+}
+
 

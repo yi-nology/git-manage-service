@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	author "github.com/yi-nology/git-manage-service/biz/model/author"
-	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/biz/model/api"
+	author "github.com/yi-nology/git-manage-service/biz/model/author"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -47,6 +47,7 @@ func CreateIdentity(ctx context.Context, c *app.RequestContext) {
 		response.InternalError(c, err)
 		return
 	}
+	c.Set("audit_details", map[string]string{"name": req.GetCanonicalName(), "email": req.GetCanonicalEmail()})
 	response.Success(c, result)
 }
 
@@ -132,6 +133,7 @@ func SetRepoAuthorConfig(ctx context.Context, c *app.RequestContext) {
 		response.InternalError(c, err)
 		return
 	}
+	c.Set("audit_details", map[string]string{"repo_key": req.GetRepoKey()})
 	response.Success(c, nil)
 }
 

@@ -55,6 +55,7 @@ func Create(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to create binding: "+err.Error())
 		return
 	}
+	c.Set("audit_details", map[string]interface{}{"repo_key": req.RepoKey, "provider_config_id": req.ProviderConfigID})
 	pkgresponse.Success(c, result)
 }
 

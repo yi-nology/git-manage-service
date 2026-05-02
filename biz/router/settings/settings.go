@@ -51,7 +51,15 @@ func Register(r *server.Hertz) {
 				_id.POST("/test", append(_testllmproviderMw(), settings.TestLLMProvider)...)
 				_llm_providers.GET("/:id", append(_getllmproviderMw(), settings.GetLLMProvider)...)
 				_llm_providers.PUT("/:id", append(_updatellmproviderMw(), settings.UpdateLLMProvider)...)
+				_llm_providers.GET("/presets", append(_listllmpresetsMw(), settings.ListLLMPresets)...)
 				_settings.POST("/llm-providers", append(_createllmproviderMw(), settings.CreateLLMProvider)...)
+				_settings.GET("/review-rules", append(_listreviewrulesMw(), settings.ListReviewRules)...)
+				_review_rules := _settings.Group("/review-rules", _review_rulesMw()...)
+				_review_rules.PUT("/batch", append(_batchupdatereviewrulesMw(), settings.BatchUpdateReviewRules)...)
+				_review_rules.DELETE("/:rule_id", append(_deletereviewruleMw(), settings.DeleteReviewRule)...)
+				_review_rules.GET("/:rule_id", append(_getreviewruleMw(), settings.GetReviewRule)...)
+				_review_rules.PUT("/:rule_id", append(_updatereviewruleMw(), settings.UpdateReviewRule)...)
+				_settings.POST("/review-rules", append(_createreviewruleMw(), settings.CreateReviewRule)...)
 			}
 		}
 	}

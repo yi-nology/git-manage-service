@@ -125,3 +125,13 @@ func _formatspecMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _getspecconfigMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _savespecconfigMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

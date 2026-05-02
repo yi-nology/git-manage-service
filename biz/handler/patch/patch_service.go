@@ -7,7 +7,6 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
-	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -83,12 +82,6 @@ func SavePatch(ctx context.Context, c *app.RequestContext) {
 		response.InternalServerError(c, err.Error())
 		return
 	}
-
-	audit.AuditSvc.Log(c, "SAVE_PATCH", "repo:"+repo.Key, map[string]string{
-		"patch_name":     req.PatchName,
-		"path":           savedPath,
-		"commit_message": req.CommitMessage,
-	})
 
 	response.Success(c, map[string]string{
 		"path": savedPath,
@@ -211,11 +204,6 @@ func ApplyPatch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "APPLY_PATCH", "repo:"+repo.Key, map[string]string{
-		"patch_path":     req.PatchPath,
-		"commit_message": req.CommitMessage,
-	})
-
 	response.Success(c, map[string]string{
 		"message": "patch applied successfully",
 	})
@@ -271,8 +259,6 @@ func DeletePatch(ctx context.Context, c *app.RequestContext) {
 		response.InternalServerError(c, err.Error())
 		return
 	}
-
-	audit.AuditSvc.Log(c, "DELETE_PATCH", "patch:"+req.PatchPath, nil)
 
 	response.Success(c, map[string]string{
 		"message": "patch deleted",

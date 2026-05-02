@@ -59,6 +59,98 @@ message AuthorGenericResponse {
     optional common.BaseResponse base = 1;
 }
 
+message AuthorChatMessageDTO {
+    optional string role = 1;
+    optional string content = 2;
+}
+
+message AuthorMismatchedCommit {
+    optional string hash = 1;
+    optional string short_hash = 2;
+    optional string message = 3;
+    optional string author_name = 4;
+    optional string author_email = 5;
+    optional string committer_name = 6;
+    optional string committer_email = 7;
+    optional string date = 8;
+    optional string match_type = 9;
+    optional string target_name = 10;
+    optional string target_email = 11;
+}
+
+message AuthorScanResult {
+    repeated AuthorMismatchedCommit commits = 1;
+    optional int64 total_commits = 2;
+    optional int32 match_count = 3;
+}
+
+message AuthorAIRequest {
+    optional string action = 1 [(api.body) = "action"];
+    optional string repo_key = 2 [(api.body) = "repoKey"];
+    optional AuthorScanResult scan = 3 [(api.body) = "scan"];
+    repeated AuthorMismatchedCommit commits = 4 [(api.body) = "commits"];
+}
+
+message AliasSuggestion {
+    optional uint32 identity_id = 1;
+    optional string identity_name = 2;
+    optional string alias_name = 3;
+    optional string alias_email = 4;
+    optional string confidence = 5;
+    optional string reason = 6;
+}
+
+message AliasSuggestionResult {
+    repeated AliasSuggestion suggestions = 1;
+    optional string summary = 2;
+}
+
+message MergeCandidate {
+    optional uint32 keep_id = 1;
+    optional string keep_name = 2;
+    repeated uint32 merge_ids = 3;
+    optional string merge_names = 4;
+    optional string reason = 5;
+}
+
+message MergeSuggestionResult {
+    repeated MergeCandidate merges = 1;
+    optional string summary = 2;
+}
+
+message RiskFactor {
+    optional string level = 1;
+    optional string description = 2;
+    optional string recommendation = 3;
+}
+
+message RiskAssessmentResult {
+    optional string risk_level = 1;
+    optional string summary = 2;
+    repeated RiskFactor factors = 3;
+    repeated string recommendations = 4;
+}
+
+message AuthorAIResponse {
+    optional common.BaseResponse base = 1;
+    optional string action = 2;
+    optional string result = 3;
+    optional AliasSuggestionResult suggest = 4;
+    optional MergeSuggestionResult merge = 5;
+    optional RiskAssessmentResult risk = 6;
+}
+
+message AuthorChatRequest {
+    optional string repo_key = 1 [(api.body) = "repoKey"];
+    optional string prompt = 2 [(api.body) = "prompt"];
+    repeated AuthorChatMessageDTO history = 3 [(api.body) = "history"];
+}
+
+message AuthorChatResponse {
+    optional common.BaseResponse base = 1;
+    optional string result = 2;
+}
+
 service AuthorService {
     rpc ListIdentities(ListIdentitiesRequest) returns (AuthorGenericResponse) {
         option (api.get) = "/api/v1/author/identities";
@@ -98,5 +190,13 @@ service AuthorService {
 
     rpc FixAuthor(FixAuthorRequest) returns (AuthorGenericResponse) {
         option (api.post) = "/api/v1/repo/:repo_key/author/fix";
+    }
+
+    rpc AuthorAI(AuthorAIRequest) returns (AuthorAIResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/author/ai";
+    }
+
+    rpc AuthorChat(AuthorChatRequest) returns (AuthorChatResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/author/chat";
     }
 }

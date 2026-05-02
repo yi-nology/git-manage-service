@@ -27,11 +27,15 @@ func Register(r *server.Hertz) {
 				_workspace.POST("/commit", append(_commitchangesMw(), workspace.CommitChanges)...)
 				_workspace.GET("/conflict-detail", append(_getconflictdetailMw(), workspace.GetConflictDetail)...)
 				_workspace.GET("/diff", append(_getworkspacediffMw(), workspace.GetWorkspaceDiff)...)
+				_workspace.POST("/generate-commit-msg", append(_generatecommitmessageMw(), workspace.GenerateCommitMessage)...)
+				_workspace.POST("/gitignore", append(_addtogitignoreMw(), workspace.AddToGitignore)...)
 				_workspace.POST("/pull", append(_pullwithresolveMw(), workspace.PullWithResolve)...)
+				_workspace.POST("/push", append(_pushcurrentMw(), workspace.PushCurrent)...)
 				_workspace.POST("/resolve", append(_markconflictresolvedMw(), workspace.MarkConflictResolved)...)
 				_workspace.POST("/stage", append(_stagefilesMw(), workspace.StageFiles)...)
 				_workspace.GET("/status", append(_getworkspacestatusMw(), workspace.GetWorkspaceStatus)...)
 				_workspace.POST("/unstage", append(_unstagefilesMw(), workspace.UnstageFiles)...)
+				_workspace.POST("/untrack", append(_removetrackingMw(), workspace.RemoveTracking)...)
 			}
 		}
 	}

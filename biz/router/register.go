@@ -10,8 +10,6 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
-	authorHandler "github.com/yi-nology/git-manage-service/biz/handler/author"
-	settingsHandler "github.com/yi-nology/git-manage-service/biz/handler/settings"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"
 	author "github.com/yi-nology/git-manage-service/biz/router/author"
@@ -40,7 +38,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/router/webhook"
 	"github.com/yi-nology/git-manage-service/biz/router/webhook_event"
 	workspace "github.com/yi-nology/git-manage-service/biz/router/workspace"
-	workspaceHandler "github.com/yi-nology/git-manage-service/biz/handler/workspace"
 )
 
 // 嵌入的文件系统变量
@@ -58,17 +55,15 @@ func SetEmbedFS(public, docs fs.FS) {
 // GeneratedRegister registers all routes
 func GeneratedRegister(h *server.Hertz) {
 	h.Use(middleware.CORS())
+	h.Use(middleware.AuditMiddleware())
 
 	//INSERT_POINT: DO NOT DELETE THIS LINE!
 	workspace.Register(h)
-	registerWorkspaceCustomRoutes(h)
 
 	author.Register(h)
-	registerAuthorCustomRoutes(h)
 
 	maintenance.Register(h)
 
-	registerLLMPresetsRoute(h)
 	settings.Register(h)
 	webhook_event.Register(h)
 	provider.Register(h)
@@ -77,7 +72,6 @@ func GeneratedRegister(h *server.Hertz) {
 	review.Register(h)
 	audit.Register(h)
 
-	registerReviewRuleRoutes(h)
 	branch.Register(h)
 	commit.Register(h)
 	credential.Register(h)
@@ -93,8 +87,8 @@ func GeneratedRegister(h *server.Hertz) {
 	version.Register(h)
 	webhook.Register(h)
 	patch.Register(h)
-	spec.Register(h)
-	stats.Register(h)
+ 	spec.Register(h)
+ 	stats.Register(h)
 	binding.Register(h)
 
 	// 根路径
@@ -187,31 +181,4 @@ func getContentType(path string) string {
 	default:
 		return "application/octet-stream"
 	}
-}
-
-func registerReviewRuleRoutes(h *server.Hertz) {
-	g := h.Group("/api/v1/settings/review-rules")
-	g.GET("", settingsHandler.ListReviewRules)
-	g.POST("", settingsHandler.CreateReviewRule)
-	g.PUT("/batch", settingsHandler.BatchUpdateReviewRules)
-	g.GET("/:rule_id", settingsHandler.GetReviewRule)
-	g.PUT("/:rule_id", settingsHandler.UpdateReviewRule)
-	g.DELETE("/:rule_id", settingsHandler.DeleteReviewRule)
-}
-
-func registerLLMPresetsRoute(h *server.Hertz) {
-	h.GET("/api/v1/settings/llm-providers/presets", settingsHandler.ListLLMPresets)
-}
-
-func registerAuthorCustomRoutes(h *server.Hertz) {
-	g := h.Group("/api/v1/repo/:repo_key/author")
-	g.POST("/ai", authorHandler.AuthorAI)
-	g.POST("/chat", authorHandler.AuthorChat)
-}
-
-func registerWorkspaceCustomRoutes(h *server.Hertz) {
-	g := h.Group("/api/v1/workspace")
-	g.POST("/untrack", workspaceHandler.RemoveTracking)
-	g.POST("/gitignore", workspaceHandler.AddToGitignore)
-	g.POST("/push", workspaceHandler.PushCurrent)
 }

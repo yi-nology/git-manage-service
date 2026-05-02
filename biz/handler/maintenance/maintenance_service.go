@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -13,7 +12,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	maintenance "github.com/yi-nology/git-manage-service/biz/model/maintenance"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
-	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -111,10 +109,6 @@ func Slim(ctx context.Context, c *app.RequestContext) {
 	record.ParamsJSON = string(paramsJSON)
 	dao.Update(record)
 
-	audit.AuditSvc.Log(c, "REPO_SLIM", "repo:"+repo.Key, map[string]string{
-		"files": strings.Join(paths, ","),
-	})
-
 	response.Success(c, api.MaintenanceTaskResponse{TaskID: taskID})
 }
 
@@ -164,8 +158,6 @@ func GC(ctx context.Context, c *app.RequestContext) {
 	record.TaskID = taskID
 	dao.Update(record)
 
-	audit.AuditSvc.Log(c, "REPO_GC", "repo:"+repo.Key, nil)
-
 	response.Success(c, api.MaintenanceTaskResponse{TaskID: taskID})
 }
 
@@ -193,10 +185,6 @@ func Gitignore(ctx context.Context, c *app.RequestContext) {
 		response.InternalError(c, err)
 		return
 	}
-
-	audit.AuditSvc.Log(c, "REPO_GITIGNORE", "repo:"+repo.Key, map[string]string{
-		"files": strings.Join(paths, ","),
-	})
 
 	response.Success(c, api.MessageResponse{Message: "已添加到 .gitignore"})
 }

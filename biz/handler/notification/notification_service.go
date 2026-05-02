@@ -11,7 +11,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	notification "github.com/yi-nology/git-manage-service/biz/model/notification"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
-	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	notificationSvc "github.com/yi-nology/git-manage-service/biz/service/notification"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 	"gorm.io/gorm"
@@ -192,11 +191,7 @@ func CreateChannel(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "NOTIFICATION_CHANNEL_CREATE", fmt.Sprintf("channel:%d", channel.ID), map[string]string{
-		"name": req.Name,
-		"type": req.Type,
-	})
-
+	c.Set("audit_target", fmt.Sprintf("channel:%d", channel.ID))
 	response.Success(c, map[string]interface{}{
 		"channel": channelToProto(channel),
 	})
@@ -279,10 +274,7 @@ func UpdateChannel(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "NOTIFICATION_CHANNEL_UPDATE", fmt.Sprintf("channel:%d", channel.ID), map[string]string{
-		"name": req.Name,
-	})
-
+	c.Set("audit_target", fmt.Sprintf("channel:%d", req.Id))
 	response.Success(c, map[string]interface{}{
 		"channel": channelToProto(channel),
 	})
@@ -317,8 +309,7 @@ func DeleteChannel(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "NOTIFICATION_CHANNEL_DELETE", fmt.Sprintf("channel:%d", req.Id), nil)
-
+	c.Set("audit_target", fmt.Sprintf("channel:%d", req.Id))
 	response.Success(c, map[string]string{"message": "channel deleted"})
 }
 

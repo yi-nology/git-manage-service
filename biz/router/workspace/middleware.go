@@ -70,3 +70,23 @@ func _unstagefilesMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _generatecommitmessageMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _addtogitignoreMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _pushcurrentMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _removetrackingMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

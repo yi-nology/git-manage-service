@@ -1,14 +1,7 @@
 package git
 
 import (
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
-	"os"
-	"os/exec"
-	"strings"
-
-	ssh2 "golang.org/x/crypto/ssh"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -17,7 +10,6 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 )
 
-// GetBranchSyncStatus returns ahead/behind counts against upstream
 func (s *GitService) GetBranchSyncStatus(path, branch, upstream string) (int, int, error) {
 	if upstream == "" {
 		return 0, 0, nil
@@ -27,11 +19,8 @@ func (s *GitService) GetBranchSyncStatus(path, branch, upstream string) (int, in
 		return 0, 0, err
 	}
 
-	// Resolve refs
-	// branch is usually local name, upstream is remote/branch
 	hBranch, err := r.ResolveRevision(plumbing.Revision(branch))
 	if err != nil {
-		// Try refs/heads/branch
 		hBranch, err = r.ResolveRevision(plumbing.Revision("refs/heads/" + branch))
 		if err != nil {
 			return 0, 0, nil
@@ -40,7 +29,6 @@ func (s *GitService) GetBranchSyncStatus(path, branch, upstream string) (int, in
 
 	hUpstream, err := r.ResolveRevision(plumbing.Revision(upstream))
 	if err != nil {
-		// Try refs/remotes/upstream
 		hUpstream, err = r.ResolveRevision(plumbing.Revision("refs/remotes/" + upstream))
 		if err != nil {
 			return 0, 0, nil
@@ -62,7 +50,6 @@ func (s *GitService) GetBranchSyncStatus(path, branch, upstream string) (int, in
 	}
 	base := bases[0]
 
-	// Count ahead
 	ahead := 0
 	iter, err := r.Log(&git.LogOptions{From: *hBranch})
 	if err == nil {
@@ -75,7 +62,6 @@ func (s *GitService) GetBranchSyncStatus(path, branch, upstream string) (int, in
 		})
 	}
 
-	// Count behind
 	behind := 0
 	iter, err = r.Log(&git.LogOptions{From: *hUpstream})
 	if err == nil {
@@ -91,18 +77,14 @@ func (s *GitService) GetBranchSyncStatus(path, branch, upstream string) (int, in
 	return ahead, behind, nil
 }
 
-// PushBranch pushes local branch to remote
 func (s *GitService) PushBranch(path, remote, branch string) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
 	}
 
-	// git push remote branch
-	// Default refspec: refs/heads/branch:refs/heads/branch
 	refSpec := config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", branch, branch))
 
-	// Detect Auth
 	var auth transport.AuthMethod
 	rem, err := r.Remote(remote)
 	if err == nil {
@@ -112,7 +94,6 @@ func (s *GitService) PushBranch(path, remote, branch string) error {
 		}
 	}
 
-	// 只在auth不为nil时传递认证信息
 	pushOptions := &git.PushOptions{
 		RemoteName: remote,
 		RefSpecs:   []config.RefSpec{refSpec},
@@ -128,9 +109,7 @@ func (s *GitService) PushBranch(path, remote, branch string) error {
 	return err
 }
 
-// PullBranch pulls changes from upstream
 func (s *GitService) PullBranch(path, remote, branch string) error {
-	// Replaces git pull --rebase with Worktree.Pull (Merge)
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -140,7 +119,6 @@ func (s *GitService) PullBranch(path, remote, branch string) error {
 		return err
 	}
 
-	// Detect Auth
 	var auth transport.AuthMethod
 	rem, err := r.Remote(remote)
 	if err == nil {
@@ -150,7 +128,6 @@ func (s *GitService) PullBranch(path, remote, branch string) error {
 		}
 	}
 
-	// 只在auth不为nil时传递认证信息
 	pullOptions := &git.PullOptions{
 		RemoteName:    remote,
 		ReferenceName: plumbing.ReferenceName("refs/heads/" + branch),
@@ -166,15 +143,12 @@ func (s *GitService) PullBranch(path, remote, branch string) error {
 	return err
 }
 
-// UpdateBranchFastForward fetches remote branch and updates local branch if fast-forward possible.
-// Used for updating non-current branches.
 func (s *GitService) UpdateBranchFastForward(path, remote, branch, remoteBranch string) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
 	}
 
-	// Detect Auth
 	var auth transport.AuthMethod
 	rem, err := r.Remote(remote)
 	if err != nil {
@@ -186,11 +160,8 @@ func (s *GitService) UpdateBranchFastForward(path, remote, branch, remoteBranch 
 		auth = s.detectSSHAuth(urls[0])
 	}
 
-	// git fetch remote remoteBranch:branch
-	// e.g. git fetch origin main:main
 	refSpec := config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", remoteBranch, branch))
 
-	// 只在auth不为nil时传递认证信息
 	fetchOptions := &git.FetchOptions{
 		RemoteName: remote,
 		RefSpecs:   []config.RefSpec{refSpec},
@@ -207,7 +178,6 @@ func (s *GitService) UpdateBranchFastForward(path, remote, branch, remoteBranch 
 	return err
 }
 
-// FetchAll fetches all remotes
 func (s *GitService) FetchAll(path string) error {
 	r, err := s.openRepo(path)
 	if err != nil {
@@ -226,7 +196,6 @@ func (s *GitService) FetchAll(path string) error {
 			auth = s.detectSSHAuth(urls[0])
 		}
 
-		// 只在auth不为nil时传递认证信息
 		fetchOptions := &git.FetchOptions{
 			RefSpecs: []config.RefSpec{
 				config.RefSpec("+refs/heads/*:refs/remotes/" + remote.Config().Name + "/*"),
@@ -239,262 +208,8 @@ func (s *GitService) FetchAll(path string) error {
 
 		err := remote.Fetch(fetchOptions)
 		if err != nil && err != git.NoErrAlreadyUpToDate {
-			// Log error but continue?
-			_ = err // 暂时使用下划线忽略错误，避免空分支
+			_ = err
 		}
 	}
-	return nil
-}
-
-// PushBranchWithDBKey pushes local branch to remote using database SSH key
-func (s *GitService) PushBranchWithDBKey(path, remote, branch, privateKey, passphrase string) error {
-	// Create temp private key file
-	tmpFile, err := os.CreateTemp("", "git_ssh_key_*")
-	if err != nil {
-		return fmt.Errorf("failed to create temp key file: %v", err)
-	}
-	tmpKeyPath := tmpFile.Name()
-	defer os.Remove(tmpKeyPath)
-
-	// 确保私钥以换行符结尾
-	keyContent := privateKey
-	if !strings.HasSuffix(keyContent, "\n") {
-		keyContent += "\n"
-	}
-
-	// 如果有 passphrase，需要解密私钥
-	if passphrase != "" {
-		// 解析加密的私钥
-		rawKey, err := ssh2.ParseRawPrivateKeyWithPassphrase([]byte(keyContent), []byte(passphrase))
-		if err != nil {
-			return fmt.Errorf("failed to parse encrypted private key: %v", err)
-		}
-
-		// 重新编码为无密码的 PEM 格式
-		pemBytes, err := x509.MarshalPKCS8PrivateKey(rawKey)
-		if err != nil {
-			return fmt.Errorf("failed to marshal private key: %v", err)
-		}
-
-		pemBlock := &pem.Block{
-			Type:  "PRIVATE KEY",
-			Bytes: pemBytes,
-		}
-		keyContent = string(pem.EncodeToMemory(pemBlock))
-	}
-
-	if _, err := tmpFile.WriteString(keyContent); err != nil {
-		tmpFile.Close()
-		return fmt.Errorf("failed to write key file: %v", err)
-	}
-	tmpFile.Close()
-
-	if err := os.Chmod(tmpKeyPath, 0600); err != nil {
-		return fmt.Errorf("failed to set key file permissions: %v", err)
-	}
-
-	// 获取 remote URL 直接推送，避免 mirror 配置冲突
-	urlCmd := exec.Command("git", "remote", "get-url", remote)
-	urlCmd.Dir = path
-	urlOutput, err := urlCmd.Output()
-	if err != nil {
-		return fmt.Errorf("failed to get remote URL: %v", err)
-	}
-	remoteURL := strings.TrimSpace(string(urlOutput))
-
-	sshCmd := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes", tmpKeyPath)
-
-	// git push <url> refs/heads/branch:refs/heads/branch
-	refSpec := fmt.Sprintf("refs/heads/%s:refs/heads/%s", branch, branch)
-	cmd := exec.Command("git", "push", remoteURL, refSpec)
-	cmd.Dir = path
-	cmd.Env = append(os.Environ(), "GIT_SSH_COMMAND="+sshCmd)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git push failed: %v, output: %s", err, string(output))
-	}
-
-	return nil
-}
-
-// PullBranchWithDBKey pulls changes from remote using database SSH key
-func (s *GitService) PullBranchWithDBKey(path, remote, branch, privateKey, passphrase string) error {
-	// Create temp private key file
-	tmpFile, err := os.CreateTemp("", "git_ssh_key_*")
-	if err != nil {
-		return fmt.Errorf("failed to create temp key file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
-
-	// 处理私钥内容
-	keyContent := privateKey
-	if !strings.HasSuffix(keyContent, "\n") {
-		keyContent += "\n"
-	}
-
-	// 如果有 passphrase，需要解密私钥
-	if passphrase != "" {
-		// 解析加密的私钥
-		rawKey, err := ssh2.ParseRawPrivateKeyWithPassphrase([]byte(keyContent), []byte(passphrase))
-		if err != nil {
-			return fmt.Errorf("failed to parse encrypted private key: %v", err)
-		}
-
-		// 重新编码为无密码的 PEM 格式
-		pemBytes, err := x509.MarshalPKCS8PrivateKey(rawKey)
-		if err != nil {
-			return fmt.Errorf("failed to marshal private key: %v", err)
-		}
-
-		pemBlock := &pem.Block{
-			Type:  "PRIVATE KEY",
-			Bytes: pemBytes,
-		}
-		keyContent = string(pem.EncodeToMemory(pemBlock))
-	}
-
-	if _, err := tmpFile.WriteString(keyContent); err != nil {
-		tmpFile.Close()
-		return fmt.Errorf("failed to write key file: %v", err)
-	}
-	tmpFile.Close()
-
-	if err := os.Chmod(tmpFile.Name(), 0600); err != nil {
-		return fmt.Errorf("failed to set key file permissions: %v", err)
-	}
-
-	sshCmd := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null", tmpFile.Name())
-
-	// git pull remote branch
-	cmd := exec.Command("git", "pull", remote, branch)
-	cmd.Dir = path
-	cmd.Env = append(os.Environ(), "GIT_SSH_COMMAND="+sshCmd)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git pull failed: %v, output: %s", err, string(output))
-	}
-
-	return nil
-}
-
-// FetchAllWithDBKey fetches all remotes using database SSH key (native git command)
-func (s *GitService) FetchAllWithDBKey(path, privateKey, passphrase string) error {
-	tmpFile, err := os.CreateTemp("", "git_ssh_key_*")
-	if err != nil {
-		return fmt.Errorf("failed to create temp key file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
-
-	// 处理私钥内容
-	keyContent := privateKey
-	if !strings.HasSuffix(keyContent, "\n") {
-		keyContent += "\n"
-	}
-
-	// 如果有 passphrase，需要解密私钥
-	if passphrase != "" {
-		// 解析加密的私钥
-		rawKey, err := ssh2.ParseRawPrivateKeyWithPassphrase([]byte(keyContent), []byte(passphrase))
-		if err != nil {
-			return fmt.Errorf("failed to parse encrypted private key: %v", err)
-		}
-
-		// 重新编码为无密码的 PEM 格式
-		pemBytes, err := x509.MarshalPKCS8PrivateKey(rawKey)
-		if err != nil {
-			return fmt.Errorf("failed to marshal private key: %v", err)
-		}
-
-		pemBlock := &pem.Block{
-			Type:  "PRIVATE KEY",
-			Bytes: pemBytes,
-		}
-		keyContent = string(pem.EncodeToMemory(pemBlock))
-	}
-
-	if _, err := tmpFile.WriteString(keyContent); err != nil {
-		tmpFile.Close()
-		return fmt.Errorf("failed to write key file: %v", err)
-	}
-	tmpFile.Close()
-
-	if err := os.Chmod(tmpFile.Name(), 0600); err != nil {
-		return fmt.Errorf("failed to set key file permissions: %v", err)
-	}
-
-	sshCmd := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes", tmpFile.Name())
-
-	cmd := exec.Command("git", "fetch", "--all")
-	cmd.Dir = path
-	cmd.Env = append(os.Environ(), "GIT_SSH_COMMAND="+sshCmd)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git fetch --all failed: %v, output: %s", err, string(output))
-	}
-
-	return nil
-}
-
-// FetchBranchWithDBKey fetches a specific branch from remote using database SSH key
-func (s *GitService) FetchBranchWithDBKey(path, remote, branch, privateKey, passphrase string) error {
-	// Create temp private key file
-	tmpFile, err := os.CreateTemp("", "git_ssh_key_*")
-	if err != nil {
-		return fmt.Errorf("failed to create temp key file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
-
-	// 处理私钥内容
-	keyContent := privateKey
-	if !strings.HasSuffix(keyContent, "\n") {
-		keyContent += "\n"
-	}
-
-	// 如果有 passphrase，需要解密私钥
-	if passphrase != "" {
-		// 解析加密的私钥
-		rawKey, err := ssh2.ParseRawPrivateKeyWithPassphrase([]byte(keyContent), []byte(passphrase))
-		if err != nil {
-			return fmt.Errorf("failed to parse encrypted private key: %v", err)
-		}
-
-		// 重新编码为无密码的 PEM 格式
-		pemBytes, err := x509.MarshalPKCS8PrivateKey(rawKey)
-		if err != nil {
-			return fmt.Errorf("failed to marshal private key: %v", err)
-		}
-
-		pemBlock := &pem.Block{
-			Type:  "PRIVATE KEY",
-			Bytes: pemBytes,
-		}
-		keyContent = string(pem.EncodeToMemory(pemBlock))
-	}
-
-	if _, err := tmpFile.WriteString(keyContent); err != nil {
-		tmpFile.Close()
-		return fmt.Errorf("failed to write key file: %v", err)
-	}
-	tmpFile.Close()
-
-	if err := os.Chmod(tmpFile.Name(), 0600); err != nil {
-		return fmt.Errorf("failed to set key file permissions: %v", err)
-	}
-
-	sshCmd := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null", tmpFile.Name())
-
-	// git fetch remote branch
-	cmd := exec.Command("git", "fetch", remote, branch)
-	cmd.Dir = path
-	cmd.Env = append(os.Environ(), "GIT_SSH_COMMAND="+sshCmd)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git fetch failed: %v, output: %s", err, string(output))
-	}
-
 	return nil
 }

@@ -184,39 +184,12 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showTagDialog" title="打标签 (Tag)" width="550px" destroy-on-close>
-      <el-form :model="tagForm" label-width="100px">
-        <el-form-item label="目标引用">
-          <el-input :model-value="tagForm.ref" disabled />
-        </el-form-item>
-        <el-form-item label="版本类型">
-          <el-radio-group v-model="tagForm.versionType" @change="handleTagVersionTypeChange">
-            <el-radio-button value="patch">Patch</el-radio-button>
-            <el-radio-button value="minor">Minor</el-radio-button>
-            <el-radio-button value="major">Major</el-radio-button>
-            <el-radio-button value="custom">自定义</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="当前版本" v-if="tagNextVersion">
-          <el-tag type="info" size="small">{{ tagNextVersion.current || '无' }}</el-tag>
-        </el-form-item>
-        <el-form-item label="标签名" required>
-          <el-input v-model="tagForm.name" :disabled="tagForm.versionType !== 'custom'" placeholder="v1.0.0" />
-        </el-form-item>
-        <el-form-item label="说明">
-          <el-input v-model="tagForm.message" type="textarea" :rows="2" />
-        </el-form-item>
-        <el-form-item label="推送到远端">
-          <el-select v-model="tagForm.push_remote" placeholder="不推送" clearable>
-            <el-option v-for="r in remoteNames" :key="r" :label="r" :value="r" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showTagDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleCreateTag">创建</el-button>
-      </template>
-    </el-dialog>
+    <CreateTagDialog
+      v-model:visible="showTagDialog"
+      :repo-key="repoKey"
+      :remote-names="remoteNames"
+      :branch-name="tagBranchName"
+    />
   </div>
 </template>
 
@@ -225,13 +198,11 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Edit, Select, Top, Bottom, Switch, Download, CircleCheck, PriceTag, View, RefreshRight, Close, SetUp } from '@element-plus/icons-vue'
-import { getBranchList, createBranch, deleteBranch, updateBranch, checkoutBranch, pushBranch, pullBranch, createTag } from '@/api/modules/branch'
+import { getBranchList, createBranch, deleteBranch, updateBranch, checkoutBranch, pushBranch, pullBranch } from '@/api/modules/branch'
 import { showGitError } from '@/utils/git'
 import { fetchRepo, scanRepo } from '@/api/modules/repo'
 import { validateBranchName } from '@/api/modules/branch-rule'
 import { getRepoDetail } from '@/api/modules/repo'
-import { getNextVersion } from '@/api/modules/version'
-import type { NextVersionInfo } from '@/api/modules/version'
 import type { BranchInfo } from '@/types/branch'
 import { formatRelativeTime } from '@/utils/format'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -241,6 +212,7 @@ import type { TableColumn } from '@/components/common/DataTable.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import ActionPill from '@/components/common/ActionPill.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import CreateTagDialog from '@/components/branch/CreateTagDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -277,8 +249,7 @@ const pushBranchName = ref('')
 const pushRemotes = ref<string[]>([])
 
 const showTagDialog = ref(false)
-const tagForm = ref({ ref: '', name: '', message: '', push_remote: '', versionType: 'patch' as 'patch' | 'minor' | 'major' | 'custom' })
-const tagNextVersion = ref<NextVersionInfo | null>(null)
+const tagBranchName = ref('')
 
 const validationErrors = ref<{ field: string; message: string }[]>([])
 const validationValid = ref(false)
@@ -340,12 +311,12 @@ onMounted(async () => {
       const scan = await scanRepo(repo.path)
       remoteNames.value = (scan.remotes || []).map((r: { name: string }) => r.name)
     }
-  } catch { /* ignore */ }
+  } catch {}
 
   try {
     const res = await getBranchList(repoKey, { type: 'local', page_size: 500 })
     localBranches.value = res.list || []
-  } catch { /* ignore */ }
+  } catch {}
 
   await loadBranches()
 })
@@ -412,7 +383,7 @@ async function handleCheckout(name: string) {
     await checkoutBranch(repoKey, name)
     ElMessage.success(`已切换到 ${name}`)
     await loadBranches()
-  } catch { /* handled */ }
+  } catch {}
 }
 
 async function handleCheckoutRemote(remoteName: string) {
@@ -428,7 +399,7 @@ async function handleCheckoutRemote(remoteName: string) {
     const res = await getBranchList(repoKey, { type: 'local', page_size: 500 })
     localBranches.value = res.list || []
     await loadBranches()
-  } catch { /* handled */ }
+  } catch {}
 }
 
 async function handleFfRemote(remoteName: string) {
@@ -438,7 +409,7 @@ async function handleFfRemote(remoteName: string) {
     await pullBranch(repoKey, localName)
     ElMessage.success(`已更新本地分支 ${localName}`)
     await loadBranches()
-  } catch { /* handled */ }
+  } catch {}
 }
 
 async function handlePullRemote(remoteName: string) {
@@ -500,7 +471,7 @@ async function handleCreate() {
     showCreateDialog.value = false
     createForm.value = { name: '', base_ref: '' }
     await loadBranches()
-  } catch { /* handled */ }
+  } catch {}
 }
 
 function openRenameDialog(branch: BranchInfo) {
@@ -515,7 +486,7 @@ async function handleRename() {
     ElMessage.success('重命名成功')
     showRenameDialog.value = false
     await loadBranches()
-  } catch { /* handled */ }
+  } catch {}
 }
 
 async function handleDeleteBranch(name: string) {
@@ -524,53 +495,12 @@ async function handleDeleteBranch(name: string) {
     await deleteBranch(repoKey, name)
     ElMessage.success('分支已删除')
     await loadBranches()
-  } catch { /* cancelled or handled */ }
+  } catch {}
 }
 
 function openTagDialog(branchName: string) {
-  tagForm.value = { ref: branchName, name: '', message: '', push_remote: '', versionType: 'patch' }
-  tagNextVersion.value = null
+  tagBranchName.value = branchName
   showTagDialog.value = true
-  getNextVersion(repoKey).then(info => {
-    tagNextVersion.value = info
-    handleTagVersionTypeChange('patch')
-  }).catch(() => { /* ignore */ })
-}
-
-function handleTagVersionTypeChange(type: string | number | boolean) {
-  if (!tagNextVersion.value) return
-  switch (type) {
-    case 'patch':
-      tagForm.value.name = tagNextVersion.value.next_patch
-      break
-    case 'minor':
-      tagForm.value.name = tagNextVersion.value.next_minor
-      break
-    case 'major':
-      tagForm.value.name = tagNextVersion.value.next_major
-      break
-    case 'custom':
-      tagForm.value.name = ''
-      break
-  }
-}
-
-async function handleCreateTag() {
-  if (!tagForm.value.name) {
-    ElMessage.warning('请输入标签名')
-    return
-  }
-  try {
-    await createTag({
-      repo_key: repoKey,
-      name: tagForm.value.name,
-      ref: tagForm.value.ref,
-      message: tagForm.value.message || undefined,
-      push_remote: tagForm.value.push_remote || undefined,
-    })
-    ElMessage.success('标签创建成功')
-    showTagDialog.value = false
-  } catch { /* handled */ }
 }
 
 function handleBranchCommand(command: string, row: BranchInfo) {

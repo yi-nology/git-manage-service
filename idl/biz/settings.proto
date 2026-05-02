@@ -185,6 +185,80 @@ message UpdateRemoteRepoBranchRulesRequest {
   repeated string protected_branches = 6 [(api.body) = "protected_branches"];
 }
 
+message ReviewRuleInfo {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string severity = 4;
+  string category = 5;
+  bool enabled = 6;
+  int32 sort_order = 7;
+}
+
+message ListLLMPresetsRequest {
+  string category = 1 [(api.query) = "category"];
+}
+
+message ListReviewRulesRequest {}
+
+message ReviewRuleListResponse {
+  common.BaseResponse base = 1;
+  repeated ReviewRuleInfo rules = 2;
+}
+
+message GetReviewRuleRequest {
+  string rule_id = 1 [(api.path) = "rule_id"];
+}
+
+message ReviewRuleResponse {
+  common.BaseResponse base = 1;
+  ReviewRuleInfo rule = 2;
+}
+
+message CreateReviewRuleRequest {
+  string id = 1 [(api.body) = "id"];
+  string name = 2 [(api.body) = "name"];
+  string description = 3 [(api.body) = "description"];
+  string severity = 4 [(api.body) = "severity"];
+  string category = 5 [(api.body) = "category"];
+  bool enabled = 6 [(api.body) = "enabled"];
+  int32 sort_order = 7 [(api.body) = "sort_order"];
+}
+
+message UpdateReviewRuleRequest {
+  string rule_id = 1 [(api.path) = "rule_id"];
+  string name = 2 [(api.body) = "name"];
+  string description = 3 [(api.body) = "description"];
+  string severity = 4 [(api.body) = "severity"];
+  string category = 5 [(api.body) = "category"];
+  bool enabled = 6 [(api.body) = "enabled"];
+  int32 sort_order = 7 [(api.body) = "sort_order"];
+}
+
+message DeleteReviewRuleRequest {
+  string rule_id = 1 [(api.path) = "rule_id"];
+}
+
+message BatchUpdateReviewRulesRequest {
+  repeated ReviewRuleInfo rules = 1 [(api.body) = "rules"];
+}
+
+message LLMPresetInfo {
+  string id = 1;
+  string name = 2;
+  string provider_type = 3;
+  string base_url = 4;
+  string model = 5;
+  int32 max_tokens = 6;
+  string description = 7;
+  string category = 8;
+}
+
+message LLMPresetsResponse {
+  common.BaseResponse base = 1;
+  repeated LLMPresetInfo presets = 2;
+}
+
 service SettingsService {
   rpc ListLLMProviders(ListLLMProvidersRequest) returns (ListLLMProvidersResponse) {
     option (api.get) = "/api/v1/settings/llm-providers";
@@ -227,5 +301,26 @@ service SettingsService {
   }
   rpc UpdateRemoteRepoBranchRules(UpdateRemoteRepoBranchRulesRequest) returns (RemoteRepoBranchRulesResponse) {
     option (api.put) = "/api/v1/branch-rules/remote-config/:provider_id/:owner/:repo";
+  }
+  rpc ListLLMPresets(ListLLMPresetsRequest) returns (LLMPresetsResponse) {
+    option (api.get) = "/api/v1/settings/llm-providers/presets";
+  }
+  rpc ListReviewRules(ListReviewRulesRequest) returns (ReviewRuleListResponse) {
+    option (api.get) = "/api/v1/settings/review-rules";
+  }
+  rpc GetReviewRule(GetReviewRuleRequest) returns (ReviewRuleResponse) {
+    option (api.get) = "/api/v1/settings/review-rules/:rule_id";
+  }
+  rpc CreateReviewRule(CreateReviewRuleRequest) returns (ReviewRuleResponse) {
+    option (api.post) = "/api/v1/settings/review-rules";
+  }
+  rpc UpdateReviewRule(UpdateReviewRuleRequest) returns (ReviewRuleResponse) {
+    option (api.put) = "/api/v1/settings/review-rules/:rule_id";
+  }
+  rpc DeleteReviewRule(DeleteReviewRuleRequest) returns (common.EmptyResponse) {
+    option (api.delete) = "/api/v1/settings/review-rules/:rule_id";
+  }
+  rpc BatchUpdateReviewRules(BatchUpdateReviewRulesRequest) returns (ReviewRuleListResponse) {
+    option (api.put) = "/api/v1/settings/review-rules/batch";
   }
 }

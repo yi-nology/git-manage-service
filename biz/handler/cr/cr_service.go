@@ -2,6 +2,7 @@ package cr
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
@@ -25,6 +26,8 @@ func Create(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to create CR: "+err.Error())
 		return
 	}
+	c.Set("audit_target", "repo:"+req.RepoKey)
+	c.Set("audit_details", map[string]string{"title": req.Title, "source": req.SourceBranch, "target": req.TargetBranch})
 	pkgresponse.Success(c, cr)
 }
 
@@ -88,6 +91,8 @@ func Merge(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to merge CR: "+err.Error())
 		return
 	}
+	c.Set("audit_target", "repo:"+req.RepoKey)
+	c.Set("audit_details", map[string]string{"cr_number": fmt.Sprintf("%d", req.CRNumber)})
 	pkgresponse.Success(c, cr)
 }
 
@@ -106,6 +111,7 @@ func Close(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to close CR: "+err.Error())
 		return
 	}
+	c.Set("audit_target", "repo:"+req.RepoKey)
 	pkgresponse.Success(c, cr)
 }
 
@@ -124,6 +130,7 @@ func Sync(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to sync CRs: "+err.Error())
 		return
 	}
+	c.Set("audit_target", "repo:"+req.RepoKey)
 	pkgresponse.Success(c, map[string]interface{}{"synced_count": count})
 }
 
@@ -190,6 +197,7 @@ func CreateByProvider(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to create CR: "+err.Error())
 		return
 	}
+	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
 	pkgresponse.Success(c, cr)
 }
 
@@ -216,6 +224,7 @@ func MergeByProvider(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to merge CR: "+err.Error())
 		return
 	}
+	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
 	pkgresponse.Success(c, cr)
 }
 
@@ -239,5 +248,6 @@ func CloseByProvider(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to close CR: "+err.Error())
 		return
 	}
+	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
 	pkgresponse.Success(c, cr)
 }

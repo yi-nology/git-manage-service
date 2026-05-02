@@ -14,7 +14,9 @@ import (
 	"time"
 
 	hserver "github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/cloudwego/hertz/pkg/common/config"
 	kserver "github.com/cloudwego/kitex/server"
+	prometheus "github.com/hertz-contrib/monitor-prometheus"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/kitex_gen/git/gitservice"
 	"github.com/yi-nology/git-manage-service/biz/queue"
@@ -29,6 +31,7 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/appinfo"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/embed"
+	"github.com/yi-nology/git-manage-service/pkg/metrics"
 )
 
 // @title Git Manage Service API
@@ -164,7 +167,25 @@ func initQueue() {
 func startHTTPServer() *hserver.Hertz {
 
 	addr := fmt.Sprintf(":%d", configs.GlobalConfig.Server.Port)
-	h := hserver.Default(hserver.WithHostPorts(addr))
+
+	opts := []config.Option{
+		hserver.WithHostPorts(addr),
+	}
+
+	if configs.GlobalConfig.Prometheus.Enabled {
+		metricsAddr := fmt.Sprintf(":%d", configs.GlobalConfig.Prometheus.Port)
+		metricsPath := configs.GlobalConfig.Prometheus.Path
+		tracer := prometheus.NewServerTracer(
+			metricsAddr,
+			metricsPath,
+			prometheus.WithRegistry(metrics.Registry),
+			prometheus.WithEnableGoCollector(true),
+		)
+		opts = append(opts, hserver.WithTracer(tracer))
+		log.Printf("Prometheus metrics enabled on %s%s\n", metricsAddr, metricsPath)
+	}
+
+	h := hserver.Default(opts...)
 
 	// 初始化嵌入的静态文件系统
 	router.SetEmbedFS(embed.GetPublicFS(), embed.GetDocsFS())

@@ -89,6 +89,7 @@ func Create(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to create provider config: "+err.Error())
 		return
 	}
+	c.Set("audit_details", map[string]string{"name": req.Name, "platform": req.Platform})
 	pkgresponse.Success(c, toProviderConfigDTO(cfg))
 }
 
@@ -263,6 +264,8 @@ func CreateRemoteBranch(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to create branch: "+err.Error())
 		return
 	}
+	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
+	c.Set("audit_details", map[string]string{"branch": req.Branch, "ref": req.Ref})
 	pkgresponse.Success(c, br)
 }
 
@@ -290,6 +293,8 @@ func DeleteRemoteBranch(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to delete branch: "+err.Error())
 		return
 	}
+	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
+	c.Set("audit_details", map[string]string{"branch": req.Branch})
 	pkgresponse.Success(c, map[string]string{"message": "deleted"})
 }
 

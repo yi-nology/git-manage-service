@@ -8,7 +8,6 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	submodule "github.com/yi-nology/git-manage-service/biz/model/submodule"
-	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -112,11 +111,6 @@ func AddSubmodule(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "SUBMODULE_ADD", "repo:"+repo.Key, map[string]string{
-		"url":    req.Url,
-		"path":   req.Path,
-		"branch": req.Branch,
-	})
 	response.Success(c, map[string]string{"message": "submodule added"})
 }
 
@@ -141,9 +135,6 @@ func InitSubmodule(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "SUBMODULE_INIT", "repo:"+repo.Key, map[string]string{
-		"path": req.Path,
-	})
 	response.Success(c, map[string]string{"message": "submodule initialized"})
 }
 
@@ -168,12 +159,6 @@ func UpdateSubmodule(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "SUBMODULE_UPDATE", "repo:"+repo.Key, map[string]interface{}{
-		"path":      req.Path,
-		"init":      req.Init,
-		"recursive": req.Recursive,
-		"remote":    req.Remote,
-	})
 	response.Success(c, map[string]string{"message": "submodule updated"})
 }
 
@@ -198,10 +183,6 @@ func SyncSubmodule(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "SUBMODULE_SYNC", "repo:"+repo.Key, map[string]interface{}{
-		"path":      req.Path,
-		"recursive": req.Recursive,
-	})
 	response.Success(c, map[string]string{"message": "submodule synced"})
 }
 
@@ -226,9 +207,5 @@ func RemoveSubmodule(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	audit.AuditSvc.Log(c, "SUBMODULE_REMOVE", "repo:"+repo.Key, map[string]interface{}{
-		"path":  req.Path,
-		"force": req.Force,
-	})
 	response.Success(c, map[string]string{"message": "submodule removed"})
 }
