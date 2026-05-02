@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	authorHandler "github.com/yi-nology/git-manage-service/biz/handler/author"
 	settingsHandler "github.com/yi-nology/git-manage-service/biz/handler/settings"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"
@@ -38,6 +39,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/router/version"
 	"github.com/yi-nology/git-manage-service/biz/router/webhook"
 	"github.com/yi-nology/git-manage-service/biz/router/webhook_event"
+	workspace "github.com/yi-nology/git-manage-service/biz/router/workspace"
 )
 
 // 嵌入的文件系统变量
@@ -57,7 +59,10 @@ func GeneratedRegister(h *server.Hertz) {
 	h.Use(middleware.CORS())
 
 	//INSERT_POINT: DO NOT DELETE THIS LINE!
+	workspace.Register(h)
+
 	author.Register(h)
+	registerAuthorCustomRoutes(h)
 
 	maintenance.Register(h)
 
@@ -194,4 +199,10 @@ func registerReviewRuleRoutes(h *server.Hertz) {
 
 func registerLLMPresetsRoute(h *server.Hertz) {
 	h.GET("/api/v1/settings/llm-providers/presets", settingsHandler.ListLLMPresets)
+}
+
+func registerAuthorCustomRoutes(h *server.Hertz) {
+	g := h.Group("/api/v1/repo/:repo_key/author")
+	g.POST("/ai", authorHandler.AuthorAI)
+	g.POST("/chat", authorHandler.AuthorChat)
 }

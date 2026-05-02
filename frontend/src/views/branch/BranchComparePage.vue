@@ -114,9 +114,21 @@
           class="mb-3"
         >
           <p>无法自动合并。以下文件存在冲突：</p>
-          <ul>
-            <li v-for="c in mergeCheckResult.conflicts" :key="c">{{ c }}</li>
-          </ul>
+          <div class="conflict-list">
+            <div v-for="c in mergeCheckResult.conflicts" :key="c" class="conflict-row">
+              <span class="conflict-path">{{ c }}</span>
+              <div class="conflict-actions">
+                <el-button type="primary" size="small" @click="openConflictResolver(c)">
+                  <el-icon><MagicStick /></el-icon> 解决冲突
+                </el-button>
+              </div>
+            </div>
+          </div>
+          <div class="conflict-batch-bar">
+            <el-button type="primary" @click="batchAIResolve" :loading="batchResolving">
+              <el-icon><MagicStick /></el-icon> AI 批量解决全部 ({{ mergeCheckResult.conflicts.length }} 文件)
+            </el-button>
+          </div>
         </el-alert>
       </div>
 
@@ -131,8 +143,19 @@
         <el-button type="success" @click="handleMerge" :disabled="!mergeCheckResult?.success" :loading="merging">
           确认合并
         </el-button>
+        <el-button v-if="mergeCheckResult && !mergeCheckResult.success" @click="recheckMerge" :loading="mergeChecking">
+          重新检测
+        </el-button>
       </template>
     </el-dialog>
+
+    <ConflictResolver
+      v-if="showConflictResolver"
+      :repo-key="repoKey"
+      :file-path="conflictFile"
+      @resolved="onConflictResolved"
+      @close="showConflictResolver = false"
+    />
   </div>
 </template>
 
@@ -140,7 +163,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Right, Switch, Connection, Download, Loading } from '@element-plus/icons-vue'
+import { Right, Switch, Connection, Download, Loading, MagicStick } from '@element-plus/icons-vue'
 import { getBranchList, compareBranches, getBranchDiff, getBranchPatch, checkMerge, mergeBranch } from '@/api/modules/branch'
 import type { MergeCheckResult, BranchInfo } from '@/types/branch'
 import * as Diff2Html from 'diff2html'
@@ -151,6 +174,8 @@ import StatsRow from '@/components/common/StatsRow.vue'
 import SectionTitle from '@/components/common/SectionTitle.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import ConflictResolver from '@/components/repo/ConflictResolver.vue'
+import { getConflictDetail, aiResolveConflict, markConflictResolved } from '@/api/modules/workspace'
 
 const route = useRoute()
 const repoKey = route.params.repoKey as string
@@ -296,6 +321,50 @@ async function handleMerge() {
   } finally {
     merging.value = false
   }
+}
+
+const showConflictResolver = ref(false)
+const conflictFile = ref('')
+const batchResolving = ref(false)
+
+function openConflictResolver(file: string) {
+  conflictFile.value = file
+  showConflictResolver.value = true
+}
+
+function onConflictResolved() {
+  showConflictResolver.value = false
+  conflictFile.value = ''
+  recheckMerge()
+}
+
+async function recheckMerge() {
+  mergeChecking.value = true
+  try {
+    mergeCheckResult.value = await checkMerge(repoKey, sourceBranch.value, targetBranch.value)
+  } finally {
+    mergeChecking.value = false
+  }
+}
+
+async function batchAIResolve() {
+  if (!mergeCheckResult.value?.conflicts.length) return
+  batchResolving.value = true
+  let resolved = 0
+  for (const file of mergeCheckResult.value.conflicts) {
+    try {
+      const detail = await getConflictDetail(repoKey, file)
+      if (!detail) continue
+      const result = await aiResolveConflict(repoKey, file, detail.oursContent, detail.theirsContent, detail.baseContent)
+      if (result) {
+        await markConflictResolved(repoKey, file, result.resolvedContent, true)
+        resolved++
+      }
+    } catch { /* skip */ }
+  }
+  batchResolving.value = false
+  ElMessage.success(`已解决 ${resolved}/${mergeCheckResult.value.conflicts.length} 个冲突`)
+  await recheckMerge()
 }
 </script>
 
@@ -451,6 +520,41 @@ async function handleMerge() {
 .diff-content {
   overflow-x: auto;
   padding: 0;
+}
+
+.conflict-list {
+  margin-top: 8px;
+}
+
+.conflict-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.conflict-row:last-child {
+  border-bottom: none;
+}
+
+.conflict-path {
+  font-family: 'Menlo', 'Monaco', monospace;
+  font-size: 13px;
+  color: var(--el-color-danger);
+}
+
+.conflict-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.conflict-batch-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
 }
 
 @media (max-width: 768px) {

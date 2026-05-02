@@ -1,0 +1,184 @@
+syntax = "proto3";
+
+package workspace;
+
+option go_package = "workspace";
+
+import "api.proto";
+import "common.proto";
+
+service WorkspaceService {
+  rpc GetWorkspaceStatus(GetWorkspaceStatusReq) returns (GetWorkspaceStatusResp) {
+    option (api.get) = "/api/v1/workspace/status";
+  }
+
+  rpc GetWorkspaceDiff(GetWorkspaceDiffReq) returns (GetWorkspaceDiffResp) {
+    option (api.get) = "/api/v1/workspace/diff";
+  }
+
+  rpc StageFiles(StageFilesReq) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/workspace/stage";
+  }
+
+  rpc UnstageFiles(UnstageFilesReq) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/workspace/unstage";
+  }
+
+  rpc CommitChanges(CommitChangesReq) returns (CommitChangesResp) {
+    option (api.post) = "/api/v1/workspace/commit";
+  }
+
+  rpc PullWithResolve(PullWithResolveReq) returns (PullWithResolveResp) {
+    option (api.post) = "/api/v1/workspace/pull";
+  }
+
+  rpc GetConflictDetail(GetConflictDetailReq) returns (GetConflictDetailResp) {
+    option (api.get) = "/api/v1/workspace/conflict-detail";
+  }
+
+  rpc MarkConflictResolved(MarkConflictResolvedReq) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/workspace/resolve";
+  }
+
+  rpc AIResolveConflict(AIResolveConflictReq) returns (AIResolveConflictResp) {
+    option (api.post) = "/api/v1/workspace/ai-resolve";
+  }
+}
+
+message FileStatus {
+  string path = 1;
+  string status = 2;
+  string old_path = 3;
+  int32 additions = 4;
+  int32 deletions = 5;
+  bool is_binary = 6;
+}
+
+message GetWorkspaceStatusReq {
+  string repo_key = 1 [(api.query) = "repo_key"];
+}
+
+message GetWorkspaceStatusResp {
+  common.BaseResponse base = 1;
+  string branch = 2;
+  repeated FileStatus staged = 3;
+  repeated FileStatus unstaged = 4;
+  repeated FileStatus untracked = 5;
+  repeated FileStatus conflicted = 6;
+  bool is_clean = 7;
+  bool is_merging = 8;
+  bool is_rebasing = 9;
+  int32 ahead = 10;
+  int32 behind = 11;
+}
+
+message GetWorkspaceDiffReq {
+  string repo_key = 1 [(api.query) = "repo_key"];
+  string file = 2 [(api.query) = "file"];
+  bool staged_only = 3 [(api.query) = "staged_only"];
+}
+
+message DiffFile {
+  string file = 1;
+  string diff = 2;
+  int32 additions = 3;
+  int32 deletions = 4;
+  bool is_binary = 5;
+}
+
+message GetWorkspaceDiffResp {
+  common.BaseResponse base = 1;
+  repeated DiffFile files = 2;
+  int32 total_additions = 3;
+  int32 total_deletions = 4;
+}
+
+message StageFilesReq {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  repeated string files = 2 [(api.body) = "files"];
+  bool stage_all = 3 [(api.body) = "stage_all"];
+}
+
+message UnstageFilesReq {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  repeated string files = 2 [(api.body) = "files"];
+  bool unstage_all = 3 [(api.body) = "unstage_all"];
+}
+
+message CommitChangesReq {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  repeated string files = 2 [(api.body) = "files"];
+  bool stage_all = 3 [(api.body) = "stage_all"];
+  string message = 4 [(api.body) = "message"];
+  string author_name = 5 [(api.body) = "author_name"];
+  string author_email = 6 [(api.body) = "author_email"];
+  bool push = 7 [(api.body) = "push"];
+  string push_remote = 8 [(api.body) = "push_remote"];
+}
+
+message CommitChangesResp {
+  common.BaseResponse base = 1;
+  string commit_hash = 2;
+  bool pushed = 3;
+}
+
+message PullWithResolveReq {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  string remote = 2 [(api.body) = "remote"];
+  string branch = 3 [(api.body) = "branch"];
+  bool fetch_only = 4 [(api.body) = "fetch_only"];
+}
+
+message ConflictFile {
+  string path = 1;
+  string ours_content = 2;
+  string theirs_content = 3;
+  string base_content = 4;
+  string conflict_markers = 5;
+}
+
+message PullWithResolveResp {
+  common.BaseResponse base = 1;
+  string status = 2;
+  repeated string conflicts = 3;
+  string fetch_log = 4;
+  bool behind_pulled = 5;
+}
+
+message GetConflictDetailReq {
+  string repo_key = 1 [(api.query) = "repo_key"];
+  string file = 2 [(api.query) = "file"];
+}
+
+message GetConflictDetailResp {
+  common.BaseResponse base = 1;
+  ConflictFile conflict = 2;
+}
+
+message MarkConflictResolvedReq {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  string file = 2 [(api.body) = "file"];
+  string resolved_content = 3 [(api.body) = "resolved_content"];
+  bool stage = 4 [(api.body) = "stage"];
+}
+
+message AIResolveConflictReq {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  string file = 2 [(api.body) = "file"];
+  string ours_content = 3 [(api.body) = "ours_content"];
+  string theirs_content = 4 [(api.body) = "theirs_content"];
+  string base_content = 5 [(api.body) = "base_content"];
+  string hint = 6 [(api.body) = "hint"];
+}
+
+message AIResolvedFile {
+  string file_path = 1;
+  string resolved_content = 2;
+  string explanation = 3;
+  double confidence = 4;
+}
+
+message AIResolveConflictResp {
+  common.BaseResponse base = 1;
+  AIResolvedFile resolved = 2;
+}

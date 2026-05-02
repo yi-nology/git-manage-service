@@ -292,6 +292,10 @@
           <StashManager :repo-key="repoKey" />
         </div>
 
+        <div v-show="activeTab === 'workspace'" style="height: 100%; min-height: 600px;">
+          <WorkspacePanel :repo-key="repoKey" />
+        </div>
+
         <div v-show="activeTab === 'submodules'">
           <SubmoduleManager :repo-key="repoKey" />
         </div>
@@ -305,7 +309,7 @@
         </div>
 
         <div v-show="activeTab === 'author'">
-          <AuthorFix :repo-key="repoKey" />
+          <AuthorFix :repo-key="repoKey" :remotes="remoteNames" />
         </div>
       </div>
     </div>
@@ -460,7 +464,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Edit, Search, Download, Setting, Plus, Top, Delete, CopyDocument, Connection, DocumentCopy, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link, Share, Operation, User } from '@element-plus/icons-vue'
+import { Refresh, Edit, Search, Download, Setting, Plus, Top, Delete, CopyDocument, Connection, DocumentCopy, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link, Share, Operation, User, Grid } from '@element-plus/icons-vue'
 import { getRepoDetail, scanRepo, updateRepo, fetchRepo } from '@/api/modules/repo'
 import { testConnection } from '@/api/modules/system'
 import { testCredential } from '@/api/modules/credential'
@@ -476,6 +480,7 @@ import LineStatsCharts from '@/components/stats/LineStatsCharts.vue'
 import FileBrowser from '@/components/repo/FileBrowser.vue'
 import CommitSearch from '@/components/repo/CommitSearch.vue'
 import StashManager from '@/components/repo/StashManager.vue'
+import WorkspacePanel from '@/components/repo/WorkspacePanel.vue'
 import SubmoduleManager from '@/components/repo/SubmoduleManager.vue'
 import PatchManager from '@/components/patch/PatchManager.vue'
 import CredentialSelector from '@/components/credential/CredentialSelector.vue'
@@ -524,10 +529,11 @@ const sidebarItems = [
   { key: 'files', label: '文件浏览', icon: Folder },
   { key: 'commits', label: 'Commit 搜索', icon: Search },
   { key: 'stash', label: 'Stash 管理', icon: Box },
+  { key: 'workspace', label: '工作区', icon: Grid },
   { key: 'submodules', label: 'Submodule', icon: Link },
   { key: 'patches', label: 'Patch 管理', icon: DocumentCopy },
   { key: 'slim', label: '仓库瘦身', icon: Operation },
-  { key: 'author', label: '作者', icon: User },
+  { key: 'author', label: '作者修复', icon: User },
 ]
 
 const statsFilter = ref({ branch: '', author: '', since: '', until: '' })
@@ -585,7 +591,10 @@ const showExcludeDialog = ref(false)
 const excludeDirsText = ref('')
 const excludePatternsText = ref('')
 
-onMounted(async () => {
+ onMounted(async () => {
+  if (route.query.tab && typeof route.query.tab === 'string') {
+    activeTab.value = route.query.tab
+  }
   loading.value = true
   try {
     repo.value = await getRepoDetail(repoKey)

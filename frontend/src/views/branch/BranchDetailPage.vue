@@ -7,7 +7,7 @@
       <template #actions>
         <ActionPill variant="primary" :icon="Switch" @click="$router.push(`/local-repos/${repoKey}/compare`)">对比/合并</ActionPill>
         <ActionPill variant="green" :icon="Top" @click="handlePush">推送远端</ActionPill>
-        <ActionPill v-if="hasUncommitted" variant="amber" :icon="Upload" @click="showSubmitDialog = true">提交变更</ActionPill>
+        <ActionPill v-if="hasUncommitted" variant="amber" :icon="Upload" @click="router.push({ name: 'RepoDetail', params: { repoKey }, query: { tab: 'workspace' } })">前往工作区</ActionPill>
         <ActionPill variant="outline" :icon="Refresh" @click="loadData">刷新</ActionPill>
         <ActionPill v-if="!isCurrent" variant="danger" :icon="Delete" @click="handleDelete">删除分支</ActionPill>
       </template>
