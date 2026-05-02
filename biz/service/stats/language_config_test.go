@@ -111,9 +111,9 @@ func TestGetLanguageConfig_SQL(t *testing.T) {
 }
 
 func TestGetLanguageConfig_Dockerfile(t *testing.T) {
-	cfg := GetLanguageConfig("Dockerfile")
+	cfg := GetLanguageConfig("dockerfile")
 	if cfg == nil {
-		t.Fatal("expected config for Dockerfile")
+		t.Fatal("expected config for dockerfile")
 	}
 	if cfg.Language != "Dockerfile" {
 		t.Errorf("expected Dockerfile, got %s", cfg.Language)
@@ -121,9 +121,9 @@ func TestGetLanguageConfig_Dockerfile(t *testing.T) {
 }
 
 func TestGetLanguageConfig_Makefile(t *testing.T) {
-	cfg := GetLanguageConfig("Makefile")
+	cfg := GetLanguageConfig("makefile")
 	if cfg == nil {
-		t.Fatal("expected config for Makefile")
+		t.Fatal("expected config for makefile")
 	}
 	if cfg.Language != "Makefile" {
 		t.Errorf("expected Makefile, got %s", cfg.Language)

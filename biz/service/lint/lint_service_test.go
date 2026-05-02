@@ -29,13 +29,13 @@ func TestHasSection(t *testing.T) {
 	s := &LintService{}
 	lines := []string{"Name: foo", "%description", "test", "%build", "make"}
 	if !s.hasSection(lines, "%description") {
-		t.Error("expected %description section")
+		t.Errorf("expected %%description section")
 	}
 	if !s.hasSection(lines, "%build") {
-		t.Error("expected %build section")
+		t.Errorf("expected %%build section")
 	}
 	if s.hasSection(lines, "%install") {
-		t.Error("should not find %install")
+		t.Errorf("should not find %%install")
 	}
 }
 
@@ -120,7 +120,7 @@ func TestApplyRule_RequiredDescription(t *testing.T) {
 	rule := po.LintRule{ID: "test", Pattern: "required_description", Severity: "error", Enabled: true}
 	issues := s.applyRule([]string{"Name: foo"}, rule)
 	if len(issues) == 0 {
-		t.Error("expected issue for missing %description")
+		t.Errorf("expected issue for missing %%description")
 	}
 }
 
@@ -129,7 +129,7 @@ func TestApplyRule_RequiredPrep(t *testing.T) {
 	rule := po.LintRule{ID: "test", Pattern: "required_prep", Severity: "warning", Enabled: true}
 	issues := s.applyRule([]string{"Name: foo"}, rule)
 	if len(issues) == 0 {
-		t.Error("expected issue for missing %prep")
+		t.Errorf("expected issue for missing %%prep")
 	}
 }
 
@@ -138,7 +138,7 @@ func TestApplyRule_RequiredBuild(t *testing.T) {
 	rule := po.LintRule{ID: "test", Pattern: "required_build", Severity: "warning", Enabled: true}
 	issues := s.applyRule([]string{"Name: foo"}, rule)
 	if len(issues) == 0 {
-		t.Error("expected issue for missing %build")
+		t.Errorf("expected issue for missing %%build")
 	}
 }
 
@@ -147,7 +147,7 @@ func TestApplyRule_RequiredInstall(t *testing.T) {
 	rule := po.LintRule{ID: "test", Pattern: "required_install", Severity: "warning", Enabled: true}
 	issues := s.applyRule([]string{"Name: foo"}, rule)
 	if len(issues) == 0 {
-		t.Error("expected issue for missing %install")
+		t.Errorf("expected issue for missing %%install")
 	}
 }
 
@@ -156,7 +156,7 @@ func TestApplyRule_RequiredFiles(t *testing.T) {
 	rule := po.LintRule{ID: "test", Pattern: "required_files", Severity: "error", Enabled: true}
 	issues := s.applyRule([]string{"Name: foo"}, rule)
 	if len(issues) == 0 {
-		t.Error("expected issue for missing %files")
+		t.Errorf("expected issue for missing %%files")
 	}
 }
 
@@ -180,11 +180,11 @@ func TestApplyRule_BuildRootUsage(t *testing.T) {
 	rule := po.LintRule{ID: "test", Pattern: "buildroot_usage", Severity: "warning", Enabled: true}
 	issues := s.applyRule([]string{"BuildRoot: /tmp/foo"}, rule)
 	if len(issues) == 0 {
-		t.Error("expected issue for BuildRoot without %{_tmppath}")
+		t.Error("expected issue for BuildRoot without %%{_tmppath}")
 	}
 	issues = s.applyRule([]string{"BuildRoot: %{_tmppath}/%{name}"}, rule)
 	if len(issues) != 0 {
-		t.Error("expected no issue when BuildRoot uses %{_tmppath}")
+		t.Errorf("expected no issue when BuildRoot uses %%{_tmppath}")
 	}
 }
 
@@ -207,7 +207,7 @@ func TestApplyRule_ChangelogFormat(t *testing.T) {
 	lines := []string{"%changelog", "Mon Jan 1 2024", "- update"}
 	issues := s.applyRule(lines, rule)
 	if len(issues) == 0 {
-		t.Error("expected issue for changelog not starting with *")
+		t.Errorf("expected issue for changelog not starting with *")
 	}
 	lines2 := []string{"%changelog", "* Mon Jan 1 2024 Author", "- update"}
 	issues = s.applyRule(lines2, rule)
