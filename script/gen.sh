@@ -85,14 +85,14 @@ if [ "$SKIP_HZ" != "true" ]; then
         info "Generating Hz HTTP code..."
         
         # 检查是否已初始化 Hz（通过检查 .hz 文件或 router/hz 目录）
-        if [ ! -d "biz/router" ]; then
+        if [ ! -d "biz/router/hz" ]; then
             info "Initializing Hz project..."
             hz new -idl idl/biz/repo.proto \
                 -I idl \
                 -module github.com/yi-nology/git-manage-service \
-                --handler_dir biz/handler \
-                --router_dir biz/router \
-                --model_dir biz/model
+                --handler_dir biz/handler/hz \
+                --router_dir biz/router/hz \
+                --model_dir biz/model/hz
         fi
         
         # 更新生成代码
@@ -100,8 +100,9 @@ if [ "$SKIP_HZ" != "true" ]; then
             info "Processing $proto..."
             hz update -idl "$proto" \
                 -I idl \
-                --handler_dir biz/handler \
-                --model_dir biz/model || warn "Failed to process $proto"
+                --handler_dir biz/handler/hz \
+                --router_dir biz/router/hz \
+                --model_dir biz/model/hz || warn "Failed to process $proto"
         done
         
         info "Hz code generation completed"

@@ -44,7 +44,7 @@ tar -xzf git-manage-service-*.tar.gz
 ./git-manage-service
 
 # 访问
-open http://localhost:38080
+open http://localhost:12345
 ```
 
 [查看完整安装指南 →](/getting-started)

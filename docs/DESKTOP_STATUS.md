@@ -22,7 +22,7 @@
 
 # 方案 B：混合方案（更简单）
 1. 桌面应用作为包装器启动后端服务
-2. 使用系统 WebView 显示 localhost:38080
+2. 使用系统 WebView 显示 localhost:12345
 3. 不需要修改前端代码
 ```
 
@@ -43,7 +43,7 @@
 # macOS
 ./script/create-macos-app.sh
 # 生成 GitManageService.app（包含后端服务）
-# 启动后自动打开浏览器访问 http://localhost:38080
+# 启动后自动打开浏览器访问 http://localhost:12345
 ```
 
 #### 阶段 2：WebView 集成（3-5天）
@@ -82,7 +82,7 @@ function createWindow() {
   
   // 等待服务启动
   setTimeout(() => {
-    win.loadURL('http://localhost:38080')
+    win.loadURL('http://localhost:12345')
   }, 3000)
 }
 
@@ -114,7 +114,7 @@ open /tmp/GitManageService.app
 @echo off
 start git-manage-service.exe --mode=all
 timeout /t 3
-start http://localhost:38080
+start http://localhost:12345
 ```
 
 ### Linux Desktop Entry

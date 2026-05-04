@@ -49,6 +49,10 @@ type APIResponse struct {
 func SetupSuite(t *testing.T) *APITestSuite {
 	t.Helper()
 
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
 	configs.GlobalConfig = configs.Config{
 		Database: configs.DatabaseConfig{
 			Type: "sqlite",

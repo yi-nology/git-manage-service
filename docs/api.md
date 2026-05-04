@@ -4,7 +4,7 @@
 
 ## API 概览
 
-- **Base URL**: `http://localhost:38080/api/v1`
+- **Base URL**: `http://localhost:12345/api/v1`
 - **Content-Type**: `application/json`
 - **认证方式**: 无（内部服务）
 

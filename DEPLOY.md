@@ -32,7 +32,7 @@
    ```
 
 5. **Access the Application**:
-   Open browser at `http://localhost:8080`
+   Open browser at `http://localhost:12345`
 
 ### Volume Configuration
 

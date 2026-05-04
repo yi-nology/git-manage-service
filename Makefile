@@ -6,8 +6,8 @@ BUILD_TIME := $(shell date -u '+%Y-%m-%d %H:%M:%S')
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
 # 编译参数
-# 重要: SQLite 驱动需要 CGO, 因此必须设置 CGO_ENABLED=1
-export CGO_ENABLED=1
+# 服务端默认使用 pure Go SQLite 驱动，不需要 CGO
+# desktop/Wails 构建会在目标中单独设置 CGO_ENABLED=1
 LDFLAGS := -X 'github.com/yi-nology/git-manage-service/pkg/appinfo.Version=$(VERSION)' \
            -X 'github.com/yi-nology/git-manage-service/pkg/appinfo.BuildTime=$(BUILD_TIME)' \
            -X 'github.com/yi-nology/git-manage-service/pkg/appinfo.GitCommit=$(GIT_COMMIT)'
@@ -165,10 +165,10 @@ test:
 	go test -v ./...
 
 test-unit:
-	go test -v -short ./...
+	go list ./... | grep -v '/tests/integration$$' | xargs go test -v -short
 
 test-integration:
-	go test -v ./...
+	go test -v ./tests/integration -count=1 -timeout=2m
 
 typecheck-frontend:
 	@cd frontend && npx vue-tsc --noEmit
@@ -273,7 +273,7 @@ desktop:
 	@echo "✓ Wails installed"
 	@echo ""
 	@echo "Building desktop application..."
-	@wails build -clean
+	CGO_ENABLED=1 wails build -clean
 	@echo ""
 	@echo "======================================="
 	@echo "✓ Desktop Build Complete!"
@@ -315,7 +315,7 @@ desktop-darwin:
 	@if ! command -v wails &> /dev/null; then \
 		go install github.com/wailsapp/wails/v2/cmd/wails@latest; \
 	fi
-	@wails build -platform darwin/universal -clean
+	CGO_ENABLED=1 wails build -platform darwin/universal -clean
 	@echo "✓ macOS build complete: build/bin/"
 
 desktop-windows:
@@ -323,7 +323,7 @@ desktop-windows:
 	@if ! command -v wails &> /dev/null; then \
 		go install github.com/wailsapp/wails/v2/cmd/wails@latest; \
 	fi
-	@wails build -platform windows/amd64 -clean -nsis
+	CGO_ENABLED=1 wails build -platform windows/amd64 -clean -nsis
 	@echo "✓ Windows build complete: build/bin/"
 
 desktop-linux:
@@ -332,11 +332,11 @@ desktop-linux:
 		go install github.com/wailsapp/wails/v2/cmd/wails@latest; \
 	fi
 	@echo "Building DEB package..."
-	@wails build -platform linux/amd64 -clean -deb
+	CGO_ENABLED=1 wails build -platform linux/amd64 -clean -deb
 	@echo "Building RPM package..."
-	@wails build -platform linux/amd64 -clean -rpm
+	CGO_ENABLED=1 wails build -platform linux/amd64 -clean -rpm
 	@echo "Building AppImage..."
-	@wails build -platform linux/amd64 -clean -appimage
+	CGO_ENABLED=1 wails build -platform linux/amd64 -clean -appimage
 	@echo "✓ Linux builds complete: build/bin/"
 
 desktop-all:

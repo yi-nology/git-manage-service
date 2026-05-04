@@ -91,7 +91,7 @@ sudo mv git-manage-service-* /usr/local/bin/git-manage-service
 ```yaml
 # 服务器配置
 server:
-  port: 38080
+  port: 12345
 
 # RPC 服务配置
 rpc:
@@ -191,7 +191,7 @@ server {
     server_name git-manage.example.com;
 
     location / {
-        proxy_pass http://127.0.0.1:38080;
+        proxy_pass http://127.0.0.1:12345;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -204,7 +204,7 @@ server {
 
 ```
 git-manage.example.com {
-    reverse_proxy localhost:38080
+    reverse_proxy localhost:12345
 }
 ```
 

@@ -61,14 +61,14 @@ chmod +x git-manage-service-*
 ```bash
 docker run -d \
   --name git-manage-service \
-  -p 38080:38080 \
+  -p 12345:12345 \
   -v ./data:/app/data \
   ghcr.io/yi-nology/git-manage-service:latest
 ```
 
 ## 3. 访问界面
 
-浏览器打开: [http://localhost:38080](http://localhost:38080)
+浏览器打开: [http://localhost:12345](http://localhost:12345)
 
 ![首页](/git-manage-service/images/homepage.png)
 

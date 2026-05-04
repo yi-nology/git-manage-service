@@ -285,7 +285,7 @@ docker run -d \
 
 ### 环境要求
 
-- Go 1.25+（需 CGO）
+- Go 1.25+（服务端无需 CGO，桌面端需 CGO + Wails）
 - Node.js 18+
 
 ### 本地开发

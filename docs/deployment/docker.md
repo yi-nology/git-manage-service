@@ -9,7 +9,7 @@ Docker 部署适合容器化环境，提供了更好的隔离性和可移植性�
 ```bash
 docker run -d \
   --name git-manage-service \
-  -p 38080:38080 \
+  -p 12345:12345 \
   -v $(pwd)/data:/app/data \
   ghcr.io/yi-nology/git-manage-service:latest
 ```
@@ -40,7 +40,7 @@ docker-compose up -d
 ```
 
 服务：
-- Git Manage Service (38080)
+- Git Manage Service (12345)
 
 ### MySQL 方案（生产）
 
@@ -52,7 +52,7 @@ docker-compose up -d
 ```
 
 服务：
-- Git Manage Service (38080)
+- Git Manage Service (12345)
 - MySQL (3306)
 - Redis (6379)
 - MinIO (9000, 9001)
@@ -67,7 +67,7 @@ docker-compose up -d
 ```
 
 服务：
-- Git Manage Service (38080)
+- Git Manage Service (12345)
 - PostgreSQL (5432)
 - Redis (6379)
 - MinIO (9000, 9001)
@@ -78,7 +78,7 @@ docker-compose up -d
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `SERVER_PORT` | HTTP 服务端口 | 38080 |
+| `SERVER_PORT` | HTTP 服务端口 | 12345 |
 | `RPC_PORT` | RPC 服务端口 | 8888 |
 | `DB_TYPE` | 数据库类型 | sqlite |
 | `DB_PATH` | SQLite 数据库路径 | data/git_sync.db |
@@ -103,7 +103,7 @@ volumes:
 
 ```yaml
 ports:
-  - "38080:38080"  # HTTP
+  - "12345:12345"  # HTTP
   - "8888:8888"    # RPC（可选）
 ```
 
@@ -120,7 +120,7 @@ services:
     container_name: git-manage-service
     restart: unless-stopped
     ports:
-      - "38080:38080"
+      - "12345:12345"
     volumes:
       - ./data:/app/data
       - ./repos:/app/repos
@@ -176,7 +176,7 @@ services:
       - redis
       - minio
     ports:
-      - "38080:38080"
+      - "12345:12345"
     volumes:
       - ./repos:/app/repos
     environment:
@@ -222,7 +222,7 @@ docker-compose up -d git-manage-service
 
 ```yaml
 healthcheck:
-  test: ["CMD", "wget", "-q", "--spider", "http://localhost:38080/api/health"]
+  test: ["CMD", "wget", "-q", "--spider", "http://localhost:12345/api/health"]
   interval: 30s
   timeout: 10s
   retries: 3

@@ -94,7 +94,7 @@ import json
 import requests
 
 SECRET = b'my-secret-key'
-URL = 'http://localhost:38080/api/webhooks/task-sync'
+URL = 'http://localhost:12345/api/webhooks/task-sync'
 DATA = {'task_id': 1}
 
 body = json.dumps(DATA).encode('utf-8')
@@ -124,7 +124,7 @@ import (
 
 func main() {
     secret := []byte("my-secret-key")
-    url := "http://localhost:38080/api/webhooks/task-sync"
+    url := "http://localhost:12345/api/webhooks/task-sync"
     body := []byte(`{"task_id": 1}`)
 
     mac := hmac.New(sha256.New, secret)
@@ -147,7 +147,7 @@ func main() {
 # 先计算签名
 # echo -n '{"task_id": 1}' | openssl dgst -sha256 -hmac "my-secret-key"
 
-curl -X POST http://localhost:38080/api/webhooks/task-sync \
+curl -X POST http://localhost:12345/api/webhooks/task-sync \
   -H "Content-Type: application/json" \
   -H "X-Hub-Signature-256: sha256=<calculated_signature>" \
   -d '{"task_id": 1}'

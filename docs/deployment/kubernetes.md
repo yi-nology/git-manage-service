@@ -69,7 +69,7 @@ spec:
       - name: git-manage-service
         image: ghcr.io/yi-nology/git-manage-service:latest
         ports:
-        - containerPort: 38080
+        - containerPort: 12345
           name: http
         - containerPort: 8888
           name: rpc
@@ -102,13 +102,13 @@ spec:
         livenessProbe:
           httpGet:
             path: /api/health
-            port: 38080
+            port: 12345
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /api/health
-            port: 38080
+            port: 12345
           initialDelaySeconds: 5
           periodSeconds: 5
         volumeMounts:
@@ -138,8 +138,8 @@ spec:
     app: git-manage-service
   ports:
   - name: http
-    port: 38080
-    targetPort: 38080
+    port: 12345
+    targetPort: 12345
   - name: rpc
     port: 8888
     targetPort: 8888
@@ -168,7 +168,7 @@ spec:
           service:
             name: git-manage-service
             port:
-              number: 38080
+              number: 12345
   tls:
   - hosts:
     - git-manage.example.com
@@ -336,7 +336,7 @@ kubectl rollout undo deployment/git-manage-service -n git-manage
 metadata:
   annotations:
     prometheus.io/scrape: "true"
-    prometheus.io/port: "38080"
+    prometheus.io/port: "9091"
     prometheus.io/path: "/metrics"
 ```
 
