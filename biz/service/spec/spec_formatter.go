@@ -29,20 +29,20 @@ type Section struct {
 }
 
 type FormatOptions struct {
-	Curlify          bool
-	RemoveClean      bool
-	RemoveBuildRoot  bool
-	RemoveGroup      bool
-	LicenseSPDX      bool
-	SortDeps         bool
-	TabToSpaces      bool
-	IndentSize       int
-	PreambleOrder    bool
-	AlignValues      bool
-	PathMacros       bool
-	UtilMacros       bool
-	CommonCleanup    bool
-	ConditionalTrim  bool
+	Curlify         bool
+	RemoveClean     bool
+	RemoveBuildRoot bool
+	RemoveGroup     bool
+	LicenseSPDX     bool
+	SortDeps        bool
+	TabToSpaces     bool
+	IndentSize      int
+	PreambleOrder   bool
+	AlignValues     bool
+	PathMacros      bool
+	UtilMacros      bool
+	CommonCleanup   bool
+	ConditionalTrim bool
 }
 
 type FormatChange struct {
@@ -199,28 +199,28 @@ var utilMacroMap = map[string]string{
 }
 
 var (
-	reMacroNoBrace  = regexp.MustCompile(`%([A-Za-z_][A-Za-z0-9_]*)`)
-	reConditionTag  = regexp.MustCompile(`^(BuildRequires|Requires|Recommends|Suggests|Supplements|Enhances|Conflicts|Obsoletes|Provides)(\([^)]*\))?\s*:\s*(.*)`)
-	reLicenseTag    = regexp.MustCompile(`^(?i)License\s*:\s*(.*)`)
-	reGroupTag      = regexp.MustCompile(`^(?i)Group\s*:`)
-	reBuildRootTag  = regexp.MustCompile(`^(?i)BuildRoot\s*:`)
-	reSectionHeader = regexp.MustCompile(`^%([a-zA-Z][a-zA-Z0-9_]*)\s*(.*)`)
-	reTagColon      = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*(\([^)]*\))?)\s*:\s*(.*)`)
-	reSetupLine     = regexp.MustCompile(`^%setup\s+(.*)`)
-	rePatchLine     = regexp.MustCompile(`^%patch(\d*)\s+(.*)`)
-	reMakeLine      = regexp.MustCompile(`^(make)\b(.*)`)
-	reRmBuildRoot   = regexp.MustCompile(`(?i)rm\s+-rf\s+.(?:RPM_BUILD_ROOT|\{RPM_BUILD_ROOT\}|\{buildroot\}|buildroot)`)
-	reDefAttrLine   = regexp.MustCompile(`^%defattr\(\s*-?\s*,\s*root\s*,\s*root\s*[-,\s]*\)`)
-	reUtilMacroRe   = regexp.MustCompile(`%\{(__\w+)\}`)
-	reBuildRootVar  = regexp.MustCompile(`\$(?:RPM_BUILD_ROOT|\{RPM_BUILD_ROOT\})`)
-	reOptFlagsVar   = regexp.MustCompile(`\$(?:RPM_OPT_FLAGS|\{RPM_OPT_FLAGS\})`)
+	reMacroNoBrace   = regexp.MustCompile(`%([A-Za-z_][A-Za-z0-9_]*)`)
+	reConditionTag   = regexp.MustCompile(`^(BuildRequires|Requires|Recommends|Suggests|Supplements|Enhances|Conflicts|Obsoletes|Provides)(\([^)]*\))?\s*:\s*(.*)`)
+	reLicenseTag     = regexp.MustCompile(`^(?i)License\s*:\s*(.*)`)
+	reGroupTag       = regexp.MustCompile(`^(?i)Group\s*:`)
+	reBuildRootTag   = regexp.MustCompile(`^(?i)BuildRoot\s*:`)
+	reSectionHeader  = regexp.MustCompile(`^%([a-zA-Z][a-zA-Z0-9_]*)\s*(.*)`)
+	reTagColon       = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*(\([^)]*\))?)\s*:\s*(.*)`)
+	reSetupLine      = regexp.MustCompile(`^%setup\s+(.*)`)
+	rePatchLine      = regexp.MustCompile(`^%patch(\d*)\s+(.*)`)
+	reMakeLine       = regexp.MustCompile(`^(make)\b(.*)`)
+	reRmBuildRoot    = regexp.MustCompile(`(?i)rm\s+-rf\s+.(?:RPM_BUILD_ROOT|\{RPM_BUILD_ROOT\}|\{buildroot\}|buildroot)`)
+	reDefAttrLine    = regexp.MustCompile(`^%defattr\(\s*-?\s*,\s*root\s*,\s*root\s*[-,\s]*\)`)
+	reUtilMacroRe    = regexp.MustCompile(`%\{(__\w+)\}`)
+	reBuildRootVar   = regexp.MustCompile(`\$(?:RPM_BUILD_ROOT|\{RPM_BUILD_ROOT\})`)
+	reOptFlagsVar    = regexp.MustCompile(`\$(?:RPM_OPT_FLAGS|\{RPM_OPT_FLAGS\})`)
 	reDeprecatedGrep = regexp.MustCompile(`\b(egrep|fgrep)\b`)
-	reDepOperator   = regexp.MustCompile(`(>=|<=|>|<|=)\s*([=<>)])`)
-	reMakeinstall   = regexp.MustCompile(`%makeinstall\b`)
-	reMakeDestdir   = regexp.MustCompile(`make\s+.*DESTDIR=%\{?buildroot\}?.*install`)
-	reSetupQn       = regexp.MustCompile(`-qn\s+`)
-	rePatchP0       = regexp.MustCompile(`\s+-p0\b`)
-	reNoSourcePatch = regexp.MustCompile(`^(Source|Patch)\s*:`)
+	reDepOperator    = regexp.MustCompile(`(>=|<=|>|<|=)\s*([=<>)])`)
+	reMakeinstall    = regexp.MustCompile(`%makeinstall\b`)
+	reMakeDestdir    = regexp.MustCompile(`make\s+.*DESTDIR=%\{?buildroot\}?.*install`)
+	reSetupQn        = regexp.MustCompile(`-qn\s+`)
+	rePatchP0        = regexp.MustCompile(`\s+-p0\b`)
+	reNoSourcePatch  = regexp.MustCompile(`^(Source|Patch)\s*:`)
 )
 
 type SpecFormatter struct{}
@@ -353,8 +353,8 @@ func (f *SpecFormatter) parseSections(lines []string, multilineRanges []lineRang
 					sections = append(sections, current)
 					sType := sectionTypeFromName(secName)
 					current = Section{
-						Type: sType,
-						Name: trimmed,
+						Type:  sType,
+						Name:  trimmed,
 						Lines: []string{line},
 					}
 					if secName == "package" && len(matches) > 2 {

@@ -36,17 +36,17 @@ func GetRemoteRepoConfig(providerConfigID uint, platformOwner, platformRepo stri
 
 func UpdateRemoteRepoConfig(providerConfigID uint, platformOwner, platformRepo string, req api.ReviewRepoConfigDTO) (*api.ReviewRepoConfigDTO, error) {
 	cfg := &po.ReviewRepoConfig{
-		ProviderConfigID: providerConfigID,
-		PlatformOwner:    platformOwner,
-		PlatformRepo:     platformRepo,
-		Enabled:          req.Enabled,
-		BlockOnHigh:      req.BlockOnHigh,
-		AutoReviewOnMR:   req.AutoReviewOnMR,
-		LLMProvider:      req.LLMProvider,
-		MaxFiles:         req.MaxFiles,
-		MaxDiffLines:     req.MaxDiffLines,
+		ProviderConfigID:  providerConfigID,
+		PlatformOwner:     platformOwner,
+		PlatformRepo:      platformRepo,
+		Enabled:           req.Enabled,
+		BlockOnHigh:       req.BlockOnHigh,
+		AutoReviewOnMR:    req.AutoReviewOnMR,
+		LLMProvider:       req.LLMProvider,
+		MaxFiles:          req.MaxFiles,
+		MaxDiffLines:      req.MaxDiffLines,
 		RuleOverridesJSON: req.RuleOverrides,
-		ScopeNote:        req.ScopeNote,
+		ScopeNote:         req.ScopeNote,
 	}
 	dao := db.NewReviewRepoConfigDAO()
 	if err := dao.Upsert(cfg); err != nil {

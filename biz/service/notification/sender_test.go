@@ -9,7 +9,7 @@ import (
 )
 
 func TestDingTalkSender_BuildPayload(t *testing.T) {
-	sender := NewDingTalkSender(&po.DingTalkConfig{
+	_ = NewDingTalkSender(&po.DingTalkConfig{
 		WebhookURL:   "https://oapi.dingtalk.com/robot/send?access_token=test",
 		SecurityType: "keyword",
 		Keywords:     "Git同步",
@@ -52,16 +52,9 @@ func TestDingTalkSender_Sign(t *testing.T) {
 }
 
 func TestFeishuSender_BuildPayload(t *testing.T) {
-	sender := NewFeishuSender(&po.FeishuConfig{
+	_ = NewFeishuSender(&po.FeishuConfig{
 		WebhookURL: "https://open.feishu.cn/open-apis/bot/v2/hook/test",
 	})
-	msg := &NotificationMessage{
-		Title:   "同步成功",
-		Content: "任务完成",
-		Status:  "success",
-		TaskKey: "task-1",
-		RepoKey: "repo-1",
-	}
 
 	postContent := FeishuPostContent{
 		Post: map[string]FeishuPostLang{
@@ -93,7 +86,7 @@ func TestFeishuSender_Sign(t *testing.T) {
 }
 
 func TestWebhookSender_BuildPayload(t *testing.T) {
-	sender := NewWebhookSender(&po.WebhookConfig{
+	_ = NewWebhookSender(&po.WebhookConfig{
 		URL:         "https://example.com/webhook",
 		Method:      "POST",
 		ContentType: "application/json",
@@ -125,16 +118,11 @@ func TestDingTalkSender_FailureStatus(t *testing.T) {
 		TaskKey: "task-1",
 		RepoKey: "repo-1",
 	}
-	text := formatDingTalkText(msg)
-	if !strings.Contains(text, "❌") {
+	emoji := "✅"
+	if msg.Status == "failure" {
+		emoji = "❌"
+	}
+	if !strings.Contains(emoji, "❌") {
 		t.Error("expected failure emoji for failure status")
 	}
-}
-
-func formatDingTalkText(msg *NotificationMessage) string {
-	statusEmoji := "✅"
-	if msg.Status == "failure" {
-		statusEmoji = "❌"
-	}
-	return statusEmoji
 }

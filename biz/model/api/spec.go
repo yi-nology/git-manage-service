@@ -195,8 +195,8 @@ type CommitResponse struct {
 }
 
 type SaveWithValidationResponse struct {
-	Message           string      `json:"message"`
-	ValidationResult  interface{} `json:"validationResult,omitempty"`
+	Message          string      `json:"message"`
+	ValidationResult interface{} `json:"validationResult,omitempty"`
 }
 
 type CreateFileResponse struct {
@@ -227,20 +227,20 @@ type FormatChangeDTO struct {
 }
 
 type FormatOptionsDTO struct {
-	Curlify          bool `json:"curlify"`
-	RemoveClean      bool `json:"removeClean"`
-	RemoveBuildRoot  bool `json:"removeBuildRoot"`
-	RemoveGroup      bool `json:"removeGroup"`
-	LicenseSPDX      bool `json:"licenseSpdx"`
-	SortDeps         bool `json:"sortDeps"`
-	TabToSpaces      bool `json:"tabToSpaces"`
-	IndentSize       int  `json:"indentSize"`
-	PreambleOrder    bool `json:"preambleOrder"`
-	AlignValues      bool `json:"alignValues"`
-	PathMacros       bool `json:"pathMacros"`
-	UtilMacros       bool `json:"utilMacros"`
-	CommonCleanup    bool `json:"commonCleanup"`
-	ConditionalTrim  bool `json:"conditionalTrim"`
+	Curlify         bool `json:"curlify"`
+	RemoveClean     bool `json:"removeClean"`
+	RemoveBuildRoot bool `json:"removeBuildRoot"`
+	RemoveGroup     bool `json:"removeGroup"`
+	LicenseSPDX     bool `json:"licenseSpdx"`
+	SortDeps        bool `json:"sortDeps"`
+	TabToSpaces     bool `json:"tabToSpaces"`
+	IndentSize      int  `json:"indentSize"`
+	PreambleOrder   bool `json:"preambleOrder"`
+	AlignValues     bool `json:"alignValues"`
+	PathMacros      bool `json:"pathMacros"`
+	UtilMacros      bool `json:"utilMacros"`
+	CommonCleanup   bool `json:"commonCleanup"`
+	ConditionalTrim bool `json:"conditionalTrim"`
 }
 
 type FormatResponse struct {

@@ -1,27 +1,27 @@
 package api
 
 type AuthorAIRequest struct {
-	Action  string        `json:"action"`
-	RepoKey string        `json:"repoKey,omitempty"`
-	Scan    *AuthorScanResult `json:"scan,omitempty"`
+	Action  string             `json:"action"`
+	RepoKey string             `json:"repoKey,omitempty"`
+	Scan    *AuthorScanResult  `json:"scan,omitempty"`
 	Commits []MismatchedCommit `json:"commits,omitempty"`
 }
 
 type AuthorAIResponse struct {
-	Action   string               `json:"action"`
-	Result   string               `json:"result"`
-	Suggest  *AliasSuggestionResult  `json:"suggest,omitempty"`
-	Merge    *MergeSuggestionResult  `json:"merge,omitempty"`
-	Risk     *RiskAssessmentResult   `json:"risk,omitempty"`
+	Action  string                 `json:"action"`
+	Result  string                 `json:"result"`
+	Suggest *AliasSuggestionResult `json:"suggest,omitempty"`
+	Merge   *MergeSuggestionResult `json:"merge,omitempty"`
+	Risk    *RiskAssessmentResult  `json:"risk,omitempty"`
 }
 
 type AliasSuggestion struct {
-	IdentityID  uint   `json:"identityId"`
+	IdentityID   uint   `json:"identityId"`
 	IdentityName string `json:"identityName"`
-	AliasName   string `json:"aliasName"`
-	AliasEmail  string `json:"aliasEmail"`
-	Confidence  string `json:"confidence"`
-	Reason      string `json:"reason"`
+	AliasName    string `json:"aliasName"`
+	AliasEmail   string `json:"aliasEmail"`
+	Confidence   string `json:"confidence"`
+	Reason       string `json:"reason"`
 }
 
 type AliasSuggestionResult struct {
@@ -56,9 +56,9 @@ type RiskAssessmentResult struct {
 }
 
 type AuthorChatRequest struct {
-	RepoKey string            `json:"repoKey"`
-	Prompt  string            `json:"prompt"`
-	History []ChatMessageDTO  `json:"history"`
+	RepoKey string           `json:"repoKey"`
+	Prompt  string           `json:"prompt"`
+	History []ChatMessageDTO `json:"history"`
 }
 
 type ChatMessageDTO struct {

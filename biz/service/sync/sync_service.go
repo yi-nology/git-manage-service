@@ -255,8 +255,6 @@ func (s *SyncService) pushRemote(path string, repo po.Repo, remoteName, remoteUR
 	return s.git.Push(path, remoteName, sourceHash, targetBranch, pushOpts, progressWriter)
 }
 
-
-
 type logWriter struct {
 	logf func(string, ...interface{})
 }

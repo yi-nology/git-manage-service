@@ -51,8 +51,8 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 		repoDir := s.CreateTestGitRepo(t, "e2e-workflow")
 
 		resp := s.PostJSON(t, "/api/v1/repo/create", map[string]interface{}{
-			"name":                 "e2e-workflow",
-			"path":                 repoDir,
+			"name":                  "e2e-workflow",
+			"path":                  repoDir,
 			"default_credential_id": credID,
 		})
 		s.AssertSuccess(t, resp)
@@ -62,12 +62,12 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 	key := s.RegisterRepo(t, "e2e-workflow-real", repoDir)
 
 	s.PostJSON(t, "/api/v1/repo/update", map[string]interface{}{
-		"key":                  key,
+		"key":                   key,
 		"default_credential_id": credID,
 	})
 
 	t.Run("Step4_VerifyCleanStatus", func(t *testing.T) {
-		resp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+		resp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 		s.AssertSuccess(t, resp)
 
 		var status map[string]interface{}
@@ -101,7 +101,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 	})
 
 	t.Run("Step8_CheckDirtyStatus", func(t *testing.T) {
-		resp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+		resp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 		s.AssertSuccess(t, resp)
 
 		var status map[string]interface{}
@@ -120,12 +120,12 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 
 	t.Run("Step9_StageFiles", func(t *testing.T) {
 		resp := s.PostJSON(t, "/api/v1/workspace/stage", map[string]interface{}{
-			"repo_key": key,
+			"repo_key":  key,
 			"stage_all": true,
 		})
 		s.AssertSuccess(t, resp)
 
-		statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+		statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 		s.AssertSuccess(t, statusResp)
 
 		var status map[string]interface{}
@@ -138,7 +138,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 	})
 
 	t.Run("Step10_ViewDiff", func(t *testing.T) {
-		resp := s.GetJSON(t, "/api/v1/workspace/diff?repo_key=" + key)
+		resp := s.GetJSON(t, "/api/v1/workspace/diff?repo_key="+key)
 		s.AssertSuccess(t, resp)
 
 		var diff map[string]interface{}
@@ -157,9 +157,9 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 
 	t.Run("Step11_CommitChanges", func(t *testing.T) {
 		resp := s.PostJSON(t, "/api/v1/workspace/commit", map[string]interface{}{
-			"repo_key":    key,
-			"message":     "feat: add e2e feature files",
-			"author_name": "E2E Test",
+			"repo_key":     key,
+			"message":      "feat: add e2e feature files",
+			"author_name":  "E2E Test",
 			"author_email": "e2e@test.com",
 		})
 		s.AssertSuccess(t, resp)
@@ -175,7 +175,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 	})
 
 	t.Run("Step12_VerifyCleanAfterCommit", func(t *testing.T) {
-		resp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+		resp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 		s.AssertSuccess(t, resp)
 
 		var status map[string]interface{}
@@ -189,7 +189,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 		appendFile(t, filepath.Join(repoDir, "feature.txt"), "Additional content\n")
 
 		s.PostJSON(t, "/api/v1/workspace/stage", map[string]interface{}{
-			"repo_key": key,
+			"repo_key":  key,
 			"stage_all": true,
 		})
 
@@ -214,7 +214,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 		})
 		s.AssertSuccess(t, resp)
 
-		statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+		statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 		s.AssertSuccess(t, statusResp)
 
 		var status map[string]interface{}
@@ -277,7 +277,7 @@ func TestE2E_ModifyAndCommitWorkflow(t *testing.T) {
 	writeFile(t, filepath.Join(repoDir, "hello.go"), "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"hello world\")\n}\n")
 
 	s.PostJSON(t, "/api/v1/workspace/stage", map[string]interface{}{
-		"repo_key": key,
+		"repo_key":  key,
 		"stage_all": true,
 	})
 
@@ -295,7 +295,7 @@ func TestE2E_ModifyAndCommitWorkflow(t *testing.T) {
 		t.Fatal("two commits should have different hashes")
 	}
 
-	diffResp := s.GetJSON(t, "/api/v1/workspace/diff?repo_key=" + key)
+	diffResp := s.GetJSON(t, "/api/v1/workspace/diff?repo_key="+key)
 	s.AssertSuccess(t, diffResp)
 
 	var diff map[string]interface{}
@@ -348,7 +348,7 @@ func TestE2E_MultiBranchWorkflow(t *testing.T) {
 		"stage_all": true,
 	})
 
-	listResp := s.GetJSON(t, "/api/v1/branch/list?repo_key=" + key + "&type=local")
+	listResp := s.GetJSON(t, "/api/v1/branch/list?repo_key="+key+"&type=local")
 	s.AssertSuccess(t, listResp)
 
 	var result map[string]interface{}
@@ -402,7 +402,7 @@ func TestE2E_CredentialAndRepoLifecycle(t *testing.T) {
 		"default_credential_id": credID,
 	})
 
-	detailResp := s.GetJSON(t, "/api/v1/repo/detail?key=" + key)
+	detailResp := s.GetJSON(t, "/api/v1/repo/detail?key="+key)
 	s.AssertSuccess(t, detailResp)
 
 	var detail map[string]interface{}

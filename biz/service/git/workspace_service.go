@@ -33,7 +33,7 @@ func (s *GitService) GetWorkspaceStatus(repoPath string) (*api.WorkspaceStatus, 
 	}
 
 	result := &api.WorkspaceStatus{
-		Branch: branch,
+		Branch:  branch,
 		IsClean: status.IsClean(),
 	}
 

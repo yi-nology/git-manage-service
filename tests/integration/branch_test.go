@@ -9,7 +9,7 @@ func TestBranch_ListBranches(t *testing.T) {
 
 	key := s.CreateTestRepo(t, "branch-list")
 
-	resp := s.GetJSON(t, "/api/v1/branch/list?repo_key=" + key + "&type=local")
+	resp := s.GetJSON(t, "/api/v1/branch/list?repo_key="+key+"&type=local")
 	s.AssertSuccess(t, resp)
 
 	var result map[string]interface{}
@@ -24,9 +24,9 @@ func TestBranch_ListBranches(t *testing.T) {
 	}
 
 	first := list[0].(map[string]interface{})
-		if first["is_current"] != true {
-			t.Fatal("expected first branch to be current")
-		}
+	if first["is_current"] != true {
+		t.Fatal("expected first branch to be current")
+	}
 }
 
 func TestBranch_CreateBranch(t *testing.T) {
@@ -40,7 +40,7 @@ func TestBranch_CreateBranch(t *testing.T) {
 	})
 	s.AssertSuccess(t, resp)
 
-	listResp := s.GetJSON(t, "/api/v1/branch/list?repo_key=" + key + "&type=local")
+	listResp := s.GetJSON(t, "/api/v1/branch/list?repo_key="+key+"&type=local")
 	s.AssertSuccess(t, listResp)
 
 	var result map[string]interface{}
@@ -77,7 +77,7 @@ func TestBranch_CheckoutBranch(t *testing.T) {
 	})
 	s.AssertSuccess(t, checkoutResp)
 
-	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 	s.AssertSuccess(t, statusResp)
 
 	var status map[string]interface{}
@@ -121,7 +121,7 @@ func TestBranch_DeleteBranch(t *testing.T) {
 	})
 	s.AssertSuccess(t, resp)
 
-	listResp := s.GetJSON(t, "/api/v1/branch/list?repo_key=" + key + "&type=local")
+	listResp := s.GetJSON(t, "/api/v1/branch/list?repo_key="+key+"&type=local")
 	s.AssertSuccess(t, listResp)
 
 	var result map[string]interface{}
@@ -141,7 +141,7 @@ func TestBranch_ListRemote(t *testing.T) {
 
 	key := s.CreateTestRepo(t, "branch-remote")
 
-	resp := s.GetJSON(t, "/api/v1/branch/list?repo_key=" + key + "&type=remote")
+	resp := s.GetJSON(t, "/api/v1/branch/list?repo_key="+key+"&type=remote")
 	s.AssertSuccess(t, resp)
 }
 
@@ -163,7 +163,7 @@ func TestBranch_KeywordSearch(t *testing.T) {
 		"name":     "bugfix/other",
 	})
 
-	resp := s.GetJSON(t, "/api/v1/branch/list?repo_key=" + key + "&keyword=search&type=local")
+	resp := s.GetJSON(t, "/api/v1/branch/list?repo_key="+key+"&keyword=search&type=local")
 	s.AssertSuccess(t, resp)
 
 	var result map[string]interface{}

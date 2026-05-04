@@ -53,12 +53,12 @@ func (r *BranchRule) SetTargetBranches(list []string) {
 
 type BranchRuleSet struct {
 	gorm.Model
-	ScopeType        string `gorm:"size:32;not null;index"`
-	ScopeID          string `gorm:"size:128;not null;index"`
-	Enabled          bool   `gorm:"default:true" json:"enabled"`
-	RulesJSON        string `gorm:"type:text" json:"rules_json"`
-	ProtectedJSON    string `gorm:"type:text" json:"protected_json"`
-	UseCustomRules   bool   `gorm:"default:false" json:"use_custom_rules"`
+	ScopeType      string `gorm:"size:32;not null;index"`
+	ScopeID        string `gorm:"size:128;not null;index"`
+	Enabled        bool   `gorm:"default:true" json:"enabled"`
+	RulesJSON      string `gorm:"type:text" json:"rules_json"`
+	ProtectedJSON  string `gorm:"type:text" json:"protected_json"`
+	UseCustomRules bool   `gorm:"default:false" json:"use_custom_rules"`
 }
 
 func (BranchRuleSet) TableName() string { return "branch_rule_sets" }

@@ -11,8 +11,8 @@ func ApplyPolicy(result *AggregatedResult, task *po.ReviewTask) error {
 	checkDAO := db.NewMergeCheckResultDAO()
 
 	check := &po.MergeCheckResult{
-		RepoID:   task.RepoID,
-		MRIID:    task.MRIID,
+		RepoID:    task.RepoID,
+		MRIID:     task.MRIID,
 		CommitSHA: task.CommitSHA,
 		CheckType: "code_review",
 	}

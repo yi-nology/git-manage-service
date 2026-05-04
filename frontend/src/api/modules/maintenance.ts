@@ -6,6 +6,26 @@ export interface LargeFileEntry {
   sizeBytes: number
   exists: boolean
   commitCount: number
+  source: string
+}
+
+export interface GitDirBreakdown {
+  packDirSize: string
+  packDirSizeBytes: number
+  looseObjSize: string
+  looseObjSizeBytes: number
+  reflogSize: string
+  reflogSizeBytes: number
+  stashCount: number
+  otherSize: string
+  otherSizeBytes: number
+}
+
+export interface StashEntry {
+  index: number
+  message: string
+  size: string
+  sizeBytes: number
 }
 
 export interface RepoHealthReport {
@@ -17,7 +37,12 @@ export interface RepoHealthReport {
   commitCount: number
   branchCount: number
   tagCount: number
+  gitDirBreakdown: GitDirBreakdown | null
+  stashEntries: StashEntry[]
   largeFiles: LargeFileEntry[]
+  threshold: number
+  thresholdHuman: string
+  excludes: string[]
 }
 
 export interface MaintenanceTaskResponse {
@@ -68,8 +93,32 @@ export interface MaintenanceRecordListResponse {
   pageSize: number
 }
 
-export function getRepoHealth(repoKey: string) {
-  return request.get<MaintenanceTaskResponse & RepoHealthReport>(`/repo/${repoKey}/maintenance/health`)
+export interface FileAIRecommendation {
+  path: string
+  size: string
+  sizeBytes: number
+  recommendation: 'safe_to_delete' | 'caution' | 'keep'
+  category: string
+  reason: string
+  confidence: 'high' | 'medium' | 'low'
+}
+
+export interface MaintenanceAIAnalysisResponse {
+  summary: string
+  totalSavings: string
+  totalSaveBytes: number
+  recommendations: FileAIRecommendation[]
+}
+
+export function getRepoHealth(repoKey: string, threshold?: number, excludes?: string[]) {
+  const params: Record<string, string> = {}
+  if (threshold && threshold > 0) {
+    params.threshold = String(threshold)
+  }
+  if (excludes && excludes.length > 0) {
+    params.exclude = excludes.join(',')
+  }
+  return request.get<MaintenanceTaskResponse & RepoHealthReport>(`/repo/${repoKey}/maintenance/health`, { params })
 }
 
 export function slimRepo(repoKey: string, paths: string[], addGitignore = true) {
@@ -96,4 +145,11 @@ export function getMaintenanceRecords(repoKey: string, page = 1, pageSize = 10) 
 
 export function getMaintenanceRecord(repoKey: string, id: number) {
   return request.get<MaintenanceRecordDTO>(`/repo/${repoKey}/maintenance/records/${id}`)
+}
+
+export function analyzeMaintenanceAI(repoKey: string, filePaths: string[], threshold?: number) {
+  return request.post<MaintenanceAIAnalysisResponse>(`/repo/${repoKey}/maintenance/ai-analyze`, {
+    file_paths: filePaths,
+    threshold: threshold || undefined
+  })
 }

@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	providers     map[string]Provider
-	providersMu   sync.RWMutex
+	providers   map[string]Provider
+	providersMu sync.RWMutex
 )
 
 func init() {

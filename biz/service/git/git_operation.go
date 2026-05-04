@@ -230,6 +230,14 @@ func (s *GitService) GetCommits(path, branch, since, until string) (string, erro
 		return "", err
 	}
 
+	if branch == "" {
+		head, err := r.Head()
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve HEAD: %w", err)
+		}
+		branch = head.Hash().String()
+	}
+
 	commit, err := s.resolveCommit(r, branch)
 	if err != nil {
 		return "", err

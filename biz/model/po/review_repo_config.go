@@ -20,4 +20,3 @@ type ReviewRepoConfig struct {
 }
 
 func (ReviewRepoConfig) TableName() string { return "review_repo_configs" }
-

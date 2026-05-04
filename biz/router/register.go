@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	handler_settings "github.com/yi-nology/git-manage-service/biz/handler/settings"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"
 	author "github.com/yi-nology/git-manage-service/biz/router/author"
@@ -65,6 +66,7 @@ func GeneratedRegister(h *server.Hertz) {
 	maintenance.Register(h)
 
 	settings.Register(h)
+	h.GET("/api/v1/settings/ollama-models", handler_settings.FetchOllamaModels)
 	webhook_event.Register(h)
 	provider.Register(h)
 	cr.Register(h)
@@ -87,8 +89,8 @@ func GeneratedRegister(h *server.Hertz) {
 	version.Register(h)
 	webhook.Register(h)
 	patch.Register(h)
- 	spec.Register(h)
- 	stats.Register(h)
+	spec.Register(h)
+	stats.Register(h)
 	binding.Register(h)
 
 	// 根路径

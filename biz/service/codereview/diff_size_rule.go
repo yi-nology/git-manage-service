@@ -9,9 +9,9 @@ type DiffSizeRule struct{}
 func (r *DiffSizeRule) ID() string { return "diff-size" }
 
 const (
-	maxFileLines   = 500
-	maxTotalLines  = 3000
-	maxFilesPerMR  = 50
+	maxFileLines  = 500
+	maxTotalLines = 3000
+	maxFilesPerMR = 50
 )
 
 func (r *DiffSizeRule) Check(ctx *RuleContext) ([]*Finding, error) {

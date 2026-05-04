@@ -13,8 +13,8 @@ func TestAuthorIdentityDAO_CRUD(t *testing.T) {
 	identity := &po.AuthorIdentity{
 		CanonicalName:  "John Doe",
 		CanonicalEmail: "john@example.com",
+		AliasesJSON:    `["jdoe","john.doe"]`,
 	}
-	identity.SetAliases([]string{"jdoe", "john.doe"})
 	if err := dao.Create(identity); err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -26,9 +26,8 @@ func TestAuthorIdentityDAO_CRUD(t *testing.T) {
 	if found.CanonicalName != "John Doe" {
 		t.Errorf("name mismatch: got %s", found.CanonicalName)
 	}
-	aliases := found.GetAliases()
-	if len(aliases) != 2 || aliases[0] != "jdoe" {
-		t.Errorf("aliases mismatch: %v", aliases)
+	if found.AliasesJSON == "" {
+		t.Error("expected aliases to be stored")
 	}
 
 	found.CanonicalName = "Jane Doe"

@@ -10,9 +10,9 @@ type SecretRule struct{}
 func (r *SecretRule) ID() string { return "secret-detection" }
 
 var secretPatterns = []struct {
-	pattern   *regexp.Regexp
-	name      string
-	severity  Severity
+	pattern  *regexp.Regexp
+	name     string
+	severity Severity
 }{
 	{regexp.MustCompile(`(?i)(password|passwd|pwd)\s*[:=]\s*['"][^'"]{4,}['"]`), "Hardcoded password", SeverityCritical},
 	{regexp.MustCompile(`(?i)(api[_-]?key|apikey)\s*[:=]\s*['"][^'"]{8,}['"]`), "Hardcoded API key", SeverityCritical},

@@ -10,24 +10,24 @@ type WorkspaceFileStatus struct {
 }
 
 type WorkspaceStatus struct {
-	Branch     string               `json:"branch"`
+	Branch     string                `json:"branch"`
 	Staged     []WorkspaceFileStatus `json:"staged"`
 	Unstaged   []WorkspaceFileStatus `json:"unstaged"`
 	Untracked  []WorkspaceFileStatus `json:"untracked"`
 	Conflicted []WorkspaceFileStatus `json:"conflicted"`
-	IsClean    bool                 `json:"isClean"`
-	IsMerging  bool                 `json:"isMerging"`
-	IsRebasing bool                 `json:"isRebasing"`
-	Ahead      int                  `json:"ahead"`
-	Behind     int                  `json:"behind"`
+	IsClean    bool                  `json:"isClean"`
+	IsMerging  bool                  `json:"isMerging"`
+	IsRebasing bool                  `json:"isRebasing"`
+	Ahead      int                   `json:"ahead"`
+	Behind     int                   `json:"behind"`
 }
 
 type WorkspaceDiffFile struct {
-	File       string `json:"file"`
-	Diff       string `json:"diff"`
-	Additions  int    `json:"additions"`
-	Deletions  int    `json:"deletions"`
-	IsBinary   bool   `json:"isBinary"`
+	File      string `json:"file"`
+	Diff      string `json:"diff"`
+	Additions int    `json:"additions"`
+	Deletions int    `json:"deletions"`
+	IsBinary  bool   `json:"isBinary"`
 }
 
 type WorkspaceDiff struct {

@@ -70,3 +70,8 @@ func _getrecordMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _aianalyzeMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

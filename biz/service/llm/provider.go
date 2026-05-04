@@ -3,11 +3,11 @@ package llm
 import "context"
 
 type ReviewRequest struct {
-	Diff      string
-	Files     []FileInfo
-	RepoName  string
-	Owner     string
-	Language  string
+	Diff     string
+	Files    []FileInfo
+	RepoName string
+	Owner    string
+	Language string
 }
 
 type FileInfo struct {

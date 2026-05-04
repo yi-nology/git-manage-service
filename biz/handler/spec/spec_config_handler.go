@@ -11,9 +11,9 @@ import (
 )
 
 type SpecConfigResponse struct {
-	DefaultTemplate string                   `json:"defaultTemplate"`
-	FormatOptions   *FormatOptionsConfig     `json:"formatOptions"`
-	AIConfig        *AIConfigDTO             `json:"aiConfig"`
+	DefaultTemplate string               `json:"defaultTemplate"`
+	FormatOptions   *FormatOptionsConfig `json:"formatOptions"`
+	AIConfig        *AIConfigDTO         `json:"aiConfig"`
 }
 
 type FormatOptionsConfig struct {
@@ -40,7 +40,7 @@ type AIConfigDTO struct {
 }
 
 type SaveSpecConfigReq struct {
-	DefaultTemplate *string             `json:"defaultTemplate"`
+	DefaultTemplate *string              `json:"defaultTemplate"`
 	FormatOptions   *FormatOptionsConfig `json:"formatOptions"`
 	AIConfig        *AIConfigDTO         `json:"aiConfig"`
 }

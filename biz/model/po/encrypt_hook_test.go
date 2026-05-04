@@ -3,8 +3,8 @@ package po
 import (
 	"testing"
 
-	"github.com/yi-nology/git-manage-service/biz/utils"
 	sqlite "github.com/glebarez/sqlite"
+	"github.com/yi-nology/git-manage-service/biz/utils"
 	"gorm.io/gorm"
 )
 
@@ -28,18 +28,19 @@ func setupModelTestDB(t *testing.T) *gorm.DB {
 func TestRepo_EncryptDecrypt(t *testing.T) {
 	db := setupModelTestDB(t)
 
+	originalSecret := "super-secret-token"
 	repo := &Repo{
 		Key:        "enc-test",
 		Name:       "Enc Test",
 		Path:       "/tmp/enc",
-		AuthSecret: "super-secret-token",
+		AuthSecret: originalSecret,
 	}
 	db.Create(repo)
 
 	var found Repo
 	db.First(&found, repo.ID)
 
-	if found.AuthSecret != "super-secret-token" {
+	if found.AuthSecret != originalSecret {
 		t.Errorf("AuthSecret round-trip failed: got %q", found.AuthSecret)
 	}
 }
@@ -83,21 +84,24 @@ func TestCredential_EmptySecret(t *testing.T) {
 func TestSSHKey_EncryptDecrypt(t *testing.T) {
 	db := setupModelTestDB(t)
 
+	originalPrivKey := "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----"
+	originalPassphrase := "my-passphrase"
+
 	key := &SSHKey{
 		Name:       "enc-key",
-		PrivateKey: "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----",
+		PrivateKey: originalPrivKey,
 		PublicKey:  "ssh-rsa AAAA...",
-		Passphrase: "my-passphrase",
+		Passphrase: originalPassphrase,
 	}
 	db.Create(key)
 
 	var found SSHKey
 	db.First(&found, key.ID)
 
-	if found.PrivateKey != key.PrivateKey {
+	if found.PrivateKey != originalPrivKey {
 		t.Errorf("PrivateKey round-trip failed: got %q", found.PrivateKey)
 	}
-	if found.Passphrase != "my-passphrase" {
+	if found.Passphrase != originalPassphrase {
 		t.Errorf("Passphrase round-trip failed: got %q", found.Passphrase)
 	}
 	if found.PublicKey != "ssh-rsa AAAA..." {
@@ -128,9 +132,9 @@ func TestProviderConfig_EncryptDecrypt(t *testing.T) {
 	db := setupModelTestDB(t)
 
 	cfg := &ProviderConfig{
-		Name:           "enc-provider",
-		Platform:       "gitlab",
-		WebhookSecret:  "wh-secret-12345",
+		Name:          "enc-provider",
+		Platform:      "gitlab",
+		WebhookSecret: "wh-secret-12345",
 	}
 	db.Create(cfg)
 

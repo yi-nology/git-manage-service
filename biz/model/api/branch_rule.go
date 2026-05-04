@@ -15,11 +15,11 @@ type BranchRuleDTO struct {
 }
 
 type BranchRuleSetDTO struct {
-	Enabled        bool           `json:"enabled"`
+	Enabled        bool            `json:"enabled"`
 	Rules          []BranchRuleDTO `json:"rules"`
-	Protected      []string       `json:"protected_branches"`
-	UseCustomRules bool           `json:"use_custom_rules,omitempty"`
-	ScopeType      string         `json:"scope_type,omitempty"`
+	Protected      []string        `json:"protected_branches"`
+	UseCustomRules bool            `json:"use_custom_rules,omitempty"`
+	ScopeType      string          `json:"scope_type,omitempty"`
 	LinkedRepos    []LinkedRepoDTO `json:"linked_repos,omitempty"`
 }
 

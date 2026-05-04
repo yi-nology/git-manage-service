@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-type storageHandler struct {}
+type storageHandler struct{}
 
 func newStorageHandler() *storageHandler {
 	return &storageHandler{}

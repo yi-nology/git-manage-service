@@ -52,41 +52,6 @@ func Init() {
 		log.Fatal("failed to connect database: ", err)
 	}
 
-		migrator := DB.Migrator()
-	if migrator.HasTable(&po.Repo{}) &&
-		migrator.HasTable(&po.SyncTask{}) &&
-		migrator.HasTable(&po.SyncRun{}) &&
-		migrator.HasTable(&po.AuditLog{}) &&
-		migrator.HasTable(&po.SystemConfig{}) &&
-		migrator.HasTable(&po.CommitStat{}) &&
-		migrator.HasTable(&po.NotificationChannel{}) &&
-		migrator.HasTable(&po.NotificationEventTemplate{}) &&
-		migrator.HasTable(&po.SSHKey{}) &&
-		migrator.HasTable(&po.BackupRecord{}) &&
-		migrator.HasTable(&po.Credential{}) &&
-		migrator.HasTable(&po.LintRule{}) &&
-		migrator.HasTable(&po.CommitAnalysis{}) &&
-		migrator.HasTable(&po.CommitPattern{}) &&
-		migrator.HasTable(&po.SyncRecommendation{}) &&
-		migrator.HasTable(&po.ProviderConfig{}) &&
-		migrator.HasTable(&po.ChangeRequest{}) &&
-		migrator.HasTable(&po.WebhookEvent{}) &&
-		migrator.HasTable(&po.WebhookRule{}) &&
-		migrator.HasTable(&po.RepoProviderBinding{}) &&
-		migrator.HasTable(&po.ReviewTask{}) &&
-		migrator.HasTable(&po.ReviewFinding{}) &&
-		migrator.HasTable(&po.ReviewComment{}) &&
-		migrator.HasTable(&po.MergeCheckResult{}) &&
-		migrator.HasTable(&po.ReviewRepoConfig{}) &&
-		migrator.HasTable(&po.LLMProvider{}) &&
-		migrator.HasTable(&po.BranchRuleSet{}) &&
-		migrator.HasTable(&po.BranchRuleOverride{}) &&
-		migrator.HasTable(&po.ReviewRule{}) &&
-		migrator.HasTable(&po.AuthorIdentity{}) {
-		log.Println("Database tables exist, skipping schema migration.")
-		return
-	}
-
 	err = DB.AutoMigrate(&po.Repo{}, &po.SyncTask{}, &po.SyncRun{}, &po.AuditLog{}, &po.SystemConfig{}, &po.CommitStat{}, &po.NotificationChannel{}, &po.NotificationEventTemplate{}, &po.SSHKey{}, &po.BackupRecord{}, &po.Credential{}, &po.LintRule{}, &po.CommitAnalysis{}, &po.CommitPattern{}, &po.SyncRecommendation{}, &po.ProviderConfig{}, &po.ChangeRequest{}, &po.WebhookEvent{}, &po.WebhookRule{}, &po.RepoProviderBinding{}, &po.ReviewTask{}, &po.ReviewFinding{}, &po.ReviewComment{}, &po.MergeCheckResult{}, &po.ReviewRepoConfig{}, &po.LLMProvider{}, &po.BranchRuleSet{}, &po.BranchRuleOverride{}, &po.ReviewRule{}, &po.MaintenanceRecord{}, &po.AuthorIdentity{})
 	if err != nil {
 		log.Fatal("failed to migrate database: ", err)

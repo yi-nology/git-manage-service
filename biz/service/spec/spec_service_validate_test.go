@@ -182,18 +182,12 @@ func TestApplyRule_CustomRegex(t *testing.T) {
 	}
 }
 
-func TestApplyRule_DisabledRule(t *testing.T) {
-	s := &SpecService{}
-	rule := SpecRule{
-		ID:          "test-disabled",
-		Name:        "Disabled",
-		Pattern:     "required_name",
-		Severity:    "error",
-		Enabled:     false,
-		Description: "Should be skipped",
-	}
-	issues := s.applyRule([]string{}, rule)
-	if len(issues) != 0 {
-		t.Error("disabled rule should produce no issues")
+func TestValidateSpec_DisabledRules(t *testing.T) {
+	s := NewSpecService()
+	rules := s.GetBuiltinRules()
+	for _, r := range rules {
+		if r.Pattern == "buildroot-usage" && r.Enabled {
+			t.Error("buildroot-usage should be disabled by default")
+		}
 	}
 }

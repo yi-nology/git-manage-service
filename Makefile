@@ -1,4 +1,4 @@
-.PHONY: build build-http build-rpc build-all build-full build-frontend build-frontend-integrate run run-http run-rpc run-frontend preview-frontend clean clean-frontend gen kitex-gen hz-gen test lint fmt help desktop desktop-darwin desktop-windows desktop-linux desktop-all
+.PHONY: build build-http build-rpc build-all build-full build-frontend build-frontend-integrate run run-http run-rpc run-frontend preview-frontend clean clean-frontend gen kitex-gen hz-gen test test-unit test-integration typecheck-frontend lint fmt help desktop desktop-darwin desktop-windows desktop-linux desktop-all
 
 # 版本信息
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -164,6 +164,15 @@ hz-gen:
 test:
 	go test -v ./...
 
+test-unit:
+	go test -v -short ./...
+
+test-integration:
+	go test -v ./...
+
+typecheck-frontend:
+	@cd frontend && npx vue-tsc --noEmit
+
 lint:
 	@if command -v golangci-lint &> /dev/null; then \
 		golangci-lint run ./...; \
@@ -216,9 +225,12 @@ help:
 	@echo "  make hz-gen       - Generate Hz HTTP code"
 	@echo ""
 	@echo "Testing & Quality:"
-	@echo "  make test         - Run tests"
-	@echo "  make lint         - Run linter"
-	@echo "  make fmt          - Format code"
+	@echo "  make test             - Run all tests (slow)"
+	@echo "  make test-unit        - Run unit tests only (fast)"
+	@echo "  make test-integration - Run integration tests"
+	@echo "  make typecheck-frontend - Run frontend TypeScript type check"
+	@echo "  make lint             - Run linter"
+	@echo "  make fmt              - Format code"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean        - Clean backend build artifacts"

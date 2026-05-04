@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-type auditHandler struct {}
+type auditHandler struct{}
 
 func newAuditHandler() *auditHandler {
 	return &auditHandler{}
@@ -12,10 +12,10 @@ func newAuditHandler() *auditHandler {
 
 func (h *auditHandler) handleAuditLog(params json.RawMessage) ([]byte, error) {
 	var auditParams struct {
-		Action    string `json:"action"`
-		User      string `json:"user"`
+		Action     string `json:"action"`
+		User       string `json:"user"`
 		Repository string `json:"repository"`
-		Details   string `json:"details"`
+		Details    string `json:"details"`
 	}
 
 	if err := json.Unmarshal(params, &auditParams); err != nil {
@@ -39,10 +39,10 @@ func (h *auditHandler) handleAuditLog(params json.RawMessage) ([]byte, error) {
 
 func (h *auditHandler) handleAuditQuery(params json.RawMessage) ([]byte, error) {
 	var queryParams struct {
-		User      string `json:"user"`
+		User       string `json:"user"`
 		Repository string `json:"repository"`
-		StartDate string `json:"start_date"`
-		EndDate   string `json:"end_date"`
+		StartDate  string `json:"start_date"`
+		EndDate    string `json:"end_date"`
 	}
 
 	if err := json.Unmarshal(params, &queryParams); err != nil {

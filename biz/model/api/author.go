@@ -30,24 +30,24 @@ type UpdateIdentityRequest struct {
 }
 
 type RepoAuthorConfigDTO struct {
-	RepoKey           string               `json:"repoKey"`
-	IdentityID        *uint                `json:"identityId"`
-	Identity          *AuthorIdentityDTO   `json:"identity"`
-	Source            string               `json:"source"`
+	RepoKey    string             `json:"repoKey"`
+	IdentityID *uint              `json:"identityId"`
+	Identity   *AuthorIdentityDTO `json:"identity"`
+	Source     string             `json:"source"`
 }
 
 type MismatchedCommit struct {
-	Hash          string `json:"hash"`
-	ShortHash     string `json:"shortHash"`
-	Message       string `json:"message"`
-	AuthorName    string `json:"authorName"`
-	AuthorEmail   string `json:"authorEmail"`
-	CommitterName string `json:"committerName"`
+	Hash           string `json:"hash"`
+	ShortHash      string `json:"shortHash"`
+	Message        string `json:"message"`
+	AuthorName     string `json:"authorName"`
+	AuthorEmail    string `json:"authorEmail"`
+	CommitterName  string `json:"committerName"`
 	CommitterEmail string `json:"committerEmail"`
-	Date          string `json:"date"`
-	MatchType     string `json:"matchType"`
-	TargetName    string `json:"targetName"`
-	TargetEmail   string `json:"targetEmail"`
+	Date           string `json:"date"`
+	MatchType      string `json:"matchType"`
+	TargetName     string `json:"targetName"`
+	TargetEmail    string `json:"targetEmail"`
 }
 
 type AuthorScanResult struct {

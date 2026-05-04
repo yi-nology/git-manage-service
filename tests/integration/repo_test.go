@@ -54,7 +54,7 @@ func TestRepo_GetDetail(t *testing.T) {
 
 	key := s.CreateTestRepo(t, "repo-detail")
 
-	resp := s.GetJSON(t, "/api/v1/repo/detail?key=" + key)
+	resp := s.GetJSON(t, "/api/v1/repo/detail?key="+key)
 	s.AssertSuccess(t, resp)
 
 	var detail map[string]interface{}
@@ -88,8 +88,8 @@ func TestRepo_RegisterWithCredential(t *testing.T) {
 	repoDir := s.CreateTestGitRepo(t, "repo-with-cred")
 
 	resp := s.PostJSON(t, "/api/v1/repo/create", map[string]interface{}{
-		"name":                 "repo-with-cred",
-		"path":                 repoDir,
+		"name":                  "repo-with-cred",
+		"path":                  repoDir,
 		"default_credential_id": credID,
 	})
 	s.AssertSuccess(t, resp)
@@ -118,8 +118,8 @@ func TestRepo_RegisterWithRemoteCredentials(t *testing.T) {
 	repoDir := s.CreateTestGitRepo(t, "repo-remote-cred")
 
 	resp := s.PostJSON(t, "/api/v1/repo/create", map[string]interface{}{
-		"name":  "repo-remote-cred",
-		"path":  repoDir,
+		"name": "repo-remote-cred",
+		"path": repoDir,
 		"remote_credentials": map[string]uint{
 			"origin": credID,
 		},
@@ -157,7 +157,7 @@ func TestRepo_DeleteRepo(t *testing.T) {
 	})
 	s.AssertSuccess(t, resp)
 
-	detailResp := s.GetJSON(t, "/api/v1/repo/detail?key=" + key)
+	detailResp := s.GetJSON(t, "/api/v1/repo/detail?key="+key)
 	s.AssertError(t, detailResp)
 }
 

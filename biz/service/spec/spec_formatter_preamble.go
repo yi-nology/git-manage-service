@@ -244,14 +244,14 @@ func (f *SpecFormatter) normalizeDepOps(dep string) string {
 }
 
 type preambleEntry struct {
-	line     string
-	tag      string
-	tagOrder int
-	isDefine bool
-	isBcond  bool
-	isCond   bool
+	line      string
+	tag       string
+	tagOrder  int
+	isDefine  bool
+	isBcond   bool
+	isCond    bool
 	isComment bool
-	original int
+	original  int
 }
 
 func (f *SpecFormatter) orderPreamble(lines []string, changes *[]FormatChange) []string {

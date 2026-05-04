@@ -81,6 +81,11 @@ export function testLLMProvider(id: number) {
   return request.post<unknown, { status: string; message: string }>(`/settings/llm-providers/${id}/test`)
 }
 
+export function fetchOllamaModels(baseUrl?: string) {
+  const params = baseUrl ? { base_url: baseUrl } : {}
+  return request.get<unknown, string[]>('/settings/ollama-models', { params })
+}
+
 export function getCodeReviewSettings() {
   return request.get<unknown, CodeReviewGlobalSettingsDTO>('/settings/code-review')
 }

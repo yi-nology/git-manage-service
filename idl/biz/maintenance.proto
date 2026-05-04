@@ -38,6 +38,12 @@ message GetRecordRequest {
     optional uint32 id = 2 [(api.path) = "id"];
 }
 
+message AIAnalyzeRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    repeated string file_paths = 2 [(api.body) = "file_paths"];
+    optional int64 threshold = 3 [(api.body) = "threshold"];
+}
+
 service MaintenanceService {
     rpc Health(HealthRequest) returns (MaintenanceTaskResponse) {
         option (api.get) = "/api/v1/repo/:repo_key/maintenance/health";
@@ -61,5 +67,9 @@ service MaintenanceService {
 
     rpc GetRecord(GetRecordRequest) returns (MaintenanceTaskResponse) {
         option (api.get) = "/api/v1/repo/:repo_key/maintenance/records/:id";
+    }
+
+    rpc AIAnalyze(AIAnalyzeRequest) returns (MaintenanceTaskResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/maintenance/ai-analyze";
     }
 }

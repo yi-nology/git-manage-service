@@ -1,6 +1,8 @@
 package db
 
 import (
+	"time"
+
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
@@ -48,6 +50,10 @@ func (d *MaintenanceDAO) UpdateStatus(taskID string, status string, errMsg strin
 		"status":         status,
 		"error_message":  errMsg,
 		"snapshot_after": snapshotAfter,
+	}
+	if status == "success" || status == "failed" {
+		now := time.Now()
+		updates["finished_at"] = &now
 	}
 	return DB.Model(&po.MaintenanceRecord{}).Where("task_id = ?", taskID).Updates(updates).Error
 }

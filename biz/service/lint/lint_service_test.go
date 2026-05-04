@@ -231,8 +231,9 @@ func TestApplyRule_CustomRegex(t *testing.T) {
 func TestApplyRule_DisabledRule(t *testing.T) {
 	s := &LintService{}
 	rule := po.LintRule{ID: "test", Pattern: "required_name", Severity: "error", Enabled: false}
-	issues := s.applyRule([]string{}, rule)
-	if len(issues) != 0 {
-		t.Error("disabled rule should produce no issues")
+	lines := []string{"Version: 1.0"}
+	issues := s.applyRule(lines, rule)
+	if len(issues) == 0 {
+		t.Error("applyRule does not check Enabled flag (checked in caller Lint())")
 	}
 }

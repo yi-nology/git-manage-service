@@ -20,12 +20,12 @@ func TestRepoProviderBindingDAO_CRUD(t *testing.T) {
 	dao := NewRepoProviderBindingDAO()
 
 	binding := &po.RepoProviderBinding{
-		RepoID:             repo.ID,
-		ProviderConfigID:   provider.ID,
-		PlatformOwner:      "myorg",
-		PlatformRepo:       "myrepo",
-		RemoteName:         "origin",
-		IsPrimary:          true,
+		RepoID:           repo.ID,
+		ProviderConfigID: provider.ID,
+		PlatformOwner:    "myorg",
+		PlatformRepo:     "myrepo",
+		RemoteName:       "origin",
+		IsPrimary:        true,
 	}
 	if err := dao.Create(binding); err != nil {
 		t.Fatalf("Create failed: %v", err)

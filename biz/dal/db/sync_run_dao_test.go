@@ -38,7 +38,7 @@ func TestSyncRunDAO_CRUD(t *testing.T) {
 	}
 
 	found[0].Status = "failed"
-	dao.Save(found[0])
+	dao.Save(&found[0])
 
 	if err := dao.Delete(run.ID); err != nil {
 		t.Fatalf("Delete failed: %v", err)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -29,21 +31,35 @@ func Health(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
+	var threshold int64
+	if t := c.Query("threshold"); t != "" {
+		if v, err := strconv.ParseInt(t, 10, 64); err == nil && v > 0 {
+			threshold = v
+		}
+	}
+
+	var excludes []string
+	if e := c.Query("exclude"); e != "" {
+		for _, p := range strings.Split(e, ",") {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				excludes = append(excludes, p)
+			}
+		}
+	}
+
 	svc := git.NewMaintenanceService()
-	report, err := svc.AnalyzeHealth(repo.Path)
+	report, err := svc.AnalyzeHealth(repo.Path, threshold, excludes)
 	if err != nil {
 		response.InternalError(c, err)
 		return
 	}
 
-	largeFiles, err := svc.FindLargeFiles(repo.Path, 1*1024*1024)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	report.LargeFiles = largeFiles
 	if report.LargeFiles == nil {
 		report.LargeFiles = []api.LargeFileEntry{}
+	}
+	if report.StashEntries == nil {
+		report.StashEntries = []api.StashEntry{}
 	}
 
 	response.Success(c, report)
@@ -72,8 +88,8 @@ func Slim(ctx context.Context, c *app.RequestContext) {
 	git.GlobalTaskManager.AddTask(taskID)
 
 	paramsJSON, _ := json.Marshal(map[string]interface{}{
-		"paths":         paths,
-		"addGitignore":  req.GetAddGitignore(),
+		"paths":        paths,
+		"addGitignore": req.GetAddGitignore(),
 	})
 
 	record, err := git.CreateMaintenanceRecord(repo.ID, "slim", repo.Path)
@@ -81,15 +97,17 @@ func Slim(ctx context.Context, c *app.RequestContext) {
 		response.InternalError(c, err)
 		return
 	}
-	db.NewMaintenanceDAO().UpdateProgress(taskID, "")
-	db.NewMaintenanceDAO().UpdateStatus(taskID, "running", "", "")
+	dao := db.NewMaintenanceDAO()
+	record.TaskID = taskID
+	record.ParamsJSON = string(paramsJSON)
+	dao.Update(record)
+	dao.UpdateStatus(taskID, "running", "", "")
 
 	go func() {
 		svc := git.NewMaintenanceService()
 		if err := svc.SlimHistory(repo.Path, paths, req.GetAddGitignore(), taskID); err != nil {
 			git.GlobalTaskManager.UpdateStatus(taskID, "failed", err.Error())
 			now := time.Now()
-			dao := db.NewMaintenanceDAO()
 			rec, _ := dao.FindByTaskID(taskID)
 			if rec != nil {
 				rec.Status = "failed"
@@ -103,11 +121,6 @@ func Slim(ctx context.Context, c *app.RequestContext) {
 		}
 		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
 	}()
-
-	dao := db.NewMaintenanceDAO()
-	record.TaskID = taskID
-	record.ParamsJSON = string(paramsJSON)
-	dao.Update(record)
 
 	response.Success(c, api.MaintenanceTaskResponse{TaskID: taskID})
 }
@@ -306,4 +319,55 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%.1fmin", d.Minutes())
 	}
 	return fmt.Sprintf("%.1fh", d.Hours())
+}
+
+// AIAnalyze .
+// @router /api/v1/repo/:repo_key/maintenance/ai-analyze [POST]
+func AIAnalyze(ctx context.Context, c *app.RequestContext) {
+	var req maintenance.AIAnalyzeRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
+	if err != nil {
+		response.NotFound(c, "repo not found")
+		return
+	}
+
+	var threshold int64
+	if req.GetThreshold() > 0 {
+		threshold = req.GetThreshold()
+	}
+
+	svc := git.NewMaintenanceService()
+	healthReport, err := svc.AnalyzeHealth(repo.Path, threshold, nil)
+	if err != nil {
+		response.InternalError(c, err)
+		return
+	}
+
+	if len(req.GetFilePaths()) > 0 {
+		filtered := make([]api.LargeFileEntry, 0)
+		pathSet := make(map[string]bool)
+		for _, p := range req.GetFilePaths() {
+			pathSet[p] = true
+		}
+		for _, f := range healthReport.LargeFiles {
+			if pathSet[f.Path] {
+				filtered = append(filtered, f)
+			}
+		}
+		healthReport.LargeFiles = filtered
+	}
+
+	aiSvc := git.NewMaintenanceAIService()
+	result, err := aiSvc.AnalyzeSlimFiles(ctx, healthReport)
+	if err != nil {
+		response.InternalError(c, err)
+		return
+	}
+
+	response.Success(c, result)
 }

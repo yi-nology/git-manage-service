@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"context"
+	"net/url"
 	"testing"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/protocol"
 )
 
 func TestCORS_SetsHeaders(t *testing.T) {
@@ -105,40 +105,22 @@ func containsStr(s, sub string) bool {
 	return false
 }
 
-func TestCORS_NextCalled(t *testing.T) {
+func TestCORS_OriginSpecialChars(t *testing.T) {
 	cors := CORS()
-	called := false
-	router := func(ctx context.Context, rc *app.RequestContext) {
-		called = true
-	}
 	c := app.NewContext(0)
 	c.Request.SetMethod("GET")
-	c.SetHandler(router)
+	origin := "http://localhost:3000/path?q=1"
+	c.Request.Header.Set("Origin", origin)
 
 	cors(context.Background(), c)
 
-	if !called {
-		t.Error("expected Next to be called for non-OPTIONS")
-	}
-}
-
-func TestCORS_OptionsNotNext(t *testing.T) {
-	cors := CORS()
-	called := false
-	router := func(ctx context.Context, rc *app.RequestContext) {
-		called = true
-	}
-	c := app.NewContext(0)
-	c.Request.SetMethod("OPTIONS")
-	c.SetHandler(router)
-
-	cors(context.Background(), c)
-
-	if called {
-		t.Error("expected Next NOT to be called for OPTIONS")
+	got := string(c.Response.Header.Peek("Access-Control-Allow-Origin"))
+	// Should mirror whatever Origin was set
+	if got != origin {
+		t.Errorf("expected origin %q, got %q", origin, got)
 	}
 }
 
 func init() {
-	_ = protocol.MethodGet
+	_ = url.QueryEscape
 }

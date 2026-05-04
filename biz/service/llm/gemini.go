@@ -59,9 +59,9 @@ func (p *Gemini) Review(ctx context.Context, req *ReviewRequest) (*ReviewRespons
 }
 
 type geminiRequest struct {
-	Contents         []geminiContent    `json:"contents"`
+	Contents          []geminiContent   `json:"contents"`
 	SystemInstruction *geminiSystemInst `json:"systemInstruction,omitempty"`
-	GenerationConfig *geminiGenConfig   `json:"generationConfig,omitempty"`
+	GenerationConfig  *geminiGenConfig  `json:"generationConfig,omitempty"`
 }
 
 type geminiContent struct {

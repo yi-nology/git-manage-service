@@ -7,8 +7,9 @@ import {
   addGitignore as addGitignoreApi,
   getTaskStatus,
   getMaintenanceRecords,
+  analyzeMaintenanceAI,
 } from '@/api/modules/maintenance'
-import type { RepoHealthReport, LargeFileEntry, MaintenanceRecordDTO, MaintenanceRecordListResponse } from '@/api/modules/maintenance'
+import type { RepoHealthReport, LargeFileEntry, MaintenanceRecordDTO, MaintenanceRecordListResponse, MaintenanceAIAnalysisResponse, FileAIRecommendation } from '@/api/modules/maintenance'
 
 export function useMaintenance(repoKey: string) {
   const healthLoading = ref(false)
@@ -20,6 +21,11 @@ export function useMaintenance(repoKey: string) {
   const taskStatus = ref('')
   const taskError = ref('')
   const taskLogs = ref<string[]>([])
+  const aiLoading = ref(false)
+  const aiResult = ref<MaintenanceAIAnalysisResponse | null>(null)
+  const aiRecommendationMap = ref<Map<string, FileAIRecommendation>>(new Map())
+  const thresholdKB = ref(100)
+  const excludePatterns = ref<string[]>(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', 'docs/', 'dist/', 'node_modules/'])
 
   const recordsLoading = ref(false)
   const records = ref<MaintenanceRecordDTO[]>([])
@@ -33,6 +39,43 @@ export function useMaintenance(repoKey: string) {
     if (pollTimer) clearInterval(pollTimer)
   })
 
+  async function analyzeWithAI() {
+    if (!healthReport.value || healthReport.value.largeFiles.length === 0) {
+      ElMessage.warning('请先体检并确保有大文件')
+      return
+    }
+    aiLoading.value = true
+    aiResult.value = null
+    aiRecommendationMap.value = new Map()
+    try {
+      const paths = healthReport.value.largeFiles.map(f => f.path)
+      const thresholdBytes = thresholdKB.value * 1024
+      const res = await analyzeMaintenanceAI(repoKey, paths, thresholdBytes) as any as MaintenanceAIAnalysisResponse
+      aiResult.value = res
+      const map = new Map<string, FileAIRecommendation>()
+      for (const r of res.recommendations || []) {
+        map.set(r.path, r)
+      }
+      aiRecommendationMap.value = map
+    } catch (e: any) {
+      ElMessage.error('AI 分析失败: ' + (e.message || '未知错误'))
+    } finally {
+      aiLoading.value = false
+    }
+  }
+
+  function acceptAIRecommendations() {
+    if (!aiResult.value) return
+    const safePaths = new Set(
+      aiResult.value.recommendations
+        .filter(r => r.recommendation === 'safe_to_delete')
+        .map(r => r.path)
+    )
+    const matched = healthReport.value?.largeFiles.filter(f => safePaths.has(f.path)) || []
+    selectedFiles.value = matched
+    ElMessage.success(`已采纳 ${matched.length} 个安全删除建议`)
+  }
+
   function formatFileSize(bytes: number) {
     if (bytes >= 1024 * 1024 * 1024) return (bytes / 1024 / 1024 / 1024).toFixed(1) + ' GB'
     if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB'
@@ -45,7 +88,8 @@ export function useMaintenance(repoKey: string) {
     taskId.value = ''
     taskStatus.value = ''
     try {
-      healthReport.value = await getRepoHealth(repoKey) as any
+      const thresholdBytes = thresholdKB.value * 1024
+      healthReport.value = await getRepoHealth(repoKey, thresholdBytes, excludePatterns.value) as any
     } catch (e: any) {
       ElMessage.error('体检失败: ' + (e.message || '未知错误'))
     } finally {
@@ -163,6 +207,11 @@ export function useMaintenance(repoKey: string) {
     taskStatus,
     taskError,
     taskLogs,
+    aiLoading,
+    aiResult,
+    aiRecommendationMap,
+    thresholdKB,
+    excludePatterns,
     recordsLoading,
     records,
     recordsTotal,
@@ -175,5 +224,7 @@ export function useMaintenance(repoKey: string) {
     handleSlimConfirm,
     handleGC,
     loadRecords,
+    analyzeWithAI,
+    acceptAIRecommendations,
   }
 }

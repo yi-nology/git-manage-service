@@ -11,7 +11,7 @@ func TestWorkspace_GetStatus_CleanRepo(t *testing.T) {
 
 	key := s.CreateTestRepo(t, "ws-clean")
 
-	resp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+	resp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 	s.AssertSuccess(t, resp)
 
 	var status map[string]interface{}
@@ -33,7 +33,7 @@ func TestWorkspace_GetStatus_WithUntrackedFiles(t *testing.T) {
 
 	writeFile(t, filepath.Join(repoDir, "newfile.txt"), "hello world")
 
-	resp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+	resp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 	s.AssertSuccess(t, resp)
 
 	var status map[string]interface{}
@@ -63,7 +63,7 @@ func TestWorkspace_StageAndUnstage(t *testing.T) {
 	})
 	s.AssertSuccess(t, resp)
 
-	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 	s.AssertSuccess(t, statusResp)
 
 	var status map[string]interface{}
@@ -80,7 +80,7 @@ func TestWorkspace_StageAndUnstage(t *testing.T) {
 	})
 	s.AssertSuccess(t, unstageResp)
 
-	statusResp2 := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+	statusResp2 := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 	s.AssertSuccess(t, statusResp2)
 
 	var status2 map[string]interface{}
@@ -102,12 +102,12 @@ func TestWorkspace_StageAll(t *testing.T) {
 	writeFile(t, filepath.Join(repoDir, "file2.txt"), "content2")
 
 	resp := s.PostJSON(t, "/api/v1/workspace/stage", map[string]interface{}{
-		"repo_key": key,
+		"repo_key":  key,
 		"stage_all": true,
 	})
 	s.AssertSuccess(t, resp)
 
-	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 	s.AssertSuccess(t, statusResp)
 
 	var status map[string]interface{}
@@ -145,7 +145,7 @@ func TestWorkspace_CommitChanges(t *testing.T) {
 		t.Fatalf("expected commit hash, got: %v", result)
 	}
 
-	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 	s.AssertSuccess(t, statusResp)
 
 	var status map[string]interface{}
@@ -164,8 +164,8 @@ func TestWorkspace_CommitWithStageAll(t *testing.T) {
 	writeFile(t, filepath.Join(repoDir, "auto-stage.txt"), "auto staged")
 
 	resp := s.PostJSON(t, "/api/v1/workspace/commit", map[string]interface{}{
-		"repo_key": key,
-		"message":  "auto stage commit",
+		"repo_key":  key,
+		"message":   "auto stage commit",
 		"stage_all": true,
 	})
 	s.AssertSuccess(t, resp)
@@ -193,7 +193,7 @@ func TestWorkspace_CommitSpecificFiles(t *testing.T) {
 	})
 	s.AssertSuccess(t, resp)
 
-	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 	s.AssertSuccess(t, statusResp)
 
 	var status map[string]interface{}
@@ -227,11 +227,11 @@ func TestWorkspace_GetDiff(t *testing.T) {
 	appendFile(t, filepath.Join(repoDir, "README.md"), "\nNew line added\n")
 
 	s.PostJSON(t, "/api/v1/workspace/stage", map[string]interface{}{
-		"repo_key": key,
+		"repo_key":  key,
 		"stage_all": true,
 	})
 
-	resp := s.GetJSON(t, "/api/v1/workspace/diff?repo_key=" + key)
+	resp := s.GetJSON(t, "/api/v1/workspace/diff?repo_key="+key)
 	s.AssertSuccess(t, resp)
 
 	var diff map[string]interface{}
@@ -257,7 +257,7 @@ func TestWorkspace_GetDiffStagedOnly(t *testing.T) {
 		"files":    []string{"staged.txt"},
 	})
 
-	resp := s.GetJSON(t, "/api/v1/workspace/diff?repo_key=" + key + "&staged_only=true")
+	resp := s.GetJSON(t, "/api/v1/workspace/diff?repo_key="+key+"&staged_only=true")
 	s.AssertSuccess(t, resp)
 }
 
@@ -292,7 +292,7 @@ func TestWorkspace_ModifyTrackedFile(t *testing.T) {
 	readme := filepath.Join(repoDir, "README.md")
 	writeFile(t, readme, "# Modified\nThis is modified content\n")
 
-	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key=" + key)
+	statusResp := s.GetJSON(t, "/api/v1/workspace/status?repo_key="+key)
 	s.AssertSuccess(t, statusResp)
 
 	var status map[string]interface{}
@@ -308,7 +308,7 @@ func TestWorkspace_ModifyTrackedFile(t *testing.T) {
 	}
 
 	s.PostJSON(t, "/api/v1/workspace/stage", map[string]interface{}{
-		"repo_key": key,
+		"repo_key":  key,
 		"stage_all": true,
 	})
 

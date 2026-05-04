@@ -2,8 +2,6 @@ package db
 
 import (
 	"testing"
-
-	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
 func TestSystemConfigDAO_GetSet(t *testing.T) {

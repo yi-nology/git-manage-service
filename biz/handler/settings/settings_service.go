@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
@@ -289,6 +292,40 @@ func convertBranchRules(rules []*settings.BranchRule) []api.BranchRuleDTO {
 		})
 	}
 	return result
+}
+
+func FetchOllamaModels(ctx context.Context, c *app.RequestContext) {
+	baseURL := c.Query("base_url")
+	if baseURL == "" {
+		baseURL = "http://localhost:11434"
+	}
+	url := strings.TrimRight(baseURL, "/") + "/api/tags"
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		pkgresponse.BadRequest(c, "invalid base_url: "+err.Error())
+		return
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		pkgresponse.BadRequest(c, "无法连接 Ollama: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	var result struct {
+		Models []struct {
+			Name string `json:"name"`
+		} `json:"models"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		pkgresponse.InternalServerError(c, "解析 Ollama 响应失败")
+		return
+	}
+	names := make([]string, 0, len(result.Models))
+	for _, m := range result.Models {
+		names = append(names, m.Name)
+	}
+	pkgresponse.Success(c, names)
 }
 
 func ListReviewRules(ctx context.Context, c *app.RequestContext) {

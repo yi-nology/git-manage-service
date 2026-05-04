@@ -1,0 +1,26 @@
+# Build artifacts
+output/
+build/
+dist/
+public/
+pkg/embed/
+frontend/dist/
+frontend/node_modules/
+
+# Database
+data/
+*.db
+*.sqlite
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/

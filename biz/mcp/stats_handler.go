@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-type statsHandler struct {}
+type statsHandler struct{}
 
 func newStatsHandler() *statsHandler {
 	return &statsHandler{}
@@ -27,13 +27,13 @@ func (h *statsHandler) handleStatsCode(params json.RawMessage) ([]byte, error) {
 	// 这里应该调用统计服务的代码统计方法
 	// 暂时返回成功
 	responseData := struct {
-		Lines      int    `json:"lines"`
-		Files      int    `json:"files"`
-		Languages  []string `json:"languages"`
+		Lines     int      `json:"lines"`
+		Files     int      `json:"files"`
+		Languages []string `json:"languages"`
 	}{
-		Lines:      1000,
-		Files:      50,
-		Languages:  []string{"Go", "JavaScript", "HTML"},
+		Lines:     1000,
+		Files:     50,
+		Languages: []string{"Go", "JavaScript", "HTML"},
 	}
 
 	data, _ := json.Marshal(responseData)
@@ -66,9 +66,9 @@ func (h *statsHandler) handleStatsLanguage(params json.RawMessage) ([]byte, erro
 		Languages map[string]float64 `json:"languages"`
 	}{
 		Languages: map[string]float64{
-			"Go": 60.0,
+			"Go":         60.0,
 			"JavaScript": 30.0,
-			"HTML": 10.0,
+			"HTML":       10.0,
 		},
 	}
 

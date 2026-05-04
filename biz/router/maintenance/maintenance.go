@@ -27,6 +27,7 @@ func Register(r *server.Hertz) {
 					_repo_key := _repo.Group("/:repo_key", _repo_keyMw()...)
 					{
 						_maintenance := _repo_key.Group("/maintenance", _maintenanceMw()...)
+						_maintenance.POST("/ai-analyze", append(_aianalyzeMw(), maintenance.AIAnalyze)...)
 						_maintenance.POST("/gc", append(_gcMw(), maintenance.GC)...)
 						_maintenance.POST("/gitignore", append(_gitignoreMw(), maintenance.Gitignore)...)
 						_maintenance.GET("/health", append(_healthMw(), maintenance.Health)...)

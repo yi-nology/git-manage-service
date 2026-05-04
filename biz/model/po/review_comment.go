@@ -6,7 +6,7 @@ import (
 
 type ReviewComment struct {
 	gorm.Model
-	TaskID            uint   `gorm:"index"`
+	TaskID            uint `gorm:"index"`
 	FindingID         uint
 	ProviderCommentID string `gorm:"size:128"`
 	CommentType       string `gorm:"size:32"`

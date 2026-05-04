@@ -30,8 +30,8 @@ var Presets = []ProviderPreset{
 	{
 		ID: "aliyun-coding-plan", DisplayName: "阿里云百炼 Coding Plan",
 		Category: "coding_plan", Type: "openai_compatible",
-		BaseURL: "https://coding.dashscope.aliyuncs.com/v1",
-		AnthropicURL: "https://coding.dashscope.aliyuncs.com/apps/anthropic",
+		BaseURL:           "https://coding.dashscope.aliyuncs.com/v1",
+		AnthropicURL:      "https://coding.dashscope.aliyuncs.com/apps/anthropic",
 		SupportsAnthropic: true,
 		Models: []ModelOption{
 			{ID: "qwen3.5-plus", DisplayName: "Qwen3.5-Plus (推荐，支持图片理解)"},
@@ -45,14 +45,14 @@ var Presets = []ProviderPreset{
 		DefaultModel: "qwen3.5-plus", MaxTokens: 8192,
 		Icon: "aliyun", Region: "cn", RequiresKey: true,
 		IsCodingPlan: true, CodingPlanPrice: "¥200/月",
-		Warning: "Coding Plan 专属 Key（sk-sp-开头）与通用 API Key 不互通，请勿混用。",
+		Warning:      "Coding Plan 专属 Key（sk-sp-开头）与通用 API Key 不互通，请勿混用。",
 		SubscribeURL: "https://www.aliyun.com/benefit/scene/codingplan",
 	},
 	{
 		ID: "zhipu-coding-plan", DisplayName: "智谱 GLM Coding Plan",
 		Category: "coding_plan", Type: "openai_compatible",
-		BaseURL: "https://open.bigmodel.cn/api/coding/paas/v4",
-		AnthropicURL: "https://open.bigmodel.cn/api/anthropic",
+		BaseURL:           "https://open.bigmodel.cn/api/coding/paas/v4",
+		AnthropicURL:      "https://open.bigmodel.cn/api/anthropic",
 		SupportsAnthropic: true,
 		Models: []ModelOption{
 			{ID: "glm-5", DisplayName: "GLM-5 (旗舰)"},
@@ -62,15 +62,15 @@ var Presets = []ProviderPreset{
 		DefaultModel: "glm-5", MaxTokens: 8192,
 		Icon: "zhipu", Region: "cn", RequiresKey: true,
 		IsCodingPlan: true, CodingPlanPrice: "¥49~469/月",
-		Warning: "请使用 Coding Plan 专属端点，勿用通用 API 端点。",
+		Warning:      "请使用 Coding Plan 专属端点，勿用通用 API 端点。",
 		SubscribeURL: "https://www.bigmodel.cn/glm-coding",
 	},
 	{
 		ID: "volcengine-coding-plan", DisplayName: "火山引擎方舟 Coding Plan",
 		Category: "coding_plan", Type: "openai_compatible",
-		BaseURL: "https://ark.cn-beijing.volces.com/api/coding/v3",
+		BaseURL:           "https://ark.cn-beijing.volces.com/api/coding/v3",
 		SupportsAnthropic: true,
-		AnthropicURL: "https://ark.cn-beijing.volces.com/api/coding/v3/anthropic",
+		AnthropicURL:      "https://ark.cn-beijing.volces.com/api/coding/v3/anthropic",
 		Models: []ModelOption{
 			{ID: "ark-code-latest", DisplayName: "Auto (自动调度)"},
 			{ID: "Doubao-Seed-2.0-pro", DisplayName: "Doubao-Seed-2.0-Pro"},
@@ -83,7 +83,7 @@ var Presets = []ProviderPreset{
 		DefaultModel: "ark-code-latest", MaxTokens: 8192,
 		Icon: "volcengine", Region: "cn", RequiresKey: true,
 		IsCodingPlan: true, CodingPlanPrice: "¥40~200/月",
-		Warning: "请使用 Coding Plan 专用 URL，勿用 ark.cn-beijing.volces.com/api/v3（会产生额外费用）。",
+		Warning:      "请使用 Coding Plan 专用 URL，勿用 ark.cn-beijing.volces.com/api/v3（会产生额外费用）。",
 		SubscribeURL: "https://www.volcengine.com/activity/codingplan",
 	},
 	{
@@ -104,7 +104,7 @@ var Presets = []ProviderPreset{
 	{
 		ID: "minimax-token-plan", DisplayName: "MiniMax Token Plan",
 		Category: "coding_plan", Type: "openai_compatible",
-		BaseURL: "https://api.minimaxi.com/v1",
+		BaseURL:           "https://api.minimaxi.com/v1",
 		SupportsAnthropic: true,
 		Models: []ModelOption{
 			{ID: "MiniMax-M2.5", DisplayName: "MiniMax-M2.5 (标准)"},
@@ -113,7 +113,7 @@ var Presets = []ProviderPreset{
 		DefaultModel: "MiniMax-M2.5", MaxTokens: 8192,
 		Icon: "minimax", Region: "cn", RequiresKey: true,
 		IsCodingPlan: true, CodingPlanPrice: "¥290~8990/年",
-		Warning: "Token Plan 专属 Key 与按量计费 Key 不互通。",
+		Warning:      "Token Plan 专属 Key 与按量计费 Key 不互通。",
 		SubscribeURL: "https://platform.minimaxi.com/subscribe/token-plan",
 	},
 	{
@@ -267,16 +267,16 @@ var Presets = []ProviderPreset{
 	{
 		ID: "vllm", DisplayName: "vLLM",
 		Category: "local", Type: "openai_compatible",
-		BaseURL: "",
-		Models: []ModelOption{},
+		BaseURL:      "",
+		Models:       []ModelOption{},
 		DefaultModel: "", MaxTokens: 4096,
 		Icon: "vllm", Region: "local", RequiresKey: false,
 	},
 	{
 		ID: "lm-studio", DisplayName: "LM Studio",
 		Category: "local", Type: "openai_compatible",
-		BaseURL: "http://localhost:1234/v1",
-		Models: []ModelOption{},
+		BaseURL:      "http://localhost:1234/v1",
+		Models:       []ModelOption{},
 		DefaultModel: "", MaxTokens: 4096,
 		Icon: "lmstudio", Region: "local", RequiresKey: false,
 	},

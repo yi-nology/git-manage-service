@@ -96,7 +96,14 @@
           </el-form-item>
           <div class="dialog-row">
             <el-form-item label="模型" class="dialog-half">
-              <el-select v-if="presetModels.length > 0" v-model="form.model" style="width:100%">
+              <div v-if="form.type === 'ollama' && presetModels.length === 0" style="display:flex;gap:8px;width:100%">
+                <el-select v-if="ollamaModels.length > 0" v-model="form.model" style="flex:1" filterable allow-create>
+                  <el-option v-for="m in ollamaModels" :key="m" :label="m" :value="m" />
+                </el-select>
+                <el-input v-else v-model="form.model" placeholder="模型名称" style="flex:1" />
+                <el-button @click="handleFetchOllamaModels" :loading="ollamaLoading" style="flex-shrink:0">获取模型</el-button>
+              </div>
+              <el-select v-else-if="presetModels.length > 0" v-model="form.model" style="width:100%">
                 <el-option v-for="m in presetModels" :key="m.id" :label="m.display_name" :value="m.id" />
               </el-select>
               <el-input v-else v-model="form.model" placeholder="模型名称" />
@@ -143,6 +150,7 @@ import LLMPresetSelector from '@/components/llm/LLMPresetSelector.vue'
 import {
   listLLMProviders, createLLMProvider, updateLLMProvider,
   deleteLLMProvider, setDefaultLLMProvider, testLLMProvider, fetchLLMPresets,
+  fetchOllamaModels,
 } from '@/api/modules/llm-settings'
 import type { LLMProviderDTO, LLMPresetDTO } from '@/api/modules/llm-settings'
 
@@ -166,6 +174,8 @@ const dialogStep = ref<'select' | 'configure'>('select')
 const presets = ref<LLMPresetDTO[]>([])
 const presetsLoading = ref(false)
 const selectedPreset = ref<LLMPresetDTO | null>(null)
+const ollamaModels = ref<string[]>([])
+const ollamaLoading = ref(false)
 
 const form = ref({
   type: 'openai_compatible',
@@ -210,7 +220,25 @@ function resetDialog() {
   dialogStep.value = 'select'
   selectedPreset.value = null
   editingProvider.value = null
+  ollamaModels.value = []
   form.value = { type: 'openai_compatible', name: '', model: '', max_tokens: 4096, base_url: '', api_key: '', is_default: false, preset_id: '', protocol: 'openai' }
+}
+
+async function handleFetchOllamaModels() {
+  ollamaLoading.value = true
+  try {
+    const models = await fetchOllamaModels(form.value.base_url || undefined)
+    ollamaModels.value = models || []
+    if (ollamaModels.value.length === 0) {
+      ElMessage.warning('未发现已安装的模型')
+    } else if (!form.value.model && ollamaModels.value.length > 0) {
+      form.value.model = ollamaModels.value[0]
+    }
+  } catch (e: any) {
+    ElMessage.error('获取 Ollama 模型失败: ' + (e?.message || ''))
+  } finally {
+    ollamaLoading.value = false
+  }
 }
 
 function openAddDialog() {
