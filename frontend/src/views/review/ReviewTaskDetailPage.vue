@@ -1,14 +1,17 @@
-<template>
-  <div class="review-page-wrapper">
-    <div class="header-bar">
-      <PageHeader :showBack="true" :backRoute="`/local-repos/${repoKey}/review/tasks`">
-        <template #actions>
-          <ActionPill variant="outline" :icon="Refresh" :disabled="retrying" @click="handleRetry">
-            {{ retrying ? '重试中...' : '重试' }}
-          </ActionPill>
-        </template>
-      </PageHeader>
-    </div>
+ <template>
+   <div class="review-page-wrapper">
+     <div class="header-bar">
+       <PageHeader :showBack="true" :backRoute="`/local-repos/${repoKey}/review/tasks`">
+         <template #actions>
+           <ActionPill variant="ai" :icon="MagicStick" :disabled="aiLoading" @click="showAIPanel = !showAIPanel">
+             AI 审查助手
+           </ActionPill>
+           <ActionPill variant="outline" :icon="Refresh" :disabled="retrying" @click="handleRetry">
+             {{ retrying ? '重试中...' : '重试' }}
+           </ActionPill>
+         </template>
+       </PageHeader>
+     </div>
 
     <div class="detail-layout">
       <LoadingState v-if="loading && !task" />
@@ -74,35 +77,61 @@
             </div>
           </div>
 
-          <EmptyState v-if="filteredFindings.length === 0 && !loading" :title="severityFilter ? '暂无该级别的问题' : '暂无问题'" />
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
+           <EmptyState v-if="filteredFindings.length === 0 && !loading" :title="severityFilter ? '暂无该级别的问题' : '暂无问题'" />
+         </div>
+       </div>
 
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
-import { getReviewTask, listReviewFindings, retryReviewTask, type ReviewTaskDTO, type ReviewFindingDTO } from '@/api/modules/review'
-import PageHeader from '@/components/common/PageHeader.vue'
-import LoadingState from '@/components/common/LoadingState.vue'
-import ActionPill from '@/components/common/ActionPill.vue'
-import StatusBadge from '@/components/common/StatusBadge.vue'
-import SectionTitle from '@/components/common/SectionTitle.vue'
-import EmptyState from '@/components/common/EmptyState.vue'
+       <AIPanel
+         ref="aiPanelRef"
+         v-if="showAIPanel"
+         title="AI 审查助手"
+          v-model:visible="showAIPanel"
+         :quick-actions="quickActions"
+         empty-hint="AI 可以帮助分析代码变更、识别潜在问题并提供改进建议。输入您的问题开始使用。"
+         :ai-loading="aiLoading"
+         @send="handleAIReview"
+         @close="showAIPanel = false"
+       />
+     </div>
+   </div>
+ </template>
+
+ <script setup lang="ts">
+ import { ref, computed, onMounted } from 'vue'
+ import { useRoute } from 'vue-router'
+ import { ElMessage } from 'element-plus'
+ import { Refresh, MagicStick } from '@element-plus/icons-vue'
+ import { getReviewTask, listReviewFindings, retryReviewTask, type ReviewTaskDTO, type ReviewFindingDTO } from '@/api/modules/review'
+ import { aiApi } from '@/api/modules/ai'
+ import PageHeader from '@/components/common/PageHeader.vue'
+ import LoadingState from '@/components/common/LoadingState.vue'
+ import ActionPill from '@/components/common/ActionPill.vue'
+ import StatusBadge from '@/components/common/StatusBadge.vue'
+ import SectionTitle from '@/components/common/SectionTitle.vue'
+ import EmptyState from '@/components/common/EmptyState.vue'
+ import AIPanel from '@/components/ai/AIPanel.vue'
+ import type { QuickAction } from '@/types/ai'
 
 const route = useRoute()
 const repoKey = route.params.repoKey as string
 const taskId = Number(route.params.taskId)
 
-const loading = ref(false)
-const retrying = ref(false)
-const task = ref<ReviewTaskDTO | null>(null)
+ const loading = ref(false)
+ const retrying = ref(false)
+ const task = ref<ReviewTaskDTO | null>(null)
 const findings = ref<ReviewFindingDTO[]>([])
 const severityFilter = ref('')
+const showAIPanel = ref(false)
+const aiLoading = ref(false)
+const aiPanelRef = ref<{
+  addResponse: (content: string) => void
+} | null>(null)
+
+ const quickActions: QuickAction[] = [
+   { key: 'analyze', label: '深度分析', prompt: '请对本次代码审查进行深度分析，总结主要问题并提供改进建议。' },
+   { key: 'risk', label: '风险评估', prompt: '请评估本次代码变更的整体风险等级，重点关注安全漏洞、性能问题和兼容性影响。' },
+   { key: 'suggest', label: '优化建议', prompt: '请针对发现的问题提供具体的代码优化建议和最佳实践。' }
+ ]
 
 const filteredFindings = computed(() => {
   if (!severityFilter.value) return findings.value
@@ -146,16 +175,75 @@ async function loadData() {
   } catch (e) { console.error(e) } finally { loading.value = false }
 }
 
-async function handleRetry() {
-  retrying.value = true
-  try {
-    await retryReviewTask(taskId)
-    ElMessage.success('审查任务已重新开始')
-    loadData()
-  } catch (e) { console.error(e) } finally { retrying.value = false }
+ async function handleRetry() {
+   retrying.value = true
+   try {
+     await retryReviewTask(taskId)
+     ElMessage.success('审查任务已重新开始')
+     loadData()
+   } catch (e) { console.error(e) } finally { retrying.value = false }
+ }
+
+function formatReviewFindings(title: string, items: Array<{ message: string; filePath?: string; startLine?: number; suggestion?: string }> = []) {
+  if (items.length === 0) return ''
+  return [
+    title,
+    ...items.map((item, index) => {
+      const location = item.filePath ? ` (${item.filePath}${item.startLine ? `:${item.startLine}` : ''})` : ''
+      const suggestion = item.suggestion ? `\n   建议：${item.suggestion}` : ''
+      return `${index + 1}. ${item.message}${location}${suggestion}`
+    }),
+  ].join('\n')
 }
 
-onMounted(loadData)
+function formatReviewAIResponse(response: Awaited<ReturnType<typeof aiApi.codeReview>>) {
+  const sections = [response.summary]
+  if (response.riskLevel) {
+    sections.push(``, `风险等级：${response.riskLevel}`)
+  }
+  const blocking = formatReviewFindings('阻断问题：', response.blocking || [])
+  const high = formatReviewFindings('高风险问题：', response.highRisk || [])
+  const optional = formatReviewFindings('可选改进：', response.optional || [])
+  for (const section of [blocking, high, optional]) {
+    if (section) {
+      sections.push('', section)
+    }
+  }
+  if (response.mergeNotes) {
+    sections.push('', `合并前说明：${response.mergeNotes}`)
+  }
+  return sections.join('\n')
+}
+
+ async function handleAIReview(message: string) {
+   aiLoading.value = true
+   try {
+     const response = await aiApi.reviewSummary({
+       repoKey,
+       taskId,
+       taskStatus: task.value?.status || 'unknown',
+       findings: findings.value.map(f => ({
+         severity: f.severity,
+         filePath: f.file_path || 'unknown',
+         title: f.title,
+         message: f.message,
+         ruleId: f.rule_id || f.id.toString(),
+       })),
+       changedFiles: [...new Set(findings.value.map(f => f.file_path).filter(Boolean))] as string[],
+       userInstruction: message,
+     })
+
+     const contextInfo = `> 📝 **分析对象：** 审查任务 #${taskId} (${task.value?.status || 'unknown'})`
+     aiPanelRef.value?.addResponse(contextInfo + '\n\n' + formatReviewAIResponse(response))
+   } catch (e) {
+     aiPanelRef.value?.addResponse('AI 审查分析失败，请稍后重试。')
+     ElMessage.error('AI 审查分析失败，请稍后重试')
+   } finally {
+     aiLoading.value = false
+   }
+ }
+
+ onMounted(loadData)
 </script>
 
 <style scoped>

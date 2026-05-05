@@ -5,14 +5,15 @@
         <template #title-suffix>
           <StatusBadge v-if="currentVersion" variant="success" :text="currentVersion" :show-dot="false" />
         </template>
-        <template #actions>
-          <ActionPill variant="green" :icon="Share" @click="$router.push(`/local-repos/${repoKey}/branches`)">
-            分支管理
-          </ActionPill>
-          <ActionPill variant="amber" :icon="Refresh" @click="$router.push(`/local-repos/${repoKey}/sync`)">
-            同步任务
-          </ActionPill>
-        </template>
+         <template #actions>
+           <ActionPill variant="green" :icon="Share" @click="$router.push(`/local-repos/${repoKey}/branches`)">
+             分支管理
+           </ActionPill>
+           <ActionPill variant="amber" :icon="Refresh" @click="$router.push(`/local-repos/${repoKey}/sync`)">
+             同步任务
+           </ActionPill>
+           <ActionPill variant="ai" :icon="MagicStick" @click="showAIPanel = !showAIPanel">AI 助手</ActionPill>
+         </template>
       </PageHeader>
     </div>
 
@@ -101,11 +102,11 @@
           @created="loadBindings"
         />
 
-        <div v-show="activeTab === 'spec'" class="spec-full-area">
+        <div v-if="loadedTabs.spec" v-show="activeTab === 'spec'" class="spec-full-area">
           <SpecEditor ref="specEditorRef" :repo-key="repoKey" />
         </div>
 
-        <div v-show="activeTab === 'stats'">
+        <div v-if="loadedTabs.stats" v-show="activeTab === 'stats'">
           <RepoStatsTab
             :repo-key="repoKey"
             :stats-branches="statsBranches"
@@ -114,7 +115,7 @@
           />
         </div>
 
-        <div v-show="activeTab === 'lines'">
+        <div v-if="loadedTabs.lines" v-show="activeTab === 'lines'">
           <RepoLineStatsTab
             :repo-key="repoKey"
             :stats-branches="statsBranches"
@@ -123,7 +124,7 @@
           />
         </div>
 
-        <div v-show="activeTab === 'versions'">
+        <div v-if="loadedTabs.versions" v-show="activeTab === 'versions'">
           <RepoVersionsTab
             :repo-key="repoKey"
             :remote-names="remoteNames"
@@ -134,80 +135,96 @@
           />
         </div>
 
-        <div v-show="activeTab === 'files'" style="height: 100%; min-height: 600px;">
+        <div v-if="loadedTabs.files" v-show="activeTab === 'files'" style="height: 100%; min-height: 600px;">
           <FileExplorer :repo-key="repoKey" />
         </div>
 
-        <div v-show="activeTab === 'commits'">
+        <div v-if="loadedTabs.commits" v-show="activeTab === 'commits'">
           <CommitSearch :repo-key="repoKey" :branches="allRefs" :authors="statsAuthors" />
         </div>
 
-        <div v-show="activeTab === 'stash'">
+        <div v-if="loadedTabs.stash" v-show="activeTab === 'stash'">
           <StashManager :repo-key="repoKey" />
         </div>
 
-        <div v-show="activeTab === 'submodules'">
+        <div v-if="loadedTabs.submodules" v-show="activeTab === 'submodules'">
           <SubmoduleManager :repo-key="repoKey" />
         </div>
 
-        <div v-show="activeTab === 'patches'">
+        <div v-if="loadedTabs.patches" v-show="activeTab === 'patches'">
           <PatchManager :repo-key="repoKey" />
         </div>
 
-        <div v-show="activeTab === 'slim'">
+        <div v-if="loadedTabs.slim" v-show="activeTab === 'slim'">
           <SlimManager :repo-key="repoKey" />
         </div>
 
-        <div v-show="activeTab === 'author'">
+        <div v-if="loadedTabs.author" v-show="activeTab === 'author'">
           <AuthorFix :repo-key="repoKey" :remotes="remoteNames" />
         </div>
       </div>
     </div>
 
-    <RepoEditDialog
-      v-model:visible="showEditDialog"
-      :repo="repo"
-      :repo-key="repoKey"
-      @saved="handleEditSaved"
-    />
-  </div>
-</template>
+     <RepoEditDialog
+       v-model:visible="showEditDialog"
+       :repo="repo"
+       :repo-key="repoKey"
+       @saved="handleEditSaved"
+     />
+
+     <AIPanel
+       ref="aiPanelRef"
+       v-if="showAIPanel"
+       title="AI 仓库助手"
+        v-model:visible="showAIPanel"
+       empty-hint="输入问题，AI 将分析仓库状态并给出建议"
+       :ai-loading="aiLoading"
+       @send="handleAISummary"
+       @close="showAIPanel = false"
+     />
+   </div>
+ </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, reactive, defineAsyncComponent, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Edit, Search, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link, Share, Operation, User, DocumentCopy } from '@element-plus/icons-vue'
+import { Refresh, Edit, Search, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link, Share, Operation, User, DocumentCopy, MagicStick } from '@element-plus/icons-vue'
 import { getRepoDetail, scanRepo } from '@/api/modules/repo'
-import { getStatsBranches, getStatsAuthors } from '@/api/modules/stats'
+ import { getStatsBranches, getStatsAuthors, getStatsCommits } from '@/api/modules/stats'
 import { getVersionList, getCurrentVersion } from '@/api/modules/version'
 import type { VersionTag } from '@/api/modules/version'
-import type { RepoDTO, ScanResult } from '@/types/repo'
-import { formatDate } from '@/utils/format'
-import { getProvider } from '@/api/modules/provider'
-import type { ProviderConfigDTO } from '@/api/modules/provider'
-import { listBindings, deleteBinding, setPrimaryBinding, registerBindingWebhook, deleteBindingWebhook } from '@/api/modules/binding'
-import type { RepoProviderBindingDTO } from '@/types/binding'
-import { useProviderStore } from '@/stores/useProviderStore'
+ import type { RepoDTO, ScanResult } from '@/types/repo'
+ import { formatDate } from '@/utils/format'
+ import { getProvider } from '@/api/modules/provider'
+ import type { ProviderConfigDTO } from '@/api/modules/provider'
+ import { listBindings, deleteBinding, setPrimaryBinding, registerBindingWebhook, deleteBindingWebhook } from '@/api/modules/binding'
+ import type { RepoProviderBindingDTO } from '@/types/binding'
+ import { useProviderStore } from '@/stores/useProviderStore'
+ import { aiApi } from '@/api/modules/ai'
+import { getWorkspaceStatus } from '@/api/modules/workspace'
+import { getSyncHistory } from '@/api/modules/sync'
 
-import FileExplorer from '@/components/repo/FileExplorer.vue'
-import CommitSearch from '@/components/repo/CommitSearch.vue'
-import StashManager from '@/components/repo/StashManager.vue'
-import SubmoduleManager from '@/components/repo/SubmoduleManager.vue'
-import PatchManager from '@/components/patch/PatchManager.vue'
-import SpecEditor from '@/components/spec/SpecEditor.vue'
-import SlimManager from '@/components/repo/SlimManager.vue'
-import AuthorFix from '@/components/repo/AuthorFix.vue'
-import RepoStatsTab from '@/components/repo/RepoStatsTab.vue'
-import RepoLineStatsTab from '@/components/repo/RepoLineStatsTab.vue'
-import RepoVersionsTab from '@/components/repo/RepoVersionsTab.vue'
-import RepoEditDialog from '@/components/repo/RepoEditDialog.vue'
-import BindingPanel from '@/components/binding/BindingPanel.vue'
-import BindingDialog from '@/components/binding/BindingDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import ActionPill from '@/components/common/ActionPill.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SectionTitle from '@/components/common/SectionTitle.vue'
+import AIPanel from '@/components/ai/AIPanel.vue'
+
+const FileExplorer = defineAsyncComponent(() => import('@/components/repo/FileExplorer.vue'))
+const CommitSearch = defineAsyncComponent(() => import('@/components/repo/CommitSearch.vue'))
+const StashManager = defineAsyncComponent(() => import('@/components/repo/StashManager.vue'))
+const SubmoduleManager = defineAsyncComponent(() => import('@/components/repo/SubmoduleManager.vue'))
+const PatchManager = defineAsyncComponent(() => import('@/components/patch/PatchManager.vue'))
+const SpecEditor = defineAsyncComponent(() => import('@/components/spec/SpecEditor.vue'))
+const SlimManager = defineAsyncComponent(() => import('@/components/repo/SlimManager.vue'))
+const AuthorFix = defineAsyncComponent(() => import('@/components/repo/AuthorFix.vue'))
+const RepoStatsTab = defineAsyncComponent(() => import('@/components/repo/RepoStatsTab.vue'))
+const RepoLineStatsTab = defineAsyncComponent(() => import('@/components/repo/RepoLineStatsTab.vue'))
+const RepoVersionsTab = defineAsyncComponent(() => import('@/components/repo/RepoVersionsTab.vue'))
+const RepoEditDialog = defineAsyncComponent(() => import('@/components/repo/RepoEditDialog.vue'))
+const BindingPanel = defineAsyncComponent(() => import('@/components/binding/BindingPanel.vue'))
+const BindingDialog = defineAsyncComponent(() => import('@/components/binding/BindingDialog.vue'))
 
 const providerStore = useProviderStore()
 
@@ -219,12 +236,21 @@ const loading = ref(false)
 const repo = ref<RepoDTO | null>(null)
 const scanData = ref<ScanResult | null>(null)
 const activeTab = ref('info')
+const loadedTabs = reactive<Record<string, boolean>>({
+  info: true,
+})
 const currentVersion = ref('')
 const providerInfo = ref<ProviderConfigDTO | null>(null)
 const showBindingDialog = ref(false)
 const availableProviders = ref<ProviderConfigDTO[]>([])
-const bindings = ref<RepoProviderBindingDTO[]>([])
-const specEditorRef = ref<{ refresh: () => void; clearEditor: () => void } | null>(null)
+ const bindings = ref<RepoProviderBindingDTO[]>([])
+ const specEditorRef = ref<{ refresh: () => void; clearEditor: () => void } | null>(null)
+ const showAIPanel = ref(false)
+ const aiLoading = ref(false)
+const aiPanelRef = ref<{
+  addResponse: (content: string) => void
+  setDraft: (content: string, summary?: string, stats?: { added?: number; removed?: number }) => void
+} | null>(null)
 
 const sidebarItems = [
   { key: 'info', label: '基本信息', icon: InfoFilled },
@@ -259,6 +285,7 @@ onMounted(async () => {
   if (route.query.tab && typeof route.query.tab === 'string') {
     activeTab.value = route.query.tab === 'workspace' ? 'files' : route.query.tab
   }
+  loadedTabs[activeTab.value] = true
   loading.value = true
   try {
     repo.value = await getRepoDetail(repoKey)
@@ -281,11 +308,14 @@ onMounted(async () => {
   }
 })
 
-watch(activeTab, (val) => {
+watch(activeTab, (val, oldVal) => {
+  const wasLoaded = !!loadedTabs[val]
+  loadedTabs[val] = true
+
   if (val === 'versions' && (versionList.value || []).length === 0) {
     loadVersions()
   }
-  if (val === 'spec') {
+  if (val === 'spec' && oldVal && oldVal !== 'spec' && wasLoaded && specEditorRef.value) {
     nextTick(() => {
       specEditorRef.value?.clearEditor()
       specEditorRef.value?.refresh()
@@ -393,24 +423,144 @@ function handleNavSelect(key: string) {
     router.push(`/local-repos/${repoKey}/${key}`)
   } else {
     activeTab.value = key
+   }
+ }
+
+function formatRepoAIResponse(summary: string, suggestions: string[] = [], riskLevel?: string) {
+  const lines = [summary]
+  if (riskLevel) {
+    lines.push(``, `风险等级：${riskLevel}`)
   }
+  if (suggestions.length > 0) {
+    lines.push(``, `建议：`, ...suggestions.map((item, index) => `${index + 1}. ${item}`))
+  }
+  return lines.join('\n')
 }
-</script>
+
+ async function handleAISummary(message: string) {
+   aiLoading.value = true
+   try {
+     let commitCount = 0
+     try {
+       const commitStats = await getStatsCommits(repoKey) as any[]
+       commitCount = commitStats?.length || versionList.value?.length || 0
+     } catch { /* ignore */ }
+
+     const response = await aiApi.generateRepoSummary({
+       repoKey,
+       status: {
+         name: repo.value?.name || '',
+         currentBranch: workspaceStatus?.branch || '',
+         defaultBranch: workspaceStatus?.branch || '',
+         branchCount: statsBranches.value?.length || 0,
+         tagCount: versionList.value?.length || 0,
+         commitCount,
+         stagedCount: workspaceStatus?.staged.length || 0,
+         unstagedCount: workspaceStatus?.unstaged.length || 0,
+         untrackedCount: workspaceStatus?.untracked.length || 0,
+         conflictedCount: workspaceStatus?.conflicted.length || 0,
+         ahead: workspaceStatus?.ahead || 0,
+         behind: workspaceStatus?.behind || 0,
+         isClean: workspaceStatus?.isClean ?? true,
+         isMerging: workspaceStatus?.isMerging ?? false,
+         isRebasing: workspaceStatus?.isRebasing ?? false,
+         remoteCount: remoteNames.value.length,
+         hasRecentSyncFailure: failedRuns.length > 0,
+         recentFailureCount: failedRuns.length,
+       },
+       issues,
+       pendingChanges,
+       userInstruction: message,
+     })
+
+     aiPanelRef.value?.addResponse(
+       `## 仓库健康分析\n\n${response.summary}\n\n**风险等级：** ${response.riskLevel || 'unknown'}\n\n**建议操作：**\n${(response.suggestions || []).map((s: string) => `- ${s}`).join('\n')}`
+     )
+   } catch (e) {
+     ElMessage.error('AI 分析失败，请稍后重试')
+   } finally {
+     aiLoading.value = false
+   }
+ }
+     if (workspaceStatus && workspaceStatus.behind > 0) {
+       issues.push(`当前分支落后远端 ${workspaceStatus.behind} 个提交`)
+     }
+     if (workspaceStatus && workspaceStatus.ahead > 0) {
+       issues.push(`当前分支有 ${workspaceStatus.ahead} 个未推送提交`)
+     }
+     if (failedRuns.length > 0) {
+       issues.push(`最近有 ${failedRuns.length} 次同步失败`)
+     }
+
+      let commitCount = 0
+      try {
+        const commitData = await getStatsCommits(repoKey) as any[]
+        commitCount = commitData?.length || versionList.value?.length || 0
+      } catch { /* ignore */ }
+
+      const response = await aiApi.generateRepoSummary({
+        repoKey,
+        status: {
+          name: repo.value?.name || '',
+          currentBranch: workspaceStatus?.branch || '',
+          defaultBranch: workspaceStatus?.branch || '',
+          branchCount: statsBranches.value?.length || 0,
+          tagCount: versionList.value?.length || 0,
+          commitCount,
+          stagedCount: workspaceStatus?.staged.length || 0,
+          unstagedCount: workspaceStatus?.unstaged.length || 0,
+          untrackedCount: workspaceStatus?.untracked.length || 0,
+          conflictedCount: workspaceStatus?.conflicted.length || 0,
+          ahead: workspaceStatus?.ahead || 0,
+          behind: workspaceStatus?.behind || 0,
+          isClean: workspaceStatus?.isClean ?? true,
+          isMerging: workspaceStatus?.isMerging ?? false,
+          isRebasing: workspaceStatus?.isRebasing ?? false,
+          remoteCount: remoteNames.value.length,
+          hasRecentSyncFailure: failedRuns.length > 0,
+          recentFailureCount: failedRuns.length,
+        },
+        issues,
+        pendingChanges,
+        userInstruction: message,
+      })
+
+      aiPanelRef.value?.addResponse(
+        formatRepoAIResponse(response.summary, response.suggestions || [], response.riskLevel),
+        undefined,
+        undefined,
+        response.invocationId
+      )
+    } catch (e) {
+      aiPanelRef.value?.addResponse('AI 分析失败，请稍后重试。')
+      ElMessage.error('AI 分析失败，请稍后重试')
+   } finally {
+     aiLoading.value = false
+   }
+ }
+ </script>
 
 <style scoped>
+.repo-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .page-header-wrap {
-  padding: 16px 32px;
+  padding: 0 0 4px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .info-card {
-  border-radius: 12px;
+  border-radius: var(--border-radius-md);
   background: var(--bg-color-page);
   border: 1px solid var(--border-color);
-  padding: 24px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 0;
+  box-shadow: var(--box-shadow-sm);
 }
 
 .info-top-row {
@@ -422,8 +572,8 @@ function handleNavSelect(key: string) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-right: 16px;
+  gap: 14px;
+  padding-right: 20px;
 }
 
 .info-v-divider {
@@ -433,11 +583,11 @@ function handleNavSelect(key: string) {
 }
 
 .info-right-col {
-  width: 320px;
+  width: 340px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-left: 16px;
+  padding-left: 20px;
 }
 
 .info-section-header {
@@ -454,6 +604,7 @@ function handleNavSelect(key: string) {
 .info-row {
   display: flex;
   gap: 20px;
+  min-width: 0;
 }
 
 .info-field {
@@ -471,6 +622,8 @@ function handleNavSelect(key: string) {
 .info-value {
   font-size: 14px;
   color: var(--text-color-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .info-value--bold { font-weight: 500; }
 .info-value--accent { color: var(--accent-primary); font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; display: flex; align-items: center; gap: 8px; }
@@ -507,8 +660,8 @@ function handleNavSelect(key: string) {
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  border-radius: 6px;
-  background: #F8F9FC;
+  border-radius: var(--border-radius-sm);
+  background: var(--surface-card);
   font-size: 13px;
 }
 
@@ -534,12 +687,13 @@ function handleNavSelect(key: string) {
 
 .layout-container {
   display: flex;
-  gap: 20px;
-  padding: 20px;
+  gap: 16px;
+  padding: 0;
+  min-height: 0;
 }
 
 .left-nav {
-  width: 220px;
+  width: 200px;
   flex-shrink: 0;
 }
 
@@ -547,28 +701,32 @@ function handleNavSelect(key: string) {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: var(--bg-color-page);
+  background: var(--surface-sidebar);
   border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
+  border-radius: var(--border-radius-md);
   padding: 8px;
-  height: calc(100vh - 180px);
+  height: calc(100vh - 156px);
   overflow-y: auto;
+  position: sticky;
+  top: calc(var(--header-height) + 16px);
 }
 
 .sidebar-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  border-radius: var(--border-radius-md);
+  padding: 9px 10px;
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
   color: var(--text-color-primary);
   font-size: var(--font-size-sm);
+  min-height: 34px;
+  white-space: nowrap;
 }
 
 .sidebar-item:hover {
-  background: var(--border-color-extra-light);
+  background: var(--bg-color-page);
 }
 
 .sidebar-item.active {
@@ -587,11 +745,12 @@ function handleNavSelect(key: string) {
 
 .content-area {
   flex: 1;
-  min-height: calc(100vh - 180px);
+  min-width: 0;
+  min-height: calc(100vh - 156px);
 }
 
 .spec-full-area {
-  height: calc(100vh - 180px);
+  height: calc(100vh - 156px);
 }
 
 .spec-full-area :deep(.spec-editor-container) {
@@ -607,7 +766,6 @@ function handleNavSelect(key: string) {
 @media (max-width: 768px) {
   .layout-container {
     flex-direction: column;
-    padding: var(--spacing-md);
   }
 
   .left-nav {
@@ -619,10 +777,32 @@ function handleNavSelect(key: string) {
     max-height: 300px;
     flex-direction: row;
     flex-wrap: wrap;
+    position: static;
+  }
+
+  .sidebar-item {
+    flex-shrink: 0;
   }
 
   .content-area {
     min-height: auto;
+  }
+
+  .info-top-row,
+  .info-row {
+    flex-direction: column;
+  }
+
+  .info-left-col,
+  .info-right-col {
+    width: auto;
+    padding: 0;
+  }
+
+  .info-v-divider {
+    width: auto;
+    height: 1px;
+    margin: 16px 0;
   }
 }
 </style>

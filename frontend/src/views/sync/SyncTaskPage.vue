@@ -1,26 +1,27 @@
 <template>
   <div class="sync-page">
     <PageHeader title="同步任务" showBack :backRoute="`/local-repos/${repoKey}`">
-      <template #actions>
-        <ActionPill variant="green" :icon="Refresh" @click="handleBatchSync" :disabled="selectedTasks.length === 0">
-          同步选中 ({{ selectedTasks.length }})
-        </ActionPill>
-        <ActionPill variant="primary" :icon="Plus" @click="showQuickPanel = !showQuickPanel">快速同步</ActionPill>
-        <ActionPill variant="outline" :icon="Setting" @click="openAddTask">新建规则</ActionPill>
-      </template>
+       <template #actions>
+         <ActionPill variant="green" :icon="Refresh" @click="handleBatchSync" :disabled="selectedTasks.length === 0">
+           同步选中 ({{ selectedTasks.length }})
+         </ActionPill>
+         <ActionPill variant="primary" :icon="Plus" @click="showQuickPanel = !showQuickPanel">快速同步</ActionPill>
+         <ActionPill variant="outline" :icon="Setting" @click="openAddTask">新建规则</ActionPill>
+         <ActionPill variant="ai" :icon="MagicStick" @click="showAIPanel = !showAIPanel">AI 诊断</ActionPill>
+       </template>
     </PageHeader>
 
     <QuickSyncPanel v-model="showQuickPanel" :repo-key="repoKey" :remote-names="remoteNames" />
 
     <SectionTitle title="同步任务列表" />
-    <div v-loading="loading" class="task-list">
+    <el-checkbox-group v-model="selectedTasks" class="task-list" v-loading="loading">
       <el-empty v-if="tasks.length === 0 && !loading" description="暂无同步规则">
         <el-button type="primary" @click="openAddTask">创建第一条规则</el-button>
       </el-empty>
 
       <el-card v-for="task in tasks" :key="task.key" class="task-card" :class="{ disabled: !task.enabled }">
         <div class="task-content">
-          <el-checkbox v-model="selectedTasks" :value="task.key" class="task-checkbox" />
+          <el-checkbox :value="task.key" class="task-checkbox" />
 
           <div class="direction-flow">
             <div class="endpoint source">
@@ -71,7 +72,7 @@
           </div>
         </div>
       </el-card>
-    </div>
+    </el-checkbox-group>
 
     <el-dialog v-model="showTaskDialog" :title="editingTask ? '编辑同步规则' : '新建同步规则'" width="700px" destroy-on-close>
       <el-form :model="taskForm" label-width="100px">
@@ -181,7 +182,7 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusColor(row.status)" size="small">{{ row.status }}</el-tag>
+            <el-tag :type="getRunStatusTagType(row.status)" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="耗时" width="100">
@@ -198,33 +199,47 @@
       </el-table>
     </el-dialog>
 
-    <el-dialog v-model="showLogDialog" title="执行详情" width="700px">
-      <pre class="log-content">{{ logContent }}</pre>
-    </el-dialog>
-  </div>
-</template>
+     <el-dialog v-model="showLogDialog" title="执行详情" width="700px">
+       <pre class="log-content">{{ logContent }}</pre>
+     </el-dialog>
 
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Plus, Setting, Refresh, Right, CaretRight, Clock,
-  AlarmClock, More
-} from '@element-plus/icons-vue'
-import {
-  getSyncTasks, createSyncTask, updateSyncTask, deleteSyncTask,
-  runSyncTask, getSyncHistory, batchSync
-} from '@/api/modules/sync'
-import { getRepoDetail, scanRepo } from '@/api/modules/repo'
-import { getBranchList } from '@/api/modules/branch'
-import type { BranchInfo } from '@/types/branch'
-import type { SyncTaskDTO, SyncRunDTO } from '@/types/sync'
-import { formatDate, getStatusColor } from '@/utils/format'
-import PageHeader from '@/components/common/PageHeader.vue'
-import SectionTitle from '@/components/common/SectionTitle.vue'
-import ActionPill from '@/components/common/ActionPill.vue'
-import QuickSyncPanel from '@/components/sync/QuickSyncPanel.vue'
+     <AIPanel
+       ref="aiPanelRef"
+       v-if="showAIPanel"
+       title="AI 同步诊断"
+        v-model:visible="showAIPanel"
+       empty-hint="选择一个失败的同步任务，AI 将分析失败原因并给出修复建议"
+       :ai-loading="aiLoading"
+       @send="handleAIAnalyze"
+       @apply="handleAIApply"
+       @close="showAIPanel = false"
+     />
+   </div>
+ </template>
+
+ <script setup lang="ts">
+ import { ref, computed, onMounted } from 'vue'
+ import { useRoute } from 'vue-router'
+ import { ElMessage, ElMessageBox } from 'element-plus'
+ import {
+   Plus, Setting, Refresh, Right, CaretRight, Clock,
+   AlarmClock, More, MagicStick
+ } from '@element-plus/icons-vue'
+ import {
+   getSyncTasks, createSyncTask, updateSyncTask, deleteSyncTask,
+   runSyncTask, getSyncHistory, batchSync
+ } from '@/api/modules/sync'
+ import { getRepoDetail, scanRepo } from '@/api/modules/repo'
+ import { getBranchList } from '@/api/modules/branch'
+ import { aiApi } from '@/api/modules/ai'
+ import type { BranchInfo } from '@/types/branch'
+ import type { SyncTaskDTO, SyncRunDTO } from '@/types/sync'
+ import { formatDate, getStatusColor } from '@/utils/format'
+ import PageHeader from '@/components/common/PageHeader.vue'
+ import SectionTitle from '@/components/common/SectionTitle.vue'
+ import ActionPill from '@/components/common/ActionPill.vue'
+ import QuickSyncPanel from '@/components/sync/QuickSyncPanel.vue'
+ import AIPanel from '@/components/ai/AIPanel.vue'
 
 const route = useRoute()
 const repoKey = route.params.repoKey as string
@@ -273,14 +288,24 @@ const showHistoryDialog = ref(false)
 const historyList = ref<SyncRunDTO[]>([])
 const showLogDialog = ref(false)
 const logContent = ref('')
+const showAIPanel = ref(false)
+const aiLoading = ref(false)
+const aiPanelRef = ref<{
+  addResponse: (content: string) => void
+} | null>(null)
 
-function getTriggerTagType(source: string) {
+function getTriggerTagType(source: string): 'primary' | 'success' | 'warning' | 'danger' | 'info' {
   switch (source) {
     case 'cron': return 'warning'
     case 'webhook': return 'success'
     case 'manual': return 'primary'
     default: return 'info'
   }
+}
+
+function getRunStatusTagType(status: string): 'primary' | 'success' | 'warning' | 'danger' | 'info' {
+  const type = getStatusColor(status)
+  return type === 'success' || type === 'warning' || type === 'danger' || type === 'primary' ? type : 'info'
 }
 
 function getTriggerLabel(source: string) {
@@ -441,11 +466,79 @@ async function showHistory(taskKey: string) {
   } catch { /* handled */ }
 }
 
-function showLog(details: string) {
-  logContent.value = details || '无详情'
-  showLogDialog.value = true
+ function showLog(details: string) {
+   logContent.value = details || '无详情'
+   showLogDialog.value = true
+ }
+
+function formatSyncDiagnosis(rootCause: string, evidence: string[] = [], actions: string[] = [], riskLevel?: string, fixDraft?: string) {
+  const lines = [rootCause]
+  if (riskLevel) {
+    lines.push(``, `风险等级：${riskLevel}`)
+  }
+  if (evidence.length > 0) {
+    lines.push(``, `证据：`, ...evidence.map((item, index) => `${index + 1}. ${item}`))
+  }
+  if (actions.length > 0) {
+    lines.push(``, `建议操作：`, ...actions.map((item, index) => `${index + 1}. ${item}`))
+  }
+  if (fixDraft) {
+    lines.push(``, `建议命令/草案：`, '```bash', fixDraft, '```')
+  }
+  return lines.join('\n')
 }
-</script>
+
+ async function handleAIAnalyze(message: string) {
+   const latestHistory = await getSyncHistory(repoKey).catch(() => [])
+   const failedRuns = latestHistory.filter(h => h.status === 'failed' || h.status === 'error')
+   if (failedRuns.length === 0) {
+     aiPanelRef.value?.addResponse('没有可分析的失败同步记录。请先执行失败任务或打开同步历史确认最近失败 run。')
+     ElMessage.warning('没有失败的同步任务可供分析')
+     return
+   }
+
+   failedRuns.sort((a, b) => new Date(b.start_time || b.created_at).getTime() - new Date(a.start_time || a.created_at).getTime())
+   const failedRun = failedRuns[0]
+   aiLoading.value = true
+   try {
+     const response = await aiApi.diagnoseSyncFailure({
+       repoKey,
+       logs: failedRun?.details || '',
+       stderr: failedRun?.error_message || '',
+       currentBranch: failedRun?.task?.source_branch || '',
+       trackingBranch: failedRun?.task ? `${failedRun.task.target_remote}/${failedRun.task.target_branch}` : '',
+       recentActions: [
+         `task=${failedRun.task_key}`,
+         `trigger=${failedRun.trigger_source}`,
+         `status=${failedRun.status}`,
+       ],
+       userInstruction: message,
+     })
+
+     const contextInfo = `> 📊 **分析对象：** Task ${failedRun.task_key} (${new Date(failedRun.start_time || failedRun.created_at).toLocaleString()})`
+     aiPanelRef.value?.addResponse(
+       contextInfo + '\n\n' + formatSyncDiagnosis(
+         response.rootCause,
+         response.evidence || [],
+         response.recommendedActions || [],
+         response.riskLevel,
+         response.fixDraft
+       )
+     )
+   } catch (e) {
+     aiPanelRef.value?.addResponse('AI 诊断失败，请稍后重试。')
+     ElMessage.error('AI 诊断失败，请稍后重试')
+   } finally {
+     aiLoading.value = false
+   }
+ }
+
+ function handleAIApply(content: string) {
+   logContent.value = content
+   showLogDialog.value = true
+   ElMessage.info('AI 建议已展开，请手动执行相应操作')
+ }
+ </script>
 
 <style scoped>
 .sync-page {
