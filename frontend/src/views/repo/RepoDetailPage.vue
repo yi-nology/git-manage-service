@@ -293,14 +293,14 @@ onMounted(async () => {
       try {
         scanData.value = await scanRepo(repo.value.path)
         remoteNames.value = (scanData.value?.remotes || []).map((r: { name: string }) => r.name)
-      } catch { /* ignore */ }
+      } catch (_e) { /* ignore */ }
     }
     try {
       statsBranches.value = (await getStatsBranches(repoKey)) || []
-    } catch { statsBranches.value = [] }
-    try { statsAuthors.value = (await getStatsAuthors(repoKey)) || [] } catch { statsAuthors.value = [] }
-    try { currentVersion.value = (await getCurrentVersion(repoKey)) || '' } catch { /* ignore */ }
-    try { versionList.value = (await getVersionList(repoKey)) || [] } catch { versionList.value = [] }
+    } catch (_e) { statsBranches.value = [] }
+    try { statsAuthors.value = (await getStatsAuthors(repoKey)) || [] } catch (_e) { statsAuthors.value = [] }
+    try { currentVersion.value = (await getCurrentVersion(repoKey)) || '' } catch (_e) { /* ignore */ }
+    try { versionList.value = (await getVersionList(repoKey)) || [] } catch (_e) { versionList.value = [] }
     loadProviderInfo()
     loadBindings()
   } finally {
@@ -327,14 +327,14 @@ async function loadVersions() {
   versionsLoading.value = true
   try {
     versionList.value = (await getVersionList(repoKey)) || []
-  } catch { /* ignore */ }
+  } catch (_e) { /* ignore */ }
   finally {
     versionsLoading.value = false
   }
 }
 
 async function handleVersionChanged() {
-  try { currentVersion.value = await getCurrentVersion(repoKey) || '' } catch { /* ignore */ }
+  try { currentVersion.value = await getCurrentVersion(repoKey) || '' } catch (_e) { /* ignore */ }
 }
 
 function copyKey() {
@@ -350,21 +350,21 @@ async function loadProviderInfo() {
   if (cached) { providerInfo.value = cached; return }
   try {
     providerInfo.value = await getProvider(repo.value.provider_config_id)
-  } catch { providerInfo.value = null }
+  } catch (_e) { providerInfo.value = null }
 }
 
 async function loadBindings() {
   try {
     const result = await listBindings({ repo_key: repoKey })
     bindings.value = result || []
-  } catch { bindings.value = [] }
+  } catch (_e) { bindings.value = [] }
 }
 
 async function openBindingDialog() {
   try {
     await providerStore.fetchProviders()
     availableProviders.value = providerStore.providers
-  } catch { availableProviders.value = [] }
+  } catch (_e) { availableProviders.value = [] }
   showBindingDialog.value = true
 }
 
@@ -374,7 +374,7 @@ async function handleDeleteBinding(id: number) {
     await deleteBinding(id, true)
     ElMessage.success('关联已取消')
     loadBindings()
-  } catch {}
+  } catch (_e) {}
 }
 
 async function handleSetPrimaryBinding(id: number) {
@@ -413,7 +413,7 @@ async function handleEditSaved() {
     try {
       scanData.value = await scanRepo(repo.value.path)
       remoteNames.value = (scanData.value?.remotes || []).map((r: { name: string }) => r.name)
-    } catch { /* ignore */ }
+    } catch (_e) { /* ignore */ }
   }
 }
 
@@ -440,11 +440,38 @@ function formatRepoAIResponse(summary: string, suggestions: string[] = [], riskL
  async function handleAISummary(message: string) {
    aiLoading.value = true
    try {
+     let workspaceStatus: any = null
+     try {
+       workspaceStatus = await getWorkspaceStatus(repoKey)
+     } catch (_e) { /* ignore */ }
+
+     let failedRuns: any[] = []
+     try {
+       const syncHistory = await getSyncHistory(repoKey)
+       failedRuns = (syncHistory || []).filter((r: any) => r.status === 'failed').slice(0, 5)
+     } catch (_e) { /* ignore */ }
+
+     const issues: string[] = []
+     if (workspaceStatus?.branch) {
+       issues.push(`当前分支: ${workspaceStatus.branch}`)
+     }
+     if (workspaceStatus && workspaceStatus.behind > 0) {
+       issues.push(`当前分支落后远端 ${workspaceStatus.behind} 个提交`)
+     }
+     if (workspaceStatus && workspaceStatus.ahead > 0) {
+       issues.push(`当前分支有 ${workspaceStatus.ahead} 个未推送提交`)
+     }
+     if (failedRuns.length > 0) {
+       issues.push(`最近有 ${failedRuns.length} 次同步失败`)
+     }
+
+     const pendingChanges = (workspaceStatus?.staged?.length || 0) + (workspaceStatus?.unstaged?.length || 0) + (workspaceStatus?.untracked?.length || 0)
+
      let commitCount = 0
      try {
        const commitStats = await getStatsCommits(repoKey) as any[]
        commitCount = commitStats?.length || versionList.value?.length || 0
-     } catch { /* ignore */ }
+     } catch (_e) { /* ignore */ }
 
      const response = await aiApi.generateRepoSummary({
        repoKey,
@@ -455,10 +482,10 @@ function formatRepoAIResponse(summary: string, suggestions: string[] = [], riskL
          branchCount: statsBranches.value?.length || 0,
          tagCount: versionList.value?.length || 0,
          commitCount,
-         stagedCount: workspaceStatus?.staged.length || 0,
-         unstagedCount: workspaceStatus?.unstaged.length || 0,
-         untrackedCount: workspaceStatus?.untracked.length || 0,
-         conflictedCount: workspaceStatus?.conflicted.length || 0,
+         stagedCount: workspaceStatus?.staged?.length || 0,
+         unstagedCount: workspaceStatus?.unstaged?.length || 0,
+         untrackedCount: workspaceStatus?.untracked?.length || 0,
+         conflictedCount: workspaceStatus?.conflicted?.length || 0,
          ahead: workspaceStatus?.ahead || 0,
          behind: workspaceStatus?.behind || 0,
          isClean: workspaceStatus?.isClean ?? true,
@@ -477,63 +504,8 @@ function formatRepoAIResponse(summary: string, suggestions: string[] = [], riskL
        `## 仓库健康分析\n\n${response.summary}\n\n**风险等级：** ${response.riskLevel || 'unknown'}\n\n**建议操作：**\n${(response.suggestions || []).map((s: string) => `- ${s}`).join('\n')}`
      )
    } catch (e) {
+     aiPanelRef.value?.addResponse('AI 分析失败，请稍后重试。')
      ElMessage.error('AI 分析失败，请稍后重试')
-   } finally {
-     aiLoading.value = false
-   }
- }
-     if (workspaceStatus && workspaceStatus.behind > 0) {
-       issues.push(`当前分支落后远端 ${workspaceStatus.behind} 个提交`)
-     }
-     if (workspaceStatus && workspaceStatus.ahead > 0) {
-       issues.push(`当前分支有 ${workspaceStatus.ahead} 个未推送提交`)
-     }
-     if (failedRuns.length > 0) {
-       issues.push(`最近有 ${failedRuns.length} 次同步失败`)
-     }
-
-      let commitCount = 0
-      try {
-        const commitData = await getStatsCommits(repoKey) as any[]
-        commitCount = commitData?.length || versionList.value?.length || 0
-      } catch { /* ignore */ }
-
-      const response = await aiApi.generateRepoSummary({
-        repoKey,
-        status: {
-          name: repo.value?.name || '',
-          currentBranch: workspaceStatus?.branch || '',
-          defaultBranch: workspaceStatus?.branch || '',
-          branchCount: statsBranches.value?.length || 0,
-          tagCount: versionList.value?.length || 0,
-          commitCount,
-          stagedCount: workspaceStatus?.staged.length || 0,
-          unstagedCount: workspaceStatus?.unstaged.length || 0,
-          untrackedCount: workspaceStatus?.untracked.length || 0,
-          conflictedCount: workspaceStatus?.conflicted.length || 0,
-          ahead: workspaceStatus?.ahead || 0,
-          behind: workspaceStatus?.behind || 0,
-          isClean: workspaceStatus?.isClean ?? true,
-          isMerging: workspaceStatus?.isMerging ?? false,
-          isRebasing: workspaceStatus?.isRebasing ?? false,
-          remoteCount: remoteNames.value.length,
-          hasRecentSyncFailure: failedRuns.length > 0,
-          recentFailureCount: failedRuns.length,
-        },
-        issues,
-        pendingChanges,
-        userInstruction: message,
-      })
-
-      aiPanelRef.value?.addResponse(
-        formatRepoAIResponse(response.summary, response.suggestions || [], response.riskLevel),
-        undefined,
-        undefined,
-        response.invocationId
-      )
-    } catch (e) {
-      aiPanelRef.value?.addResponse('AI 分析失败，请稍后重试。')
-      ElMessage.error('AI 分析失败，请稍后重试')
    } finally {
      aiLoading.value = false
    }
