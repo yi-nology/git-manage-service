@@ -10,9 +10,10 @@ import (
 type Platform string
 
 const (
-	PlatformGitLab Platform = "gitlab"
-	PlatformGitHub Platform = "github"
-	PlatformGitea  Platform = "gitea"
+	PlatformGitLab       Platform = "gitlab"
+	PlatformGitHub       Platform = "github"
+	PlatformGitea        Platform = "gitea"
+	PlatformTencentCode  Platform = "tencent_code"
 )
 
 type Provider interface {

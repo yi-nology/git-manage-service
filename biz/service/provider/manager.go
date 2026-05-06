@@ -116,6 +116,8 @@ func newProvider(cfg *po.ProviderConfig, cred *po.Credential) (Provider, error) 
 		return NewGitHubProvider(cfg.BaseURL, token, skipTLS), nil
 	case PlatformGitea:
 		return NewGiteaProvider(cfg.BaseURL, token, skipTLS), nil
+	case PlatformTencentCode:
+		return NewTencentCodeProvider(cfg.BaseURL, token, skipTLS), nil
 	default:
 		return nil, fmt.Errorf("unsupported platform: %s", cfg.Platform)
 	}

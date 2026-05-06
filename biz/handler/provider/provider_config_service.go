@@ -66,8 +66,8 @@ func Create(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "name and platform are required")
 		return
 	}
-	if req.Platform != "gitlab" && req.Platform != "github" && req.Platform != "gitea" {
-		pkgresponse.BadRequest(c, "platform must be gitlab, github or gitea")
+	if req.Platform != "gitlab" && req.Platform != "github" && req.Platform != "gitea" && req.Platform != "tencent_code" {
+		pkgresponse.BadRequest(c, "platform must be gitlab, github, gitea or tencent_code")
 		return
 	}
 	if req.CredentialID == 0 {
