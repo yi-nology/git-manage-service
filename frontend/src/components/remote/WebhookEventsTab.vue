@@ -41,7 +41,7 @@ import ActionPill from '@/components/common/ActionPill.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SectionTitle from '@/components/common/SectionTitle.vue'
 
-defineProps<{
+const props = defineProps<{
   active: boolean
 }>()
 
