@@ -1,0 +1,279 @@
+// idl/biz/ai.proto - AI 相关 API 定义
+syntax = "proto2";
+
+package ai;
+
+import "api.proto";
+import "common.proto";
+
+option go_package = "/ai";
+
+// AI 引用对象
+message AIRef {
+    optional string type = 1;
+    optional string id = 2;
+    optional string label = 3;
+    optional string file_path = 4;
+    optional int32 start_line = 5;
+    optional int32 end_line = 6;
+    optional string url = 7;
+}
+
+// AI 动作对象
+message AIAction {
+    optional string id = 1;
+    optional string label = 2;
+    optional string type = 3;
+    optional string description = 4;
+}
+
+// AI 建议响应
+message AIAdviceResponse {
+    optional string summary = 1;
+    optional string confidence = 2;
+    optional string risk_level = 3;
+    repeated AIRef references = 4;
+    repeated string suggestions = 5;
+    repeated AIAction actions = 6;
+    optional string raw = 7;
+}
+
+// AI 草案响应
+message AIDraftResponse {
+    optional string summary = 1;
+    optional string change_type = 2;
+    optional string risk_level = 3;
+    repeated AIRef references = 4;
+    optional string apply_content = 5;
+    optional string patch = 6;
+    repeated AIAction actions = 7;
+    optional string raw = 8;
+}
+
+// AI 诊断响应
+message AIDiagnosisResponse {
+    optional string root_cause = 1;
+    repeated string evidence = 2;
+    repeated string recommended_actions = 3;
+    optional bool can_auto_fix = 4;
+    optional string risk_level = 5;
+    repeated AIRef references = 6;
+    optional string fix_draft = 7;
+    optional string raw = 8;
+}
+
+// AI Review 发现项
+message AIReviewFinding {
+    optional string severity = 1;
+    optional string category = 2;
+    optional string message = 3;
+    optional string file_path = 4;
+    optional int32 start_line = 5;
+    optional int32 end_line = 6;
+    optional string suggestion = 7;
+    optional string confidence = 8;
+}
+
+// AI Review 响应
+message AIReviewResponse {
+    optional string summary = 1;
+    repeated AIReviewFinding blocking = 2;
+    repeated AIReviewFinding high = 3;
+    repeated AIReviewFinding optional = 4;
+    optional string risk_level = 5;
+    optional bool should_merge = 6;
+    optional string merge_notes = 7;
+    optional string raw = 8;
+}
+
+// ============== 请求/响应 ==============
+
+// Sync 失败诊断
+message SyncFailureRequest {
+    optional string repo_key = 1;
+    optional string logs = 2;
+    optional string stderr = 3;
+    optional string current_branch = 4;
+    optional string tracking_branch = 5;
+    repeated string recent_actions = 6;
+}
+
+// Repo 摘要
+message RepoSummaryRequest {
+    optional string repo_key = 1;
+    map<string, string> status = 2;
+    repeated string issues = 3;
+    optional int32 pending_changes = 4;
+}
+
+// Commit Message
+message CommitMessageRequest {
+    optional string repo_key = 1;
+    optional string diff = 2;
+    optional string style = 3; // simple, conventional, detailed
+}
+
+// Code Review
+message CodeReviewRequest {
+    optional string repo_key = 1;
+    optional string diff = 2;
+    repeated string changed_files = 3;
+    repeated string existing_findings = 4;
+    optional string language = 5;
+}
+
+// Review 回复草稿
+message ReviewReplyRequest {
+    optional string repo_key = 1;
+    optional string review_summary = 2;
+    repeated string reviewer_comments = 3;
+    optional string tone = 4; // professional, friendly, concise
+}
+
+// 冲突解决
+message ConflictResolveRequest {
+    optional string repo_key = 1;
+    optional string conflict_diff = 2;
+    optional string ours_branch = 3;
+    optional string theirs_branch = 4;
+}
+
+// 分支规则
+message BranchRuleRequest {
+    optional string repo_key = 1;
+    repeated string existing_branches = 2;
+    optional string repo_type = 3;
+}
+
+// Spec 模板
+message SpecTemplateRequest {
+    optional string repo_key = 1;
+    optional string package_name = 2;
+    optional string spec_type = 3;
+    optional string existing_spec_content = 4;
+}
+
+// Spec 重写
+message SpecRewriteRequest {
+    optional string repo_key = 1;
+    optional string spec_content = 2;
+    optional string section_name = 3;
+    optional string instruction = 4;
+}
+
+// Provider 绑定
+message ProviderBindingRequest {
+    repeated string remote_repos = 1;
+    repeated string local_repos = 2;
+    map<string, string> existing_bindings = 3;
+}
+
+// Patch 分析
+message PatchAnalysisRequest {
+    optional string patch_content = 1;
+    optional string target_branch = 2;
+    repeated string file_list = 3;
+}
+
+// Audit 摘要
+message AuditSummaryRequest {
+    repeated string events = 1;
+    map<string, int32> stats = 2;
+    repeated string anomalies = 3;
+}
+
+// Stats 洞察
+message StatsInsightRequest {
+    map<string, string> stats = 1;
+    message TrendsEntry {
+        repeated int32 value = 1;
+    }
+    map<string, TrendsEntry> trends = 2;
+    map<string, int32> author_activity = 3;
+}
+
+// Webhook 失败
+message WebhookFailureRequest {
+    optional string payload = 1;
+    optional string response = 2;
+    optional int32 status_code = 3;
+    optional string event_type = 4;
+}
+
+// ============== AI Service ==============
+service AIService {
+    // Sync 失败诊断
+    rpc DiagnoseSyncFailure(SyncFailureRequest) returns (AIDiagnosisResponse) {
+        option (api.post) = "/api/v1/ai/sync/failure";
+    }
+
+    // Repo 摘要
+    rpc GenerateRepoSummary(RepoSummaryRequest) returns (AIAdviceResponse) {
+        option (api.post) = "/api/v1/ai/repo/summary";
+    }
+
+    // 生成 Commit Message
+    rpc GenerateCommitMessage(CommitMessageRequest) returns (AIDraftResponse) {
+        option (api.post) = "/api/v1/ai/commit/message";
+    }
+
+    // Code Review
+    rpc CodeReview(CodeReviewRequest) returns (AIReviewResponse) {
+        option (api.post) = "/api/v1/ai/review";
+    }
+
+    // Review 回复草稿
+    rpc ReviewReplyDraft(ReviewReplyRequest) returns (AIDraftResponse) {
+        option (api.post) = "/api/v1/ai/review/reply";
+    }
+
+    // 解决冲突
+    rpc ResolveConflict(ConflictResolveRequest) returns (AIDraftResponse) {
+        option (api.post) = "/api/v1/ai/conflict/resolve";
+    }
+
+    // 解释冲突
+    rpc ExplainConflict(ConflictResolveRequest) returns (AIAdviceResponse) {
+        option (api.post) = "/api/v1/ai/conflict/explain";
+    }
+
+    // 生成分支规则
+    rpc GenerateBranchRule(BranchRuleRequest) returns (AIDraftResponse) {
+        option (api.post) = "/api/v1/ai/branch/rule";
+    }
+
+    // 生成 Spec 模板
+    rpc GenerateSpecTemplate(SpecTemplateRequest) returns (AIDraftResponse) {
+        option (api.post) = "/api/v1/ai/spec/template";
+    }
+
+    // 重写 Spec 段落
+    rpc RewriteSpecSection(SpecRewriteRequest) returns (AIDraftResponse) {
+        option (api.post) = "/api/v1/ai/spec/rewrite";
+    }
+
+    // Provider 绑定推荐
+    rpc RecommendProviderBinding(ProviderBindingRequest) returns (AIAdviceResponse) {
+        option (api.post) = "/api/v1/ai/provider/binding";
+    }
+
+    // Patch 风险分析
+    rpc AnalyzePatchRisk(PatchAnalysisRequest) returns (AIDiagnosisResponse) {
+        option (api.post) = "/api/v1/ai/patch/analyze";
+    }
+
+    // Audit 日志摘要
+    rpc SummarizeAuditLogs(AuditSummaryRequest) returns (AIAdviceResponse) {
+        option (api.post) = "/api/v1/ai/audit/summary";
+    }
+
+    // Stats 洞察
+    rpc AnalyzeStatsInsight(StatsInsightRequest) returns (AIAdviceResponse) {
+        option (api.post) = "/api/v1/ai/stats/insight";
+    }
+
+    // Webhook 失败分析
+    rpc AnalyzeWebhookFailure(WebhookFailureRequest) returns (AIDiagnosisResponse) {
+        option (api.post) = "/api/v1/ai/webhook/failure";
+    }
+}

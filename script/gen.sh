@@ -18,6 +18,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+PROTOC_GEN_GO_VERSION="${PROTOC_GEN_GO_VERSION:-v1.28.0}"
+HZ_VERSION="${HZ_VERSION:-v0.9.7}"
+KITEX_VERSION="${KITEX_VERSION:-v0.15.4}"
+
 # 打印带颜色的消息
 info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -48,16 +52,28 @@ if ! check_tool "protoc"; then
     MISSING_TOOLS+=("protoc")
 fi
 
+if [ "$REQUIRE_CODEGEN_TOOLS" = "1" ] && ! check_tool "protoc-gen-go"; then
+    MISSING_TOOLS+=("protoc-gen-go")
+fi
+
 if ! check_tool "kitex"; then
-    warn "kitex not found. Skipping Kitex code generation."
-    warn "Install with: go install github.com/cloudwego/kitex/tool/cmd/kitex@latest"
-    SKIP_KITEX=true
+    if [ "$REQUIRE_CODEGEN_TOOLS" = "1" ]; then
+        MISSING_TOOLS+=("kitex")
+    else
+        warn "kitex not found. Skipping Kitex code generation."
+        warn "Install with: go install github.com/cloudwego/kitex/tool/cmd/kitex@$KITEX_VERSION"
+        SKIP_KITEX=true
+    fi
 fi
 
 if ! check_tool "hz"; then
-    warn "hz not found. Skipping Hz code generation."
-    warn "Install with: go install github.com/cloudwego/hertz/cmd/hz@latest"
-    SKIP_HZ=true
+    if [ "$REQUIRE_CODEGEN_TOOLS" = "1" ]; then
+        MISSING_TOOLS+=("hz")
+    else
+        warn "hz not found. Skipping Hz code generation."
+        warn "Install with: go install github.com/cloudwego/hertz/cmd/hz@$HZ_VERSION"
+        SKIP_HZ=true
+    fi
 fi
 
 if [ ${#MISSING_TOOLS[@]} -ne 0 ]; then
@@ -84,15 +100,12 @@ if [ "$SKIP_HZ" != "true" ]; then
     if ls idl/biz/*.proto 1> /dev/null 2>&1; then
         info "Generating Hz HTTP code..."
         
-        # 检查是否已初始化 Hz（通过检查 .hz 文件或 router/hz 目录）
-        if [ ! -d "biz/router/hz" ]; then
+        # 检查是否已初始化 Hz（当前项目使用 .hz 记录生成目录）
+        if [ ! -f ".hz" ]; then
             info "Initializing Hz project..."
             hz new -idl idl/biz/repo.proto \
                 -I idl \
-                -module github.com/yi-nology/git-manage-service \
-                --handler_dir biz/handler/hz \
-                --router_dir biz/router/hz \
-                --model_dir biz/model/hz
+                -module github.com/yi-nology/git-manage-service
         fi
         
         # 更新生成代码
@@ -100,9 +113,13 @@ if [ "$SKIP_HZ" != "true" ]; then
             info "Processing $proto..."
             hz update -idl "$proto" \
                 -I idl \
-                --handler_dir biz/handler/hz \
-                --router_dir biz/router/hz \
-                --model_dir biz/model/hz || warn "Failed to process $proto"
+                --pb_camel_json_tag || {
+                if [ "$REQUIRE_CODEGEN_TOOLS" = "1" ]; then
+                    error "Failed to process $proto"
+                    exit 1
+                fi
+                warn "Failed to process $proto"
+            }
         done
         
         info "Hz code generation completed"

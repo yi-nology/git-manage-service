@@ -39,6 +39,7 @@ type StatsCacheItem struct {
 type StatsService struct {
 	Git   *git.GitService
 	cache sync.Map // map[string]*StatsCacheItem
+	wg    sync.WaitGroup
 }
 
 var StatsSvc *StatsService
@@ -47,6 +48,29 @@ func InitStatsService() {
 	StatsSvc = &StatsService{
 		Git: git.NewGitService(),
 	}
+}
+
+func (s *StatsService) SyncRepoHeadStatsAsync(repoID uint, path string) {
+	if s == nil {
+		return
+	}
+
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+
+		head, err := s.Git.GetHeadBranch(path)
+		if err == nil && head != "" {
+			s.SyncRepoStats(repoID, path, head)
+		}
+	}()
+}
+
+func (s *StatsService) Wait() {
+	if s == nil {
+		return
+	}
+	s.wg.Wait()
 }
 
 // SyncRepoStats performs background synchronization of repository statistics

@@ -130,7 +130,9 @@ func RunReview(ctx context.Context, taskID uint) error {
 		allFindings = append(allFindings, findings...)
 	}
 
-	llmFindings := runLLMReview(ctx, files, repoName, owner)
+	cfg := GetMergedConfig(task.RepoID)
+
+	llmFindings := runLLMReview(ctx, files, repoName, owner, cfg.LLMProvider)
 	allFindings = append(allFindings, llmFindings...)
 
 	totalAdd, totalDel := 0, 0
@@ -139,7 +141,6 @@ func RunReview(ctx context.Context, taskID uint) error {
 		totalDel += f.Deletions
 	}
 
-	cfg := GetMergedConfig(task.RepoID)
 	result := Aggregate(allFindings, totalAdd, totalDel, len(files), cfg.BlockOnHigh)
 
 	task.RiskLevel = string(result.RiskLevel)

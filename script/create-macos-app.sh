@@ -27,7 +27,7 @@ cd "$SCRIPT_DIR"
 ./git-manage-service --mode=all &
 SERVER_PID=$!
 sleep 3
-open "http://localhost:38080"
+open "http://localhost:12345"
 wait $SERVER_PID
 EOF
 chmod +x "$MACOS_DIR/launcher"

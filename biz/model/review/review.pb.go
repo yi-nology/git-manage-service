@@ -31,24 +31,24 @@ type ReviewTask struct {
 	unknownFields protoimpl.UnknownFields
 
 	Id               uint64 `protobuf:"varint,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
-	RepoId           uint64 `protobuf:"varint,2,opt,name=repo_id,json=repoId,proto3" form:"repo_id" json:"repo_id,omitempty" query:"repo_id"`
-	ProviderConfigId uint64 `protobuf:"varint,3,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"provider_config_id,omitempty" query:"provider_config_id"`
+	RepoId           uint64 `protobuf:"varint,2,opt,name=repo_id,json=repoId,proto3" form:"repo_id" json:"repoId,omitempty" query:"repo_id"`
+	ProviderConfigId uint64 `protobuf:"varint,3,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"providerConfigId,omitempty" query:"provider_config_id"`
 	Platform         string `protobuf:"bytes,4,opt,name=platform,proto3" form:"platform" json:"platform,omitempty" query:"platform"`
-	EventType        string `protobuf:"bytes,5,opt,name=event_type,json=eventType,proto3" form:"event_type" json:"event_type,omitempty" query:"event_type"`
-	MrIid            string `protobuf:"bytes,6,opt,name=mr_iid,json=mrIid,proto3" form:"mr_iid" json:"mr_iid,omitempty" query:"mr_iid"`
-	SourceBranch     string `protobuf:"bytes,7,opt,name=source_branch,json=sourceBranch,proto3" form:"source_branch" json:"source_branch,omitempty" query:"source_branch"`
-	TargetBranch     string `protobuf:"bytes,8,opt,name=target_branch,json=targetBranch,proto3" form:"target_branch" json:"target_branch,omitempty" query:"target_branch"`
-	CommitSha        string `protobuf:"bytes,9,opt,name=commit_sha,json=commitSha,proto3" form:"commit_sha" json:"commit_sha,omitempty" query:"commit_sha"`
-	TriggerType      string `protobuf:"bytes,10,opt,name=trigger_type,json=triggerType,proto3" form:"trigger_type" json:"trigger_type,omitempty" query:"trigger_type"`
-	TriggerUser      string `protobuf:"bytes,11,opt,name=trigger_user,json=triggerUser,proto3" form:"trigger_user" json:"trigger_user,omitempty" query:"trigger_user"`
+	EventType        string `protobuf:"bytes,5,opt,name=event_type,json=eventType,proto3" form:"event_type" json:"eventType,omitempty" query:"event_type"`
+	MrIid            string `protobuf:"bytes,6,opt,name=mr_iid,json=mrIid,proto3" form:"mr_iid" json:"mrIid,omitempty" query:"mr_iid"`
+	SourceBranch     string `protobuf:"bytes,7,opt,name=source_branch,json=sourceBranch,proto3" form:"source_branch" json:"sourceBranch,omitempty" query:"source_branch"`
+	TargetBranch     string `protobuf:"bytes,8,opt,name=target_branch,json=targetBranch,proto3" form:"target_branch" json:"targetBranch,omitempty" query:"target_branch"`
+	CommitSha        string `protobuf:"bytes,9,opt,name=commit_sha,json=commitSha,proto3" form:"commit_sha" json:"commitSha,omitempty" query:"commit_sha"`
+	TriggerType      string `protobuf:"bytes,10,opt,name=trigger_type,json=triggerType,proto3" form:"trigger_type" json:"triggerType,omitempty" query:"trigger_type"`
+	TriggerUser      string `protobuf:"bytes,11,opt,name=trigger_user,json=triggerUser,proto3" form:"trigger_user" json:"triggerUser,omitempty" query:"trigger_user"`
 	Status           string `protobuf:"bytes,12,opt,name=status,proto3" form:"status" json:"status,omitempty" query:"status"`
-	RiskLevel        string `protobuf:"bytes,13,opt,name=risk_level,json=riskLevel,proto3" form:"risk_level" json:"risk_level,omitempty" query:"risk_level"`
+	RiskLevel        string `protobuf:"bytes,13,opt,name=risk_level,json=riskLevel,proto3" form:"risk_level" json:"riskLevel,omitempty" query:"risk_level"`
 	Summary          string `protobuf:"bytes,14,opt,name=summary,proto3" form:"summary" json:"summary,omitempty" query:"summary"`
-	ErrorMessage     string `protobuf:"bytes,15,opt,name=error_message,json=errorMessage,proto3" form:"error_message" json:"error_message,omitempty" query:"error_message"`
-	StartedAt        string `protobuf:"bytes,16,opt,name=started_at,json=startedAt,proto3" form:"started_at" json:"started_at,omitempty" query:"started_at"`
-	FinishedAt       string `protobuf:"bytes,17,opt,name=finished_at,json=finishedAt,proto3" form:"finished_at" json:"finished_at,omitempty" query:"finished_at"`
-	CreatedAt        string `protobuf:"bytes,18,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"created_at,omitempty" query:"created_at"`
-	UpdatedAt        string `protobuf:"bytes,19,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updated_at,omitempty" query:"updated_at"`
+	ErrorMessage     string `protobuf:"bytes,15,opt,name=error_message,json=errorMessage,proto3" form:"error_message" json:"errorMessage,omitempty" query:"error_message"`
+	StartedAt        string `protobuf:"bytes,16,opt,name=started_at,json=startedAt,proto3" form:"started_at" json:"startedAt,omitempty" query:"started_at"`
+	FinishedAt       string `protobuf:"bytes,17,opt,name=finished_at,json=finishedAt,proto3" form:"finished_at" json:"finishedAt,omitempty" query:"finished_at"`
+	CreatedAt        string `protobuf:"bytes,18,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"createdAt,omitempty" query:"created_at"`
+	UpdatedAt        string `protobuf:"bytes,19,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updatedAt,omitempty" query:"updated_at"`
 }
 
 func (x *ReviewTask) Reset() {
@@ -223,13 +223,13 @@ type ReviewFinding struct {
 	unknownFields protoimpl.UnknownFields
 
 	Id          uint64 `protobuf:"varint,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
-	TaskId      uint64 `protobuf:"varint,2,opt,name=task_id,json=taskId,proto3" form:"task_id" json:"task_id,omitempty" query:"task_id"`
+	TaskId      uint64 `protobuf:"varint,2,opt,name=task_id,json=taskId,proto3" form:"task_id" json:"taskId,omitempty" query:"task_id"`
 	Source      string `protobuf:"bytes,3,opt,name=source,proto3" form:"source" json:"source,omitempty" query:"source"`
-	RuleId      string `protobuf:"bytes,4,opt,name=rule_id,json=ruleId,proto3" form:"rule_id" json:"rule_id,omitempty" query:"rule_id"`
+	RuleId      string `protobuf:"bytes,4,opt,name=rule_id,json=ruleId,proto3" form:"rule_id" json:"ruleId,omitempty" query:"rule_id"`
 	Severity    string `protobuf:"bytes,5,opt,name=severity,proto3" form:"severity" json:"severity,omitempty" query:"severity"`
-	FilePath    string `protobuf:"bytes,6,opt,name=file_path,json=filePath,proto3" form:"file_path" json:"file_path,omitempty" query:"file_path"`
-	OldLine     int32  `protobuf:"varint,7,opt,name=old_line,json=oldLine,proto3" form:"old_line" json:"old_line,omitempty" query:"old_line"`
-	NewLine     int32  `protobuf:"varint,8,opt,name=new_line,json=newLine,proto3" form:"new_line" json:"new_line,omitempty" query:"new_line"`
+	FilePath    string `protobuf:"bytes,6,opt,name=file_path,json=filePath,proto3" form:"file_path" json:"filePath,omitempty" query:"file_path"`
+	OldLine     int32  `protobuf:"varint,7,opt,name=old_line,json=oldLine,proto3" form:"old_line" json:"oldLine,omitempty" query:"old_line"`
+	NewLine     int32  `protobuf:"varint,8,opt,name=new_line,json=newLine,proto3" form:"new_line" json:"newLine,omitempty" query:"new_line"`
 	Title       string `protobuf:"bytes,9,opt,name=title,proto3" form:"title" json:"title,omitempty" query:"title"`
 	Message     string `protobuf:"bytes,10,opt,name=message,proto3" form:"message" json:"message,omitempty" query:"message"`
 	Suggestion  string `protobuf:"bytes,11,opt,name=suggestion,proto3" form:"suggestion" json:"suggestion,omitempty" query:"suggestion"`
@@ -359,12 +359,12 @@ type MergeCheckResult struct {
 	unknownFields protoimpl.UnknownFields
 
 	Id        uint64 `protobuf:"varint,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
-	RepoId    uint64 `protobuf:"varint,2,opt,name=repo_id,json=repoId,proto3" form:"repo_id" json:"repo_id,omitempty" query:"repo_id"`
-	MrIid     string `protobuf:"bytes,3,opt,name=mr_iid,json=mrIid,proto3" form:"mr_iid" json:"mr_iid,omitempty" query:"mr_iid"`
-	CommitSha string `protobuf:"bytes,4,opt,name=commit_sha,json=commitSha,proto3" form:"commit_sha" json:"commit_sha,omitempty" query:"commit_sha"`
-	CheckType string `protobuf:"bytes,5,opt,name=check_type,json=checkType,proto3" form:"check_type" json:"check_type,omitempty" query:"check_type"`
+	RepoId    uint64 `protobuf:"varint,2,opt,name=repo_id,json=repoId,proto3" form:"repo_id" json:"repoId,omitempty" query:"repo_id"`
+	MrIid     string `protobuf:"bytes,3,opt,name=mr_iid,json=mrIid,proto3" form:"mr_iid" json:"mrIid,omitempty" query:"mr_iid"`
+	CommitSha string `protobuf:"bytes,4,opt,name=commit_sha,json=commitSha,proto3" form:"commit_sha" json:"commitSha,omitempty" query:"commit_sha"`
+	CheckType string `protobuf:"bytes,5,opt,name=check_type,json=checkType,proto3" form:"check_type" json:"checkType,omitempty" query:"check_type"`
 	Status    string `protobuf:"bytes,6,opt,name=status,proto3" form:"status" json:"status,omitempty" query:"status"`
-	RiskLevel string `protobuf:"bytes,7,opt,name=risk_level,json=riskLevel,proto3" form:"risk_level" json:"risk_level,omitempty" query:"risk_level"`
+	RiskLevel string `protobuf:"bytes,7,opt,name=risk_level,json=riskLevel,proto3" form:"risk_level" json:"riskLevel,omitempty" query:"risk_level"`
 	Message   string `protobuf:"bytes,8,opt,name=message,proto3" form:"message" json:"message,omitempty" query:"message"`
 }
 
@@ -590,11 +590,11 @@ type ListReviewTasksRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey  string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repo_key,omitempty" query:"repo_key"`
+	RepoKey  string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repoKey,omitempty" query:"repo_key"`
 	Status   string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty" query:"status"`
-	MrIid    string `protobuf:"bytes,3,opt,name=mr_iid,json=mrIid,proto3" json:"mr_iid,omitempty" query:"mr_iid"`
+	MrIid    string `protobuf:"bytes,3,opt,name=mr_iid,json=mrIid,proto3" json:"mrIid,omitempty" query:"mr_iid"`
 	Page     int32  `protobuf:"varint,4,opt,name=page,proto3" json:"page,omitempty" query:"page"`
-	PageSize int32  `protobuf:"varint,5,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty" query:"page_size"`
+	PageSize int32  `protobuf:"varint,5,opt,name=page_size,json=pageSize,proto3" json:"pageSize,omitempty" query:"page_size"`
 }
 
 func (x *ListReviewTasksRequest) Reset() {
@@ -670,7 +670,7 @@ type ListReviewFindingsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	TaskId   uint64 `protobuf:"varint,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty" path:"task_id"`
+	TaskId   uint64 `protobuf:"varint,1,opt,name=task_id,json=taskId,proto3" json:"taskId,omitempty" path:"task_id"`
 	Severity string `protobuf:"bytes,2,opt,name=severity,proto3" json:"severity,omitempty" query:"severity"`
 	Source   string `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty" query:"source"`
 }
@@ -782,9 +782,9 @@ type CheckMergeRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey   string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repo_key,omitempty" query:"repo_key"`
-	MrIid     string `protobuf:"bytes,2,opt,name=mr_iid,json=mrIid,proto3" json:"mr_iid,omitempty" query:"mr_iid"`
-	CommitSha string `protobuf:"bytes,3,opt,name=commit_sha,json=commitSha,proto3" json:"commit_sha,omitempty" query:"commit_sha"`
+	RepoKey   string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repoKey,omitempty" query:"repo_key"`
+	MrIid     string `protobuf:"bytes,2,opt,name=mr_iid,json=mrIid,proto3" json:"mrIid,omitempty" query:"mr_iid"`
+	CommitSha string `protobuf:"bytes,3,opt,name=commit_sha,json=commitSha,proto3" json:"commitSha,omitempty" query:"commit_sha"`
 }
 
 func (x *CheckMergeRequest) Reset() {
@@ -846,7 +846,7 @@ type GetReviewConfigRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repo_key,omitempty" path:"repo_key"`
+	RepoKey string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repoKey,omitempty" path:"repo_key"`
 }
 
 func (x *GetReviewConfigRequest) Reset() {
@@ -894,7 +894,7 @@ type UpdateReviewConfigRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey    string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repo_key,omitempty" path:"repo_key"`
+	RepoKey    string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repoKey,omitempty" path:"repo_key"`
 	ConfigYaml string `protobuf:"bytes,2,opt,name=config_yaml,json=configYaml,proto3" form:"config_yaml" json:"config_yaml,omitempty"`
 }
 
@@ -1191,7 +1191,7 @@ type ReviewConfigResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	Base       *common.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
-	ConfigYaml string               `protobuf:"bytes,2,opt,name=config_yaml,json=configYaml,proto3" form:"config_yaml" json:"config_yaml,omitempty" query:"config_yaml"`
+	ConfigYaml string               `protobuf:"bytes,2,opt,name=config_yaml,json=configYaml,proto3" form:"config_yaml" json:"configYaml,omitempty" query:"config_yaml"`
 }
 
 func (x *ReviewConfigResponse) Reset() {
@@ -1247,19 +1247,19 @@ type ReviewRepoConfig struct {
 	unknownFields protoimpl.UnknownFields
 
 	Id                uint64 `protobuf:"varint,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
-	ProviderConfigId  uint64 `protobuf:"varint,2,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"provider_config_id,omitempty" query:"provider_config_id"`
-	PlatformOwner     string `protobuf:"bytes,3,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platform_owner,omitempty" query:"platform_owner"`
-	PlatformRepo      string `protobuf:"bytes,4,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platform_repo,omitempty" query:"platform_repo"`
+	ProviderConfigId  uint64 `protobuf:"varint,2,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"providerConfigId,omitempty" query:"provider_config_id"`
+	PlatformOwner     string `protobuf:"bytes,3,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platformOwner,omitempty" query:"platform_owner"`
+	PlatformRepo      string `protobuf:"bytes,4,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platformRepo,omitempty" query:"platform_repo"`
 	Enabled           bool   `protobuf:"varint,5,opt,name=enabled,proto3" form:"enabled" json:"enabled,omitempty" query:"enabled"`
-	BlockOnHigh       bool   `protobuf:"varint,6,opt,name=block_on_high,json=blockOnHigh,proto3" form:"block_on_high" json:"block_on_high,omitempty" query:"block_on_high"`
-	AutoReviewOnMr    bool   `protobuf:"varint,7,opt,name=auto_review_on_mr,json=autoReviewOnMr,proto3" form:"auto_review_on_mr" json:"auto_review_on_mr,omitempty" query:"auto_review_on_mr"`
-	LlmProvider       string `protobuf:"bytes,8,opt,name=llm_provider,json=llmProvider,proto3" form:"llm_provider" json:"llm_provider,omitempty" query:"llm_provider"`
-	MaxFiles          int32  `protobuf:"varint,9,opt,name=max_files,json=maxFiles,proto3" form:"max_files" json:"max_files,omitempty" query:"max_files"`
-	MaxDiffLines      int32  `protobuf:"varint,10,opt,name=max_diff_lines,json=maxDiffLines,proto3" form:"max_diff_lines" json:"max_diff_lines,omitempty" query:"max_diff_lines"`
-	RuleOverridesJson string `protobuf:"bytes,11,opt,name=rule_overrides_json,json=ruleOverridesJson,proto3" form:"rule_overrides_json" json:"rule_overrides_json,omitempty" query:"rule_overrides_json"`
-	ScopeNote         string `protobuf:"bytes,12,opt,name=scope_note,json=scopeNote,proto3" form:"scope_note" json:"scope_note,omitempty" query:"scope_note"`
-	CreatedAt         string `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"created_at,omitempty" query:"created_at"`
-	UpdatedAt         string `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updated_at,omitempty" query:"updated_at"`
+	BlockOnHigh       bool   `protobuf:"varint,6,opt,name=block_on_high,json=blockOnHigh,proto3" form:"block_on_high" json:"blockOnHigh,omitempty" query:"block_on_high"`
+	AutoReviewOnMr    bool   `protobuf:"varint,7,opt,name=auto_review_on_mr,json=autoReviewOnMr,proto3" form:"auto_review_on_mr" json:"autoReviewOnMr,omitempty" query:"auto_review_on_mr"`
+	LlmProvider       string `protobuf:"bytes,8,opt,name=llm_provider,json=llmProvider,proto3" form:"llm_provider" json:"llmProvider,omitempty" query:"llm_provider"`
+	MaxFiles          int32  `protobuf:"varint,9,opt,name=max_files,json=maxFiles,proto3" form:"max_files" json:"maxFiles,omitempty" query:"max_files"`
+	MaxDiffLines      int32  `protobuf:"varint,10,opt,name=max_diff_lines,json=maxDiffLines,proto3" form:"max_diff_lines" json:"maxDiffLines,omitempty" query:"max_diff_lines"`
+	RuleOverridesJson string `protobuf:"bytes,11,opt,name=rule_overrides_json,json=ruleOverridesJson,proto3" form:"rule_overrides_json" json:"ruleOverridesJson,omitempty" query:"rule_overrides_json"`
+	ScopeNote         string `protobuf:"bytes,12,opt,name=scope_note,json=scopeNote,proto3" form:"scope_note" json:"scopeNote,omitempty" query:"scope_note"`
+	CreatedAt         string `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"createdAt,omitempty" query:"created_at"`
+	UpdatedAt         string `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updatedAt,omitempty" query:"updated_at"`
 }
 
 func (x *ReviewRepoConfig) Reset() {
@@ -1398,7 +1398,7 @@ type GetRemoteRepoConfigRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ProviderId uint64 `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty" path:"provider_id"`
+	ProviderId uint64 `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"providerId,omitempty" path:"provider_id"`
 	Owner      string `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty" path:"owner"`
 	Repo       string `protobuf:"bytes,3,opt,name=repo,proto3" json:"repo,omitempty" path:"repo"`
 }
@@ -1518,7 +1518,7 @@ type UpdateRemoteRepoConfigRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ProviderId        uint64 `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty" path:"provider_id"`
+	ProviderId        uint64 `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"providerId,omitempty" path:"provider_id"`
 	Owner             string `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty" path:"owner"`
 	Repo              string `protobuf:"bytes,3,opt,name=repo,proto3" json:"repo,omitempty" path:"repo"`
 	Enabled           bool   `protobuf:"varint,4,opt,name=enabled,proto3" form:"enabled" json:"enabled,omitempty"`

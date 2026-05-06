@@ -21,6 +21,11 @@ type Credential struct {
 	LastUsedAt    *time.Time `json:"last_used_at"`
 	Platform      string     `gorm:"size:20" json:"platform"`
 	PlatformScope string     `gorm:"size:200" json:"platform_scope"`
+	RotatedAt     *time.Time `json:"rotated_at"`                 // 最近一次轮换时间
+	ExpiresAt     *time.Time `json:"expires_at"`                 // 凭证过期时间
+	LastTestedAt  *time.Time `json:"last_tested_at"`             // 最近一次测试时间
+	LastTestOk    bool       `json:"last_test_ok"`               // 最近一次测试是否成功
+	LastError     string     `gorm:"size:500" json:"last_error"` // 最近一次测试错误信息
 }
 
 func (Credential) TableName() string {

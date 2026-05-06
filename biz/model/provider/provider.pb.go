@@ -30,12 +30,12 @@ type ProviderConfig struct {
 	Id            uint64 `protobuf:"varint,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
 	Name          string `protobuf:"bytes,2,opt,name=name,proto3" form:"name" json:"name,omitempty" query:"name"`
 	Platform      string `protobuf:"bytes,3,opt,name=platform,proto3" form:"platform" json:"platform,omitempty" query:"platform"`
-	BaseUrl       string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" form:"base_url" json:"base_url,omitempty" query:"base_url"`
-	CredentialId  uint64 `protobuf:"varint,5,opt,name=credential_id,json=credentialId,proto3" form:"credential_id" json:"credential_id,omitempty" query:"credential_id"`
-	WebhookSecret string `protobuf:"bytes,6,opt,name=webhook_secret,json=webhookSecret,proto3" form:"webhook_secret" json:"webhook_secret,omitempty" query:"webhook_secret"`
-	SkipTls       bool   `protobuf:"varint,7,opt,name=skip_tls,json=skipTls,proto3" form:"skip_tls" json:"skip_tls,omitempty" query:"skip_tls"`
-	CreatedAt     string `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"created_at,omitempty" query:"created_at"`
-	UpdatedAt     string `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updated_at,omitempty" query:"updated_at"`
+	BaseUrl       string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" form:"base_url" json:"baseUrl,omitempty" query:"base_url"`
+	CredentialId  uint64 `protobuf:"varint,5,opt,name=credential_id,json=credentialId,proto3" form:"credential_id" json:"credentialId,omitempty" query:"credential_id"`
+	WebhookSecret string `protobuf:"bytes,6,opt,name=webhook_secret,json=webhookSecret,proto3" form:"webhook_secret" json:"webhookSecret,omitempty" query:"webhook_secret"`
+	SkipTls       bool   `protobuf:"varint,7,opt,name=skip_tls,json=skipTls,proto3" form:"skip_tls" json:"skipTls,omitempty" query:"skip_tls"`
+	CreatedAt     string `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"createdAt,omitempty" query:"created_at"`
+	UpdatedAt     string `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updatedAt,omitempty" query:"updated_at"`
 }
 
 func (x *ProviderConfig) Reset() {
@@ -139,12 +139,12 @@ type RemoteRepo struct {
 	unknownFields protoimpl.UnknownFields
 
 	Name          string `protobuf:"bytes,1,opt,name=name,proto3" form:"name" json:"name,omitempty" query:"name"`
-	FullName      string `protobuf:"bytes,2,opt,name=full_name,json=fullName,proto3" form:"full_name" json:"full_name,omitempty" query:"full_name"`
+	FullName      string `protobuf:"bytes,2,opt,name=full_name,json=fullName,proto3" form:"full_name" json:"fullName,omitempty" query:"full_name"`
 	Description   string `protobuf:"bytes,3,opt,name=description,proto3" form:"description" json:"description,omitempty" query:"description"`
 	Url           string `protobuf:"bytes,4,opt,name=url,proto3" form:"url" json:"url,omitempty" query:"url"`
-	SshUrl        string `protobuf:"bytes,5,opt,name=ssh_url,json=sshUrl,proto3" form:"ssh_url" json:"ssh_url,omitempty" query:"ssh_url"`
-	DefaultBranch string `protobuf:"bytes,6,opt,name=default_branch,json=defaultBranch,proto3" form:"default_branch" json:"default_branch,omitempty" query:"default_branch"`
-	IsPrivate     bool   `protobuf:"varint,7,opt,name=is_private,json=isPrivate,proto3" form:"is_private" json:"is_private,omitempty" query:"is_private"`
+	SshUrl        string `protobuf:"bytes,5,opt,name=ssh_url,json=sshUrl,proto3" form:"ssh_url" json:"sshUrl,omitempty" query:"ssh_url"`
+	DefaultBranch string `protobuf:"bytes,6,opt,name=default_branch,json=defaultBranch,proto3" form:"default_branch" json:"defaultBranch,omitempty" query:"default_branch"`
+	IsPrivate     bool   `protobuf:"varint,7,opt,name=is_private,json=isPrivate,proto3" form:"is_private" json:"isPrivate,omitempty" query:"is_private"`
 }
 
 func (x *RemoteRepo) Reset() {
@@ -234,7 +234,7 @@ type RemoteBranch struct {
 	unknownFields protoimpl.UnknownFields
 
 	Name     string `protobuf:"bytes,1,opt,name=name,proto3" form:"name" json:"name,omitempty" query:"name"`
-	CommitId string `protobuf:"bytes,2,opt,name=commit_id,json=commitId,proto3" form:"commit_id" json:"commit_id,omitempty" query:"commit_id"`
+	CommitId string `protobuf:"bytes,2,opt,name=commit_id,json=commitId,proto3" form:"commit_id" json:"commitId,omitempty" query:"commit_id"`
 }
 
 func (x *RemoteBranch) Reset() {
@@ -816,7 +816,7 @@ type ListRemoteReposRequest struct {
 
 	Id      uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" path:"id"`
 	Page    int32  `protobuf:"varint,2,opt,name=page,proto3" json:"page,omitempty" query:"page"`
-	PerPage int32  `protobuf:"varint,3,opt,name=per_page,json=perPage,proto3" json:"per_page,omitempty" query:"per_page"`
+	PerPage int32  `protobuf:"varint,3,opt,name=per_page,json=perPage,proto3" json:"perPage,omitempty" query:"per_page"`
 	Owner   string `protobuf:"bytes,4,opt,name=owner,proto3" json:"owner,omitempty" query:"owner"`
 }
 
@@ -940,7 +940,7 @@ type ListRemoteBranchesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ProviderId uint64 `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty" query:"provider_id"`
+	ProviderId uint64 `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"providerId,omitempty" query:"provider_id"`
 	Owner      string `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty" query:"owner"`
 	Repo       string `protobuf:"bytes,3,opt,name=repo,proto3" json:"repo,omitempty" query:"repo"`
 }

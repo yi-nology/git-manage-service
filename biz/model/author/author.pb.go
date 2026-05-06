@@ -293,7 +293,7 @@ type RepoAuthorConfigRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey *string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey" json:"repo_key,omitempty" path:"repo_key"`
+	RepoKey *string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey" json:"repoKey,omitempty" path:"repo_key"`
 }
 
 func (x *RepoAuthorConfigRequest) Reset() {
@@ -340,7 +340,7 @@ type SetRepoAuthorConfigRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey    *string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey" json:"repo_key,omitempty" path:"repo_key"`
+	RepoKey    *string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey" json:"repoKey,omitempty" path:"repo_key"`
 	IdentityId *uint32 `protobuf:"varint,2,opt,name=identity_id,json=identityId" form:"identity_id" json:"identity_id,omitempty"`
 	Clear      *bool   `protobuf:"varint,3,opt,name=clear" form:"clear" json:"clear,omitempty"`
 }
@@ -403,7 +403,7 @@ type ScanAuthorRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey *string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey" json:"repo_key,omitempty" path:"repo_key"`
+	RepoKey *string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey" json:"repoKey,omitempty" path:"repo_key"`
 }
 
 func (x *ScanAuthorRequest) Reset() {
@@ -450,7 +450,7 @@ type FixAuthorAllRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey    *string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey" json:"repo_key,omitempty" path:"repo_key"`
+	RepoKey    *string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey" json:"repoKey,omitempty" path:"repo_key"`
 	PushRemote *string `protobuf:"bytes,2,opt,name=push_remote,json=pushRemote" form:"push_remote" json:"push_remote,omitempty"`
 }
 
@@ -505,7 +505,7 @@ type FixAuthorRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey      *string  `protobuf:"bytes,1,opt,name=repo_key,json=repoKey" json:"repo_key,omitempty" path:"repo_key"`
+	RepoKey      *string  `protobuf:"bytes,1,opt,name=repo_key,json=repoKey" json:"repoKey,omitempty" path:"repo_key"`
 	CommitHashes []string `protobuf:"bytes,2,rep,name=commit_hashes,json=commitHashes" form:"commit_hashes" json:"commit_hashes,omitempty"`
 	PushRemote   *string  `protobuf:"bytes,3,opt,name=push_remote,json=pushRemote" form:"push_remote" json:"push_remote,omitempty"`
 }
@@ -671,16 +671,16 @@ type AuthorMismatchedCommit struct {
 	unknownFields protoimpl.UnknownFields
 
 	Hash           *string `protobuf:"bytes,1,opt,name=hash" form:"hash" json:"hash,omitempty" query:"hash"`
-	ShortHash      *string `protobuf:"bytes,2,opt,name=short_hash,json=shortHash" form:"short_hash" json:"short_hash,omitempty" query:"short_hash"`
+	ShortHash      *string `protobuf:"bytes,2,opt,name=short_hash,json=shortHash" form:"short_hash" json:"shortHash,omitempty" query:"short_hash"`
 	Message        *string `protobuf:"bytes,3,opt,name=message" form:"message" json:"message,omitempty" query:"message"`
-	AuthorName     *string `protobuf:"bytes,4,opt,name=author_name,json=authorName" form:"author_name" json:"author_name,omitempty" query:"author_name"`
-	AuthorEmail    *string `protobuf:"bytes,5,opt,name=author_email,json=authorEmail" form:"author_email" json:"author_email,omitempty" query:"author_email"`
-	CommitterName  *string `protobuf:"bytes,6,opt,name=committer_name,json=committerName" form:"committer_name" json:"committer_name,omitempty" query:"committer_name"`
-	CommitterEmail *string `protobuf:"bytes,7,opt,name=committer_email,json=committerEmail" form:"committer_email" json:"committer_email,omitempty" query:"committer_email"`
+	AuthorName     *string `protobuf:"bytes,4,opt,name=author_name,json=authorName" form:"author_name" json:"authorName,omitempty" query:"author_name"`
+	AuthorEmail    *string `protobuf:"bytes,5,opt,name=author_email,json=authorEmail" form:"author_email" json:"authorEmail,omitempty" query:"author_email"`
+	CommitterName  *string `protobuf:"bytes,6,opt,name=committer_name,json=committerName" form:"committer_name" json:"committerName,omitempty" query:"committer_name"`
+	CommitterEmail *string `protobuf:"bytes,7,opt,name=committer_email,json=committerEmail" form:"committer_email" json:"committerEmail,omitempty" query:"committer_email"`
 	Date           *string `protobuf:"bytes,8,opt,name=date" form:"date" json:"date,omitempty" query:"date"`
-	MatchType      *string `protobuf:"bytes,9,opt,name=match_type,json=matchType" form:"match_type" json:"match_type,omitempty" query:"match_type"`
-	TargetName     *string `protobuf:"bytes,10,opt,name=target_name,json=targetName" form:"target_name" json:"target_name,omitempty" query:"target_name"`
-	TargetEmail    *string `protobuf:"bytes,11,opt,name=target_email,json=targetEmail" form:"target_email" json:"target_email,omitempty" query:"target_email"`
+	MatchType      *string `protobuf:"bytes,9,opt,name=match_type,json=matchType" form:"match_type" json:"matchType,omitempty" query:"match_type"`
+	TargetName     *string `protobuf:"bytes,10,opt,name=target_name,json=targetName" form:"target_name" json:"targetName,omitempty" query:"target_name"`
+	TargetEmail    *string `protobuf:"bytes,11,opt,name=target_email,json=targetEmail" form:"target_email" json:"targetEmail,omitempty" query:"target_email"`
 }
 
 func (x *AuthorMismatchedCommit) Reset() {
@@ -798,8 +798,8 @@ type AuthorScanResult struct {
 	unknownFields protoimpl.UnknownFields
 
 	Commits      []*AuthorMismatchedCommit `protobuf:"bytes,1,rep,name=commits" form:"commits" json:"commits,omitempty" query:"commits"`
-	TotalCommits *int64                    `protobuf:"varint,2,opt,name=total_commits,json=totalCommits" form:"total_commits" json:"total_commits,omitempty" query:"total_commits"`
-	MatchCount   *int32                    `protobuf:"varint,3,opt,name=match_count,json=matchCount" form:"match_count" json:"match_count,omitempty" query:"match_count"`
+	TotalCommits *int64                    `protobuf:"varint,2,opt,name=total_commits,json=totalCommits" form:"total_commits" json:"totalCommits,omitempty" query:"total_commits"`
+	MatchCount   *int32                    `protobuf:"varint,3,opt,name=match_count,json=matchCount" form:"match_count" json:"matchCount,omitempty" query:"match_count"`
 }
 
 func (x *AuthorScanResult) Reset() {
@@ -931,10 +931,10 @@ type AliasSuggestion struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	IdentityId   *uint32 `protobuf:"varint,1,opt,name=identity_id,json=identityId" form:"identity_id" json:"identity_id,omitempty" query:"identity_id"`
-	IdentityName *string `protobuf:"bytes,2,opt,name=identity_name,json=identityName" form:"identity_name" json:"identity_name,omitempty" query:"identity_name"`
-	AliasName    *string `protobuf:"bytes,3,opt,name=alias_name,json=aliasName" form:"alias_name" json:"alias_name,omitempty" query:"alias_name"`
-	AliasEmail   *string `protobuf:"bytes,4,opt,name=alias_email,json=aliasEmail" form:"alias_email" json:"alias_email,omitempty" query:"alias_email"`
+	IdentityId   *uint32 `protobuf:"varint,1,opt,name=identity_id,json=identityId" form:"identity_id" json:"identityId,omitempty" query:"identity_id"`
+	IdentityName *string `protobuf:"bytes,2,opt,name=identity_name,json=identityName" form:"identity_name" json:"identityName,omitempty" query:"identity_name"`
+	AliasName    *string `protobuf:"bytes,3,opt,name=alias_name,json=aliasName" form:"alias_name" json:"aliasName,omitempty" query:"alias_name"`
+	AliasEmail   *string `protobuf:"bytes,4,opt,name=alias_email,json=aliasEmail" form:"alias_email" json:"aliasEmail,omitempty" query:"alias_email"`
 	Confidence   *string `protobuf:"bytes,5,opt,name=confidence" form:"confidence" json:"confidence,omitempty" query:"confidence"`
 	Reason       *string `protobuf:"bytes,6,opt,name=reason" form:"reason" json:"reason,omitempty" query:"reason"`
 }
@@ -1073,10 +1073,10 @@ type MergeCandidate struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	KeepId     *uint32  `protobuf:"varint,1,opt,name=keep_id,json=keepId" form:"keep_id" json:"keep_id,omitempty" query:"keep_id"`
-	KeepName   *string  `protobuf:"bytes,2,opt,name=keep_name,json=keepName" form:"keep_name" json:"keep_name,omitempty" query:"keep_name"`
-	MergeIds   []uint32 `protobuf:"varint,3,rep,name=merge_ids,json=mergeIds" form:"merge_ids" json:"merge_ids,omitempty" query:"merge_ids"`
-	MergeNames *string  `protobuf:"bytes,4,opt,name=merge_names,json=mergeNames" form:"merge_names" json:"merge_names,omitempty" query:"merge_names"`
+	KeepId     *uint32  `protobuf:"varint,1,opt,name=keep_id,json=keepId" form:"keep_id" json:"keepId,omitempty" query:"keep_id"`
+	KeepName   *string  `protobuf:"bytes,2,opt,name=keep_name,json=keepName" form:"keep_name" json:"keepName,omitempty" query:"keep_name"`
+	MergeIds   []uint32 `protobuf:"varint,3,rep,name=merge_ids,json=mergeIds" form:"merge_ids" json:"mergeIds,omitempty" query:"merge_ids"`
+	MergeNames *string  `protobuf:"bytes,4,opt,name=merge_names,json=mergeNames" form:"merge_names" json:"mergeNames,omitempty" query:"merge_names"`
 	Reason     *string  `protobuf:"bytes,5,opt,name=reason" form:"reason" json:"reason,omitempty" query:"reason"`
 }
 
@@ -1270,7 +1270,7 @@ type RiskAssessmentResult struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RiskLevel       *string       `protobuf:"bytes,1,opt,name=risk_level,json=riskLevel" form:"risk_level" json:"risk_level,omitempty" query:"risk_level"`
+	RiskLevel       *string       `protobuf:"bytes,1,opt,name=risk_level,json=riskLevel" form:"risk_level" json:"riskLevel,omitempty" query:"risk_level"`
 	Summary         *string       `protobuf:"bytes,2,opt,name=summary" form:"summary" json:"summary,omitempty" query:"summary"`
 	Factors         []*RiskFactor `protobuf:"bytes,3,rep,name=factors" form:"factors" json:"factors,omitempty" query:"factors"`
 	Recommendations []string      `protobuf:"bytes,4,rep,name=recommendations" form:"recommendations" json:"recommendations,omitempty" query:"recommendations"`

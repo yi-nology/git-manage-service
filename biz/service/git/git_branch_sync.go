@@ -78,6 +78,10 @@ func (s *GitService) GetBranchSyncStatus(path, branch, upstream string) (int, in
 }
 
 func (s *GitService) PushBranch(path, remote, branch string) error {
+	return s.PushBranchWithAuth(path, remote, branch, nil)
+}
+
+func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth transport.AuthMethod) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -85,12 +89,13 @@ func (s *GitService) PushBranch(path, remote, branch string) error {
 
 	refSpec := config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", branch, branch))
 
-	var auth transport.AuthMethod
-	rem, err := r.Remote(remote)
-	if err == nil {
-		urls := rem.Config().URLs
-		if len(urls) > 0 {
-			auth = s.detectSSHAuth(urls[0])
+	if auth == nil {
+		rem, err := r.Remote(remote)
+		if err == nil {
+			urls := rem.Config().URLs
+			if len(urls) > 0 {
+				auth = s.detectSSHAuth(urls[0])
+			}
 		}
 	}
 
@@ -110,6 +115,10 @@ func (s *GitService) PushBranch(path, remote, branch string) error {
 }
 
 func (s *GitService) PullBranch(path, remote, branch string) error {
+	return s.PullBranchWithAuth(path, remote, branch, nil)
+}
+
+func (s *GitService) PullBranchWithAuth(path, remote, branch string, auth transport.AuthMethod) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -119,12 +128,13 @@ func (s *GitService) PullBranch(path, remote, branch string) error {
 		return err
 	}
 
-	var auth transport.AuthMethod
-	rem, err := r.Remote(remote)
-	if err == nil {
-		urls := rem.Config().URLs
-		if len(urls) > 0 {
-			auth = s.detectSSHAuth(urls[0])
+	if auth == nil {
+		rem, err := r.Remote(remote)
+		if err == nil {
+			urls := rem.Config().URLs
+			if len(urls) > 0 {
+				auth = s.detectSSHAuth(urls[0])
+			}
 		}
 	}
 
@@ -144,20 +154,25 @@ func (s *GitService) PullBranch(path, remote, branch string) error {
 }
 
 func (s *GitService) UpdateBranchFastForward(path, remote, branch, remoteBranch string) error {
+	return s.UpdateBranchFastForwardWithAuth(path, remote, branch, remoteBranch, nil)
+}
+
+func (s *GitService) UpdateBranchFastForwardWithAuth(path, remote, branch, remoteBranch string, auth transport.AuthMethod) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
 	}
 
-	var auth transport.AuthMethod
 	rem, err := r.Remote(remote)
 	if err != nil {
 		return err
 	}
 
-	urls := rem.Config().URLs
-	if len(urls) > 0 {
-		auth = s.detectSSHAuth(urls[0])
+	if auth == nil {
+		urls := rem.Config().URLs
+		if len(urls) > 0 {
+			auth = s.detectSSHAuth(urls[0])
+		}
 	}
 
 	refSpec := config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", remoteBranch, branch))

@@ -4,9 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
-	"strings"
 
+	"github.com/yi-nology/git-manage-service/biz/service/ai"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
 )
 
@@ -42,13 +41,10 @@ const aiLintSystemPrompt = `你是一个 RPM Spec 文件审查专家。用户会
 - 不要报告规则引擎已覆盖的简单缺失字段问题（如 Name/Version 等）`
 
 func AILint(ctx context.Context, content string, mode string) (*LintResult, error) {
-	provider, err := llm.GetDefaultProvider()
-	if err != nil {
-		return nil, fmt.Errorf("no LLM provider: %w", err)
-	}
-
-	resp, err := provider.Chat(ctx, &llm.ChatRequest{
-		SystemPrompt: aiLintSystemPrompt,
+	resp, err := ai.NewRunner().Chat(ctx, ai.TaskRequest{
+		Type:          ai.TaskSpecLint,
+		PromptVersion: "spec-lint.v1",
+		SystemPrompt:  aiLintSystemPrompt,
 		Messages: []llm.ChatMessage{
 			{Role: "user", Content: "请审查以下 spec 文件：\n\n" + content},
 		},
@@ -67,7 +63,7 @@ func parseAILintResponse(raw string) (*LintResult, error) {
 		Stats:  LintStats{},
 	}
 
-	jsonStr := extractJSON(raw)
+	jsonStr := ai.ExtractJSON(raw)
 	if jsonStr == "" {
 		return result, nil
 	}
@@ -112,15 +108,12 @@ func parseAILintResponse(raw string) (*LintResult, error) {
 }
 
 func AIFix(ctx context.Context, content string, issue string, line int, severity string) (string, error) {
-	provider, err := llm.GetDefaultProvider()
-	if err != nil {
-		return "", fmt.Errorf("no LLM provider: %w", err)
-	}
-
 	prompt := fmt.Sprintf("在以下 spec 文件中，有一个问题需要修复：\n\n问题：%s\n行号：%d\n严重级别：%s\n\n请输出修复后的完整 spec 文件内容。只修改与问题相关的部分，保持其余内容完全不变。不要用代码块包裹输出。", issue, line, severity)
 
-	resp, err := provider.Chat(ctx, &llm.ChatRequest{
-		SystemPrompt: "你是一个 RPM Spec 文件专家。用户会给你一个有问题的 spec 文件和问题描述，请修复问题后输出完整的 spec 文件内容。只修改有问题的部分，保持其余内容不变。直接输出文件内容，不要加任何解释或代码块标记。",
+	resp, err := ai.NewRunner().Chat(ctx, ai.TaskRequest{
+		Type:          ai.TaskSpecFix,
+		PromptVersion: "spec-fix.v1",
+		SystemPrompt:  "你是一个 RPM Spec 文件专家。用户会给你一个有问题的 spec 文件和问题描述，请修复问题后输出完整的 spec 文件内容。只修改有问题的部分，保持其余内容不变。直接输出文件内容，不要加任何解释或代码块标记。",
 		Messages: []llm.ChatMessage{
 			{Role: "user", Content: content + "\n\n---\n" + prompt},
 		},
@@ -130,20 +123,9 @@ func AIFix(ctx context.Context, content string, issue string, line int, severity
 		return "", fmt.Errorf("AI fix request failed: %w", err)
 	}
 
-	fixed := resp.Content
-	re := regexp.MustCompile("(?s)```(?:spec|rpm)?\\n(.*?)```")
-	if matches := re.FindStringSubmatch(fixed); len(matches) > 1 {
-		fixed = strings.TrimSpace(matches[1])
-	}
-	return fixed, nil
+	return ai.StripFencedCode(resp.Content, "spec", "rpm"), nil
 }
 
 func extractJSON(text string) string {
-	text = strings.TrimSpace(text)
-	start := strings.Index(text, "{")
-	end := strings.LastIndex(text, "}")
-	if start < 0 || end < 0 || end <= start {
-		return ""
-	}
-	return text[start : end+1]
+	return ai.ExtractJSON(text)
 }

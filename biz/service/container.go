@@ -5,6 +5,7 @@ import (
 	stdsync "sync"
 
 	"github.com/yi-nology/git-manage-service/biz/service/branch"
+	credentialsvc "github.com/yi-nology/git-manage-service/biz/service/credential"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	syncsvc "github.com/yi-nology/git-manage-service/biz/service/sync"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
@@ -14,11 +15,12 @@ import (
 
 // Container 服务容器，用于依赖注入
 type Container struct {
-	GitService     *git.GitService
-	BranchService  *branch.BranchService
-	SyncService    *syncsvc.SyncService
-	StorageService storage.Storage
-	LockService    lock.DistLock
+	GitService        *git.GitService
+	BranchService     *branch.BranchService
+	SyncService       *syncsvc.SyncService
+	CredentialService *credentialsvc.CredentialService
+	StorageService    storage.Storage
+	LockService       lock.DistLock
 }
 
 var (
@@ -44,11 +46,12 @@ func GetContainer() *Container {
 		}
 
 		container = &Container{
-			GitService:     git.NewGitService(),
-			BranchService:  branch.NewBranchService(),
-			SyncService:    syncsvc.NewSyncService(),
-			StorageService: storageSvc,
-			LockService:    lockSvc,
+			GitService:        git.NewGitService(),
+			BranchService:     branch.NewBranchService(),
+			SyncService:       syncsvc.NewSyncService(),
+			CredentialService: credentialsvc.NewCredentialService(),
+			StorageService:    storageSvc,
+			LockService:       lockSvc,
 		}
 	})
 	return container
@@ -77,4 +80,9 @@ func Storage() storage.Storage {
 // Lock 获取分布式锁服务
 func Lock() lock.DistLock {
 	return GetContainer().LockService
+}
+
+// Credential 获取凭证服务
+func Credential() *credentialsvc.CredentialService {
+	return GetContainer().CredentialService
 }

@@ -21,6 +21,7 @@ func SetupTestDB(t *testing.T) {
 	}
 
 	err = DB.AutoMigrate(
+		&po.SchemaMigration{},
 		&po.Repo{},
 		&po.SyncTask{},
 		&po.SyncRun{},
@@ -52,6 +53,7 @@ func SetupTestDB(t *testing.T) {
 		&po.ReviewRule{},
 		&po.MaintenanceRecord{},
 		&po.AuthorIdentity{},
+		&po.AIInvocation{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate: %v", err)

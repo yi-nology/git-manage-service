@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	aiSvc "github.com/yi-nology/git-manage-service/biz/service/ai"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
 )
 
@@ -20,11 +21,6 @@ func (s *MaintenanceAIService) AnalyzeSlimFiles(ctx context.Context, healthRepor
 	if !llm.HasDefaultProvider() {
 		return nil, fmt.Errorf("未配置 LLM 提供商，请在系统设置中配置")
 	}
-	provider, err := llm.GetDefaultProvider()
-	if err != nil {
-		return nil, err
-	}
-
 	userPrompt := buildSlimAnalysisPrompt(healthReport)
 
 	systemPrompt := `你是一个专业的 Git 仓库瘦身顾问。用户会提供仓库的健康报告和大文件列表，你需要分析每个文件并给出专业建议。
@@ -57,10 +53,12 @@ confidence:
 - medium: 大概率可删除，但需要用户确认
 - low: 不确定，建议用户自行判断`
 
-	resp, err := provider.Chat(ctx, &llm.ChatRequest{
-		SystemPrompt: systemPrompt,
-		Messages:     []llm.ChatMessage{{Role: "user", Content: userPrompt}},
-		MaxTokens:    4096,
+	resp, err := aiSvc.NewRunner().Chat(ctx, aiSvc.TaskRequest{
+		Type:          aiSvc.TaskMaintenance,
+		PromptVersion: "maintenance-slim.v1",
+		SystemPrompt:  systemPrompt,
+		Messages:      []llm.ChatMessage{{Role: "user", Content: userPrompt}},
+		MaxTokens:     4096,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("LLM 调用失败: %w", err)

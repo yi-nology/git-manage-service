@@ -159,10 +159,14 @@ type EventRepo struct {
 }
 
 type TestConnectionResult struct {
-	Connected bool   `json:"connected"`
-	Platform  string `json:"platform"`
-	UserName  string `json:"user_name"`
-	Message   string `json:"message,omitempty"`
+	Connected    bool   `json:"connected"`
+	Platform     string `json:"platform"`
+	UserName     string `json:"user_name"`
+	Message      string `json:"message,omitempty"`
+	CanListRepos bool   `json:"can_list_repos"`
+	CanReadCR    bool   `json:"can_read_cr"`
+	CanWriteCR   bool   `json:"can_write_cr"`
+	CanWebhook   bool   `json:"can_webhook"`
 }
 
 type MergeDiff struct {

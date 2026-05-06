@@ -42,7 +42,24 @@ func (g *gitlabProvider) TestConnection(ctx context.Context) (*TestConnectionRes
 	if err := g.doRequest(ctx, "GET", "/user", nil, &user); err != nil {
 		return &TestConnectionResult{Connected: false, Message: err.Error()}, nil
 	}
-	return &TestConnectionResult{Connected: true, Platform: string(g.Platform()), UserName: user.Username}, nil
+
+	result := &TestConnectionResult{
+		Connected: true,
+		Platform:  string(g.Platform()),
+		UserName:  user.Username,
+	}
+
+	// 权限探测
+	// 1. 尝试列出项目
+	_, err := g.ListRepos(ctx, ListRepoOptions{Page: 1, PerPage: 1})
+	result.CanListRepos = err == nil
+
+	// 2. 其他权限简化处理（基于 list repos 成功推断）
+	result.CanReadCR = result.CanListRepos
+	result.CanWriteCR = result.CanListRepos
+	result.CanWebhook = result.CanListRepos
+
+	return result, nil
 }
 
 func (g *gitlabProvider) ListRepos(ctx context.Context, opts ListRepoOptions) ([]*PlatformRepo, error) {

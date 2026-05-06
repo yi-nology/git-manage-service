@@ -1,11 +1,14 @@
 package git
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	aiSvc "github.com/yi-nology/git-manage-service/biz/service/ai"
+	"github.com/yi-nology/git-manage-service/biz/service/llm"
 )
 
 type WorkspaceAIService struct{}
@@ -31,8 +34,6 @@ const conflictResolveSystemPrompt = `你是一个 Git 冲突解决专家。你�
 }`
 
 func (s *WorkspaceAIService) AIResolveConflict(ours, theirs, base, filePath, hint string) (*api.AIResolvedFile, error) {
-	authorAI := NewAuthorAIService()
-
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("文件路径: %s\n\n", filePath))
 	sb.WriteString("=== BASE (共同祖先) ===\n")
@@ -45,10 +46,17 @@ func (s *WorkspaceAIService) AIResolveConflict(ours, theirs, base, filePath, hin
 		sb.WriteString(fmt.Sprintf("\n\n额外提示: %s", hint))
 	}
 
-	result, err := authorAI.chat(conflictResolveSystemPrompt, sb.String())
+	resp, err := aiSvc.NewRunner().Chat(context.Background(), aiSvc.TaskRequest{
+		Type:          aiSvc.TaskConflictResolve,
+		PromptVersion: "conflict-resolve.v1",
+		SystemPrompt:  conflictResolveSystemPrompt,
+		Messages:      []llm.ChatMessage{{Role: "user", Content: sb.String()}},
+		MaxTokens:     8192,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("AI conflict resolve: %w", err)
 	}
+	result := resp.Content
 
 	jsonStr := extractJSON(result)
 	var parsed struct {

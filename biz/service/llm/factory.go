@@ -100,8 +100,30 @@ func GetDefaultProvider() (Provider, error) {
 		if p, err := GetProvider(name); err == nil {
 			return p, nil
 		}
+		if p, ok := buildProviderFromConfigName(name); ok {
+			return p, nil
+		}
+		if p, err := GetProviderByDBName(name); err == nil {
+			return p, nil
+		}
 	}
 	return getDefaultDBProvider()
+}
+
+func ResolveProviderByID(id uint) (Provider, error) {
+	p, err := db.NewLLMProviderDAO().FindByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("LLM provider %d not found: %w", id, err)
+	}
+	return BuildProviderFromDB(p)
+}
+
+func GetProviderByDBName(name string) (Provider, error) {
+	p, err := db.NewLLMProviderDAO().FindByName(name)
+	if err != nil {
+		return nil, fmt.Errorf("LLM provider %q not found in DB: %w", name, err)
+	}
+	return BuildProviderFromDB(p)
 }
 
 func getDefaultDBProvider() (Provider, error) {
@@ -114,10 +136,10 @@ func getDefaultDBProvider() (Provider, error) {
 		}
 		p = &all[0]
 	}
-	return buildProviderFromDB(p)
+	return BuildProviderFromDB(p)
 }
 
-func buildProviderFromDB(p *po.LLMProvider) (Provider, error) {
+func BuildProviderFromDB(p *po.LLMProvider) (Provider, error) {
 	switch p.Type {
 	case "openai_compatible":
 		return NewOpenAICompatible(p.BaseURL, p.APIKey, p.AIModel, p.MaxTokens, p.Name), nil
@@ -132,17 +154,59 @@ func buildProviderFromDB(p *po.LLMProvider) (Provider, error) {
 	}
 }
 
+func buildProviderFromConfigName(name string) (Provider, bool) {
+	for _, pCfg := range configs.GlobalConfig.CodeReview.LLMProviders {
+		if pCfg.Name != name {
+			continue
+		}
+		maxTokens := pCfg.MaxTokens
+		if maxTokens == 0 {
+			maxTokens = 4096
+		}
+		switch pCfg.Type {
+		case "openai_compatible":
+			if pCfg.BaseURL == "" || pCfg.APIKey == "" || pCfg.Model == "" {
+				return nil, false
+			}
+			return NewOpenAICompatible(pCfg.BaseURL, pCfg.APIKey, pCfg.Model, maxTokens, pCfg.Name), true
+		case "ollama":
+			if pCfg.BaseURL == "" || pCfg.Model == "" {
+				return nil, false
+			}
+			return NewOllama(pCfg.BaseURL, pCfg.Model, maxTokens), true
+		case "anthropic":
+			if pCfg.BaseURL == "" || pCfg.APIKey == "" || pCfg.Model == "" {
+				return nil, false
+			}
+			return NewAnthropic(pCfg.BaseURL, pCfg.APIKey, pCfg.Model, maxTokens), true
+		case "gemini":
+			if pCfg.BaseURL == "" || pCfg.APIKey == "" || pCfg.Model == "" {
+				return nil, false
+			}
+			return NewGemini(pCfg.BaseURL, pCfg.APIKey, pCfg.Model, maxTokens), true
+		default:
+			return nil, false
+		}
+	}
+	return nil, false
+}
+
 func HasDefaultProvider() bool {
 	cfg := configs.GlobalConfig
 	name := cfg.CodeReview.DefaultLLM
-	if name == "" {
-		return false
-	}
-	providersMu.RLock()
-	_, ok := providers[name]
-	providersMu.RUnlock()
-	if ok {
-		return true
+	if name != "" {
+		providersMu.RLock()
+		_, ok := providers[name]
+		providersMu.RUnlock()
+		if ok {
+			return true
+		}
+		if _, ok := buildProviderFromConfigName(name); ok {
+			return true
+		}
+		if _, err := db.NewLLMProviderDAO().FindByName(name); err == nil {
+			return true
+		}
 	}
 	return hasDBProvider()
 }

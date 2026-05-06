@@ -65,3 +65,13 @@ func _matchMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _rotateMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _getusagesMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

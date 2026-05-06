@@ -30,16 +30,16 @@ type BindingInfo struct {
 	unknownFields protoimpl.UnknownFields
 
 	Id               uint64 `protobuf:"varint,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
-	RepoKey          string `protobuf:"bytes,2,opt,name=repo_key,json=repoKey,proto3" form:"repo_key" json:"repo_key,omitempty" query:"repo_key"`
-	ProviderConfigId uint64 `protobuf:"varint,3,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"provider_config_id,omitempty" query:"provider_config_id"`
+	RepoKey          string `protobuf:"bytes,2,opt,name=repo_key,json=repoKey,proto3" form:"repo_key" json:"repoKey,omitempty" query:"repo_key"`
+	ProviderConfigId uint64 `protobuf:"varint,3,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"providerConfigId,omitempty" query:"provider_config_id"`
 	Platform         string `protobuf:"bytes,4,opt,name=platform,proto3" form:"platform" json:"platform,omitempty" query:"platform"`
-	PlatformOwner    string `protobuf:"bytes,5,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platform_owner,omitempty" query:"platform_owner"`
-	PlatformRepo     string `protobuf:"bytes,6,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platform_repo,omitempty" query:"platform_repo"`
-	RemoteName       string `protobuf:"bytes,7,opt,name=remote_name,json=remoteName,proto3" form:"remote_name" json:"remote_name,omitempty" query:"remote_name"`
-	IsPrimary        bool   `protobuf:"varint,8,opt,name=is_primary,json=isPrimary,proto3" form:"is_primary" json:"is_primary,omitempty" query:"is_primary"`
-	PlatformRepoId   string `protobuf:"bytes,9,opt,name=platform_repo_id,json=platformRepoId,proto3" form:"platform_repo_id" json:"platform_repo_id,omitempty" query:"platform_repo_id"`
-	CreatedAt        string `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"created_at,omitempty" query:"created_at"`
-	UpdatedAt        string `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updated_at,omitempty" query:"updated_at"`
+	PlatformOwner    string `protobuf:"bytes,5,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platformOwner,omitempty" query:"platform_owner"`
+	PlatformRepo     string `protobuf:"bytes,6,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platformRepo,omitempty" query:"platform_repo"`
+	RemoteName       string `protobuf:"bytes,7,opt,name=remote_name,json=remoteName,proto3" form:"remote_name" json:"remoteName,omitempty" query:"remote_name"`
+	IsPrimary        bool   `protobuf:"varint,8,opt,name=is_primary,json=isPrimary,proto3" form:"is_primary" json:"isPrimary,omitempty" query:"is_primary"`
+	PlatformRepoId   string `protobuf:"bytes,9,opt,name=platform_repo_id,json=platformRepoId,proto3" form:"platform_repo_id" json:"platformRepoId,omitempty" query:"platform_repo_id"`
+	CreatedAt        string `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"createdAt,omitempty" query:"created_at"`
+	UpdatedAt        string `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updatedAt,omitempty" query:"updated_at"`
 }
 
 func (x *BindingInfo) Reset() {
@@ -156,8 +156,8 @@ type ListBindingsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey          string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repo_key,omitempty" query:"repo_key"`
-	ProviderConfigId uint64 `protobuf:"varint,2,opt,name=provider_config_id,json=providerConfigId,proto3" json:"provider_config_id,omitempty" query:"provider_config_id"`
+	RepoKey          string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repoKey,omitempty" query:"repo_key"`
+	ProviderConfigId uint64 `protobuf:"varint,2,opt,name=provider_config_id,json=providerConfigId,proto3" json:"providerConfigId,omitempty" query:"provider_config_id"`
 }
 
 func (x *ListBindingsRequest) Reset() {
@@ -425,7 +425,7 @@ type DeleteBindingRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	Id             uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" path:"id"`
-	CleanupWebhook bool   `protobuf:"varint,2,opt,name=cleanup_webhook,json=cleanupWebhook,proto3" json:"cleanup_webhook,omitempty" query:"cleanup_webhook"`
+	CleanupWebhook bool   `protobuf:"varint,2,opt,name=cleanup_webhook,json=cleanupWebhook,proto3" json:"cleanupWebhook,omitempty" query:"cleanup_webhook"`
 }
 
 func (x *DeleteBindingRequest) Reset() {
@@ -573,11 +573,11 @@ type AutoDetectResult struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ProviderConfigId uint64 `protobuf:"varint,1,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"provider_config_id,omitempty" query:"provider_config_id"`
+	ProviderConfigId uint64 `protobuf:"varint,1,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"providerConfigId,omitempty" query:"provider_config_id"`
 	Platform         string `protobuf:"bytes,2,opt,name=platform,proto3" form:"platform" json:"platform,omitempty" query:"platform"`
-	PlatformOwner    string `protobuf:"bytes,3,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platform_owner,omitempty" query:"platform_owner"`
-	PlatformRepo     string `protobuf:"bytes,4,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platform_repo,omitempty" query:"platform_repo"`
-	RemoteName       string `protobuf:"bytes,5,opt,name=remote_name,json=remoteName,proto3" form:"remote_name" json:"remote_name,omitempty" query:"remote_name"`
+	PlatformOwner    string `protobuf:"bytes,3,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platformOwner,omitempty" query:"platform_owner"`
+	PlatformRepo     string `protobuf:"bytes,4,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platformRepo,omitempty" query:"platform_repo"`
+	RemoteName       string `protobuf:"bytes,5,opt,name=remote_name,json=remoteName,proto3" form:"remote_name" json:"remoteName,omitempty" query:"remote_name"`
 	Matched          bool   `protobuf:"varint,6,opt,name=matched,proto3" form:"matched" json:"matched,omitempty" query:"matched"`
 }
 

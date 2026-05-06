@@ -3,17 +3,22 @@
 > 生成时间：2026-05-04  
 > 背景：在第一轮《项目不合理点与后续改造建议》之后，项目已经做了一批修正。本文件只记录本次复查发现的剩余问题和下一步建议。
 
-## 复查结论
+## 当前状态
 
-这轮改动方向是对的：默认端口已经向 `12345` 收敛，release/desktop workflow 的 Go 版本有统一趋势，Makefile 增加了 `test-unit`、`test-integration`、`typecheck-frontend`，并新增了 `.rgignore` 排除构建产物。
+这轮改动已经把第一批工程问题基本收口：
 
-但现在还有几个关键点没有闭环：
+- `[x]` 服务端发布构建改为 `CGO_ENABLED=0`，桌面/Wails 构建单独使用 `CGO_ENABLED=1`。
+- `[x]` `make test-unit` 已排除 `tests/integration`。
+- `[x]` `tests/integration` 已在 `testing.Short()` 下跳过。
+- `[x]` release workflow 已增加 `Quality Gates`，发布构建依赖 `make test-unit` 和 `make typecheck-frontend`。
+- `[x]` 当前主要文档端口已收敛到 HTTP `12345`、RPC `8888`、前端 dev `5173`。
+- `[~]` 第一份评审文档已标记为历史快照，但其中正文仍保留初始发现。
+- `[x]` `make test-integration` 已恢复稳定通过。
+- `[~]` API 字段命名仍有历史混用，但已增加新增 snake_case 冻结门禁。
+- `[~]` 数据库 migration 已有版本表和数据迁移记录，schema 升级仍需继续拆分。
+- `[x]` 生成代码边界已增加 CI diff 检查。
 
-1. `CGO_ENABLED=1` 的判断很可能是错误方向，服务端发布包更适合 `CGO_ENABLED=0`。
-2. `make test-unit` 仍会跑到 `tests/integration`，所以还不是稳定快速的单元测试入口。
-3. release workflow 还没有把 Go 单元测试和前端类型检查作为发布门禁。
-4. 当前文档里仍有大量旧端口 `38080`、`8080`、`3000`。
-5. API 字段命名仍然是 snake_case 和 camelCase 混用。
+后续重点应从 P0 止血转向契约治理和升级可靠性。
 
 ## 本次验证结果
 
@@ -61,17 +66,7 @@ GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o /tmp/gms-linux-amd64-cgo ./cmd
 timeout 90s make test-unit
 ```
 
-结果：超时终止。
-
-原因：`make test-unit` 当前实际执行 `go test -v -short ./...`，仍然包含 `tests/integration`。
-
-对比命令：
-
-```bash
-go list ./... | rg -v '/tests/integration$' | xargs go test -short
-```
-
-结果：通过，约 8 秒完成。
+结果：通过，并且不运行 `tests/integration`。
 
 ### 集成测试入口
 
@@ -81,29 +76,29 @@ go list ./... | rg -v '/tests/integration$' | xargs go test -short
 go test -v -short ./tests/integration -count=1 -timeout=20s
 ```
 
-结果：失败。
+结果：通过，快速 skip，不启动 Hertz server。
 
-现象：`tests/integration` 没有在 `testing.Short()` 下跳过，并且在 Hertz server shutdown/连接等待处超时。
+补充：普通 `make test-integration` 已通过。集成测试会反复启动 Hertz server，测试客户端已禁用 HTTP keep-alive，避免 cleanup 时 `h.Shutdown()` 等待空闲连接导致超时。
 
-## 需要优先处理的问题
+### 集成测试完整入口
+
+命令：
+
+```bash
+timeout 150s make test-integration
+```
+
+结果：通过。
+
+## 已完成的高优先级项
 
 ### P0：修正 CGO 策略
 
-**现状**
+**状态：已完成**
 
-- `Makefile` 强制 `export CGO_ENABLED=1`。
-- `AGENTS.md`、`README.md`、`CLAUDE.md` 仍写 SQLite 需要 CGO。
-- `.github/workflows/release.yml` release matrix 设置 `CGO_ENABLED=1`。
-
-**问题**
-
-服务端发布包在 `CGO_ENABLED=0` 下已经可以跨平台构建；继续强制 CGO 会让 release matrix 的跨平台构建变复杂，并可能失败。
-
-**建议修改**
-
-- `Makefile`：移除全局 `export CGO_ENABLED=1`，或者只在确实需要的 desktop/Wails 目标里设置。
-- `.github/workflows/release.yml`：服务端二进制构建改为 `CGO_ENABLED=0`。
-- 文档：把“SQLite 必须 CGO”改为“服务端默认使用 pure Go SQLite 驱动，可无 CGO 构建；桌面端按 Wails 平台依赖准备环境”。
+- `Makefile` 已移除全局 `export CGO_ENABLED=1`。
+- `.github/workflows/release.yml` 服务端发布包已使用 `CGO_ENABLED=0`。
+- README、AGENTS、CLAUDE 已改为“服务端无需 CGO，桌面/Wails 需要 CGO”。
 
 **验收**
 
@@ -117,17 +112,7 @@ GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./cmd/server
 
 ### P0：让 `make test-unit` 真正只跑单元测试
 
-**现状**
-
-`make test-unit` 当前执行：
-
-```bash
-go test -v -short ./...
-```
-
-这会包含 `tests/integration`。
-
-**建议修改**
+**状态：已完成**
 
 ```makefile
 test-unit:
@@ -149,11 +134,7 @@ timeout 90s make test-unit
 
 ### P0：集成测试支持 short 模式跳过
 
-**现状**
-
-`go test -short ./tests/integration` 仍会运行集成测试。
-
-**建议修改**
+**状态：已完成**
 
 在 `tests/integration/test_helper.go` 的 `SetupSuite(t)` 开头增加：
 
@@ -179,11 +160,7 @@ go test -short ./tests/integration
 
 ### P1：release workflow 增加质量门禁
 
-**现状**
-
-release workflow 现在安装依赖后直接构建前端和二进制，没有先跑测试和类型检查。
-
-**建议修改**
+**状态：已完成**
 
 增加独立 `quality` job：
 
@@ -221,28 +198,15 @@ needs: quality
 
 ### P1：继续统一当前文档端口
 
-**现状**
+**状态：基本完成**
 
-代码和部分文档已使用：
+当前有效文档已统一使用：
 
 - HTTP：`12345`
 - RPC：`8888`
 - 前端 dev：`5173`
 
-但仍有当前文档写旧值，例如：
-
-- `DEPLOY.md` 中仍有 `localhost:8080`
-- `docs/api.md` 中仍有 `localhost:38080`
-- `docs/configuration.md` 中仍有 `38080`
-- `docs/deployment/*.md` 中仍有 `38080`
-- `.github/workflows/desktop.yml` release 文案仍写桌面端后端端口 `38080`
-- `conf/config.yaml` 注释仍写 `Default: 8080`
-
-**建议修改**
-
-- 当前有效文档统一改成 `12345`。
-- `docs/dev-notes/` 可以保留历史端口，但在目录 README 或每篇开头加“历史记录，不保证当前可用”。
-- `conf/config_test.yaml` 如果是测试专用端口，可以保留 `38080`，但建议加注释说明它不是默认运行端口。
+`conf/config_test.yaml` 保留 `38080`，并已注明是测试专用端口。`docs/dev-notes/` 属于历史记录，可以保留旧端口。
 
 **验收**
 
@@ -254,19 +218,9 @@ rg -n '38080|localhost:8080|localhost:3000' README.md DEPLOY.md docs .github con
 
 ### P1：更新第一份评审文档状态
 
-**现状**
+**状态：已完成**
 
-`docs/PROJECT_REVIEW_AND_IMPROVEMENT_PLAN.md` 仍记录第一轮发现，例如 release 的 `CGO_ENABLED=0` 问题、loader 默认端口 `8080` 问题。部分内容已经被修改，文档变成“历史快照”和“当前待办”混在一起。
-
-**建议修改**
-
-把第一份文档改成 checklist 状态：
-
-- `[x]` 已完成
-- `[~]` 部分完成
-- `[ ]` 未完成
-
-或者在开头明确说明：第一份是初始评审快照，当前状态以本文件为准。
+第一份文档开头已明确标记为历史快照，当前状态以本文档为准。
 
 **验收**
 
@@ -276,52 +230,54 @@ rg -n '38080|localhost:8080|localhost:3000' README.md DEPLOY.md docs .github con
 
 ### API 字段命名治理
 
-当前 `biz/model/api` 中仍有大量 snake_case JSON tag，同时也存在 camelCase。建议先不要直接大规模重命名，因为会破坏前端兼容。
+当前 `biz/model/api` 中仍有大量 snake_case JSON tag，同时也存在 camelCase。直接大规模重命名会破坏前端兼容，所以先采用冻结策略。
+
+**状态：已完成新增约束**
+
+- `biz/model/api/json_tag_baseline.txt` 记录当前手写 API DTO 中已有的 snake_case JSON tag。
+- `biz/model/api/json_tag_contract_test.go` 会阻止新增 snake_case JSON tag。
+- `make check-api-json-tags` 提供显式本地检查入口。
 
 推荐路线：
 
-1. 决策：正式选择 snake_case 或 camelCase 作为长期规范。
-2. 冻结：新增接口必须使用选定规范。
+1. 决策：长期规范使用 camelCase。
+2. 冻结：新增接口已通过测试禁止继续引入 snake_case。
 3. 兼容：旧接口保留，新增 v2 DTO 或 adapter。
 4. 生成：引入 OpenAPI/proto 到 TypeScript 的生成流程。
-5. 检查：增加 lint 或测试，防止新接口继续混用。
+5. 收敛：按模块逐步减少 `json_tag_baseline.txt` 中的历史项。
 
 ### 数据库 migration 版本化
 
-第一轮提到的数据库迁移问题还没有从根上解决。下一步建议：
+**状态：已完成基础版本表**
 
 - 新增 `schema_migrations` 表。
-- 每次 schema 变化写独立迁移。
-- `AutoMigrate` 只用于首次初始化或开发环境。
+- 现有 repo-provider binding 数据迁移已纳入版本记录，避免每次启动重复执行。
+- 新增迁移 runner 单元测试，验证迁移只执行一次。
+
+下一步建议：
+
+- 新 schema 变化继续拆成独立 migration step。
+- 逐步把 `AutoMigrate` 收敛为首次初始化兜底，而不是长期升级机制。
 - 用旧 schema fixture 测试升级路径。
 
 ### 生成代码边界治理
 
-当前仍建议继续做：
+**状态：已完成基础门禁**
 
-- 统一唯一 codegen 入口。
-- CI 执行 codegen 后检查 `git diff --exit-code`。
-- 明确只允许手写 `register.go`、`custom_routes.go`。
+- `Makefile` 新增 `make check-generated`。
+- `.github/workflows/ci.yml` 的 `generated-code-check` 已从目录存在检查改为执行真实 codegen 并检查 git diff。
+- `script/gen.sh` 和 `make hz-gen` 已统一使用当前 `.hz` 配置里的 `biz/handler`、`biz/router`、`biz/model` 目录，避免生成到旧的 `biz/*/hz` 路径。
+
+后续仍建议继续补一条文档约束：只允许手写 `register.go`、`custom_routes.go`，业务逻辑不要进入 generated router/model。
 
 ## 推荐下一步顺序
 
-1. 改 `CGO_ENABLED` 策略，修 release workflow 和文档。
-2. 改 `make test-unit`，排除 `tests/integration`。
-3. 给 `tests/integration` 加 short skip 和明确 timeout。
-4. release workflow 加 `quality` job。
-5. 清理当前文档端口。
-6. 更新第一份评审文档的状态说明。
-7. 再进入 API 字段命名和 migration 版本化治理。
+1. API 字段命名按模块逐步从 baseline 中收敛。
+2. 继续拆分 schema migration 和旧库升级 fixture。
+3. 继续拆分大文件和全局初始化逻辑。
 
 ## 可拆任务清单
 
-- P0：`release.yml` 服务端二进制构建改 `CGO_ENABLED=0`。
-- P0：删除或改写 Makefile/README/AGENTS/CLAUDE 中“必须 CGO”的描述。
-- P0：`make test-unit` 排除 `tests/integration`。
-- P0：`tests/integration` 在 short mode 下跳过。
-- P1：release workflow 增加 `make test-unit` 和 `make typecheck-frontend`。
-- P1：统一当前文档端口到 `12345/8888/5173`。
-- P1：更新第一份评审文档为状态化 checklist 或历史快照说明。
-- P2：API 字段命名规范冻结并逐步治理。
-- P2：数据库 migration 版本化。
-- P2：生成代码边界 CI 检查。
+- P2：API 字段命名按模块减少 baseline。
+- P2：把后续 schema 变更拆成独立 migration step。
+- P2：补充生成代码边界文档约束。

@@ -1,4 +1,4 @@
-.PHONY: build build-http build-rpc build-all build-full build-frontend build-frontend-integrate run run-http run-rpc run-frontend preview-frontend clean clean-frontend gen kitex-gen hz-gen test test-unit test-integration typecheck-frontend lint fmt help desktop desktop-darwin desktop-windows desktop-linux desktop-all
+.PHONY: build build-http build-rpc build-all build-full build-frontend build-frontend-integrate run run-http run-rpc run-frontend preview-frontend clean clean-frontend gen check-generated kitex-gen hz-gen test test-unit test-integration typecheck-frontend check-api-json-tags lint fmt help desktop desktop-darwin desktop-windows desktop-linux desktop-all
 
 # 版本信息
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -143,6 +143,13 @@ gen:
 	@chmod +x script/gen.sh
 	./script/gen.sh
 
+check-generated:
+	@echo "Checking generated code is up to date..."
+	@REQUIRE_CODEGEN_TOOLS=1 $(MAKE) gen
+	@git diff --exit-code
+	@test -z "$$(git status --porcelain --untracked-files=all)" || (git status --short --untracked-files=all; exit 1)
+	@echo "Generated code is up to date."
+
 kitex-gen:
 	cd biz && kitex -module github.com/yi-nology/git-manage-service/biz \
 		-service git_service -I ../idl ../idl/git.proto
@@ -152,9 +159,10 @@ hz-gen:
 		for proto in idl/biz/*.proto; do \
 			echo "Processing $$proto..."; \
 			hz update -idl "$$proto" \
-				--handler_dir biz/handler/hz \
-				--router_dir biz/router/hz \
-				--model_dir biz/model/hz; \
+				-I idl \
+				--handler_dir biz/handler \
+				--model_dir biz/model \
+				--pb_camel_json_tag; \
 		done; \
 	else \
 		echo "No proto files found in idl/biz/"; \
@@ -172,6 +180,9 @@ test-integration:
 
 typecheck-frontend:
 	@cd frontend && npx vue-tsc --noEmit
+
+check-api-json-tags:
+	go test ./biz/model/api -run TestHandwrittenAPIJSONTagsDoNotAddSnakeCase -count=1
 
 lint:
 	@if command -v golangci-lint &> /dev/null; then \
@@ -221,6 +232,7 @@ help:
 	@echo ""
 	@echo "Code Generation:"
 	@echo "  make gen          - Generate all code (Kitex + Hz)"
+	@echo "  make check-generated - Verify generated code is committed"
 	@echo "  make kitex-gen    - Generate Kitex RPC code"
 	@echo "  make hz-gen       - Generate Hz HTTP code"
 	@echo ""
@@ -229,6 +241,7 @@ help:
 	@echo "  make test-unit        - Run unit tests only (fast)"
 	@echo "  make test-integration - Run integration tests"
 	@echo "  make typecheck-frontend - Run frontend TypeScript type check"
+	@echo "  make check-api-json-tags - Verify new hand-written API DTO fields use camelCase"
 	@echo "  make lint             - Run linter"
 	@echo "  make fmt              - Format code"
 	@echo ""

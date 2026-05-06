@@ -96,6 +96,13 @@ func resolveCredential(credentialID uint) (*po.Credential, error) {
 	if err != nil {
 		return nil, fmt.Errorf("credential %d not found: %w", credentialID, err)
 	}
+
+	switch cred.Type {
+	case "http_token", "http_basic", "platform_token":
+	default:
+		return nil, fmt.Errorf("credential type '%s' cannot be used for platform API (only http_token, http_basic, platform_token are allowed)", cred.Type)
+	}
+
 	return cred, nil
 }
 

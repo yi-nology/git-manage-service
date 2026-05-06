@@ -42,7 +42,27 @@ func (g *githubProvider) TestConnection(ctx context.Context) (*TestConnectionRes
 	if err := g.doRequest(ctx, "GET", "/user", nil, &user); err != nil {
 		return &TestConnectionResult{Connected: false, Message: err.Error()}, nil
 	}
-	return &TestConnectionResult{Connected: true, Platform: string(g.Platform()), UserName: user.Login}, nil
+
+	result := &TestConnectionResult{
+		Connected: true,
+		Platform:  string(g.Platform()),
+		UserName:  user.Login,
+	}
+
+	// 权限探测
+	// 1. 尝试列出仓库
+	_, err := g.ListRepos(ctx, ListRepoOptions{Page: 1, PerPage: 1})
+	result.CanListRepos = err == nil
+
+	// 2. 检查 scopes（从 response header）
+	// 简化处理，假设能列出仓库则有基本权限
+	result.CanReadCR = result.CanListRepos
+	result.CanWriteCR = result.CanListRepos
+
+	// 3. Webhook 权限检查需要特定 repo 才能测试，这里简化处理
+	result.CanWebhook = result.CanListRepos
+
+	return result, nil
 }
 
 func (g *githubProvider) ListRepos(ctx context.Context, opts ListRepoOptions) ([]*PlatformRepo, error) {

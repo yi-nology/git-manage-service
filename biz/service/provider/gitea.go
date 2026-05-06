@@ -42,7 +42,24 @@ func (g *giteaProvider) TestConnection(ctx context.Context) (*TestConnectionResu
 	if err := g.doRequest(ctx, "GET", "/user", nil, &user); err != nil {
 		return &TestConnectionResult{Connected: false, Message: err.Error()}, nil
 	}
-	return &TestConnectionResult{Connected: true, Platform: string(g.Platform()), UserName: user.Login}, nil
+
+	result := &TestConnectionResult{
+		Connected: true,
+		Platform:  string(g.Platform()),
+		UserName:  user.Login,
+	}
+
+	// 权限探测
+	// 1. 尝试列出仓库
+	_, err := g.ListRepos(ctx, ListRepoOptions{Page: 1, PerPage: 1})
+	result.CanListRepos = err == nil
+
+	// 2. 其他权限简化处理（基于 list repos 成功推断）
+	result.CanReadCR = result.CanListRepos
+	result.CanWriteCR = result.CanListRepos
+	result.CanWebhook = result.CanListRepos
+
+	return result, nil
 }
 
 func (g *giteaProvider) ListRepos(ctx context.Context, opts ListRepoOptions) ([]*PlatformRepo, error) {

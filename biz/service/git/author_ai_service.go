@@ -9,6 +9,7 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	aiSvc "github.com/yi-nology/git-manage-service/biz/service/ai"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
 )
 
@@ -18,22 +19,13 @@ func NewAuthorAIService() *AuthorAIService {
 	return &AuthorAIService{}
 }
 
-func (s *AuthorAIService) getProvider() (llm.Provider, error) {
-	if !llm.HasDefaultProvider() {
-		return nil, fmt.Errorf("未配置 LLM 提供商，请在系统设置中配置")
-	}
-	return llm.GetDefaultProvider()
-}
-
 func (s *AuthorAIService) chat(systemPrompt string, userPrompt string) (string, error) {
-	p, err := s.getProvider()
-	if err != nil {
-		return "", err
-	}
-	resp, err := p.Chat(context.Background(), &llm.ChatRequest{
-		SystemPrompt: systemPrompt,
-		Messages:     []llm.ChatMessage{{Role: "user", Content: userPrompt}},
-		MaxTokens:    4096,
+	resp, err := aiSvc.NewRunner().Chat(context.Background(), aiSvc.TaskRequest{
+		Type:          aiSvc.TaskAuthorIdentity,
+		PromptVersion: "author-ai.v1",
+		SystemPrompt:  systemPrompt,
+		Messages:      []llm.ChatMessage{{Role: "user", Content: userPrompt}},
+		MaxTokens:     4096,
 	})
 	if err != nil {
 		return "", fmt.Errorf("LLM 调用失败: %w", err)
@@ -42,19 +34,17 @@ func (s *AuthorAIService) chat(systemPrompt string, userPrompt string) (string, 
 }
 
 func (s *AuthorAIService) chatMulti(systemPrompt string, history []api.ChatMessageDTO, prompt string) (string, error) {
-	p, err := s.getProvider()
-	if err != nil {
-		return "", err
-	}
 	var msgs []llm.ChatMessage
 	for _, h := range history {
 		msgs = append(msgs, llm.ChatMessage{Role: h.Role, Content: h.Content})
 	}
 	msgs = append(msgs, llm.ChatMessage{Role: "user", Content: prompt})
-	resp, err := p.Chat(context.Background(), &llm.ChatRequest{
-		SystemPrompt: systemPrompt,
-		Messages:     msgs,
-		MaxTokens:    4096,
+	resp, err := aiSvc.NewRunner().Chat(context.Background(), aiSvc.TaskRequest{
+		Type:          aiSvc.TaskAuthorIdentity,
+		PromptVersion: "author-chat.v1",
+		SystemPrompt:  systemPrompt,
+		Messages:      msgs,
+		MaxTokens:     4096,
 	})
 	if err != nil {
 		return "", fmt.Errorf("LLM 调用失败: %w", err)
@@ -63,22 +53,10 @@ func (s *AuthorAIService) chatMulti(systemPrompt string, history []api.ChatMessa
 }
 
 func extractJSON(raw string) string {
-	start := strings.Index(raw, "{")
-	if start == -1 {
-		return raw
+	if jsonStr := aiSvc.ExtractJSON(raw); jsonStr != "" {
+		return jsonStr
 	}
-	depth := 0
-	for i := start; i < len(raw); i++ {
-		if raw[i] == '{' {
-			depth++
-		} else if raw[i] == '}' {
-			depth--
-			if depth == 0 {
-				return raw[start : i+1]
-			}
-		}
-	}
-	return raw[start:]
+	return raw
 }
 
 func (s *AuthorAIService) SmartSuggest(repoPath string) (*api.AliasSuggestionResult, error) {

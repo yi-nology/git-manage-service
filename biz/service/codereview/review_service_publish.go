@@ -9,6 +9,7 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"github.com/yi-nology/git-manage-service/biz/service/ai"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
 	"github.com/yi-nology/git-manage-service/biz/service/provider"
 )
@@ -86,42 +87,41 @@ func publishComments(ctx context.Context, p provider.Provider, owner, repo strin
 	return nil
 }
 
-func runLLMReview(ctx context.Context, files []*FileDiff, repoName, owner string) []*Finding {
-	llmProvider, err := llm.GetDefaultProvider()
-	if err != nil {
-		log.Printf("[CodeReview] LLM skipped: %v", err)
-		return nil
-	}
-
+func runLLMReview(ctx context.Context, files []*FileDiff, repoName, owner, providerName string) []*Finding {
 	diff := buildDiffString(files)
 	if diff == "" {
 		return nil
 	}
 
-	llmFiles := make([]llm.FileInfo, 0, len(files))
-	for _, f := range files {
-		if !f.IsDeleted && len(f.RawDiff) < 5000 {
-			llmFiles = append(llmFiles, llm.FileInfo{
-				Path:      f.NewPath,
-				IsNew:     f.IsNew,
-				IsDeleted: f.IsDeleted,
-			})
-		}
-	}
-
-	resp, err := llmProvider.Review(ctx, &llm.ReviewRequest{
-		Diff:     diff,
-		Files:    llmFiles,
-		RepoName: repoName,
-		Owner:    owner,
+	resp, err := ai.NewRunner().Chat(ctx, ai.TaskRequest{
+		Type:          ai.TaskCodeReview,
+		PromptVersion: "code-review.v1",
+		Provider:      ai.ProviderSelection{Name: providerName},
+		SystemPrompt:  codeReviewSystemPrompt,
+		Messages: []llm.ChatMessage{
+			{Role: "user", Content: buildCodeReviewPrompt(files, repoName, owner)},
+		},
+		MaxTokens: 4096,
 	})
 	if err != nil {
 		log.Printf("[CodeReview] LLM review error: %v", err)
 		return nil
 	}
 
+	var parsed struct {
+		Findings []llm.LLMFinding `json:"findings"`
+		Summary  string           `json:"summary"`
+	}
+	if !ai.DecodeJSON(resp.Content, &parsed) {
+		log.Printf("[CodeReview] LLM review returned non-JSON response")
+		return nil
+	}
+
 	var findings []*Finding
-	for _, lf := range resp.Findings {
+	for _, lf := range parsed.Findings {
+		if !isValidLLMFinding(files, lf) {
+			continue
+		}
 		sev := SeverityMedium
 		switch lf.Severity {
 		case "critical":
@@ -136,7 +136,7 @@ func runLLMReview(ctx context.Context, files []*FileDiff, repoName, owner string
 			sev = SeverityInfo
 		}
 		findings = append(findings, &Finding{
-			RuleID:      "llm:" + llmProvider.Name(),
+			RuleID:      "llm:" + resp.ProviderName,
 			Source:      "llm",
 			Severity:    sev,
 			FilePath:    lf.FilePath,
@@ -144,11 +144,58 @@ func runLLMReview(ctx context.Context, files []*FileDiff, repoName, owner string
 			Title:       lf.Title,
 			Message:     lf.Message,
 			Suggestion:  lf.Suggestion,
-			Fingerprint: computeFingerprint("llm:"+llmProvider.Name(), lf.FilePath, lf.LineNumber, lf.Title),
+			Fingerprint: computeFingerprint("llm:"+resp.ProviderName, lf.FilePath, lf.LineNumber, lf.Title),
 		})
 	}
 
 	return findings
+}
+
+func isValidLLMFinding(files []*FileDiff, finding llm.LLMFinding) bool {
+	if finding.FilePath == "" || finding.LineNumber <= 0 {
+		return false
+	}
+	for _, file := range files {
+		if file.NewPath != finding.FilePath && file.OldPath != finding.FilePath {
+			continue
+		}
+		for _, hunk := range file.Hunks {
+			for _, line := range hunk.Lines {
+				if line.Type == "add" && line.NewLine == finding.LineNumber {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+const codeReviewSystemPrompt = `You are an expert code reviewer. Analyze the provided diff and identify correctness, security, performance, maintainability, and error-handling issues.
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "findings": [
+    {
+      "file_path": "path/to/file",
+      "line_number": 42,
+      "severity": "critical|high|medium|low|info",
+      "title": "Brief issue title",
+      "message": "Detailed explanation",
+      "suggestion": "How to fix"
+    }
+  ],
+  "summary": "Brief overall review summary"
+}
+
+Only report issues you can ground in the diff. Do not report formatting or style unless it affects behavior. If no issues are found, return an empty findings array.`
+
+func buildCodeReviewPrompt(files []*FileDiff, repoName, owner string) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Review this diff for repository %s/%s:\n\n", owner, repoName))
+	b.WriteString("```diff\n")
+	b.WriteString(buildDiffString(files))
+	b.WriteString("\n```\n")
+	return b.String()
 }
 
 func buildDiffString(files []*FileDiff) string {

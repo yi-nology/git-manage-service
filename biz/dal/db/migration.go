@@ -4,10 +4,97 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"gorm.io/gorm"
 )
+
+type migrationStep struct {
+	Version string
+	Name    string
+	Run     func(tx *gorm.DB) error
+}
+
+func RunMigrations() error {
+	return runMigrations(DB, []migrationStep{
+		{
+			Version: "2026050401_repo_provider_bindings",
+			Name:    "migrate repo provider bindings",
+			Run: func(tx *gorm.DB) error {
+				if !tx.Migrator().HasTable(&po.RepoProviderBinding{}) {
+					return nil
+				}
+				return migrateRepoProviderBindings(tx)
+			},
+		},
+		{
+			Version: "2026050402_ai_invocations",
+			Name:    "create AI invocation audit table",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.AIInvocation{})
+			},
+		},
+	})
+}
+
+func runMigrations(gdb *gorm.DB, steps []migrationStep) error {
+	if gdb == nil {
+		return fmt.Errorf("database is not initialized")
+	}
+
+	if err := gdb.AutoMigrate(&po.SchemaMigration{}); err != nil {
+		return fmt.Errorf("migrate schema_migrations table: %w", err)
+	}
+
+	for _, step := range steps {
+		if err := gdb.Transaction(func(tx *gorm.DB) error {
+			applied, err := isMigrationApplied(tx, step.Version)
+			if err != nil {
+				return err
+			}
+			if applied {
+				return nil
+			}
+
+			if step.Run != nil {
+				if err := step.Run(tx); err != nil {
+					return fmt.Errorf("run migration %s: %w", step.Version, err)
+				}
+			}
+
+			if err := recordMigration(tx, step.Version, step.Name); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func isMigrationApplied(gdb *gorm.DB, version string) (bool, error) {
+	var count int64
+	if err := gdb.Model(&po.SchemaMigration{}).Where("version = ?", version).Count(&count).Error; err != nil {
+		return false, fmt.Errorf("check migration %s: %w", version, err)
+	}
+	return count > 0, nil
+}
+
+func recordMigration(gdb *gorm.DB, version, name string) error {
+	migration := &po.SchemaMigration{
+		Version:   version,
+		Name:      name,
+		AppliedAt: time.Now(),
+	}
+	if err := gdb.Create(migration).Error; err != nil {
+		return fmt.Errorf("record migration %s: %w", version, err)
+	}
+	return nil
+}
 
 // MigrateCredentials 将现有认证数据迁移到凭证池
 // 幂等操作：重复执行不会重复创建
@@ -161,13 +248,20 @@ func findOrCreateCredentialFromAuth(credDAO *CredentialDAO, authType, authKey, a
 }
 
 func MigrateRepoProviderBindings() {
-	repoDAO := NewRepoDAO()
-	bindingDAO := NewRepoProviderBindingDAO()
+	if err := migrateRepoProviderBindings(DB); err != nil {
+		log.Printf("Warning: repo-provider binding migration failed: %v", err)
+	}
+}
 
-	repos, err := repoDAO.FindAll()
+func migrateRepoProviderBindings(gdb *gorm.DB) error {
+	if gdb == nil {
+		return fmt.Errorf("database is not initialized")
+	}
+
+	var repos []po.Repo
+	err := gdb.Find(&repos).Error
 	if err != nil {
-		log.Printf("Warning: failed to load repos for binding migration: %v", err)
-		return
+		return fmt.Errorf("load repos for binding migration: %w", err)
 	}
 
 	for i := range repos {
@@ -176,7 +270,14 @@ func MigrateRepoProviderBindings() {
 			continue
 		}
 
-		exists, _ := bindingDAO.ExistsByRepoAndProvider(repo.ID, repo.ProviderConfigID)
+		var count int64
+		err := gdb.Model(&po.RepoProviderBinding{}).
+			Where("repo_id = ? AND provider_config_id = ? AND status = ?", repo.ID, repo.ProviderConfigID, "active").
+			Count(&count).Error
+		if err != nil {
+			return fmt.Errorf("check binding for repo %s: %w", repo.Key, err)
+		}
+		exists := count > 0
 		if exists {
 			continue
 		}
@@ -192,8 +293,8 @@ func MigrateRepoProviderBindings() {
 			Status:           "active",
 		}
 
-		if err := bindingDAO.Create(binding); err != nil {
-			log.Printf("Warning: failed to create binding for repo %s: %v", repo.Key, err)
+		if err := gdb.Create(binding).Error; err != nil {
+			return fmt.Errorf("create binding for repo %s: %w", repo.Key, err)
 		} else {
 			log.Printf("Migrated binding: repo=%s provider=%d owner=%s repo=%s",
 				repo.Key, repo.ProviderConfigID, repo.PlatformOwner, repo.PlatformRepo)
@@ -201,4 +302,5 @@ func MigrateRepoProviderBindings() {
 	}
 
 	log.Println("Repo-Provider binding migration completed.")
+	return nil
 }

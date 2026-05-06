@@ -46,7 +46,6 @@ jobs:
   generated-code-check:
     name: Verify Generated Code
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -64,19 +63,12 @@ jobs:
 
       - name: Install Hz and Kitex
         run: |
-          go install github.com/cloudwego/hertz/cmd/hz@latest
-          go install github.com/cloudwego/kitex/tool/cmd/kitex@latest
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.0
+          go install github.com/cloudwego/hertz/cmd/hz@v0.9.7
+          go install github.com/cloudwego/kitex/tool/cmd/kitex@v0.15.4
+          protoc-gen-go --version
           hz --version
           kitex --version || true
 
       - name: Check generated code is in sync
-        run: |
-          # This is a simple check - ensure generated code matches the proto
-          # In a real scenario you would run make gen and check git diff
-          echo "Checking generated code consistency..."
-          # For now just verify the generated directories exist
-          if [ -d "biz/model" ] && [ -d "biz/router" ]; then
-            echo "Generated code directories exist"
-          else
-            echo "Warning: Generated code directories not found"
-          fi
+        run: make check-generated

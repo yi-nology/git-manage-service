@@ -32,13 +32,13 @@ type LLMProviderInfo struct {
 	Id        uint64 `protobuf:"varint,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
 	Name      string `protobuf:"bytes,2,opt,name=name,proto3" form:"name" json:"name,omitempty" query:"name"`
 	Type      string `protobuf:"bytes,3,opt,name=type,proto3" form:"type" json:"type,omitempty" query:"type"`
-	BaseUrl   string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" form:"base_url" json:"base_url,omitempty" query:"base_url"`
-	ApiKey    string `protobuf:"bytes,5,opt,name=api_key,json=apiKey,proto3" form:"api_key" json:"api_key,omitempty" query:"api_key"`
+	BaseUrl   string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" form:"base_url" json:"baseUrl,omitempty" query:"base_url"`
+	ApiKey    string `protobuf:"bytes,5,opt,name=api_key,json=apiKey,proto3" form:"api_key" json:"apiKey,omitempty" query:"api_key"`
 	Model     string `protobuf:"bytes,6,opt,name=model,proto3" form:"model" json:"model,omitempty" query:"model"`
-	MaxTokens int32  `protobuf:"varint,7,opt,name=max_tokens,json=maxTokens,proto3" form:"max_tokens" json:"max_tokens,omitempty" query:"max_tokens"`
-	IsDefault bool   `protobuf:"varint,8,opt,name=is_default,json=isDefault,proto3" form:"is_default" json:"is_default,omitempty" query:"is_default"`
-	CreatedAt string `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"created_at,omitempty" query:"created_at"`
-	UpdatedAt string `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updated_at,omitempty" query:"updated_at"`
+	MaxTokens int32  `protobuf:"varint,7,opt,name=max_tokens,json=maxTokens,proto3" form:"max_tokens" json:"maxTokens,omitempty" query:"max_tokens"`
+	IsDefault bool   `protobuf:"varint,8,opt,name=is_default,json=isDefault,proto3" form:"is_default" json:"isDefault,omitempty" query:"is_default"`
+	CreatedAt string `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"createdAt,omitempty" query:"created_at"`
+	UpdatedAt string `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updatedAt,omitempty" query:"updated_at"`
 }
 
 func (x *LLMProviderInfo) Reset() {
@@ -149,10 +149,10 @@ type CodeReviewSettings struct {
 	unknownFields protoimpl.UnknownFields
 
 	Enabled        bool  `protobuf:"varint,1,opt,name=enabled,proto3" form:"enabled" json:"enabled,omitempty" query:"enabled"`
-	AutoReviewOnMr bool  `protobuf:"varint,2,opt,name=auto_review_on_mr,json=autoReviewOnMr,proto3" form:"auto_review_on_mr" json:"auto_review_on_mr,omitempty" query:"auto_review_on_mr"`
-	BlockOnHigh    bool  `protobuf:"varint,3,opt,name=block_on_high,json=blockOnHigh,proto3" form:"block_on_high" json:"block_on_high,omitempty" query:"block_on_high"`
-	MaxFiles       int32 `protobuf:"varint,4,opt,name=max_files,json=maxFiles,proto3" form:"max_files" json:"max_files,omitempty" query:"max_files"`
-	MaxDiffLines   int32 `protobuf:"varint,5,opt,name=max_diff_lines,json=maxDiffLines,proto3" form:"max_diff_lines" json:"max_diff_lines,omitempty" query:"max_diff_lines"`
+	AutoReviewOnMr bool  `protobuf:"varint,2,opt,name=auto_review_on_mr,json=autoReviewOnMr,proto3" form:"auto_review_on_mr" json:"autoReviewOnMr,omitempty" query:"auto_review_on_mr"`
+	BlockOnHigh    bool  `protobuf:"varint,3,opt,name=block_on_high,json=blockOnHigh,proto3" form:"block_on_high" json:"blockOnHigh,omitempty" query:"block_on_high"`
+	MaxFiles       int32 `protobuf:"varint,4,opt,name=max_files,json=maxFiles,proto3" form:"max_files" json:"maxFiles,omitempty" query:"max_files"`
+	MaxDiffLines   int32 `protobuf:"varint,5,opt,name=max_diff_lines,json=maxDiffLines,proto3" form:"max_diff_lines" json:"maxDiffLines,omitempty" query:"max_diff_lines"`
 }
 
 func (x *CodeReviewSettings) Reset() {
@@ -229,15 +229,15 @@ type BranchRule struct {
 
 	Id                uint64   `protobuf:"varint,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
 	Prefix            string   `protobuf:"bytes,2,opt,name=prefix,proto3" form:"prefix" json:"prefix,omitempty" query:"prefix"`
-	DisplayName       string   `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" form:"display_name" json:"display_name,omitempty" query:"display_name"`
-	SourceBranches    []string `protobuf:"bytes,4,rep,name=source_branches,json=sourceBranches,proto3" form:"source_branches" json:"source_branches,omitempty" query:"source_branches"`
-	TargetBranches    []string `protobuf:"bytes,5,rep,name=target_branches,json=targetBranches,proto3" form:"target_branches" json:"target_branches,omitempty" query:"target_branches"`
-	RequireTaskId     bool     `protobuf:"varint,6,opt,name=require_task_id,json=requireTaskId,proto3" form:"require_task_id" json:"require_task_id,omitempty" query:"require_task_id"`
-	TaskIdPattern     string   `protobuf:"bytes,7,opt,name=task_id_pattern,json=taskIdPattern,proto3" form:"task_id_pattern" json:"task_id_pattern,omitempty" query:"task_id_pattern"`
-	AutoDeleteOnMerge bool     `protobuf:"varint,8,opt,name=auto_delete_on_merge,json=autoDeleteOnMerge,proto3" form:"auto_delete_on_merge" json:"auto_delete_on_merge,omitempty" query:"auto_delete_on_merge"`
-	AllowDirectPush   bool     `protobuf:"varint,9,opt,name=allow_direct_push,json=allowDirectPush,proto3" form:"allow_direct_push" json:"allow_direct_push,omitempty" query:"allow_direct_push"`
-	RequireCodeReview bool     `protobuf:"varint,10,opt,name=require_code_review,json=requireCodeReview,proto3" form:"require_code_review" json:"require_code_review,omitempty" query:"require_code_review"`
-	SortOrder         int32    `protobuf:"varint,11,opt,name=sort_order,json=sortOrder,proto3" form:"sort_order" json:"sort_order,omitempty" query:"sort_order"`
+	DisplayName       string   `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" form:"display_name" json:"displayName,omitempty" query:"display_name"`
+	SourceBranches    []string `protobuf:"bytes,4,rep,name=source_branches,json=sourceBranches,proto3" form:"source_branches" json:"sourceBranches,omitempty" query:"source_branches"`
+	TargetBranches    []string `protobuf:"bytes,5,rep,name=target_branches,json=targetBranches,proto3" form:"target_branches" json:"targetBranches,omitempty" query:"target_branches"`
+	RequireTaskId     bool     `protobuf:"varint,6,opt,name=require_task_id,json=requireTaskId,proto3" form:"require_task_id" json:"requireTaskId,omitempty" query:"require_task_id"`
+	TaskIdPattern     string   `protobuf:"bytes,7,opt,name=task_id_pattern,json=taskIdPattern,proto3" form:"task_id_pattern" json:"taskIdPattern,omitempty" query:"task_id_pattern"`
+	AutoDeleteOnMerge bool     `protobuf:"varint,8,opt,name=auto_delete_on_merge,json=autoDeleteOnMerge,proto3" form:"auto_delete_on_merge" json:"autoDeleteOnMerge,omitempty" query:"auto_delete_on_merge"`
+	AllowDirectPush   bool     `protobuf:"varint,9,opt,name=allow_direct_push,json=allowDirectPush,proto3" form:"allow_direct_push" json:"allowDirectPush,omitempty" query:"allow_direct_push"`
+	RequireCodeReview bool     `protobuf:"varint,10,opt,name=require_code_review,json=requireCodeReview,proto3" form:"require_code_review" json:"requireCodeReview,omitempty" query:"require_code_review"`
+	SortOrder         int32    `protobuf:"varint,11,opt,name=sort_order,json=sortOrder,proto3" form:"sort_order" json:"sortOrder,omitempty" query:"sort_order"`
 }
 
 func (x *BranchRule) Reset() {
@@ -354,9 +354,9 @@ type LinkedRepo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey   string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" form:"repo_key" json:"repo_key,omitempty" query:"repo_key"`
-	RepoName  string `protobuf:"bytes,2,opt,name=repo_name,json=repoName,proto3" form:"repo_name" json:"repo_name,omitempty" query:"repo_name"`
-	BindingId string `protobuf:"bytes,3,opt,name=binding_id,json=bindingId,proto3" form:"binding_id" json:"binding_id,omitempty" query:"binding_id"`
+	RepoKey   string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" form:"repo_key" json:"repoKey,omitempty" query:"repo_key"`
+	RepoName  string `protobuf:"bytes,2,opt,name=repo_name,json=repoName,proto3" form:"repo_name" json:"repoName,omitempty" query:"repo_name"`
+	BindingId string `protobuf:"bytes,3,opt,name=binding_id,json=bindingId,proto3" form:"binding_id" json:"bindingId,omitempty" query:"binding_id"`
 }
 
 func (x *LinkedRepo) Reset() {
@@ -419,10 +419,10 @@ type BranchRuleSet struct {
 
 	Enabled           bool          `protobuf:"varint,1,opt,name=enabled,proto3" form:"enabled" json:"enabled,omitempty" query:"enabled"`
 	Rules             []*BranchRule `protobuf:"bytes,2,rep,name=rules,proto3" form:"rules" json:"rules,omitempty" query:"rules"`
-	ProtectedBranches []string      `protobuf:"bytes,3,rep,name=protected_branches,json=protectedBranches,proto3" form:"protected_branches" json:"protected_branches,omitempty" query:"protected_branches"`
-	UseCustomRules    bool          `protobuf:"varint,4,opt,name=use_custom_rules,json=useCustomRules,proto3" form:"use_custom_rules" json:"use_custom_rules,omitempty" query:"use_custom_rules"`
-	ScopeType         string        `protobuf:"bytes,5,opt,name=scope_type,json=scopeType,proto3" form:"scope_type" json:"scope_type,omitempty" query:"scope_type"`
-	LinkedRepos       []*LinkedRepo `protobuf:"bytes,6,rep,name=linked_repos,json=linkedRepos,proto3" form:"linked_repos" json:"linked_repos,omitempty" query:"linked_repos"`
+	ProtectedBranches []string      `protobuf:"bytes,3,rep,name=protected_branches,json=protectedBranches,proto3" form:"protected_branches" json:"protectedBranches,omitempty" query:"protected_branches"`
+	UseCustomRules    bool          `protobuf:"varint,4,opt,name=use_custom_rules,json=useCustomRules,proto3" form:"use_custom_rules" json:"useCustomRules,omitempty" query:"use_custom_rules"`
+	ScopeType         string        `protobuf:"bytes,5,opt,name=scope_type,json=scopeType,proto3" form:"scope_type" json:"scopeType,omitempty" query:"scope_type"`
+	LinkedRepos       []*LinkedRepo `protobuf:"bytes,6,rep,name=linked_repos,json=linkedRepos,proto3" form:"linked_repos" json:"linkedRepos,omitempty" query:"linked_repos"`
 }
 
 func (x *BranchRuleSet) Reset() {
@@ -504,13 +504,13 @@ type RemoteRepoBranchRuleSet struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ProviderConfigId  uint64        `protobuf:"varint,1,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"provider_config_id,omitempty" query:"provider_config_id"`
-	PlatformOwner     string        `protobuf:"bytes,2,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platform_owner,omitempty" query:"platform_owner"`
-	PlatformRepo      string        `protobuf:"bytes,3,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platform_repo,omitempty" query:"platform_repo"`
-	UseCustomRules    bool          `protobuf:"varint,4,opt,name=use_custom_rules,json=useCustomRules,proto3" form:"use_custom_rules" json:"use_custom_rules,omitempty" query:"use_custom_rules"`
+	ProviderConfigId  uint64        `protobuf:"varint,1,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"providerConfigId,omitempty" query:"provider_config_id"`
+	PlatformOwner     string        `protobuf:"bytes,2,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platformOwner,omitempty" query:"platform_owner"`
+	PlatformRepo      string        `protobuf:"bytes,3,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platformRepo,omitempty" query:"platform_repo"`
+	UseCustomRules    bool          `protobuf:"varint,4,opt,name=use_custom_rules,json=useCustomRules,proto3" form:"use_custom_rules" json:"useCustomRules,omitempty" query:"use_custom_rules"`
 	Rules             []*BranchRule `protobuf:"bytes,5,rep,name=rules,proto3" form:"rules" json:"rules,omitempty" query:"rules"`
-	ProtectedBranches []string      `protobuf:"bytes,6,rep,name=protected_branches,json=protectedBranches,proto3" form:"protected_branches" json:"protected_branches,omitempty" query:"protected_branches"`
-	LinkedRepos       []*LinkedRepo `protobuf:"bytes,7,rep,name=linked_repos,json=linkedRepos,proto3" form:"linked_repos" json:"linked_repos,omitempty" query:"linked_repos"`
+	ProtectedBranches []string      `protobuf:"bytes,6,rep,name=protected_branches,json=protectedBranches,proto3" form:"protected_branches" json:"protectedBranches,omitempty" query:"protected_branches"`
+	LinkedRepos       []*LinkedRepo `protobuf:"bytes,7,rep,name=linked_repos,json=linkedRepos,proto3" form:"linked_repos" json:"linkedRepos,omitempty" query:"linked_repos"`
 }
 
 func (x *RemoteRepoBranchRuleSet) Reset() {
@@ -1524,10 +1524,10 @@ type ValidateBranchNameRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey    string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repo_key,omitempty" query:"repo_key"`
-	BranchName string `protobuf:"bytes,2,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty" query:"branch_name"`
-	BaseRef    string `protobuf:"bytes,3,opt,name=base_ref,json=baseRef,proto3" json:"base_ref,omitempty" query:"base_ref"`
-	SkipRules  bool   `protobuf:"varint,4,opt,name=skip_rules,json=skipRules,proto3" json:"skip_rules,omitempty" query:"skip_rules"`
+	RepoKey    string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repoKey,omitempty" query:"repo_key"`
+	BranchName string `protobuf:"bytes,2,opt,name=branch_name,json=branchName,proto3" json:"branchName,omitempty" query:"branch_name"`
+	BaseRef    string `protobuf:"bytes,3,opt,name=base_ref,json=baseRef,proto3" json:"baseRef,omitempty" query:"base_ref"`
+	SkipRules  bool   `protobuf:"varint,4,opt,name=skip_rules,json=skipRules,proto3" json:"skipRules,omitempty" query:"skip_rules"`
 }
 
 func (x *ValidateBranchNameRequest) Reset() {
@@ -1598,7 +1598,7 @@ type ValidateBranchNameResponse struct {
 	Base          *common.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
 	Valid         bool                 `protobuf:"varint,2,opt,name=valid,proto3" form:"valid" json:"valid,omitempty" query:"valid"`
 	Message       string               `protobuf:"bytes,3,opt,name=message,proto3" form:"message" json:"message,omitempty" query:"message"`
-	SuggestedName string               `protobuf:"bytes,4,opt,name=suggested_name,json=suggestedName,proto3" form:"suggested_name" json:"suggested_name,omitempty" query:"suggested_name"`
+	SuggestedName string               `protobuf:"bytes,4,opt,name=suggested_name,json=suggestedName,proto3" form:"suggested_name" json:"suggestedName,omitempty" query:"suggested_name"`
 }
 
 func (x *ValidateBranchNameResponse) Reset() {
@@ -1666,7 +1666,7 @@ type GetRemoteRepoBranchRulesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ProviderId uint64 `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty" path:"provider_id"`
+	ProviderId uint64 `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"providerId,omitempty" path:"provider_id"`
 	Owner      string `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty" path:"owner"`
 	Repo       string `protobuf:"bytes,3,opt,name=repo,proto3" json:"repo,omitempty" path:"repo"`
 }
@@ -1784,7 +1784,7 @@ type UpdateRemoteRepoBranchRulesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ProviderId        uint64        `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty" path:"provider_id"`
+	ProviderId        uint64        `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"providerId,omitempty" path:"provider_id"`
 	Owner             string        `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty" path:"owner"`
 	Repo              string        `protobuf:"bytes,3,opt,name=repo,proto3" json:"repo,omitempty" path:"repo"`
 	UseCustomRules    bool          `protobuf:"varint,4,opt,name=use_custom_rules,json=useCustomRules,proto3" form:"use_custom_rules" json:"use_custom_rules,omitempty"`
@@ -1877,7 +1877,7 @@ type ReviewRuleInfo struct {
 	Severity    string `protobuf:"bytes,4,opt,name=severity,proto3" form:"severity" json:"severity,omitempty" query:"severity"`
 	Category    string `protobuf:"bytes,5,opt,name=category,proto3" form:"category" json:"category,omitempty" query:"category"`
 	Enabled     bool   `protobuf:"varint,6,opt,name=enabled,proto3" form:"enabled" json:"enabled,omitempty" query:"enabled"`
-	SortOrder   int32  `protobuf:"varint,7,opt,name=sort_order,json=sortOrder,proto3" form:"sort_order" json:"sort_order,omitempty" query:"sort_order"`
+	SortOrder   int32  `protobuf:"varint,7,opt,name=sort_order,json=sortOrder,proto3" form:"sort_order" json:"sortOrder,omitempty" query:"sort_order"`
 }
 
 func (x *ReviewRuleInfo) Reset() {
@@ -2106,7 +2106,7 @@ type GetReviewRuleRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RuleId string `protobuf:"bytes,1,opt,name=rule_id,json=ruleId,proto3" json:"rule_id,omitempty" path:"rule_id"`
+	RuleId string `protobuf:"bytes,1,opt,name=rule_id,json=ruleId,proto3" json:"ruleId,omitempty" path:"rule_id"`
 }
 
 func (x *GetReviewRuleRequest) Reset() {
@@ -2303,7 +2303,7 @@ type UpdateReviewRuleRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RuleId      string `protobuf:"bytes,1,opt,name=rule_id,json=ruleId,proto3" json:"rule_id,omitempty" path:"rule_id"`
+	RuleId      string `protobuf:"bytes,1,opt,name=rule_id,json=ruleId,proto3" json:"ruleId,omitempty" path:"rule_id"`
 	Name        string `protobuf:"bytes,2,opt,name=name,proto3" form:"name" json:"name,omitempty"`
 	Description string `protobuf:"bytes,3,opt,name=description,proto3" form:"description" json:"description,omitempty"`
 	Severity    string `protobuf:"bytes,4,opt,name=severity,proto3" form:"severity" json:"severity,omitempty"`
@@ -2398,7 +2398,7 @@ type DeleteReviewRuleRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RuleId string `protobuf:"bytes,1,opt,name=rule_id,json=ruleId,proto3" json:"rule_id,omitempty" path:"rule_id"`
+	RuleId string `protobuf:"bytes,1,opt,name=rule_id,json=ruleId,proto3" json:"ruleId,omitempty" path:"rule_id"`
 }
 
 func (x *DeleteReviewRuleRequest) Reset() {
@@ -2494,10 +2494,10 @@ type LLMPresetInfo struct {
 
 	Id           string `protobuf:"bytes,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
 	Name         string `protobuf:"bytes,2,opt,name=name,proto3" form:"name" json:"name,omitempty" query:"name"`
-	ProviderType string `protobuf:"bytes,3,opt,name=provider_type,json=providerType,proto3" form:"provider_type" json:"provider_type,omitempty" query:"provider_type"`
-	BaseUrl      string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" form:"base_url" json:"base_url,omitempty" query:"base_url"`
+	ProviderType string `protobuf:"bytes,3,opt,name=provider_type,json=providerType,proto3" form:"provider_type" json:"providerType,omitempty" query:"provider_type"`
+	BaseUrl      string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" form:"base_url" json:"baseUrl,omitempty" query:"base_url"`
 	Model        string `protobuf:"bytes,5,opt,name=model,proto3" form:"model" json:"model,omitempty" query:"model"`
-	MaxTokens    int32  `protobuf:"varint,6,opt,name=max_tokens,json=maxTokens,proto3" form:"max_tokens" json:"max_tokens,omitempty" query:"max_tokens"`
+	MaxTokens    int32  `protobuf:"varint,6,opt,name=max_tokens,json=maxTokens,proto3" form:"max_tokens" json:"maxTokens,omitempty" query:"max_tokens"`
 	Description  string `protobuf:"bytes,7,opt,name=description,proto3" form:"description" json:"description,omitempty" query:"description"`
 	Category     string `protobuf:"bytes,8,opt,name=category,proto3" form:"category" json:"category,omitempty" query:"category"`
 }

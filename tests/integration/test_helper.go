@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/router"
@@ -52,6 +53,8 @@ func SetupSuite(t *testing.T) *APITestSuite {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
+
+	hlog.SetLevel(hlog.LevelWarn)
 
 	configs.GlobalConfig = configs.Config{
 		Database: configs.DatabaseConfig{
@@ -144,13 +147,18 @@ func SetupSuite(t *testing.T) *APITestSuite {
 		hertz:   h,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				DisableKeepAlives: true,
+			},
 		},
 	}
 
 	t.Cleanup(func() {
+		s.client.CloseIdleConnections()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		h.Shutdown(ctx)
+		stats.StatsSvc.Wait()
 		sqlDB, _ := gormDB.DB()
 		if sqlDB != nil {
 			sqlDB.Close()

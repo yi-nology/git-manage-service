@@ -6,19 +6,17 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/yi-nology/git-manage-service/biz/service/ai"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
 )
 
 type ChatMessage = llm.ChatMessage
 
 func (s *SpecService) AIAssist(ctx context.Context, content string, prompt string, action string, history []llm.ChatMessage) (string, string, error) {
-	provider, err := llm.GetDefaultProvider()
-	if err != nil {
-		return "", "", fmt.Errorf("no LLM provider configured: %w", err)
-	}
-
 	var systemPrompt string
+	taskType := ai.TaskSpecChat
 	if action == "agent" {
+		taskType = ai.TaskSpecPatch
 		systemPrompt = `你是一个 RPM Spec 文件编辑 Agent。用户的 spec 文件内容如下：
 
 ` + "```" + `
@@ -54,10 +52,12 @@ func (s *SpecService) AIAssist(ctx context.Context, content string, prompt strin
 	}
 	chatMsgs = append(chatMsgs, llm.ChatMessage{Role: "user", Content: prompt})
 
-	resp, err := provider.Chat(ctx, &llm.ChatRequest{
-		SystemPrompt: systemPrompt,
-		Messages:     chatMsgs,
-		MaxTokens:    4096,
+	resp, err := ai.NewRunner().Chat(ctx, ai.TaskRequest{
+		Type:          taskType,
+		PromptVersion: "spec-assist.v1",
+		SystemPrompt:  systemPrompt,
+		Messages:      chatMsgs,
+		MaxTokens:     4096,
 	})
 	if err != nil {
 		return "", "", fmt.Errorf("LLM request failed: %w", err)

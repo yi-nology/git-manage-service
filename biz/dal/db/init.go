@@ -52,17 +52,16 @@ func Init() {
 		log.Fatal("failed to connect database: ", err)
 	}
 
-	err = DB.AutoMigrate(&po.Repo{}, &po.SyncTask{}, &po.SyncRun{}, &po.AuditLog{}, &po.SystemConfig{}, &po.CommitStat{}, &po.NotificationChannel{}, &po.NotificationEventTemplate{}, &po.SSHKey{}, &po.BackupRecord{}, &po.Credential{}, &po.LintRule{}, &po.CommitAnalysis{}, &po.CommitPattern{}, &po.SyncRecommendation{}, &po.ProviderConfig{}, &po.ChangeRequest{}, &po.WebhookEvent{}, &po.WebhookRule{}, &po.RepoProviderBinding{}, &po.ReviewTask{}, &po.ReviewFinding{}, &po.ReviewComment{}, &po.MergeCheckResult{}, &po.ReviewRepoConfig{}, &po.LLMProvider{}, &po.BranchRuleSet{}, &po.BranchRuleOverride{}, &po.ReviewRule{}, &po.MaintenanceRecord{}, &po.AuthorIdentity{})
+	err = DB.AutoMigrate(&po.SchemaMigration{}, &po.Repo{}, &po.SyncTask{}, &po.SyncRun{}, &po.AuditLog{}, &po.SystemConfig{}, &po.CommitStat{}, &po.NotificationChannel{}, &po.NotificationEventTemplate{}, &po.SSHKey{}, &po.BackupRecord{}, &po.Credential{}, &po.LintRule{}, &po.CommitAnalysis{}, &po.CommitPattern{}, &po.SyncRecommendation{}, &po.ProviderConfig{}, &po.ChangeRequest{}, &po.WebhookEvent{}, &po.WebhookRule{}, &po.RepoProviderBinding{}, &po.ReviewTask{}, &po.ReviewFinding{}, &po.ReviewComment{}, &po.MergeCheckResult{}, &po.ReviewRepoConfig{}, &po.LLMProvider{}, &po.BranchRuleSet{}, &po.BranchRuleOverride{}, &po.ReviewRule{}, &po.MaintenanceRecord{}, &po.AuthorIdentity{}, &po.AIInvocation{})
 	if err != nil {
 		log.Fatal("failed to migrate database: ", err)
 	}
 }
 
 func InitBindingMigration() {
-	if !DB.Migrator().HasTable(&po.RepoProviderBinding{}) {
-		return
+	if err := RunMigrations(); err != nil {
+		log.Fatal("failed to run database migrations: ", err)
 	}
-	MigrateRepoProviderBindings()
 }
 
 func InitLintRules() {

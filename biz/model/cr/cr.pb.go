@@ -30,21 +30,21 @@ type CRInfo struct {
 	unknownFields protoimpl.UnknownFields
 
 	Id               uint64   `protobuf:"varint,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
-	RepoKey          string   `protobuf:"bytes,2,opt,name=repo_key,json=repoKey,proto3" form:"repo_key" json:"repo_key,omitempty" query:"repo_key"`
-	CrNumber         int32    `protobuf:"varint,3,opt,name=cr_number,json=crNumber,proto3" form:"cr_number" json:"cr_number,omitempty" query:"cr_number"`
+	RepoKey          string   `protobuf:"bytes,2,opt,name=repo_key,json=repoKey,proto3" form:"repo_key" json:"repoKey,omitempty" query:"repo_key"`
+	CrNumber         int32    `protobuf:"varint,3,opt,name=cr_number,json=crNumber,proto3" form:"cr_number" json:"crNumber,omitempty" query:"cr_number"`
 	Title            string   `protobuf:"bytes,4,opt,name=title,proto3" form:"title" json:"title,omitempty" query:"title"`
 	Description      string   `protobuf:"bytes,5,opt,name=description,proto3" form:"description" json:"description,omitempty" query:"description"`
-	SourceBranch     string   `protobuf:"bytes,6,opt,name=source_branch,json=sourceBranch,proto3" form:"source_branch" json:"source_branch,omitempty" query:"source_branch"`
-	TargetBranch     string   `protobuf:"bytes,7,opt,name=target_branch,json=targetBranch,proto3" form:"target_branch" json:"target_branch,omitempty" query:"target_branch"`
+	SourceBranch     string   `protobuf:"bytes,6,opt,name=source_branch,json=sourceBranch,proto3" form:"source_branch" json:"sourceBranch,omitempty" query:"source_branch"`
+	TargetBranch     string   `protobuf:"bytes,7,opt,name=target_branch,json=targetBranch,proto3" form:"target_branch" json:"targetBranch,omitempty" query:"target_branch"`
 	State            string   `protobuf:"bytes,8,opt,name=state,proto3" form:"state" json:"state,omitempty" query:"state"`
 	Labels           []string `protobuf:"bytes,9,rep,name=labels,proto3" form:"labels" json:"labels,omitempty" query:"labels"`
 	Url              string   `protobuf:"bytes,10,opt,name=url,proto3" form:"url" json:"url,omitempty" query:"url"`
 	Author           string   `protobuf:"bytes,11,opt,name=author,proto3" form:"author" json:"author,omitempty" query:"author"`
-	CreatedAt        string   `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"created_at,omitempty" query:"created_at"`
-	UpdatedAt        string   `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updated_at,omitempty" query:"updated_at"`
-	ProviderConfigId uint64   `protobuf:"varint,14,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"provider_config_id,omitempty" query:"provider_config_id"`
-	PlatformOwner    string   `protobuf:"bytes,15,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platform_owner,omitempty" query:"platform_owner"`
-	PlatformRepo     string   `protobuf:"bytes,16,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platform_repo,omitempty" query:"platform_repo"`
+	CreatedAt        string   `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"createdAt,omitempty" query:"created_at"`
+	UpdatedAt        string   `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updatedAt,omitempty" query:"updated_at"`
+	ProviderConfigId uint64   `protobuf:"varint,14,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"providerConfigId,omitempty" query:"provider_config_id"`
+	PlatformOwner    string   `protobuf:"bytes,15,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platformOwner,omitempty" query:"platform_owner"`
+	PlatformRepo     string   `protobuf:"bytes,16,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platformRepo,omitempty" query:"platform_repo"`
 }
 
 func (x *CRInfo) Reset() {
@@ -291,8 +291,8 @@ type GetCRRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey  string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repo_key,omitempty" query:"repo_key"`
-	CrNumber int32  `protobuf:"varint,2,opt,name=cr_number,json=crNumber,proto3" json:"cr_number,omitempty" query:"cr_number"`
+	RepoKey  string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repoKey,omitempty" query:"repo_key"`
+	CrNumber int32  `protobuf:"varint,2,opt,name=cr_number,json=crNumber,proto3" json:"crNumber,omitempty" query:"cr_number"`
 }
 
 func (x *GetCRRequest) Reset() {
@@ -346,12 +346,12 @@ type ListCRsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey      string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repo_key,omitempty" query:"repo_key"`
+	RepoKey      string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repoKey,omitempty" query:"repo_key"`
 	State        string `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty" query:"state"`
-	SourceBranch string `protobuf:"bytes,3,opt,name=source_branch,json=sourceBranch,proto3" json:"source_branch,omitempty" query:"source_branch"`
-	TargetBranch string `protobuf:"bytes,4,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty" query:"target_branch"`
+	SourceBranch string `protobuf:"bytes,3,opt,name=source_branch,json=sourceBranch,proto3" json:"sourceBranch,omitempty" query:"source_branch"`
+	TargetBranch string `protobuf:"bytes,4,opt,name=target_branch,json=targetBranch,proto3" json:"targetBranch,omitempty" query:"target_branch"`
 	Page         int32  `protobuf:"varint,5,opt,name=page,proto3" json:"page,omitempty" query:"page"`
-	PageSize     int32  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty" query:"page_size"`
+	PageSize     int32  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"pageSize,omitempty" query:"page_size"`
 }
 
 func (x *ListCRsRequest) Reset() {
@@ -622,7 +622,7 @@ type DetectCRRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RepoKey string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repo_key,omitempty" query:"repo_key"`
+	RepoKey string `protobuf:"bytes,1,opt,name=repo_key,json=repoKey,proto3" json:"repoKey,omitempty" query:"repo_key"`
 }
 
 func (x *DetectCRRequest) Reset() {
@@ -670,9 +670,9 @@ type DetectCRResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	Base             *common.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
-	ProviderConfigId uint64               `protobuf:"varint,2,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"provider_config_id,omitempty" query:"provider_config_id"`
-	PlatformOwner    string               `protobuf:"bytes,3,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platform_owner,omitempty" query:"platform_owner"`
-	PlatformRepo     string               `protobuf:"bytes,4,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platform_repo,omitempty" query:"platform_repo"`
+	ProviderConfigId uint64               `protobuf:"varint,2,opt,name=provider_config_id,json=providerConfigId,proto3" form:"provider_config_id" json:"providerConfigId,omitempty" query:"provider_config_id"`
+	PlatformOwner    string               `protobuf:"bytes,3,opt,name=platform_owner,json=platformOwner,proto3" form:"platform_owner" json:"platformOwner,omitempty" query:"platform_owner"`
+	PlatformRepo     string               `protobuf:"bytes,4,opt,name=platform_repo,json=platformRepo,proto3" form:"platform_repo" json:"platformRepo,omitempty" query:"platform_repo"`
 }
 
 func (x *DetectCRResponse) Reset() {
@@ -740,12 +740,12 @@ type ListCRsByProviderRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ProviderId uint64 `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty" query:"provider_id"`
+	ProviderId uint64 `protobuf:"varint,1,opt,name=provider_id,json=providerId,proto3" json:"providerId,omitempty" query:"provider_id"`
 	Owner      string `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty" query:"owner"`
 	Repo       string `protobuf:"bytes,3,opt,name=repo,proto3" json:"repo,omitempty" query:"repo"`
 	State      string `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty" query:"state"`
 	Page       int32  `protobuf:"varint,5,opt,name=page,proto3" json:"page,omitempty" query:"page"`
-	PerPage    int32  `protobuf:"varint,6,opt,name=per_page,json=perPage,proto3" json:"per_page,omitempty" query:"per_page"`
+	PerPage    int32  `protobuf:"varint,6,opt,name=per_page,json=perPage,proto3" json:"perPage,omitempty" query:"per_page"`
 }
 
 func (x *ListCRsByProviderRequest) Reset() {
@@ -1223,7 +1223,7 @@ type SyncCRsResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	Base        *common.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
-	SyncedCount int32                `protobuf:"varint,2,opt,name=synced_count,json=syncedCount,proto3" form:"synced_count" json:"synced_count,omitempty" query:"synced_count"`
+	SyncedCount int32                `protobuf:"varint,2,opt,name=synced_count,json=syncedCount,proto3" form:"synced_count" json:"syncedCount,omitempty" query:"synced_count"`
 }
 
 func (x *SyncCRsResponse) Reset() {
