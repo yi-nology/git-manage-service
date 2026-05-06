@@ -434,7 +434,9 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 	if statusOut, statusErr := statusCmd.CombinedOutput(); statusErr == nil && strings.TrimSpace(string(statusOut)) != "" {
 		needCleanup = true
 		appendLog("检测到未提交变更，临时提交...")
-		exec.Command("git", "add", "-A").Run()
+		addCmd := exec.Command("git", "add", "-A")
+		addCmd.Dir = repoPath
+		addCmd.Run()
 		commitCmd := exec.Command("git", "commit", "-m", "chore: temp commit for repo slim")
 		commitCmd.Dir = repoPath
 		commitCmd.Run()
@@ -450,7 +452,9 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if needCleanup {
-			exec.Command("git", "reset", "--soft", "HEAD~1").Run()
+			resetCmd := exec.Command("git", "reset", "--soft", "HEAD~1")
+			resetCmd.Dir = repoPath
+			resetCmd.Run()
 		}
 		return fmt.Errorf("filter-branch failed: %w, output: %s", err, string(output))
 	}
@@ -458,7 +462,9 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 
 	if needCleanup {
 		appendLog("撤销临时提交...")
-		exec.Command("git", "reset", "--soft", "HEAD~1").Run()
+		resetCmd := exec.Command("git", "reset", "--soft", "HEAD~1")
+		resetCmd.Dir = repoPath
+		resetCmd.Run()
 	}
 	appendLog("更新指向旧 commit 的 tags...")
 	cmd = exec.Command("git", "tag", "-l")
@@ -489,7 +495,9 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 			}
 		}
 		if needsUpdate {
-			exec.Command("git", "tag", "-f", tag, "HEAD").Run()
+			tagCmd := exec.Command("git", "tag", "-f", tag, "HEAD")
+			tagCmd.Dir = repoPath
+			tagCmd.Run()
 			appendLog("更新 tag: " + tag)
 		}
 	}
@@ -499,13 +507,19 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 	refsOutput, _ := cmd.CombinedOutput()
 	for _, ref := range strings.Split(strings.TrimSpace(string(refsOutput)), "\n") {
 		if ref != "" {
-			exec.Command("git", "update-ref", "-d", ref).Run()
+			delCmd := exec.Command("git", "update-ref", "-d", ref)
+			delCmd.Dir = repoPath
+			delCmd.Run()
 		}
 	}
 	appendLog("清理 reflog...")
-	exec.Command("git", "reflog", "expire", "--expire=now", "--all").Run()
+	cmd = exec.Command("git", "reflog", "expire", "--expire=now", "--all")
+	cmd.Dir = repoPath
+	if reflogOut, reflogErr := cmd.CombinedOutput(); reflogErr != nil {
+		appendLog("reflog expire 警告: " + string(reflogOut))
+	}
 	appendLog("执行 gc --prune=now ...")
-	cmd = exec.Command("git", "gc", "--prune=now", "--aggressive")
+	cmd = exec.Command("git", "gc", "--prune=now", "--force")
 	cmd.Dir = repoPath
 	gcOutput, gcErr := cmd.CombinedOutput()
 	if gcErr != nil {
@@ -513,11 +527,126 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 	} else {
 		appendLog("gc 完成")
 	}
+	appendLog("执行 prune 清理不可达对象...")
+	cmd = exec.Command("git", "prune", "--expire=now")
+	cmd.Dir = repoPath
+	if pruneOut, pruneErr := cmd.CombinedOutput(); pruneErr != nil {
+		appendLog("prune 警告: " + string(pruneOut))
+	} else {
+		appendLog("prune 完成")
+	}
+
+	appendLog("验证清理结果...")
+	if stillExist := s.verifyPathsRemoved(repoPath, paths); len(stillExist) > 0 {
+		appendLog("检测到残留文件，执行二次清理: " + strings.Join(stillExist, ", "))
+		reflogRetry := exec.Command("git", "reflog", "expire", "--expire=now", "--all")
+		reflogRetry.Dir = repoPath
+		reflogRetry.Run()
+		gcRetry := exec.Command("git", "gc", "--prune=now", "--force")
+		gcRetry.Dir = repoPath
+		gcRetry.Run()
+		pruneRetry := exec.Command("git", "prune", "--expire=now")
+		pruneRetry.Dir = repoPath
+		pruneRetry.Run()
+		if retryExist := s.verifyPathsRemoved(repoPath, paths); len(retryExist) > 0 {
+			appendLog("警告: 以下文件仍在对象库中: " + strings.Join(retryExist, ", "))
+		} else {
+			appendLog("二次清理成功")
+		}
+	} else {
+		appendLog("验证通过，目标文件已从历史中移除")
+	}
+
 	afterSnap := s.TakeSnapshot(repoPath)
 	afterJSON, _ := json.Marshal(afterSnap)
 	dao.UpdateStatus(taskID, "success", "", string(afterJSON))
 	appendLog("仓库瘦身完成！")
 	return nil
+}
+
+func (s *MaintenanceService) verifyPathsRemoved(repoPath string, paths []string) []string {
+	var stillExist []string
+	batchCmd := exec.Command("git", "cat-file", "--batch-check", "--batch-all-objects")
+	batchCmd.Dir = repoPath
+	batchOutput, err := batchCmd.CombinedOutput()
+	if err != nil {
+		return stillExist
+	}
+	blobSizes := make(map[string]int64)
+	for _, line := range strings.Split(string(batchOutput), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && fields[1] == "blob" {
+			if size, err := strconv.ParseInt(fields[2], 10, 64); err == nil {
+				blobSizes[fields[0]] = size
+			}
+		}
+	}
+	revCmd := exec.Command("git", "rev-list", "--objects", "--all")
+	revCmd.Dir = repoPath
+	revOutput, err := revCmd.CombinedOutput()
+	if err != nil {
+		return stillExist
+	}
+	for _, line := range strings.Split(string(revOutput), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 2 {
+			if _, ok := blobSizes[fields[0]]; ok {
+				for _, p := range paths {
+					if fields[1] == p {
+						stillExist = append(stillExist, p)
+						break
+					}
+				}
+			}
+		}
+	}
+	reflogCmd := exec.Command("git", "reflog", "--format=%H")
+	reflogCmd.Dir = repoPath
+	reflogOutput, err := reflogCmd.CombinedOutput()
+	if err != nil || strings.TrimSpace(string(reflogOutput)) == "" {
+		return stillExist
+	}
+	for _, commitSHA := range strings.Split(strings.TrimSpace(string(reflogOutput)), "\n") {
+		commitSHA = strings.TrimSpace(commitSHA)
+		if commitSHA == "" {
+			continue
+		}
+		treeCmd := exec.Command("git", "ls-tree", "-r", commitSHA)
+		treeCmd.Dir = repoPath
+		treeOutput, err := treeCmd.CombinedOutput()
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(treeOutput), "\n") {
+			parts := strings.SplitN(line, "\t", 2)
+			if len(parts) < 2 {
+				continue
+			}
+			meta := strings.Fields(parts[0])
+			if len(meta) < 3 {
+				continue
+			}
+			blobSHA := meta[2]
+			filePath := parts[1]
+			if _, ok := blobSizes[blobSHA]; ok {
+				for _, p := range paths {
+					if filePath == p {
+						stillExist = append(stillExist, p)
+						break
+					}
+				}
+			}
+		}
+	}
+	seen := make(map[string]bool)
+	var unique []string
+	for _, p := range stillExist {
+		if !seen[p] {
+			seen[p] = true
+			unique = append(unique, p)
+		}
+	}
+	return unique
 }
 
 func (s *MaintenanceService) GarbageCollect(repoPath string, taskID string) error {
