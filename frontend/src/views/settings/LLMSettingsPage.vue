@@ -232,7 +232,7 @@ async function handleFetchOllamaModels() {
     if (ollamaModels.value.length === 0) {
       ElMessage.warning('未发现已安装的模型')
     } else if (!form.value.model && ollamaModels.value.length > 0) {
-      form.value.model = ollamaModels.value[0]
+      form.value.model = ollamaModels.value[0]!
     }
   } catch (e: any) {
     ElMessage.error('获取 Ollama 模型失败: ' + (e?.message || ''))

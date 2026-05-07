@@ -12,7 +12,7 @@ import {
   slimByPrefix,
   forcePushRemotes,
 } from '@/api/modules/maintenance'
-import type { RepoHealthReport, LargeFileEntry, MaintenanceRecordDTO, MaintenanceRecordListResponse, MaintenanceAIAnalysisResponse, FileAIRecommendation, PrefixSlimPreview, PrefixFileEntry } from '@/api/modules/maintenance'
+import type { RepoHealthReport, LargeFileEntry, MaintenanceRecordDTO, MaintenanceRecordListResponse, MaintenanceAIAnalysisResponse, FileAIRecommendation, PrefixSlimPreview } from '@/api/modules/maintenance'
 
 export function useMaintenance(repoKey: string) {
   const healthLoading = ref(false)

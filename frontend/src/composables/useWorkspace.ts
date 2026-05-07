@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import {
   getWorkspaceStatus,
   getWorkspaceDiff,
@@ -11,8 +11,6 @@ import {
   aiResolveConflict,
   type WorkspaceStatus,
   type WorkspaceDiff,
-  type ConflictDetail,
-  type AIResolvedFile,
 } from '@/api/modules/workspace'
 import { ElMessage } from 'element-plus'
 

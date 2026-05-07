@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 withDefaults(defineProps<{
-  variant?: 'primary' | 'green' | 'amber' | 'danger' | 'outline'
+  variant?: 'primary' | 'green' | 'amber' | 'danger' | 'outline' | 'ai'
   icon?: any
   disabled?: boolean
   small?: boolean

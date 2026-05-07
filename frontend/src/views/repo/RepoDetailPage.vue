@@ -426,18 +426,7 @@ function handleNavSelect(key: string) {
    }
  }
 
-function formatRepoAIResponse(summary: string, suggestions: string[] = [], riskLevel?: string) {
-  const lines = [summary]
-  if (riskLevel) {
-    lines.push(``, `风险等级：${riskLevel}`)
-  }
-  if (suggestions.length > 0) {
-    lines.push(``, `建议：`, ...suggestions.map((item, index) => `${index + 1}. ${item}`))
-  }
-  return lines.join('\n')
-}
-
- async function handleAISummary(message: string) {
+async function handleAISummary(message: string) {
    aiLoading.value = true
    try {
      let workspaceStatus: any = null
@@ -469,7 +458,7 @@ function formatRepoAIResponse(summary: string, suggestions: string[] = [], riskL
 
      let commitCount = 0
      try {
-       const commitStats = await getStatsCommits(repoKey) as any[]
+        const commitStats = await getStatsCommits(repoKey) as unknown as any[]
        commitCount = commitStats?.length || versionList.value?.length || 0
      } catch (_e) { /* ignore */ }
 

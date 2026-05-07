@@ -24,7 +24,7 @@ export function useAuthorIdentity() {
   async function loadIdentities() {
     loading.value = true
     try {
-      identities.value = (await listIdentities()) as AuthorIdentityDTO[] || []
+      identities.value = (await listIdentities()) as unknown as AuthorIdentityDTO[] || []
     } catch { identities.value = [] }
     finally { loading.value = false }
   }
@@ -109,7 +109,7 @@ export function useAuthorFix(repoKey: string) {
   async function loadRepoConfig() {
     configLoading.value = true
     try {
-      repoConfig.value = (await getRepoAuthorConfig(repoKey)) as RepoAuthorConfigDTO || null
+      repoConfig.value = (await getRepoAuthorConfig(repoKey)) as unknown as RepoAuthorConfigDTO || null
     } catch { repoConfig.value = null }
     finally { configLoading.value = false }
   }

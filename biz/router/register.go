@@ -14,6 +14,7 @@ import (
 	handler_review "github.com/yi-nology/git-manage-service/biz/handler/review"
 	handler_settings "github.com/yi-nology/git-manage-service/biz/handler/settings"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
+	"github.com/yi-nology/git-manage-service/biz/router/ai"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"
 	author "github.com/yi-nology/git-manage-service/biz/router/author"
 	"github.com/yi-nology/git-manage-service/biz/router/binding"
@@ -72,6 +73,7 @@ func GeneratedRegister(h *server.Hertz) {
 
 	settings.Register(h)
 	h.GET("/api/v1/settings/ollama-models", handler_settings.FetchOllamaModels)
+	ai.Register(h)
 	webhook_event.Register(h)
 	provider.Register(h)
 	cr.Register(h)

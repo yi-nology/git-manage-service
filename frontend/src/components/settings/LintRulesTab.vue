@@ -99,8 +99,8 @@ const ruleForm = reactive({
   id: '',
   name: '',
   description: '',
-  category: 'custom',
-  severity: 'warning',
+  category: 'custom' as const,
+  severity: 'warning' as const,
   pattern: '',
   enabled: true,
   priority: 50,
@@ -111,9 +111,9 @@ function categoryLabel(c: string) {
   return m[c] || c
 }
 
-function categoryTagType(c: string) {
-  const m: Record<string, string> = { syntax: '', best_practice: 'success', custom: 'info', required: 'danger', style: 'warning' }
-  return m[c] || ''
+function categoryTagType(c: string): 'primary' | 'danger' | 'success' | 'info' | 'warning' | undefined {
+  const m: Record<string, 'primary' | 'danger' | 'success' | 'info' | 'warning'> = { syntax: 'primary', best_practice: 'success', custom: 'info', required: 'danger', style: 'warning' }
+  return m[c]
 }
 
 function severityLabel(s: string) {
@@ -121,9 +121,9 @@ function severityLabel(s: string) {
   return m[s] || s
 }
 
-function severityTagType(s: string) {
-  const m: Record<string, string> = { error: 'danger', warning: 'warning', info: 'info' }
-  return m[s] || ''
+function severityTagType(s: string): 'primary' | 'danger' | 'success' | 'info' | 'warning' | undefined {
+  const m: Record<string, 'primary' | 'danger' | 'success' | 'info' | 'warning'> = { error: 'danger', warning: 'warning', info: 'info' }
+  return m[s]
 }
 
 async function loadLintRules() {

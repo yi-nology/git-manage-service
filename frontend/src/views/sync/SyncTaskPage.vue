@@ -498,20 +498,20 @@ function formatSyncDiagnosis(rootCause: string, evidence: string[] = [], actions
    }
 
    failedRuns.sort((a, b) => new Date(b.start_time || b.created_at).getTime() - new Date(a.start_time || a.created_at).getTime())
-   const failedRun = failedRuns[0]
-   aiLoading.value = true
-   try {
-     const response = await aiApi.diagnoseSyncFailure({
-       repoKey,
-       logs: failedRun?.details || '',
-       stderr: failedRun?.error_message || '',
-       currentBranch: failedRun?.task?.source_branch || '',
-       trackingBranch: failedRun?.task ? `${failedRun.task.target_remote}/${failedRun.task.target_branch}` : '',
-       recentActions: [
-         `task=${failedRun.task_key}`,
-         `trigger=${failedRun.trigger_source}`,
-         `status=${failedRun.status}`,
-       ],
+    const failedRun = failedRuns[0]!
+    aiLoading.value = true
+    try {
+      const response = await aiApi.diagnoseSyncFailure({
+        repoKey,
+        logs: failedRun.details || '',
+        stderr: failedRun.error_message || '',
+        currentBranch: failedRun.task?.source_branch || '',
+        trackingBranch: failedRun.task ? `${failedRun.task.target_remote}/${failedRun.task.target_branch}` : '',
+        recentActions: [
+          `task=${failedRun.task_key}`,
+          `trigger=${failedRun.trigger_source}`,
+          `status=${failedRun.status}`,
+        ],
        userInstruction: message,
      })
 

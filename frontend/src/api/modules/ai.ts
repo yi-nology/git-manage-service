@@ -125,53 +125,53 @@ export interface WebhookFailureRequest {
 
  export const aiApi = {
    diagnoseSyncFailure: async (data: SyncFailureRequest) =>
-     await request.post<any, AIDiagnosisResponse>('/api/v1/ai/sync/failure', data),
+      await request.post<any, AIDiagnosisResponse>('/ai/sync/failure', data),
 
-   generateRepoSummary: async (data: RepoSummaryRequest) =>
-     await request.post<any, AIAdviceResponse>('/api/v1/ai/repo/summary', data),
+    generateRepoSummary: async (data: RepoSummaryRequest) =>
+      await request.post<any, AIAdviceResponse>('/ai/repo/summary', data),
 
-   generateCommitMessage: async (data: CommitMessageRequest) =>
-     await request.post<any, AIDraftResponse>('/api/v1/ai/commit/message', data),
+    generateCommitMessage: async (data: CommitMessageRequest) =>
+      await request.post<any, AIDraftResponse>('/ai/commit/message', data),
 
-   codeReview: async (data: CodeReviewRequest) =>
-     await request.post<any, AIReviewResponse>('/api/v1/ai/review', data),
+    codeReview: async (data: CodeReviewRequest) =>
+      await request.post<any, AIReviewResponse>('/ai/review', data),
 
-   reviewReplyDraft: async (data: ReviewReplyRequest) =>
-      await request.post<any, AIDraftResponse>('/api/v1/ai/review/reply', data),
+    reviewReplyDraft: async (data: ReviewReplyRequest) =>
+       await request.post<any, AIDraftResponse>('/ai/review/reply', data),
 
-    reviewSummary: async (data: ReviewSummaryRequest) =>
-      await request.post<any, AIReviewResponse>('/api/v1/ai/review/summary', data),
+     reviewSummary: async (data: ReviewSummaryRequest) =>
+       await request.post<any, AIReviewResponse>('/ai/review/summary', data),
 
-    resolveConflict: async (data: ConflictResolveRequest) =>
-     await request.post<any, AIDraftResponse>('/api/v1/ai/conflict/resolve', data),
+     resolveConflict: async (data: ConflictResolveRequest) =>
+      await request.post<any, AIDraftResponse>('/ai/conflict/resolve', data),
 
-   explainConflict: async (data: ConflictResolveRequest) =>
-     await request.post<any, AIAdviceResponse>('/api/v1/ai/conflict/explain', data),
+    explainConflict: async (data: ConflictResolveRequest) =>
+      await request.post<any, AIAdviceResponse>('/ai/conflict/explain', data),
 
-   generateBranchRule: async (data: BranchRuleRequest) =>
-     await request.post<any, AIDraftResponse>('/api/v1/ai/branch/rule', data),
+    generateBranchRule: async (data: BranchRuleRequest) =>
+      await request.post<any, AIDraftResponse>('/ai/branch/rule', data),
 
-   generateSpecTemplate: async (data: SpecTemplateRequest) =>
-     await request.post<any, AIDraftResponse>('/api/v1/ai/spec/template', data),
+    generateSpecTemplate: async (data: SpecTemplateRequest) =>
+      await request.post<any, AIDraftResponse>('/ai/spec/template', data),
 
-   rewriteSpecSection: async (data: SpecRewriteRequest) =>
-     await request.post<any, AIDraftResponse>('/api/v1/ai/spec/rewrite', data),
+    rewriteSpecSection: async (data: SpecRewriteRequest) =>
+      await request.post<any, AIDraftResponse>('/ai/spec/rewrite', data),
 
-   recommendProviderBinding: async (data: ProviderBindingRequest) =>
-     await request.post<any, AIAdviceResponse>('/api/v1/ai/provider/binding', data),
+    recommendProviderBinding: async (data: ProviderBindingRequest) =>
+      await request.post<any, AIAdviceResponse>('/ai/provider/binding', data),
 
-   analyzePatchRisk: async (data: PatchAnalysisRequest) =>
-     await request.post<any, AIDiagnosisResponse>('/api/v1/ai/patch/analyze', data),
+    analyzePatchRisk: async (data: PatchAnalysisRequest) =>
+      await request.post<any, AIDiagnosisResponse>('/ai/patch/analyze', data),
 
-   summarizeAuditLogs: async (data: AuditSummaryRequest) =>
-     await request.post<any, AIAdviceResponse>('/api/v1/ai/audit/summary', data),
+    summarizeAuditLogs: async (data: AuditSummaryRequest) =>
+      await request.post<any, AIAdviceResponse>('/ai/audit/summary', data),
 
-   analyzeStatsInsight: async (data: StatsInsightRequest) =>
-     await request.post<any, AIAdviceResponse>('/api/v1/ai/stats/insight', data),
+    analyzeStatsInsight: async (data: StatsInsightRequest) =>
+      await request.post<any, AIAdviceResponse>('/ai/stats/insight', data),
 
-    analyzeWebhookFailure: async (data: WebhookFailureRequest) =>
-      await request.post<any, AIDiagnosisResponse>('/api/v1/ai/webhook/failure', data),
+     analyzeWebhookFailure: async (data: WebhookFailureRequest) =>
+       await request.post<any, AIDiagnosisResponse>('/ai/webhook/failure', data),
 
-    submitFeedback: async (data: { invocationId: number; feedback: string }) =>
-      await request.post<any, { success: boolean }>('/api/v1/ai/feedback', data),
+     submitFeedback: async (data: { invocationId: number; feedback: string }) =>
+       await request.post<any, { success: boolean }>('/ai/feedback', data),
   }

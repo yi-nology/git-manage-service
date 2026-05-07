@@ -108,7 +108,7 @@ const emit = defineEmits<{
 
 const {
   aiMessages, aiInput, aiLoading, activeAction, aiMode,
-  pendingAgentContent, messagesRef, agentDiffText, agentDiffStats,
+  pendingAgentContent, agentDiffText, agentDiffStats,
   quickActions, renderMarkdown, sendAIMessage, handleQuickAction,
   clearMessages, acceptAgentChange, rejectAgentChange,
 } = useAIChat(() => props.content)

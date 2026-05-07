@@ -225,7 +225,7 @@ async function handleSaveDialog() {
     await formRef.value.validate()
   } catch { return }
   for (let i = 0; i < dialogForm.value.aliases.length; i++) {
-    const a = dialogForm.value.aliases[i]
+    const a = dialogForm.value.aliases[i]!
     if (!a.name.trim() || !a.email.trim()) {
       ElMessage.warning(`别名 #${i + 1} 的名称和邮箱不能为空`)
       return

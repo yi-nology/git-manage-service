@@ -42,6 +42,7 @@ export interface LintRule {
   enabled: boolean
   severity: 'error' | 'warning' | 'info'
   pattern?: string
+  priority?: number
 }
 
 export interface SaveRequest {

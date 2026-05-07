@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Refresh, Promotion, Edit, Delete } from '@element-plus/icons-vue'
 import { listChannels, createChannel, updateChannel, deleteChannel, testChannel } from '@/api/modules/notification'
@@ -177,7 +177,7 @@ const triggerEventLabels: Record<string, string> = {
   backup_failure: '备份失败'
 }
 
-function triggerEventTagType(event: string): string {
+function triggerEventTagType(event: string): 'primary' | 'danger' | 'success' | 'info' | 'warning' {
   if (event.includes('success')) return 'success'
   if (event.includes('failure') || event.includes('error') || event.includes('conflict')) return 'danger'
   if (event.includes('received') || event.includes('triggered')) return 'warning'

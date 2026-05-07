@@ -86,7 +86,7 @@ const quickForm = ref({
 
 watch(() => props.remoteNames, (names) => {
   if (names.length > 0 && !quickForm.value.targetRemote) {
-    quickForm.value.targetRemote = names[0]
+    quickForm.value.targetRemote = names[0]!
   }
 }, { immediate: true })
 
