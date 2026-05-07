@@ -297,10 +297,10 @@ service SettingsService {
     option (api.get) = "/api/v1/settings/branch-rules/validate";
   }
   rpc GetRemoteRepoBranchRules(GetRemoteRepoBranchRulesRequest) returns (RemoteRepoBranchRulesResponse) {
-    option (api.get) = "/api/v1/branch-rules/remote-config/:provider_id/:owner/:repo";
+    option (api.get) = "/api/v1/branch-rules/remote-config/:provider_id/:owner/*repo";
   }
   rpc UpdateRemoteRepoBranchRules(UpdateRemoteRepoBranchRulesRequest) returns (RemoteRepoBranchRulesResponse) {
-    option (api.put) = "/api/v1/branch-rules/remote-config/:provider_id/:owner/:repo";
+    option (api.put) = "/api/v1/branch-rules/remote-config/:provider_id/:owner/*repo";
   }
   rpc ListLLMPresets(ListLLMPresetsRequest) returns (LLMPresetsResponse) {
     option (api.get) = "/api/v1/settings/llm-providers/presets";

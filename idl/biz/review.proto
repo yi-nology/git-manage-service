@@ -227,10 +227,10 @@ service ReviewService {
   }
   // GetRemoteRepoConfig 获取远端仓库审查配置
   rpc GetRemoteRepoConfig(GetRemoteRepoConfigRequest) returns (RemoteRepoConfigResponse) {
-    option (api.get) = "/api/v1/review/remote-config/:provider_id/:owner/:repo";
+    option (api.get) = "/api/v1/review/remote-config/:provider_id/:owner/*repo";
   }
   // UpdateRemoteRepoConfig 更新远端仓库审查配置
   rpc UpdateRemoteRepoConfig(UpdateRemoteRepoConfigRequest) returns (RemoteRepoConfigResponse) {
-    option (api.put) = "/api/v1/review/remote-config/:provider_id/:owner/:repo";
+    option (api.put) = "/api/v1/review/remote-config/:provider_id/:owner/*repo";
   }
 }

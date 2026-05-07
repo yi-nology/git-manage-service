@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
@@ -199,7 +200,7 @@ func GetRemoteRepoConfig(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	owner := c.Param("owner")
-	repo := c.Param("repo")
+	repo := strings.TrimPrefix(c.Param("repo"), "/")
 	if owner == "" || repo == "" {
 		pkgresponse.BadRequest(c, "owner and repo are required")
 		return
@@ -219,7 +220,7 @@ func UpdateRemoteRepoConfig(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	owner := c.Param("owner")
-	repo := c.Param("repo")
+	repo := strings.TrimPrefix(c.Param("repo"), "/")
 	if owner == "" || repo == "" {
 		pkgresponse.BadRequest(c, "owner and repo are required")
 		return

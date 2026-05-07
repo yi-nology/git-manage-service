@@ -29,8 +29,8 @@ func Register(r *server.Hertz) {
 						_provider_id := _remote_config.Group("/:provider_id", _provider_idMw()...)
 						{
 							_owner := _provider_id.Group("/:owner", _ownerMw()...)
-							_owner.GET("/:repo", append(_getremoterepobranchrulesMw(), settings.GetRemoteRepoBranchRules)...)
-							_owner.PUT("/:repo", append(_updateremoterepobranchrulesMw(), settings.UpdateRemoteRepoBranchRules)...)
+							_owner.GET("/*repo", append(_getremoterepobranchrulesMw(), settings.GetRemoteRepoBranchRules)...)
+							_owner.PUT("/*repo", append(_updateremoterepobranchrulesMw(), settings.UpdateRemoteRepoBranchRules)...)
 						}
 					}
 				}

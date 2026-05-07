@@ -30,8 +30,8 @@ func Register(r *server.Hertz) {
 						_provider_id := _remote_config.Group("/:provider_id", _provider_idMw()...)
 						{
 							_owner := _provider_id.Group("/:owner", _ownerMw()...)
-							_owner.GET("/:repo", append(_getremoterepoconfigMw(), review.GetRemoteRepoConfig)...)
-							_owner.PUT("/:repo", append(_updateremoterepoconfigMw(), review.UpdateRemoteRepoConfig)...)
+							_owner.GET("/*repo", append(_getremoterepoconfigMw(), review.GetRemoteRepoConfig)...)
+							_owner.PUT("/*repo", append(_updateremoterepoconfigMw(), review.UpdateRemoteRepoConfig)...)
 						}
 					}
 				}
