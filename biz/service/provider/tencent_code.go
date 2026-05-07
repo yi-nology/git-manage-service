@@ -8,9 +8,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
+
+func encodeProjectPath(owner, repo string) string {
+	return url.PathEscape(owner + "/" + repo)
+}
 
 type tencentCodeProvider struct {
 	baseURL string
@@ -119,7 +124,7 @@ func (t *tencentCodeProvider) ListRepos(ctx context.Context, opts ListRepoOption
 }
 
 func (t *tencentCodeProvider) GetRepo(ctx context.Context, owner, repo string) (*PlatformRepo, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	var p struct {
 		ID            int    `json:"id"`
 		Name          string `json:"name"`
@@ -146,7 +151,7 @@ func (t *tencentCodeProvider) GetRepo(ctx context.Context, owner, repo string) (
 }
 
 func (t *tencentCodeProvider) CreateCR(ctx context.Context, opts CreateCROptions) (*ChangeRequest, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", opts.Owner, opts.Repo)
+	encoded := encodeProjectPath(opts.Owner, opts.Repo)
 	body := map[string]interface{}{
 		"source_branch": opts.SourceBranch, "target_branch": opts.TargetBranch,
 		"title": opts.Title, "description": opts.Description,
@@ -163,7 +168,7 @@ func (t *tencentCodeProvider) CreateCR(ctx context.Context, opts CreateCROptions
 }
 
 func (t *tencentCodeProvider) GetCR(ctx context.Context, owner, repo string, number int) (*ChangeRequest, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	var mr tcMR
 	if err := t.doRequest(ctx, "GET", fmt.Sprintf("/projects/%s/merge_requests/%d", encoded, number), nil, &mr); err != nil {
 		return nil, err
@@ -172,7 +177,7 @@ func (t *tencentCodeProvider) GetCR(ctx context.Context, owner, repo string, num
 }
 
 func (t *tencentCodeProvider) ListCRs(ctx context.Context, opts ListCROptions) ([]*ChangeRequest, int, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", opts.Owner, opts.Repo)
+	encoded := encodeProjectPath(opts.Owner, opts.Repo)
 	if opts.Page == 0 {
 		opts.Page = 1
 	}
@@ -201,7 +206,7 @@ func (t *tencentCodeProvider) ListCRs(ctx context.Context, opts ListCROptions) (
 }
 
 func (t *tencentCodeProvider) MergeCR(ctx context.Context, owner, repo string, number int, opts MergeCROptions) (*ChangeRequest, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	var existingMR tcMR
 	if err := t.doRequest(ctx, "GET", fmt.Sprintf("/projects/%s/merge_requests/%d", encoded, number), nil, &existingMR); err == nil {
 		if existingMR.MergeStatus != "" && existingMR.MergeStatus != "can_be_merged" && existingMR.MergeStatus != "checking" {
@@ -229,7 +234,7 @@ func (t *tencentCodeProvider) MergeCR(ctx context.Context, owner, repo string, n
 }
 
 func (t *tencentCodeProvider) CloseCR(ctx context.Context, owner, repo string, number int) (*ChangeRequest, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	body := map[string]interface{}{"state_event": "close"}
 	var mr tcMR
 	if err := t.doRequest(ctx, "PUT", fmt.Sprintf("/projects/%s/merge_requests/%d", encoded, number), body, &mr); err != nil {
@@ -239,7 +244,7 @@ func (t *tencentCodeProvider) CloseCR(ctx context.Context, owner, repo string, n
 }
 
 func (t *tencentCodeProvider) CreateWebhook(ctx context.Context, opts CreateWebhookOptions) (*PlatformWebhook, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", opts.Owner, opts.Repo)
+	encoded := encodeProjectPath(opts.Owner, opts.Repo)
 	body := map[string]interface{}{"url": opts.URL, "token": opts.Secret}
 	if len(opts.Events) > 0 {
 		em := map[string]bool{}
@@ -261,12 +266,12 @@ func (t *tencentCodeProvider) CreateWebhook(ctx context.Context, opts CreateWebh
 }
 
 func (t *tencentCodeProvider) DeleteWebhook(ctx context.Context, owner, repo string, webhookID int64) error {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	return t.doRequest(ctx, "DELETE", fmt.Sprintf("/projects/%s/hooks/%d", encoded, webhookID), nil, nil)
 }
 
 func (t *tencentCodeProvider) ListWebhooks(ctx context.Context, owner, repo string) ([]*PlatformWebhook, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	var whs []struct {
 		ID  int    `json:"id"`
 		URL string `json:"url"`
@@ -282,7 +287,7 @@ func (t *tencentCodeProvider) ListWebhooks(ctx context.Context, owner, repo stri
 }
 
 func (t *tencentCodeProvider) ListBranches(ctx context.Context, owner, repo string) ([]*PlatformBranch, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	var branches []struct {
 		Name string `json:"name"`
 	}
@@ -297,7 +302,7 @@ func (t *tencentCodeProvider) ListBranches(ctx context.Context, owner, repo stri
 }
 
 func (t *tencentCodeProvider) CreateBranch(ctx context.Context, owner, repo, branch, ref string) (*PlatformBranch, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	body := map[string]interface{}{
 		"branch": branch,
 		"ref":    ref,
@@ -312,12 +317,12 @@ func (t *tencentCodeProvider) CreateBranch(ctx context.Context, owner, repo, bra
 }
 
 func (t *tencentCodeProvider) DeleteBranch(ctx context.Context, owner, repo, branch string) error {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	return t.doRequest(ctx, "DELETE", fmt.Sprintf("/projects/%s/repository/branches/%s", encoded, branch), nil, nil)
 }
 
 func (t *tencentCodeProvider) GetCRDiff(ctx context.Context, owner, repo string, number int) (*MergeDiff, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	var changes struct {
 		Changes []struct {
 			OldPath     string `json:"old_path"`
@@ -355,7 +360,7 @@ func (t *tencentCodeProvider) GetCRFiles(ctx context.Context, owner, repo string
 }
 
 func (t *tencentCodeProvider) CreateNote(ctx context.Context, owner, repo string, number int, body string) (string, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	payload := map[string]interface{}{"body": body}
 	var resp struct {
 		ID int `json:"id"`
@@ -371,7 +376,7 @@ func (t *tencentCodeProvider) CreateDiscussion(ctx context.Context, owner, repo 
 }
 
 func (t *tencentCodeProvider) CreateCommitStatus(ctx context.Context, owner, repo, sha string, opts CommitStatusOptions) error {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	payload := map[string]interface{}{
 		"state":       opts.State,
 		"context":     opts.Context,
@@ -384,7 +389,7 @@ func (t *tencentCodeProvider) CreateCommitStatus(ctx context.Context, owner, rep
 }
 
 func (t *tencentCodeProvider) GetFileContent(ctx context.Context, owner, repo, path, ref string) (string, error) {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	params := ""
 	if ref != "" {
 		params = "?ref=" + ref
@@ -399,7 +404,7 @@ func (t *tencentCodeProvider) GetFileContent(ctx context.Context, owner, repo, p
 }
 
 func (t *tencentCodeProvider) UpdateCRLabels(ctx context.Context, owner, repo string, number int, labels []string) error {
-	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	encoded := encodeProjectPath(owner, repo)
 	body := map[string]interface{}{
 		"labels": strings.Join(labels, ","),
 	}
