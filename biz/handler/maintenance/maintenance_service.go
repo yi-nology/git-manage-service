@@ -619,6 +619,8 @@ func doForcePushAllRemotes(repoID uint, repoPath string, taskID string) []api.Fo
 
 		tm.AppendLog(taskID, fmt.Sprintf("推送 %s (%s) -> %s ...", remoteName, platform, remoteURL))
 
+		skipTLS := binding.ProviderConfig.SkipTLS
+
 		successCount := 0
 		var pushErr string
 
@@ -630,7 +632,7 @@ func doForcePushAllRemotes(repoID uint, repoPath string, taskID string) []api.Fo
 				continue
 			}
 
-			pushErrDetail := pushBranchToRemote(repoID, repoPath, remoteName, remoteURL, branch, hash, gitSvc)
+			pushErrDetail := pushBranchToRemote(repoID, repoPath, remoteName, remoteURL, branch, hash, gitSvc, skipTLS)
 			if pushErrDetail != "" {
 				pushErr = pushErrDetail
 				tm.AppendLog(taskID, fmt.Sprintf("  分支 %s 推送失败: %s", branch, pushErrDetail))
@@ -652,7 +654,7 @@ func doForcePushAllRemotes(repoID uint, repoPath string, taskID string) []api.Fo
 	return results
 }
 
-func pushBranchToRemote(repoID uint, repoPath, remoteName, remoteURL, branch, hash string, gitSvc *git.GitService) string {
+func pushBranchToRemote(repoID uint, repoPath, remoteName, remoteURL, branch, hash string, gitSvc *git.GitService, skipTLS bool) string {
 	repo, err := db.NewRepoDAO().FindByID(repoID)
 	if err != nil {
 		return fmt.Sprintf("获取仓库信息失败: %v", err)
@@ -687,7 +689,7 @@ func pushBranchToRemote(repoID uint, repoPath, remoteName, remoteURL, branch, ha
 			}
 		}
 		if authMethod != nil {
-			err := gitSvc.PushWithAuthMethod(repoPath, remoteURL, hash, branch, authMethod, pushOpts, nil)
+			err := gitSvc.PushWithAuthMethod(repoPath, remoteURL, hash, branch, authMethod, pushOpts, nil, skipTLS)
 			if err != nil {
 				return err.Error()
 			}
@@ -695,7 +697,7 @@ func pushBranchToRemote(repoID uint, repoPath, remoteName, remoteURL, branch, ha
 		}
 	}
 
-	err = gitSvc.Push(repoPath, remoteName, hash, branch, pushOpts, nil)
+	err = gitSvc.Push(repoPath, remoteName, hash, branch, pushOpts, nil, skipTLS)
 	if err != nil {
 		return err.Error()
 	}

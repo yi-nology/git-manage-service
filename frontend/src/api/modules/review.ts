@@ -127,3 +127,26 @@ export function getRemoteRepoConfig(providerId: number, owner: string, repo: str
 export function updateRemoteRepoConfig(providerId: number, owner: string, repo: string, data: Partial<ReviewRepoConfigDTO>) {
   return request.put<unknown, ReviewRepoConfigDTO>(`/review/remote-config/${providerId}/${owner}/${repo}`, data)
 }
+
+export function createReviewTaskByProvider(data: {
+  provider_config_id: number
+  owner: string
+  repo: string
+  mr_iid: string
+  commit_sha?: string
+  trigger_type?: string
+}) {
+  return request.post<unknown, ReviewTaskDTO>('/reviews/tasks/provider', data)
+}
+
+export function listReviewTasksByProvider(params: {
+  provider_id: number
+  mr_iid: string
+  page?: number
+  page_size?: number
+}) {
+  return request.get<unknown, {
+    tasks: ReviewTaskDTO[]
+    pagination: { total: number; page: number; page_size: number }
+  }>('/reviews/tasks/provider', { params })
+}

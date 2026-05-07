@@ -68,7 +68,7 @@ func (s *GitService) CreateTag(path, tagName, ref, message, authorName, authorEm
 }
 
 // PushTag 推送标签到远程
-func (s *GitService) PushTag(path, remoteName, tagName, authType, authKey, authSecret string) error {
+func (s *GitService) PushTag(path, remoteName, tagName, authType, authKey, authSecret string, skipTLS ...bool) error {
 	logger.Info("Pushing tag", logrus.Fields{
 		"path":   path,
 		"remote": remoteName,
@@ -97,10 +97,13 @@ func (s *GitService) PushTag(path, remoteName, tagName, authType, authKey, authS
 
 	refSpec := config.RefSpec(fmt.Sprintf("refs/tags/%s:refs/tags/%s", tagName, tagName))
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	err = r.Push(&git.PushOptions{
-		RemoteName: remoteName,
-		RefSpecs:   []config.RefSpec{refSpec},
-		Auth:       auth,
+		RemoteName:      remoteName,
+		RefSpecs:        []config.RefSpec{refSpec},
+		Auth:            auth,
+		InsecureSkipTLS: insecure,
 	})
 	if err == git.NoErrAlreadyUpToDate {
 		logger.Debug("Tag already up to date", logrus.Fields{"tag": tagName})
@@ -135,7 +138,7 @@ func (s *GitService) DeleteTag(path, tagName string) error {
 }
 
 // DeleteRemoteTag 删除远程标签
-func (s *GitService) DeleteRemoteTag(path, remoteName, tagName, authType, authKey, authSecret string) error {
+func (s *GitService) DeleteRemoteTag(path, remoteName, tagName, authType, authKey, authSecret string, skipTLS ...bool) error {
 	logger.Info("Deleting remote tag", logrus.Fields{
 		"path":   path,
 		"remote": remoteName,
@@ -158,11 +161,14 @@ func (s *GitService) DeleteRemoteTag(path, remoteName, tagName, authType, authKe
 		}
 	}
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	refSpec := config.RefSpec(fmt.Sprintf(":refs/tags/%s", tagName))
 	err = r.Push(&git.PushOptions{
-		RemoteName: remoteName,
-		RefSpecs:   []config.RefSpec{refSpec},
-		Auth:       auth,
+		RemoteName:      remoteName,
+		RefSpecs:        []config.RefSpec{refSpec},
+		Auth:            auth,
+		InsecureSkipTLS: insecure,
 	})
 	if err == git.NoErrAlreadyUpToDate {
 		return nil

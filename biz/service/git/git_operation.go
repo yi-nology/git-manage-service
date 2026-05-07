@@ -40,7 +40,7 @@ func (s *GitService) IsGitRepo(path string) bool {
 	return err == nil
 }
 
-func (s *GitService) Fetch(path, remote string, progress io.Writer) error {
+func (s *GitService) Fetch(path, remote string, progress io.Writer, skipTLS ...bool) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -55,6 +55,8 @@ func (s *GitService) Fetch(path, remote string, progress io.Writer) error {
 		}
 	}
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	fetchOptions := &git.FetchOptions{
 		RemoteName: remote,
 		Progress:   progress,
@@ -62,6 +64,7 @@ func (s *GitService) Fetch(path, remote string, progress io.Writer) error {
 			config.RefSpec("+refs/heads/*:refs/remotes/" + remote + "/*"),
 			config.RefSpec("+refs/tags/*:refs/tags/*"),
 		},
+		InsecureSkipTLS: insecure,
 	}
 	if auth != nil {
 		fetchOptions.Auth = auth
@@ -74,7 +77,7 @@ func (s *GitService) Fetch(path, remote string, progress io.Writer) error {
 	return err
 }
 
-func (s *GitService) FetchWithAuth(path, remoteURL, authType, authKey, authSecret string, progress io.Writer, extraArgs ...string) error {
+func (s *GitService) FetchWithAuth(path, remoteURL, authType, authKey, authSecret string, progress io.Writer, skipTLS bool, extraArgs ...string) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -91,9 +94,10 @@ func (s *GitService) FetchWithAuth(path, remoteURL, authType, authKey, authSecre
 	})
 
 	err = remote.Fetch(&git.FetchOptions{
-		Auth:       auth,
-		RemoteName: "origin",
-		Progress:   progress,
+		Auth:            auth,
+		RemoteName:      "origin",
+		Progress:        progress,
+		InsecureSkipTLS: skipTLS,
 	})
 	if err == git.NoErrAlreadyUpToDate {
 		return nil
@@ -101,7 +105,7 @@ func (s *GitService) FetchWithAuth(path, remoteURL, authType, authKey, authSecre
 	return err
 }
 
-func (s *GitService) FetchWithAuthMethod(path, remoteURL string, auth transport.AuthMethod, progress io.Writer, extraArgs ...string) error {
+func (s *GitService) FetchWithAuthMethod(path, remoteURL string, auth transport.AuthMethod, progress io.Writer, skipTLS bool, extraArgs ...string) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -113,9 +117,10 @@ func (s *GitService) FetchWithAuthMethod(path, remoteURL string, auth transport.
 	})
 
 	err = remote.Fetch(&git.FetchOptions{
-		Auth:       auth,
-		RemoteName: "origin",
-		Progress:   progress,
+		Auth:            auth,
+		RemoteName:      "origin",
+		Progress:        progress,
+		InsecureSkipTLS: skipTLS,
 	})
 	if err == git.NoErrAlreadyUpToDate {
 		return nil
@@ -123,11 +128,11 @@ func (s *GitService) FetchWithAuthMethod(path, remoteURL string, auth transport.
 	return err
 }
 
-func (s *GitService) Clone(remoteURL, localPath, authType, authKey, authSecret string) error {
-	return s.CloneWithProgress(remoteURL, localPath, authType, authKey, authSecret, nil)
+func (s *GitService) Clone(remoteURL, localPath, authType, authKey, authSecret string, skipTLS ...bool) error {
+	return s.CloneWithProgress(remoteURL, localPath, authType, authKey, authSecret, nil, skipTLS...)
 }
 
-func (s *GitService) CloneWithProgress(remoteURL, localPath, authType, authKey, authSecret string, progressChan chan string) error {
+func (s *GitService) CloneWithProgress(remoteURL, localPath, authType, authKey, authSecret string, progressChan chan string, skipTLS ...bool) error {
 	auth, err := s.getAuth(authType, authKey, authSecret)
 	if err != nil {
 		return err
@@ -141,16 +146,19 @@ func (s *GitService) CloneWithProgress(remoteURL, localPath, authType, authKey, 
 	if progressChan != nil {
 		progress = &channelWriter{ch: progressChan}
 	}
+
+	insecure := len(skipTLS) > 0 && skipTLS[0]
 
 	_, err = git.PlainClone(localPath, false, &git.CloneOptions{
-		URL:      remoteURL,
-		Auth:     auth,
-		Progress: progress,
+		URL:             remoteURL,
+		Auth:            auth,
+		Progress:        progress,
+		InsecureSkipTLS: insecure,
 	})
 	return err
 }
 
-func (s *GitService) CloneWithAuthMethod(remoteURL, localPath string, auth transport.AuthMethod, progressChan chan string) error {
+func (s *GitService) CloneWithAuthMethod(remoteURL, localPath string, auth transport.AuthMethod, progressChan chan string, skipTLS ...bool) error {
 	if auth == nil {
 		auth = s.detectSSHAuth(remoteURL)
 	}
@@ -160,10 +168,13 @@ func (s *GitService) CloneWithAuthMethod(remoteURL, localPath string, auth trans
 		progress = &channelWriter{ch: progressChan}
 	}
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	_, err := git.PlainClone(localPath, false, &git.CloneOptions{
-		URL:      remoteURL,
-		Auth:     auth,
-		Progress: progress,
+		URL:             remoteURL,
+		Auth:            auth,
+		Progress:        progress,
+		InsecureSkipTLS: insecure,
 	})
 	return err
 }

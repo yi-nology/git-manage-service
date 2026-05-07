@@ -246,3 +246,75 @@ func parseID(s string) (uint, error) {
 	}
 	return uint(id), nil
 }
+
+func CreateTaskByProvider(ctx context.Context, c *app.RequestContext) {
+	var req struct {
+		ProviderConfigID uint   `json:"provider_config_id"`
+		Owner            string `json:"owner"`
+		Repo             string `json:"repo"`
+		MRIID            string `json:"mr_iid"`
+		CommitSHA        string `json:"commit_sha"`
+		TriggerType      string `json:"trigger_type"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+	if req.ProviderConfigID == 0 || req.MRIID == "" {
+		pkgresponse.BadRequest(c, "provider_config_id and mr_iid are required")
+		return
+	}
+	if req.TriggerType == "" {
+		req.TriggerType = "manual"
+	}
+	task, err := codereview.CreateTaskByProvider(ctx, req.ProviderConfigID, req.Owner, req.Repo, req.MRIID, req.CommitSHA, req.TriggerType)
+	if err != nil {
+		pkgresponse.InternalServerError(c, err.Error())
+		return
+	}
+	c.Set("audit_target", fmt.Sprintf("provider:%d", req.ProviderConfigID))
+	pkgresponse.Success(c, api.NewReviewTaskDTO(*task))
+}
+
+func ListTasksByProvider(ctx context.Context, c *app.RequestContext) {
+	providerID, err := parseID(c.Query("provider_id"))
+	if err != nil {
+		pkgresponse.BadRequest(c, "invalid provider_id")
+		return
+	}
+	mrIID := c.Query("mr_iid")
+	status := c.Query("status")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	tasks, total, err := db.NewReviewTaskDAO().FindByProviderConfigID(providerID, mrIID, page, pageSize)
+	if err != nil {
+		pkgresponse.InternalServerError(c, err.Error())
+		return
+	}
+
+	_ = status
+
+	dtos := make([]api.ReviewTaskDTO, 0, len(tasks))
+	for _, t := range tasks {
+		dto := api.NewReviewTaskDTO(t)
+		findingCount, _ := db.NewReviewFindingDAO().CountByTaskID(t.ID)
+		dto.FindingsCount = int(findingCount)
+		dtos = append(dtos, dto)
+	}
+
+	pkgresponse.Success(c, map[string]interface{}{
+		"tasks": dtos,
+		"pagination": map[string]interface{}{
+			"total":    total,
+			"page":     page,
+			"pageSize": pageSize,
+		},
+	})
+}

@@ -50,7 +50,8 @@
     </div>
 
     <div v-show="activeTab === 'cr'" class="tab-content">
-      <CRTab :active="activeTab === 'cr'" :provider-id="providerId" :repo-owner="repoOwner" :repo-name="repoName" />
+      <CRReviewDetail v-if="reviewTask" :task="reviewTask" @close="reviewTask = null" />
+      <CRTab v-else :active="activeTab === 'cr'" :provider-id="providerId" :repo-owner="repoOwner" :repo-name="repoName" @show-review="reviewTask = $event" />
     </div>
 
     <div v-show="activeTab === 'codereview'" class="tab-content">
@@ -163,8 +164,10 @@ import { ElMessage } from 'element-plus'
 import { FolderOpened, Download, Link, Refresh } from '@element-plus/icons-vue'
 import { listProviderRepos } from '@/api/modules/provider'
 import { getRepoList } from '@/api/modules/repo'
+import { listBindings } from '@/api/modules/binding'
 import { getRemoteRepoConfig, updateRemoteRepoConfig } from '@/api/modules/review'
 import type { ReviewRepoConfigDTO } from '@/api/modules/review'
+import type { ReviewTaskDTO } from '@/api/modules/review'
 import { listLLMProviders } from '@/api/modules/llm-settings'
 import type { LLMProviderDTO } from '@/api/modules/llm-settings'
 import { useProviderStore } from '@/stores/useProviderStore'
@@ -174,6 +177,7 @@ import ActionPill from '@/components/common/ActionPill.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SectionTitle from '@/components/common/SectionTitle.vue'
 import CRTab from '@/components/remote/CRTab.vue'
+import CRReviewDetail from '@/components/remote/CRReviewDetail.vue'
 import BranchRulesTab from '@/components/remote/BranchRulesTab.vue'
 import WebhookEventsTab from '@/components/remote/WebhookEventsTab.vue'
 import RemoteBranchesTab from '@/components/remote/RemoteBranchesTab.vue'
@@ -190,6 +194,7 @@ const repoFullName = computed(() => `${repoOwner}/${repoName}`)
 const providerPlatform = ref('')
 const linkedRepoKey = ref<string | null>(null)
 const activeTab = ref((route.query.tab as string) || 'cr')
+const reviewTask = ref<ReviewTaskDTO | null>(null)
 const repoData = ref<{ clone_url?: string; ssh_url?: string; default_branch?: string; private?: boolean } | null>(null)
 
 const crCfgLoading = ref(false)
@@ -223,20 +228,20 @@ function platformMeta(p: string) {
 }
 
 async function loadInitial() {
-  const [, localRepos] = await Promise.all([
+  const [, , bindings] = await Promise.all([
     providerStore.fetchProviders(),
     getRepoList().catch(() => []),
+    listBindings({ provider_config_id: providerId }).catch(() => []),
   ])
   const prov = providerStore.getProviderById(providerId)
   if (prov) providerPlatform.value = prov.platform
 
-  const repos = (localRepos || []) as any[]
-  const linked = repos.find((r: any) =>
-    r.provider_config_id === providerId &&
-    r.platform_owner === repoOwner &&
-    r.platform_repo === repoName
+  const linked = (bindings || []).find((b: any) =>
+    b.platform_owner === repoOwner &&
+    b.platform_repo === repoName &&
+    b.status === 'active'
   )
-  if (linked) linkedRepoKey.value = linked.key
+  if (linked) linkedRepoKey.value = linked.repo_key
 
   const remoteRepos = await listProviderRepos(providerId, { page: 1, per_page: 100 }).catch(() => [])
   const found = (remoteRepos || []).find((r: any) => r.full_name === repoFullName.value)
@@ -289,6 +294,7 @@ async function saveReviewConfig() {
 }
 
 watch(activeTab, (tab) => {
+  if (tab !== 'cr') reviewTask.value = null
   if (tab === 'codereview' && !crCfgLoading.value) loadReviewConfig()
 })
 

@@ -30,7 +30,7 @@ func parsePushOptions(options []string) *git.PushOptions {
 	return opts
 }
 
-func (s *GitService) Push(path, targetRemote, sourceHash, targetBranch string, options []string, progress io.Writer) error {
+func (s *GitService) Push(path, targetRemote, sourceHash, targetBranch string, options []string, progress io.Writer, skipTLS ...bool) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -47,9 +47,12 @@ func (s *GitService) Push(path, targetRemote, sourceHash, targetBranch string, o
 		}
 	}
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	pushOpts := parsePushOptions(options)
 	pushOpts.RemoteName = targetRemote
 	pushOpts.RefSpecs = []config.RefSpec{refSpec}
+	pushOpts.InsecureSkipTLS = insecure
 	if auth != nil {
 		pushOpts.Auth = auth
 	}
@@ -62,7 +65,7 @@ func (s *GitService) Push(path, targetRemote, sourceHash, targetBranch string, o
 	return err
 }
 
-func (s *GitService) PushWithAuth(path, targetRemoteURL, sourceHash, targetBranch, authType, authKey, authSecret string, options []string, progress io.Writer) error {
+func (s *GitService) PushWithAuth(path, targetRemoteURL, sourceHash, targetBranch, authType, authKey, authSecret string, options []string, progress io.Writer, skipTLS ...bool) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -80,10 +83,13 @@ func (s *GitService) PushWithAuth(path, targetRemoteURL, sourceHash, targetBranc
 
 	refSpec := config.RefSpec(fmt.Sprintf("%s:refs/heads/%s", sourceHash, targetBranch))
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	pushOpts := parsePushOptions(options)
 	pushOpts.Auth = auth
 	pushOpts.RefSpecs = []config.RefSpec{refSpec}
 	pushOpts.Progress = progress
+	pushOpts.InsecureSkipTLS = insecure
 
 	err = remote.Push(pushOpts)
 	if err == git.NoErrAlreadyUpToDate {
@@ -92,7 +98,7 @@ func (s *GitService) PushWithAuth(path, targetRemoteURL, sourceHash, targetBranc
 	return err
 }
 
-func (s *GitService) PushWithAuthMethod(path, targetRemoteURL, sourceHash, targetBranch string, auth transport.AuthMethod, options []string, progress io.Writer) error {
+func (s *GitService) PushWithAuthMethod(path, targetRemoteURL, sourceHash, targetBranch string, auth transport.AuthMethod, options []string, progress io.Writer, skipTLS ...bool) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -105,10 +111,13 @@ func (s *GitService) PushWithAuthMethod(path, targetRemoteURL, sourceHash, targe
 
 	refSpec := config.RefSpec(fmt.Sprintf("%s:refs/heads/%s", sourceHash, targetBranch))
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	pushOpts := parsePushOptions(options)
 	pushOpts.Auth = auth
 	pushOpts.RefSpecs = []config.RefSpec{refSpec}
 	pushOpts.Progress = progress
+	pushOpts.InsecureSkipTLS = insecure
 
 	err = remote.Push(pushOpts)
 	if err == git.NoErrAlreadyUpToDate {

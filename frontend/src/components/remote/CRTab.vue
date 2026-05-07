@@ -21,10 +21,21 @@
       <template #cell-state="{ row }">
         <StatusBadge :variant="crStateVariant(row.state)" :text="crStateLabel(row.state)" :showDot="false" />
       </template>
+      <template #cell-review_status="{ row }">
+        <template v-if="getReviewStatus(row.cr_number)">
+          <StatusBadge
+            :variant="reviewStatusVariant(getReviewStatus(row.cr_number)!.status)"
+            :text="reviewStatusLabel(getReviewStatus(row.cr_number)!.status)"
+          />
+        </template>
+        <span v-else class="review-none">未审查</span>
+      </template>
       <template #empty>
         <EmptyState title="暂无 CR" />
       </template>
       <template #row-actions="{ row }">
+        <ActionPill v-if="row.state === 'opened' && !getReviewStatus(row.cr_number)" variant="primary" small @click="handleTriggerReview(row)" :disabled="reviewTriggering">审查</ActionPill>
+        <ActionPill v-if="getReviewStatus(row.cr_number)" variant="outline" small @click="showReviewDetail(row)">详情</ActionPill>
         <ActionPill v-if="row.state === 'opened'" variant="primary" small @click="handleMergeCR(row)">合并</ActionPill>
         <ActionPill v-if="row.state === 'opened'" variant="danger" small @click="handleCloseCR(row)">关闭</ActionPill>
       </template>
@@ -60,7 +71,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { listRemoteCRs, createRemoteCR, mergeRemoteCR, closeRemoteCR } from '@/api/modules/cr'
 import { listRemoteBranches } from '@/api/modules/provider'
+import { listReviewTasksByProvider, createReviewTaskByProvider } from '@/api/modules/review'
 import type { CRDTO } from '@/api/modules/cr'
+import type { ReviewTaskDTO } from '@/api/modules/review'
 import DataTable from '@/components/common/DataTable.vue'
 import type { TableColumn } from '@/components/common/DataTable.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -75,6 +88,10 @@ const props = defineProps<{
   repoName: string
 }>()
 
+const emit = defineEmits<{
+  'show-review': [task: ReviewTaskDTO]
+}>()
+
 const crLoading = ref(false)
 const crSyncing = ref(false)
 const crs = ref<CRDTO[]>([])
@@ -84,6 +101,8 @@ const createCRLoading = ref(false)
 const loaded = ref(false)
 const branches = ref<{ name: string }[]>([])
 const branchesLoading = ref(false)
+const reviewTasks = ref<ReviewTaskDTO[]>([])
+const reviewTriggering = ref(false)
 
 const crColumns: TableColumn[] = [
   { key: 'cr_number', label: '#', width: '60px' },
@@ -91,6 +110,7 @@ const crColumns: TableColumn[] = [
   { key: 'source_branch', label: '源分支', width: '100px' },
   { key: 'target_branch', label: '目标分支', width: '100px' },
   { key: 'state', label: '状态', width: '80px' },
+  { key: 'review_status', label: 'Review', width: '100px' },
 ]
 
 function crStateLabel(s: string) {
@@ -105,6 +125,24 @@ function crStateVariant(s: string): 'success' | 'info' | 'danger' | 'default' {
   if (s === 'merged') return 'info'
   if (s === 'closed') return 'danger'
   return 'default'
+}
+
+function getReviewStatus(crNumber: number): ReviewTaskDTO | null {
+  const tasks = reviewTasks.value.filter(t => String(t.mr_iid) === String(crNumber))
+  if (tasks.length === 0) return null
+  return tasks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+}
+
+function reviewStatusVariant(s: string): 'success' | 'danger' | 'warning' | 'info' | 'running' | 'default' {
+  const m: Record<string, 'success' | 'danger' | 'warning' | 'info' | 'running' | 'default'> = {
+    pending: 'warning', running: 'running', success: 'success', failed: 'danger', blocked: 'danger'
+  }
+  return m[s] || 'default'
+}
+
+function reviewStatusLabel(s: string) {
+  const m: Record<string, string> = { pending: '审查中', running: '审查中', success: '通过', failed: '失败', blocked: '阻塞' }
+  return m[s] || s
 }
 
 async function loadBranches() {
@@ -125,11 +163,23 @@ async function loadCRs() {
   finally { crLoading.value = false }
 }
 
+async function loadReviewTasks() {
+  try {
+    const allTasks: ReviewTaskDTO[] = []
+    for (const cr of crs.value) {
+      const res = await listReviewTasksByProvider({ provider_id: props.providerId, mr_iid: String(cr.cr_number), page: 1, page_size: 100 })
+      if (res?.tasks) allTasks.push(...res.tasks)
+    }
+    reviewTasks.value = allTasks
+  } catch { reviewTasks.value = [] }
+}
+
 async function handleSyncCRs() {
   crSyncing.value = true
   try {
     const res = await listRemoteCRs({ provider_id: props.providerId, owner: props.repoOwner, repo: props.repoName, page: 1, per_page: 100 })
     crs.value = res?.items || []
+    await loadReviewTasks()
     ElMessage.success(`已刷新，共 ${crs.value.length} 个 CR`)
   } catch (e: any) { ElMessage.error('刷新失败: ' + (e?.message || '')) }
   finally { crSyncing.value = false }
@@ -151,6 +201,32 @@ async function handleCloseCR(cr: CRDTO) {
     ElMessage.success('已关闭')
     loadCRs()
   } catch (e: any) { ElMessage.error('关闭失败: ' + (e?.message || '')) }
+}
+
+async function handleTriggerReview(cr: CRDTO) {
+  reviewTriggering.value = true
+  try {
+    await createReviewTaskByProvider({
+      provider_config_id: props.providerId,
+      owner: props.repoOwner,
+      repo: props.repoName,
+      mr_iid: String(cr.cr_number),
+      trigger_type: 'manual',
+    })
+    ElMessage.success(`已触发 MR #${cr.cr_number} 的代码审查`)
+    setTimeout(loadReviewTasks, 2000)
+  } catch (e: any) {
+    ElMessage.error('触发审查失败: ' + (e?.message || ''))
+  } finally {
+    reviewTriggering.value = false
+  }
+}
+
+function showReviewDetail(cr: CRDTO) {
+  const task = getReviewStatus(cr.cr_number)
+  if (task) {
+    emit('show-review', task)
+  }
 }
 
 async function handleCreateCR() {
@@ -178,9 +254,10 @@ async function handleCreateCR() {
   }
 }
 
-watch(() => props.active, (val) => {
+watch(() => props.active, async (val) => {
   if (val && !loaded.value) {
-    loadCRs()
+    await loadCRs()
+    await loadReviewTasks()
     loaded.value = true
   }
 }, { immediate: true })
@@ -199,5 +276,10 @@ watch(() => props.active, (val) => {
 .mono {
   font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
   font-size: 12px;
+}
+
+.review-none {
+  font-size: 12px;
+  color: var(--text-color-placeholder);
 }
 </style>

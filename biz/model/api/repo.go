@@ -8,17 +8,16 @@ import (
 )
 
 type RegisterRepoReq struct {
-	Name        string                     `json:"name"`
-	Path        string                     `json:"path"`
-	RemoteURL   string                     `json:"remote_url"`
-	AuthType    string                     `json:"auth_type"`
-	AuthKey     string                     `json:"auth_key"`
-	AuthSecret  string                     `json:"auth_secret"`
-	Remotes     []domain.GitRemote         `json:"remotes"`      // Optional list of remotes to sync
-	RemoteAuths map[string]domain.AuthInfo `json:"remote_auths"` // Optional auth per remote (deprecated)
-	// 新凭证池字段
-	DefaultCredentialID uint            `json:"default_credential_id"` // 默认凭证 ID
-	RemoteCredentials   map[string]uint `json:"remote_credentials"`    // remote name -> credential ID
+	Name                string                     `json:"name"`
+	Path                string                     `json:"path"`
+	RemoteURL           string                     `json:"remote_url"`
+	AuthType            string                     `json:"auth_type"`
+	AuthKey             string                     `json:"auth_key"`
+	AuthSecret          string                     `json:"auth_secret"`
+	Remotes             []domain.GitRemote         `json:"remotes"`
+	RemoteAuths         map[string]domain.AuthInfo `json:"remote_auths"`
+	DefaultCredentialID uint                       `json:"default_credential_id"`
+	RemoteCredentials   map[string]uint            `json:"remote_credentials"`
 }
 
 type ScanRepoReq struct {

@@ -12,6 +12,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
 func ListBindings(repoKey string, providerConfigID uint) ([]api.RepoProviderBindingDTO, error) {
@@ -121,20 +122,29 @@ func CreateBinding(ctx context.Context, req *api.CreateBindingReq) (*api.RepoPro
 		Status:           "active",
 	}
 
-	if req.RegisterWebhook && pc.WebhookEndpoint != "" {
-		secret := pc.WebhookSecret
-		wh, err := p.CreateWebhook(ctx, provider.CreateWebhookOptions{
-			Owner:  req.PlatformOwner,
-			Repo:   req.PlatformRepo,
-			URL:    pc.WebhookEndpoint,
-			Secret: secret,
-			Events: []string{"push", "merge_request", "pull_request", "tag_push"},
-		})
-		if err == nil {
-			binding.WebhookID = fmt.Sprintf("%d", wh.ID)
-			binding.WebhookURL = wh.URL
-		} else {
-			log.Printf("Warning: failed to register webhook: %v", err)
+	if req.RegisterWebhook {
+		webhookURL := pc.WebhookEndpoint
+		if webhookURL == "" {
+			extURL := strings.TrimRight(configs.GlobalConfig.Server.ExternalURL, "/")
+			if extURL != "" {
+				webhookURL = extURL + "/api/v1/webhooks/receive"
+			}
+		}
+		if webhookURL != "" {
+			secret := pc.WebhookSecret
+			wh, err := p.CreateWebhook(ctx, provider.CreateWebhookOptions{
+				Owner:  req.PlatformOwner,
+				Repo:   req.PlatformRepo,
+				URL:    webhookURL,
+				Secret: secret,
+				Events: []string{"push", "merge_request", "pull_request", "tag_push"},
+			})
+			if err == nil {
+				binding.WebhookID = fmt.Sprintf("%d", wh.ID)
+				binding.WebhookURL = wh.URL
+			} else {
+				log.Printf("Warning: failed to register webhook: %v", err)
+			}
 		}
 	}
 

@@ -117,3 +117,28 @@ func (d *RepoProviderBindingDAO) FindByRepoKey(repoKey string) ([]po.RepoProvide
 	}
 	return d.FindByRepoIDWithProvider(repo.ID)
 }
+
+func (d *RepoProviderBindingDAO) GetSkipTLSForRemote(repoID uint, remoteName string) bool {
+	var b po.RepoProviderBinding
+	err := DB.Where("repo_id = ? AND remote_name = ? AND status = ?", repoID, remoteName, "active").
+		Preload("ProviderConfig").First(&b).Error
+	if err != nil {
+		return false
+	}
+	return b.ProviderConfig.SkipTLS
+}
+
+func (d *RepoProviderBindingDAO) GetSkipTLSForRepo(repoID uint) bool {
+	var bindings []po.RepoProviderBinding
+	err := DB.Where("repo_id = ? AND status = ?", repoID, "active").
+		Preload("ProviderConfig").Find(&bindings).Error
+	if err != nil {
+		return false
+	}
+	for _, b := range bindings {
+		if b.ProviderConfig.SkipTLS {
+			return true
+		}
+	}
+	return false
+}

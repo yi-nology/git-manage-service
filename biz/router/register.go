@@ -11,6 +11,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	handler_maintenance "github.com/yi-nology/git-manage-service/biz/handler/maintenance"
+	handler_review "github.com/yi-nology/git-manage-service/biz/handler/review"
 	handler_settings "github.com/yi-nology/git-manage-service/biz/handler/settings"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"
@@ -76,6 +77,8 @@ func GeneratedRegister(h *server.Hertz) {
 	cr.Register(h)
 
 	review.Register(h)
+	h.POST("/api/v1/reviews/tasks/provider", handler_review.CreateTaskByProvider)
+	h.GET("/api/v1/reviews/tasks/provider", handler_review.ListTasksByProvider)
 	audit.Register(h)
 
 	branch.Register(h)

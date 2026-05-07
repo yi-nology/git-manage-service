@@ -78,11 +78,11 @@ func (s *GitService) GetBranchSyncStatus(path, branch, upstream string) (int, in
 	return ahead, behind, nil
 }
 
-func (s *GitService) PushBranch(path, remote, branch string) error {
-	return s.PushBranchWithAuth(path, remote, branch, nil)
+func (s *GitService) PushBranch(path, remote, branch string, skipTLS ...bool) error {
+	return s.PushBranchWithAuth(path, remote, branch, nil, skipTLS...)
 }
 
-func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth transport.AuthMethod) error {
+func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth transport.AuthMethod, skipTLS ...bool) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -94,7 +94,9 @@ func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth transp
 		remoteURL = rem.Config().URLs[0]
 	}
 
-	if s.isHTTPS(remoteURL) {
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
+	if s.isHTTPS(remoteURL) && insecure {
 		return s.pushBranchCLI(path, remote, branch)
 	}
 
@@ -105,8 +107,9 @@ func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth transp
 	}
 
 	pushOptions := &git.PushOptions{
-		RemoteName: remote,
-		RefSpecs:   []config.RefSpec{refSpec},
+		RemoteName:      remote,
+		RefSpecs:        []config.RefSpec{refSpec},
+		InsecureSkipTLS: insecure,
 	}
 	if auth != nil {
 		pushOptions.Auth = auth
@@ -128,11 +131,11 @@ func (s *GitService) pushBranchCLI(path, remote, branch string) error {
 	return nil
 }
 
-func (s *GitService) PullBranch(path, remote, branch string) error {
-	return s.PullBranchWithAuth(path, remote, branch, nil)
+func (s *GitService) PullBranch(path, remote, branch string, skipTLS ...bool) error {
+	return s.PullBranchWithAuth(path, remote, branch, nil, skipTLS...)
 }
 
-func (s *GitService) PullBranchWithAuth(path, remote, branch string, auth transport.AuthMethod) error {
+func (s *GitService) PullBranchWithAuth(path, remote, branch string, auth transport.AuthMethod, skipTLS ...bool) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -152,9 +155,12 @@ func (s *GitService) PullBranchWithAuth(path, remote, branch string, auth transp
 		}
 	}
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	pullOptions := &git.PullOptions{
-		RemoteName:    remote,
-		ReferenceName: plumbing.ReferenceName("refs/heads/" + branch),
+		RemoteName:      remote,
+		ReferenceName:   plumbing.ReferenceName("refs/heads/" + branch),
+		InsecureSkipTLS: insecure,
 	}
 	if auth != nil {
 		pullOptions.Auth = auth
@@ -167,11 +173,11 @@ func (s *GitService) PullBranchWithAuth(path, remote, branch string, auth transp
 	return err
 }
 
-func (s *GitService) UpdateBranchFastForward(path, remote, branch, remoteBranch string) error {
-	return s.UpdateBranchFastForwardWithAuth(path, remote, branch, remoteBranch, nil)
+func (s *GitService) UpdateBranchFastForward(path, remote, branch, remoteBranch string, skipTLS ...bool) error {
+	return s.UpdateBranchFastForwardWithAuth(path, remote, branch, remoteBranch, nil, skipTLS...)
 }
 
-func (s *GitService) UpdateBranchFastForwardWithAuth(path, remote, branch, remoteBranch string, auth transport.AuthMethod) error {
+func (s *GitService) UpdateBranchFastForwardWithAuth(path, remote, branch, remoteBranch string, auth transport.AuthMethod, skipTLS ...bool) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
@@ -191,9 +197,12 @@ func (s *GitService) UpdateBranchFastForwardWithAuth(path, remote, branch, remot
 
 	refSpec := config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", remoteBranch, branch))
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	fetchOptions := &git.FetchOptions{
-		RemoteName: remote,
-		RefSpecs:   []config.RefSpec{refSpec},
+		RemoteName:      remote,
+		RefSpecs:        []config.RefSpec{refSpec},
+		InsecureSkipTLS: insecure,
 	}
 	if auth != nil {
 		fetchOptions.Auth = auth
@@ -207,11 +216,13 @@ func (s *GitService) UpdateBranchFastForwardWithAuth(path, remote, branch, remot
 	return err
 }
 
-func (s *GitService) FetchAll(path string) error {
+func (s *GitService) FetchAll(path string, skipTLS ...bool) error {
 	r, err := s.openRepo(path)
 	if err != nil {
 		return err
 	}
+
+	insecure := len(skipTLS) > 0 && skipTLS[0]
 
 	remotes, err := r.Remotes()
 	if err != nil {
@@ -230,6 +241,7 @@ func (s *GitService) FetchAll(path string) error {
 				config.RefSpec("+refs/heads/*:refs/remotes/" + remote.Config().Name + "/*"),
 				config.RefSpec("+refs/tags/*:refs/tags/*"),
 			},
+			InsecureSkipTLS: insecure,
 		}
 		if auth != nil {
 			fetchOptions.Auth = auth

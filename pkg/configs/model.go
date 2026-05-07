@@ -14,7 +14,8 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port int `mapstructure:"port"`
+	Port        int    `mapstructure:"port"`
+	ExternalURL string `mapstructure:"external_url"`
 }
 
 type RpcConfig struct {

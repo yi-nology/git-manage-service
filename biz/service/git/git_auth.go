@@ -101,7 +101,7 @@ func (s *GitService) GetAuthFromDBKey(privateKey, passphrase string) (transport.
 }
 
 // TestRemoteConnectionWithDBKey 使用数据库密钥测试远程连接
-func (s *GitService) TestRemoteConnectionWithDBKey(url, privateKey, passphrase string) error {
+func (s *GitService) TestRemoteConnectionWithDBKey(url, privateKey, passphrase string, skipTLS ...bool) error {
 	gitCmdErr := s.testConnectionWithGitCommand(url, privateKey, passphrase)
 	if gitCmdErr == nil {
 		return nil
@@ -116,6 +116,9 @@ func (s *GitService) TestRemoteConnectionWithDBKey(url, privateKey, passphrase s
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
+
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+	ep.InsecureSkipTLS = insecure
 
 	storer := memory.NewStorage()
 	r, err := git.Init(storer, nil)
@@ -132,7 +135,8 @@ func (s *GitService) TestRemoteConnectionWithDBKey(url, privateKey, passphrase s
 	}
 
 	_, err = remote.List(&git.ListOptions{
-		Auth: auth,
+		Auth:            auth,
+		InsecureSkipTLS: insecure,
 	})
 	if err != nil {
 		return fmt.Errorf("connection failed: %v (git command also failed: %v)", err, gitCmdErr)
@@ -170,7 +174,7 @@ func (s *GitService) testConnectionWithGitCommand(url, privateKey, passphrase st
 }
 
 // TestRemoteConnectionWithLocalKey 使用本地SSH密钥文件测试远程连接
-func (s *GitService) TestRemoteConnectionWithLocalKey(url, keyPath, passphrase string) error {
+func (s *GitService) TestRemoteConnectionWithLocalKey(url, keyPath, passphrase string, skipTLS ...bool) error {
 	publicKeys, err := ssh.NewPublicKeysFromFile("git", keyPath, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to load SSH key from file %s: %v", keyPath, err)
@@ -178,11 +182,13 @@ func (s *GitService) TestRemoteConnectionWithLocalKey(url, keyPath, passphrase s
 	helper := NewSSHKeyHelper()
 	publicKeys.HostKeyCallback = helper.GetHostKeyCallback()
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	remote := git.NewRemote(nil, &config.RemoteConfig{
 		Name: "test",
 		URLs: []string{url},
 	})
-	_, err = remote.List(&git.ListOptions{Auth: publicKeys})
+	_, err = remote.List(&git.ListOptions{Auth: publicKeys, InsecureSkipTLS: insecure})
 	if err != nil {
 		return fmt.Errorf("connection failed: %v", err)
 	}
@@ -190,17 +196,19 @@ func (s *GitService) TestRemoteConnectionWithLocalKey(url, keyPath, passphrase s
 }
 
 // TestRemoteConnectionWithHTTP 使用HTTP认证测试远程连接
-func (s *GitService) TestRemoteConnectionWithHTTP(url, username, password string) error {
+func (s *GitService) TestRemoteConnectionWithHTTP(url, username, password string, skipTLS ...bool) error {
 	auth := &http.BasicAuth{
 		Username: username,
 		Password: password,
 	}
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	remote := git.NewRemote(nil, &config.RemoteConfig{
 		Name: "test",
 		URLs: []string{url},
 	})
-	_, err := remote.List(&git.ListOptions{Auth: auth})
+	_, err := remote.List(&git.ListOptions{Auth: auth, InsecureSkipTLS: insecure})
 	if err != nil {
 		return fmt.Errorf("connection failed: %v", err)
 	}

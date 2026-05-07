@@ -5,6 +5,9 @@ server:
   # Service listening port
   # Default: 12345
   port: 12345
+  # External URL for webhook callbacks (required for webhook registration)
+  # Example: http://your-server:12345 or https://git-mgmt.example.com
+  external_url: "http://localhost:12345"
 
 # 2. Database Configuration
 database:

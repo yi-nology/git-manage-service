@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	syncModel "github.com/yi-nology/git-manage-service/biz/model/sync"
 )
@@ -306,6 +307,8 @@ func (s *SyncService) PreviewSync(repo po.Repo, sourceRemote, sourceBranch, targ
 		opts = append(opts, "--no-verify")
 	}
 
+	skipTLS := db.NewRepoProviderBindingDAO().GetSkipTLSForRepo(repo.ID)
+
 	cmdParts := []string{"git push", targetRemote}
 	if sourceRemote == "local" {
 		cmdParts = append(cmdParts, sourceBranch+":refs/heads/"+targetBranch)
@@ -325,7 +328,7 @@ func (s *SyncService) PreviewSync(repo po.Repo, sourceRemote, sourceBranch, targ
 	var sourceHash string
 
 	if !isLocalSource {
-		if err := s.git.Fetch(path, sourceRemote, nil); err != nil {
+		if err := s.git.Fetch(path, sourceRemote, nil, skipTLS); err != nil {
 			return nil, fmt.Errorf("fetch source failed: %v", err)
 		}
 		h, err := s.git.GetCommitHash(path, sourceRemote, sourceBranch)
@@ -341,7 +344,7 @@ func (s *SyncService) PreviewSync(repo po.Repo, sourceRemote, sourceBranch, targ
 		sourceHash = h
 	}
 
-	if err := s.git.Fetch(path, targetRemote, nil); err != nil {
+	if err := s.git.Fetch(path, targetRemote, nil, skipTLS); err != nil {
 		_ = err
 	}
 

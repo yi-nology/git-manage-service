@@ -3,11 +3,13 @@ package binding
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
 func RegisterWebhook(ctx context.Context, id uint) (*api.RepoProviderBindingDTO, error) {
@@ -32,10 +34,19 @@ func RegisterWebhook(ctx context.Context, id uint) (*api.RepoProviderBindingDTO,
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
+	webhookURL := pc.WebhookEndpoint
+	if webhookURL == "" {
+		extURL := strings.TrimRight(configs.GlobalConfig.Server.ExternalURL, "/")
+		if extURL == "" {
+			return nil, fmt.Errorf("webhook endpoint not configured: set server.external_url in config.yaml or webhook_endpoint on provider")
+		}
+		webhookURL = extURL + "/api/v1/webhooks/receive"
+	}
+
 	wh, err := p.CreateWebhook(ctx, provider.CreateWebhookOptions{
 		Owner:  b.PlatformOwner,
 		Repo:   b.PlatformRepo,
-		URL:    pc.WebhookEndpoint,
+		URL:    webhookURL,
 		Secret: pc.WebhookSecret,
 		Events: []string{"push", "merge_request", "pull_request", "tag_push"},
 	})

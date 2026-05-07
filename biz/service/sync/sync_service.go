@@ -166,6 +166,14 @@ func (s *SyncService) resolveAuthForRemote(repo po.Repo, remoteName string) (tra
 	)
 }
 
+// resolveSkipTLSForRemote checks if any provider binding for this repo+remote has SkipTLS enabled
+func resolveSkipTLSForRemote(repoID uint, remoteName string) bool {
+	if remoteName == "" || repoID == 0 {
+		return false
+	}
+	return db.NewRepoProviderBindingDAO().GetSkipTLSForRemote(repoID, remoteName)
+}
+
 // fetchRemote 统一的 fetch 操作，自动处理认证方式选择
 func (s *SyncService) fetchRemote(path string, repo po.Repo, remoteName, remoteURL string, refSpecs string, progressWriter io.Writer, logf func(string, ...interface{})) error {
 	authMethod, isDBKey, err := s.resolveAuthForRemote(repo, remoteName)
@@ -174,6 +182,8 @@ func (s *SyncService) fetchRemote(path string, repo po.Repo, remoteName, remoteU
 	}
 
 	hasAuth := authMethod != nil || isDBKey
+
+	skipTLS := resolveSkipTLSForRemote(repo.ID, remoteName)
 
 	if remoteURL != "" && hasAuth {
 		if isDBKey {
@@ -205,11 +215,11 @@ func (s *SyncService) fetchRemote(path string, repo po.Repo, remoteName, remoteU
 			}
 		}
 		logf("Fetching %s with auth...", remoteName)
-		return s.git.FetchWithAuthMethod(path, remoteURL, authMethod, progressWriter, refSpecs)
+		return s.git.FetchWithAuthMethod(path, remoteURL, authMethod, progressWriter, skipTLS, refSpecs)
 	}
 
 	logf("Fetching %s (no auth)...", remoteName)
-	return s.git.Fetch(path, remoteName, progressWriter)
+	return s.git.Fetch(path, remoteName, progressWriter, skipTLS)
 }
 
 // pushRemote 统一的 push 操作，自动处理认证方式选择
@@ -220,6 +230,8 @@ func (s *SyncService) pushRemote(path string, repo po.Repo, remoteName, remoteUR
 	}
 
 	hasAuth := authMethod != nil || isDBKey
+
+	skipTLS := resolveSkipTLSForRemote(repo.ID, remoteName)
 
 	if remoteURL != "" && hasAuth {
 		if isDBKey {
@@ -248,11 +260,11 @@ func (s *SyncService) pushRemote(path string, repo po.Repo, remoteName, remoteUR
 			}
 		}
 		logf("Pushing to %s with auth...", remoteName)
-		return s.git.PushWithAuthMethod(path, remoteURL, sourceHash, targetBranch, authMethod, pushOpts, progressWriter)
+		return s.git.PushWithAuthMethod(path, remoteURL, sourceHash, targetBranch, authMethod, pushOpts, progressWriter, skipTLS)
 	}
 
 	logf("Pushing to %s (no auth)...", remoteName)
-	return s.git.Push(path, remoteName, sourceHash, targetBranch, pushOpts, progressWriter)
+	return s.git.Push(path, remoteName, sourceHash, targetBranch, pushOpts, progressWriter, skipTLS)
 }
 
 type logWriter struct {

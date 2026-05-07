@@ -49,6 +49,31 @@ func CreateTask(ctx context.Context, repoKey string, providerConfigID uint, mrII
 	return task, nil
 }
 
+func CreateTaskByProvider(ctx context.Context, providerConfigID uint, owner, repo, mrIID, commitSHA, triggerType string) (*po.ReviewTask, error) {
+	if providerConfigID == 0 {
+		return nil, fmt.Errorf("provider_config_id is required")
+	}
+
+	task := &po.ReviewTask{
+		ProviderConfigID: providerConfigID,
+		Platform:         "remote",
+		EventType:        "manual",
+		MRIID:            mrIID,
+		CommitSHA:        commitSHA,
+		TriggerType:      triggerType,
+		Status:           "pending",
+	}
+	if err := db.NewReviewTaskDAO().Create(task); err != nil {
+		return nil, fmt.Errorf("failed to create review task: %w", err)
+	}
+
+	go func() {
+		_ = RunReviewByProvider(context.Background(), task.ID, providerConfigID, owner, repo)
+	}()
+
+	return task, nil
+}
+
 func RetryTask(ctx context.Context, id uint) (*po.ReviewTask, error) {
 	taskDAO := db.NewReviewTaskDAO()
 	task, err := taskDAO.FindByID(id)
@@ -169,6 +194,112 @@ func RunReview(ctx context.Context, taskID uint) error {
 
 	if err := ApplyPolicy(result, task); err != nil {
 		log.Printf("[CodeReview] Failed to apply policy: %v", err)
+	}
+
+	task.Summary = BuildSummaryComment(result)
+	task.Status = "success"
+	if result.Blocked {
+		task.Status = "blocked"
+	}
+	return taskDAO.Save(task)
+}
+
+func RunReviewByProvider(ctx context.Context, taskID, providerConfigID uint, owner, repo string) error {
+	taskDAO := db.NewReviewTaskDAO()
+	task, err := taskDAO.FindByID(taskID)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	task.Status = "running"
+	task.StartedAt = &now
+	taskDAO.Save(task)
+
+	defer func() {
+		finished := time.Now()
+		task.FinishedAt = &finished
+		taskDAO.Save(task)
+	}()
+
+	p, err := provider.GetManager().GetProvider(providerConfigID)
+	if err != nil {
+		task.Status = "failed"
+		task.ErrorMessage = fmt.Sprintf("provider not found: %v", err)
+		taskDAO.Save(task)
+		return err
+	}
+
+	mrNum, _ := strconv.Atoi(task.MRIID)
+
+	mergeDiff, err := p.GetCRDiff(ctx, owner, repo, mrNum)
+	if err != nil {
+		task.Status = "failed"
+		task.ErrorMessage = fmt.Sprintf("failed to fetch diff: %v", err)
+		taskDAO.Save(task)
+		return err
+	}
+
+	files := ParseDiff(mergeDiff.RawDiff)
+
+	ruleCtx := &RuleContext{
+		Files:    files,
+		Provider: task.Platform,
+		Owner:    owner,
+		Repo:     repo,
+		MRIID:    task.MRIID,
+	}
+
+	var allFindings []*Finding
+	for _, rule := range GetRules() {
+		findings, rErr := rule.Check(ruleCtx)
+		if rErr != nil {
+			log.Printf("[CodeReview] Rule %s error: %v", rule.ID(), rErr)
+			continue
+		}
+		allFindings = append(allFindings, findings...)
+	}
+
+	cfg := reviewConfig{
+		BlockOnHigh:    configs.GlobalConfig.CodeReview.BlockOnHigh,
+		MaxFiles:       configs.GlobalConfig.CodeReview.MaxFiles,
+		MaxDiffLines:   configs.GlobalConfig.CodeReview.MaxDiffLines,
+		AutoReviewOnMR: configs.GlobalConfig.CodeReview.AutoReviewOnMR,
+	}
+
+	llmFindings := runLLMReview(ctx, files, repo, owner, cfg.LLMProvider)
+	allFindings = append(allFindings, llmFindings...)
+
+	totalAdd, totalDel := 0, 0
+	for _, f := range files {
+		totalAdd += f.Additions
+		totalDel += f.Deletions
+	}
+
+	result := Aggregate(allFindings, totalAdd, totalDel, len(files), cfg.BlockOnHigh)
+
+	task.RiskLevel = string(result.RiskLevel)
+
+	if err := persistFindings(taskID, result.Findings); err != nil {
+		log.Printf("[CodeReview] Failed to persist findings: %v", err)
+	}
+
+	if err := publishComments(ctx, p, owner, repo, mrNum, task.ID, result); err != nil {
+		log.Printf("[CodeReview] Failed to publish comments: %v", err)
+	}
+
+	if task.CommitSHA != "" {
+		statusState := "success"
+		statusDesc := fmt.Sprintf("Review passed (%d findings)", len(result.Findings))
+		if result.Blocked {
+			statusState = "failed"
+			statusDesc = result.BlockReason
+		}
+		_ = p.CreateCommitStatus(ctx, owner, repo, task.CommitSHA, provider.CommitStatusOptions{
+			State:       statusState,
+			Context:     "code-review/git-manage-service",
+			Description: statusDesc,
+		})
 	}
 
 	task.Summary = BuildSummaryComment(result)

@@ -52,6 +52,13 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 		var err error
 		authSvc := auth.NewAuthService()
 
+		skipTLS := false
+		if req.ProviderConfigID > 0 {
+			if pc, pcErr := db.NewProviderConfigDAO().FindByID(req.ProviderConfigID); pcErr == nil {
+				skipTLS = pc.SkipTLS
+			}
+		}
+
 		if req.CredentialID > 0 {
 			if authSvc.IsCredentialDBKey(req.CredentialID) {
 				privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(req.CredentialID)
@@ -68,7 +75,7 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 					git.GlobalTaskManager.AppendLog(taskID, "Warning: credential resolution failed: "+authErr.Error())
 				}
 				git.GlobalTaskManager.AppendLog(taskID, "Using credential for clone...")
-				err = gitSvc.CloneWithAuthMethod(req.RemoteURL, req.LocalPath, authMethod, progressChan)
+				err = gitSvc.CloneWithAuthMethod(req.RemoteURL, req.LocalPath, authMethod, progressChan, skipTLS)
 			}
 		} else if req.SSHKeyID > 0 {
 			privateKey, passphrase, keyErr := authSvc.GetDBSSHKeyContent(req.SSHKeyID)
@@ -84,7 +91,7 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 			if authErr != nil {
 				git.GlobalTaskManager.AppendLog(taskID, "Warning: auth resolution failed: "+authErr.Error())
 			}
-			err = gitSvc.CloneWithAuthMethod(req.RemoteURL, req.LocalPath, authMethod, progressChan)
+			err = gitSvc.CloneWithAuthMethod(req.RemoteURL, req.LocalPath, authMethod, progressChan, skipTLS)
 		}
 		close(progressChan)
 
@@ -195,10 +202,11 @@ func Fetch(ctx context.Context, c *app.RequestContext) {
 	}
 
 	var fetchErr error
+	skipTLS := db.NewRepoProviderBindingDAO().GetSkipTLSForRepo(repo.ID)
 	if useDBKey {
 		fetchErr = gitSvc.FetchAllWithDBKey(repo.Path, dbPrivateKey, dbPassphrase)
 	} else {
-		fetchErr = gitSvc.FetchAll(repo.Path)
+		fetchErr = gitSvc.FetchAll(repo.Path, skipTLS)
 	}
 	if fetchErr != nil {
 		response.InternalServerError(c, fetchErr.Error())

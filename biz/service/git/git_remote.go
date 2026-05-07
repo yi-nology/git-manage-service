@@ -217,7 +217,7 @@ func (s *GitService) ListRemoteBranches(path, remoteName string) ([]string, erro
 }
 
 // TestRemoteConnection 测试远程连接
-func (s *GitService) TestRemoteConnection(url string) error {
+func (s *GitService) TestRemoteConnection(url string, skipTLS ...bool) error {
 	logger.Info("Testing remote connection", logrus.Fields{"url": url})
 
 	remote := git.NewRemote(nil, &config.RemoteConfig{
@@ -227,8 +227,11 @@ func (s *GitService) TestRemoteConnection(url string) error {
 
 	auth := s.detectSSHAuth(url)
 
+	insecure := len(skipTLS) > 0 && skipTLS[0]
+
 	_, err := remote.List(&git.ListOptions{
-		Auth: auth,
+		Auth:            auth,
+		InsecureSkipTLS: insecure,
 	})
 
 	if err != nil {
