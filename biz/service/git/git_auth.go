@@ -102,28 +102,25 @@ func (s *GitService) GetAuthFromDBKey(privateKey, passphrase string) (transport.
 
 // TestRemoteConnectionWithDBKey 使用数据库密钥测试远程连接
 func (s *GitService) TestRemoteConnectionWithDBKey(url, privateKey, passphrase string) error {
-	// 优先使用原生 git 命令（更可靠）
-	err := s.testConnectionWithGitCommand(url, privateKey, passphrase)
-	if err == nil {
+	gitCmdErr := s.testConnectionWithGitCommand(url, privateKey, passphrase)
+	if gitCmdErr == nil {
 		return nil
 	}
 
-	// 原生命令失败，尝试使用 go-git
 	auth, err := s.GetAuthFromDBKey(privateKey, passphrase)
 	if err != nil {
-		return fmt.Errorf("failed to prepare auth: %v", err)
+		return fmt.Errorf("failed to prepare auth: %w", err)
 	}
 
 	ep, err := transport.NewEndpoint(url)
 	if err != nil {
-		return fmt.Errorf("invalid URL: %v", err)
+		return fmt.Errorf("invalid URL: %w", err)
 	}
 
-	// 使用 memory storage 初始化
 	storer := memory.NewStorage()
 	r, err := git.Init(storer, nil)
 	if err != nil {
-		return fmt.Errorf("failed to init memory repo: %v", err)
+		return fmt.Errorf("failed to init memory repo: %w", err)
 	}
 
 	remote, err := r.CreateRemote(&config.RemoteConfig{
@@ -131,14 +128,14 @@ func (s *GitService) TestRemoteConnectionWithDBKey(url, privateKey, passphrase s
 		URLs: []string{ep.String()},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create remote: %v", err)
+		return fmt.Errorf("failed to create remote: %w", err)
 	}
 
 	_, err = remote.List(&git.ListOptions{
 		Auth: auth,
 	})
 	if err != nil {
-		return fmt.Errorf("connection failed: %v (git command also failed: %v)", err, err)
+		return fmt.Errorf("connection failed: %v (git command also failed: %v)", err, gitCmdErr)
 	}
 
 	return nil
@@ -211,10 +208,11 @@ func (s *GitService) TestRemoteConnectionWithHTTP(url, username, password string
 }
 
 func (s *GitService) detectSSHAuth(urlStr string) transport.AuthMethod {
-	// Simple check for SSH
-	// git@... or ssh://...
-	if !strings.HasPrefix(urlStr, "git@") && !strings.HasPrefix(urlStr, "ssh://") && !strings.Contains(urlStr, "git") {
-		// Try parsing endpoint to be sure
+	if strings.HasPrefix(urlStr, "https://") || strings.HasPrefix(urlStr, "http://") {
+		return nil
+	}
+
+	if !strings.HasPrefix(urlStr, "git@") && !strings.HasPrefix(urlStr, "ssh://") {
 		ep, err := transport.NewEndpoint(urlStr)
 		if err != nil || ep.Protocol != "ssh" {
 			return nil
@@ -272,4 +270,22 @@ func (s *GitService) detectSSHAuth(urlStr string) transport.AuthMethod {
 		log.Printf("[DEBUG] No SSH auth found")
 	}
 	return nil
+}
+
+func (s *GitService) isHTTPS(urlStr string) bool {
+	return strings.HasPrefix(urlStr, "https://")
+}
+
+func (s *GitService) detectAuth(urlStr string) transport.AuthMethod {
+	if strings.HasPrefix(urlStr, "https://") || strings.HasPrefix(urlStr, "http://") {
+		ep, err := transport.NewEndpoint(urlStr)
+		if err == nil && ep.User != "" {
+			return &http.BasicAuth{
+				Username: ep.User,
+				Password: ep.Password,
+			}
+		}
+		return nil
+	}
+	return s.detectSSHAuth(urlStr)
 }

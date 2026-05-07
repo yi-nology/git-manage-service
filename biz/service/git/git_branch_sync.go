@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"os/exec"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -87,16 +88,20 @@ func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth transp
 		return err
 	}
 
+	var remoteURL string
+	rem, remErr := r.Remote(remote)
+	if remErr == nil && len(rem.Config().URLs) > 0 {
+		remoteURL = rem.Config().URLs[0]
+	}
+
+	if s.isHTTPS(remoteURL) {
+		return s.pushBranchCLI(path, remote, branch)
+	}
+
 	refSpec := config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", branch, branch))
 
-	if auth == nil {
-		rem, err := r.Remote(remote)
-		if err == nil {
-			urls := rem.Config().URLs
-			if len(urls) > 0 {
-				auth = s.detectSSHAuth(urls[0])
-			}
-		}
+	if auth == nil && remoteURL != "" {
+		auth = s.detectAuth(remoteURL)
 	}
 
 	pushOptions := &git.PushOptions{
@@ -112,6 +117,15 @@ func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth transp
 		return nil
 	}
 	return err
+}
+
+func (s *GitService) pushBranchCLI(path, remote, branch string) error {
+	cmd := exec.Command("git", "-C", path, "-c", "http.sslVerify=false", "push", remote, branch)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git push %s %s: %s: %w", remote, branch, string(output), err)
+	}
+	return nil
 }
 
 func (s *GitService) PullBranch(path, remote, branch string) error {
