@@ -17,14 +17,21 @@
       <div class="review-content">
         <StatsRow :stats="statsData" />
 
-        <div class="section-header">
-          <SectionTitle title="最近审查任务" />
-          <router-link :to="`/local-repos/${repoKey}/review/tasks`" class="view-all-link">查看全部 →</router-link>
+        <div class="tab-bar">
+          <button
+            v-for="tab in tabs"
+            :key="tab.key"
+            class="tab-btn"
+            :class="{ active: activeTab === tab.key }"
+            @click="activeTab = tab.key"
+          >
+            {{ tab.label }}
+          </button>
         </div>
 
         <DataTable
           :columns="columns"
-          :data="tasks"
+          :data="displayedTasks"
           row-key="id"
           :loading="loading"
         >
@@ -86,7 +93,6 @@ import RepoSidebar from '@/components/repo/RepoSidebar.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import ActionPill from '@/components/common/ActionPill.vue'
 import StatsRow from '@/components/common/StatsRow.vue'
-import SectionTitle from '@/components/common/SectionTitle.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -103,6 +109,19 @@ const tasks = ref<ReviewTaskDTO[]>([])
 const showTriggerDialog = ref(false)
 const triggering = ref(false)
 const triggerForm = ref({ mr_iid: '', commit_sha: '' })
+const activeTab = ref('recent')
+
+const tabs = [
+  { key: 'recent', label: '最近任务' },
+  { key: 'all', label: '全部任务' },
+]
+
+const displayedTasks = computed(() => {
+  if (activeTab.value === 'recent') {
+    return tasks.value.slice(0, 10)
+  }
+  return tasks.value
+})
 
 const columns: TableColumn[] = [
   { key: 'mr', label: 'MR', width: '60px' },
@@ -227,10 +246,30 @@ onMounted(loadData)
 .review-layout { display: flex; gap: 20px; padding: 20px 24px; }
 .review-content { flex: 1; min-width: 0; }
 .review-content > .stats-row { margin-bottom: var(--spacing-lg); }
-.section-header {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  margin-bottom: 16px;
 }
-.view-all-link { font-size: var(--font-size-sm); color: var(--primary-color); text-decoration: none; }
+.tab-btn {
+  padding: 10px 20px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: 14px;
+  color: var(--text-color-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+  font-weight: 500;
+}
+.tab-btn:hover {
+  color: var(--accent-primary);
+}
 .cell-link { color: var(--primary-color); cursor: pointer; }
 .cell-mono { font-family: 'IBM Plex Mono', monospace; }
 </style>

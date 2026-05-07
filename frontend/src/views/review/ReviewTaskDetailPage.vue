@@ -37,8 +37,48 @@
           <span class="meta-text">提交: {{ shortSha(task.commit_sha) }} · 触发: {{ triggerLabel(task.trigger_type) }} · {{ timeAgo(task.created_at) }}</span>
         </div>
 
+        <div class="info-grid" v-if="task">
+          <div class="info-item">
+            <div class="info-label">MR 编号</div>
+            <div class="info-value">!{{ task.mr_iid }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Commit SHA</div>
+            <div class="info-value mono">{{ shortSha(task.commit_sha) }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">触发方式</div>
+            <div class="info-value">{{ triggerLabel(task.trigger_type) }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">风险等级</div>
+            <div class="info-value">
+              <StatusBadge v-if="task.risk_level" :variant="riskVariant(task.risk_level)" :text="riskLabel(task.risk_level)" :showDot="false" />
+              <span v-else>—</span>
+            </div>
+          </div>
+        </div>
+
         <div class="summary-card" v-if="task?.summary">
           <SectionTitle title="审查摘要" />
+          <div class="summary-stats">
+            <div class="stat-item" v-if="countBySeverity('critical') > 0">
+              <span class="stat-dot" style="background: #DC2626"></span>
+              <span>Critical: {{ countBySeverity('critical') }}</span>
+            </div>
+            <div class="stat-item" v-if="countBySeverity('high') > 0">
+              <span class="stat-dot" style="background: #EA580C"></span>
+              <span>High: {{ countBySeverity('high') }}</span>
+            </div>
+            <div class="stat-item" v-if="countBySeverity('medium') > 0">
+              <span class="stat-dot" style="background: #D97706"></span>
+              <span>Medium: {{ countBySeverity('medium') }}</span>
+            </div>
+            <div class="stat-item" v-if="countBySeverity('low') > 0">
+              <span class="stat-dot" style="background: #2563EB"></span>
+              <span>Low: {{ countBySeverity('low') }}</span>
+            </div>
+          </div>
           <p>{{ task.summary }}</p>
         </div>
 
@@ -218,10 +258,10 @@ function formatReviewAIResponse(response: Awaited<ReturnType<typeof aiApi.codeRe
  async function handleAIReview(message: string) {
    aiLoading.value = true
    try {
-     const response = await aiApi.reviewSummary({
-       repoKey,
-       taskId,
-       taskStatus: task.value?.status || 'unknown',
+      const response = await aiApi.reviewSummary({
+        repoKey,
+        taskId: String(taskId),
+        taskStatus: task.value?.status || 'unknown',
        findings: findings.value.map(f => ({
          severity: f.severity,
          filePath: f.file_path || 'unknown',
@@ -260,8 +300,51 @@ function formatReviewAIResponse(response: Awaited<ReturnType<typeof aiApi.codeRe
 .title-row h2 { font-size: 22px; font-weight: 700; margin: 0; }
 .meta-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
 .meta-text { font-size: 12px; color: var(--el-text-color-secondary); font-family: 'Geist Mono', monospace; }
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 16px;
+  background: var(--el-fill-color-lighter);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.info-label {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.info-value {
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+}
+.info-value.mono {
+  font-family: 'Geist Mono', monospace;
+}
 .summary-card { background: #0A0A0A; color: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
 .summary-card p { margin: 8px 0 0; font-size: 14px; color: #ccc; line-height: 1.6; }
+.summary-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #ccc;
+}
+.stat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+}
 .error-card { background: #FEF2F2; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
 .error-card p { margin: 8px 0 0; font-size: 13px; color: #B91C1C; }
 .findings-section { margin-top: 24px; }

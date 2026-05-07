@@ -223,7 +223,7 @@ function platformMeta(p: string) {
 }
 
 async function loadInitial() {
-  const [localRepos] = await Promise.all([
+  const [, localRepos] = await Promise.all([
     providerStore.fetchProviders(),
     getRepoList().catch(() => []),
   ])

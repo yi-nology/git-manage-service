@@ -21,11 +21,13 @@
       </template>
     </DataTable>
 
-    <el-dialog v-model="showCreateBranchDialog" title="创建远程分支" width="480px" destroy-on-close>
+    <el-dialog v-model="showCreateBranchDialog" title="创建远程分支" width="480px" destroy-on-close @open="loadDialogBranches">
       <el-form label-width="80px">
         <el-form-item label="分支名"><el-input v-model="createBranchForm.branch" placeholder="如: feature/new-api" /></el-form-item>
         <el-form-item label="基于">
-          <el-input v-model="createBranchForm.ref" :placeholder="defaultBranch || 'main'" />
+          <el-select v-model="createBranchForm.ref" filterable :placeholder="defaultBranch || '选择基准分支'" style="width: 100%" :loading="dialogBranchesLoading">
+            <el-option v-for="b in dialogBranches" :key="b.name" :label="b.name" :value="b.name" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -63,6 +65,8 @@ const showCreateBranchDialog = ref(false)
 const createBranchForm = ref({ branch: '', ref: '' })
 const createBranchLoading = ref(false)
 const loaded = ref(false)
+const dialogBranches = ref<{ name: string }[]>([])
+const dialogBranchesLoading = ref(false)
 
 const branchColumns: TableColumn[] = [
   { key: 'name', label: '分支名' },
@@ -76,6 +80,15 @@ async function loadRemoteBranches() {
     remoteBranches.value = (res || []) as any[]
   } catch { remoteBranches.value = [] }
   finally { rbLoading.value = false }
+}
+
+async function loadDialogBranches() {
+  dialogBranchesLoading.value = true
+  try {
+    const res = await listRemoteBranches({ provider_id: props.providerId, owner: props.repoOwner, repo: props.repoName })
+    dialogBranches.value = (res || []) as any[]
+  } catch { dialogBranches.value = [] }
+  finally { dialogBranchesLoading.value = false }
 }
 
 async function handleCheckoutRemote(branchName: string) {

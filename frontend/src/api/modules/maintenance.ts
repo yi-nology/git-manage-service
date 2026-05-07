@@ -147,9 +147,53 @@ export function getMaintenanceRecord(repoKey: string, id: number) {
   return request.get<MaintenanceRecordDTO>(`/repo/${repoKey}/maintenance/records/${id}`)
 }
 
+export interface PrefixFileEntry {
+  path: string
+  size: string
+  sizeBytes: number
+  exists: boolean
+  commitCount: number
+}
+
+export interface PrefixSlimPreview {
+  files: PrefixFileEntry[]
+  totalCount: number
+  totalSize: string
+  totalBytes: number
+}
+
+export interface ForcePushResult {
+  remoteName: string
+  platform: string
+  branches: number
+  success: boolean
+  error?: string
+}
+
+export interface ForcePushResponse {
+  results: ForcePushResult[]
+  taskId: string
+}
+
 export function analyzeMaintenanceAI(repoKey: string, filePaths: string[], threshold?: number) {
   return request.post<MaintenanceAIAnalysisResponse>(`/repo/${repoKey}/maintenance/ai-analyze`, {
     file_paths: filePaths,
     threshold: threshold || undefined
+  }, { timeout: 180000 })
+}
+
+export function previewPrefixSlim(repoKey: string, prefixes: string[]) {
+  return request.post<PrefixSlimPreview>(`/repo/${repoKey}/maintenance/slim-prefix/preview`, { prefixes })
+}
+
+export function slimByPrefix(repoKey: string, prefixes: string[], addGitignore = true, forcePush = false) {
+  return request.post<MaintenanceTaskResponse>(`/repo/${repoKey}/maintenance/slim-prefix`, {
+    prefixes,
+    addGitignore,
+    forcePush
   })
+}
+
+export function forcePushRemotes(repoKey: string) {
+  return request.post<ForcePushResponse>(`/repo/${repoKey}/maintenance/force-push`)
 }

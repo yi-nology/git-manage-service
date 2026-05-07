@@ -8,8 +8,11 @@ import {
   getTaskStatus,
   getMaintenanceRecords,
   analyzeMaintenanceAI,
+  previewPrefixSlim,
+  slimByPrefix,
+  forcePushRemotes,
 } from '@/api/modules/maintenance'
-import type { RepoHealthReport, LargeFileEntry, MaintenanceRecordDTO, MaintenanceRecordListResponse, MaintenanceAIAnalysisResponse, FileAIRecommendation } from '@/api/modules/maintenance'
+import type { RepoHealthReport, LargeFileEntry, MaintenanceRecordDTO, MaintenanceRecordListResponse, MaintenanceAIAnalysisResponse, FileAIRecommendation, PrefixSlimPreview, PrefixFileEntry } from '@/api/modules/maintenance'
 
 export function useMaintenance(repoKey: string) {
   const healthLoading = ref(false)
@@ -197,6 +200,90 @@ export function useMaintenance(repoKey: string) {
     }
   }
 
+  const prefixInput = ref('')
+  const prefixTags = ref<string[]>([])
+  const prefixPreview = ref<PrefixSlimPreview | null>(null)
+  const prefixPreviewLoading = ref(false)
+  const prefixSlimForcePush = ref(true)
+
+  async function addPrefix() {
+    const v = prefixInput.value.trim()
+    if (v && !prefixTags.value.includes(v)) {
+      prefixTags.value.push(v)
+    }
+    prefixInput.value = ''
+  }
+
+  function removePrefix(idx: number) {
+    prefixTags.value.splice(idx, 1)
+  }
+
+  async function previewPrefix() {
+    if (prefixTags.value.length === 0) {
+      ElMessage.warning('请先添加前缀')
+      return
+    }
+    prefixPreviewLoading.value = true
+    prefixPreview.value = null
+    try {
+      prefixPreview.value = await previewPrefixSlim(repoKey, prefixTags.value) as any as PrefixSlimPreview
+    } catch (e: any) {
+      ElMessage.error('预览失败: ' + (e.message || '未知错误'))
+    } finally {
+      prefixPreviewLoading.value = false
+    }
+  }
+
+  async function handlePrefixSlimConfirm() {
+    if (prefixTags.value.length === 0) {
+      ElMessage.warning('请先添加前缀')
+      return
+    }
+
+    const totalSize = prefixPreview.value ? formatFileSize(prefixPreview.value.totalBytes) : '未知'
+    const count = prefixPreview.value ? prefixPreview.value.totalCount : 0
+
+    try {
+      await ElMessageBox.confirm(
+        `即将删除所有匹配前缀 [${prefixTags.value.join(', ')}] 的文件（共 ${count} 个，${totalSize}），此操作会重写 git 历史，不可恢复！${prefixSlimForcePush.value ? '\n\n瘦身完成后将强制推送到所有绑定的远端。' : ''}`,
+        '确认前缀瘦身',
+        { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' }
+      )
+    } catch { return }
+
+    try {
+      const res = await slimByPrefix(repoKey, prefixTags.value, true, prefixSlimForcePush.value) as any
+      taskId.value = res.taskId
+      taskStatus.value = 'running'
+      taskLogs.value = []
+      taskError.value = ''
+      startPolling()
+    } catch (e: any) {
+      ElMessage.error('瘦身失败: ' + (e.message || '未知错误'))
+    }
+  }
+
+  async function handleForcePush() {
+    try {
+      await ElMessageBox.confirm(
+        '将强制推送所有本地分支到所有绑定的远端仓库，此操作会覆盖远端历史！',
+        '确认强制推送',
+        { confirmButtonText: '确认推送', cancelButtonText: '取消', type: 'warning' }
+      )
+    } catch { return }
+
+    try {
+      const res = await forcePushRemotes(repoKey) as any
+      taskId.value = res.taskId
+      taskStatus.value = 'running'
+      taskLogs.value = []
+      taskError.value = ''
+      startPolling()
+    } catch (e: any) {
+      ElMessage.error('推送失败: ' + (e.message || '未知错误'))
+    }
+  }
+
   return {
     healthLoading,
     healthReport,
@@ -226,5 +313,15 @@ export function useMaintenance(repoKey: string) {
     loadRecords,
     analyzeWithAI,
     acceptAIRecommendations,
+    prefixInput,
+    prefixTags,
+    prefixPreview,
+    prefixPreviewLoading,
+    prefixSlimForcePush,
+    addPrefix,
+    removePrefix,
+    previewPrefix,
+    handlePrefixSlimConfirm,
+    handleForcePush,
   }
 }

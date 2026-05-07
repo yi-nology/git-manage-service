@@ -30,12 +30,20 @@
       </template>
     </DataTable>
 
-    <el-dialog v-model="showCreateCRDialog" title="创建 CR / MR" width="520px" destroy-on-close>
+    <el-dialog v-model="showCreateCRDialog" title="创建 CR / MR" width="520px" destroy-on-close @open="loadBranches">
       <el-form label-width="80px">
         <el-form-item label="标题"><el-input v-model="createCRForm.title" placeholder="CR 标题" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="createCRForm.description" type="textarea" :rows="3" placeholder="可选描述" /></el-form-item>
-        <el-form-item label="源分支"><el-input v-model="createCRForm.source_branch" placeholder="feature-branch" /></el-form-item>
-        <el-form-item label="目标分支"><el-input v-model="createCRForm.target_branch" placeholder="main" /></el-form-item>
+        <el-form-item label="源分支">
+          <el-select v-model="createCRForm.source_branch" filterable placeholder="选择源分支" style="width: 100%" :loading="branchesLoading">
+            <el-option v-for="b in branches" :key="b.name" :label="b.name" :value="b.name" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="目标分支">
+          <el-select v-model="createCRForm.target_branch" filterable placeholder="选择目标分支" style="width: 100%" :loading="branchesLoading">
+            <el-option v-for="b in branches" :key="b.name" :label="b.name" :value="b.name" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="标签"><el-input v-model="createCRForm.labels" placeholder="逗号分隔，如: bugfix,feature" /></el-form-item>
       </el-form>
       <template #footer>
@@ -51,6 +59,7 @@ import { ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { listRemoteCRs, createRemoteCR, mergeRemoteCR, closeRemoteCR } from '@/api/modules/cr'
+import { listRemoteBranches } from '@/api/modules/provider'
 import type { CRDTO } from '@/api/modules/cr'
 import DataTable from '@/components/common/DataTable.vue'
 import type { TableColumn } from '@/components/common/DataTable.vue'
@@ -73,6 +82,8 @@ const showCreateCRDialog = ref(false)
 const createCRForm = ref({ title: '', description: '', source_branch: '', target_branch: '', labels: '' })
 const createCRLoading = ref(false)
 const loaded = ref(false)
+const branches = ref<{ name: string }[]>([])
+const branchesLoading = ref(false)
 
 const crColumns: TableColumn[] = [
   { key: 'cr_number', label: '#', width: '60px' },
@@ -94,6 +105,15 @@ function crStateVariant(s: string): 'success' | 'info' | 'danger' | 'default' {
   if (s === 'merged') return 'info'
   if (s === 'closed') return 'danger'
   return 'default'
+}
+
+async function loadBranches() {
+  branchesLoading.value = true
+  try {
+    const res = await listRemoteBranches({ provider_id: props.providerId, owner: props.repoOwner, repo: props.repoName })
+    branches.value = res || []
+  } catch { branches.value = [] }
+  finally { branchesLoading.value = false }
 }
 
 async function loadCRs() {

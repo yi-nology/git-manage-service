@@ -48,6 +48,31 @@
             <template #cell-state="{ row }">
               <StatusBadge :variant="crStateVariant(row.state)" :text="stateLabel(row.state)" :showDot="false" />
             </template>
+            <template #cell-review_status="{ row }">
+              <StatusBadge
+                v-if="getReviewStatus(row.cr_number)"
+                :variant="reviewStatusVariant(getReviewStatus(row.cr_number)!.status)"
+                :text="reviewStatusLabel(getReviewStatus(row.cr_number)!.status)"
+              />
+              <span v-else class="review-none">未审查</span>
+            </template>
+            <template #cell-actions="{ row }">
+              <router-link
+                v-if="getReviewStatus(row.cr_number)"
+                :to="`/local-repos/${repoKey}/review/tasks/${getReviewStatus(row.cr_number)!.id}`"
+                class="action-link"
+              >
+                详情
+              </router-link>
+              <button
+                v-else
+                class="action-btn"
+                @click="triggerReview(row)"
+                :disabled="triggering"
+              >
+                审查
+              </button>
+            </template>
           </DataTable>
 
           <EmptyState v-else-if="!loading" title="暂无 CR" description="点击「同步」从远程平台拉取 Change Request" />
@@ -64,6 +89,7 @@ import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { listCRs, syncCRs } from '@/api/modules/cr'
 import type { CRDTO } from '@/api/modules/cr'
+import { listReviewTasks, createReviewTask, type ReviewTaskDTO } from '@/api/modules/review'
 import RepoSidebar from '@/components/repo/RepoSidebar.vue'
 import { getRepoDetail } from '@/api/modules/repo'
 import { getCurrentVersion } from '@/api/modules/version'
@@ -80,9 +106,11 @@ const repoKey = route.params.repoKey as string
 
 const loading = ref(false)
 const syncing = ref(false)
+const triggering = ref(false)
 const activeFilter = ref('all')
 const searchText = ref('')
 const crs = ref<CRDTO[]>([])
+const reviewTasks = ref<ReviewTaskDTO[]>([])
 const repoName = ref('')
 const currentVersion = ref('')
 
@@ -112,6 +140,42 @@ function crStateVariant(s: string): 'success' | 'info' | 'danger' | 'default' {
   return 'default'
 }
 
+function getReviewStatus(crNumber: number): ReviewTaskDTO | null {
+  const tasks = reviewTasks.value.filter(t => String(t.mr_iid) === String(crNumber))
+  if (tasks.length === 0) return null
+  const sorted = tasks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  return sorted[0] || null
+}
+
+function reviewStatusVariant(s: string): 'success' | 'danger' | 'warning' | 'info' | 'running' | 'default' {
+  const m: Record<string, 'success' | 'danger' | 'warning' | 'info' | 'running' | 'default'> = {
+    pending: 'warning', running: 'running', success: 'success', failed: 'danger', blocked: 'danger'
+  }
+  return m[s] || 'default'
+}
+
+function reviewStatusLabel(s: string) {
+  const m: Record<string, string> = { pending: '审查中', running: '审查中', success: '通过', failed: '失败', blocked: '阻塞' }
+  return m[s] || s
+}
+
+async function triggerReview(cr: CRDTO) {
+  triggering.value = true
+  try {
+    await createReviewTask({
+      repo_key: repoKey,
+      mr_iid: String(cr.cr_number),
+      trigger_type: 'manual',
+    })
+    ElMessage.success(`已触发 MR #${cr.cr_number} 的代码审查`)
+    loadReviewTasks()
+  } catch (e: any) {
+    ElMessage.error('触发审查失败: ' + (e?.message || ''))
+  } finally {
+    triggering.value = false
+  }
+}
+
 const crColumns: TableColumn[] = [
   { key: 'cr_number', label: 'CR', width: '60px' },
   { key: 'title', label: '标题' },
@@ -119,7 +183,8 @@ const crColumns: TableColumn[] = [
   { key: 'source_branch', label: '源分支', width: '140px' },
   { key: 'target_branch', label: '目标分支', width: '140px' },
   { key: 'state', label: '状态', width: '80px' },
-  { key: 'author_name', label: '作者', width: '100px' },
+  { key: 'review_status', label: 'Review 状态', width: '120px' },
+  { key: 'actions', label: '操作', width: '80px' },
 ]
 
 const filteredCRs = computed(() => {
@@ -156,8 +221,16 @@ async function handleSync() {
   }
 }
 
+async function loadReviewTasks() {
+  try {
+    const res = await listReviewTasks({ repo_key: repoKey, page: 1, page_size: 100 })
+    reviewTasks.value = res?.tasks || []
+  } catch { reviewTasks.value = [] }
+}
+
 onMounted(async () => {
   loadCRs()
+  loadReviewTasks()
   try {
     const r = await getRepoDetail(repoKey)
     repoName.value = r?.name || ''
@@ -224,5 +297,36 @@ onMounted(async () => {
 .mono {
   font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
   font-size: 12px;
+}
+
+.review-none {
+  font-size: 12px;
+  color: var(--text-color-placeholder);
+}
+
+.action-link {
+  font-size: 12px;
+  color: var(--accent-primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+.action-link:hover {
+  text-decoration: underline;
+}
+
+.action-btn {
+  font-size: 12px;
+  color: var(--accent-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.action-btn:hover {
+  text-decoration: underline;
+}
+.action-btn:disabled {
+  color: var(--text-color-placeholder);
+  cursor: not-allowed;
 }
 </style>

@@ -10,7 +10,52 @@
         </div>
         <el-button type="primary" :icon="Refresh" :loading="healthLoading" @click="loadHealth">开始体检</el-button>
         <el-button :icon="Delete" @click="handleGC" :loading="gcLoading" :disabled="!healthReport">垃圾回收</el-button>
+        <el-button type="warning" @click="handleForcePush" :disabled="!!taskId && taskStatus === 'running'">强制推送远端</el-button>
       </div>
+    </div>
+
+    <div class="prefix-slim-section">
+      <SectionTitle title="前缀定向瘦身" />
+      <div class="prefix-input-row">
+        <div class="prefix-tags-row">
+          <el-tag v-for="(tag, idx) in prefixTags" :key="idx" closable size="small" class="prefix-tag" @close="removePrefix(idx)">{{ tag }}</el-tag>
+          <el-input v-model="prefixInput" size="small" placeholder="输入前缀如 vendor/ node_modules/" @keyup.enter="addPrefix" style="width: 220px" />
+          <el-button size="small" type="primary" :icon="Plus" @click="addPrefix">添加</el-button>
+        </div>
+        <div class="prefix-presets-row">
+          <span class="prefix-preset-label">常用:</span>
+          <el-tag v-for="p in prefixPresets" :key="p" size="small" class="preset-tag" effect="plain" @click="addPrefixPreset(p)">{{ p }}</el-tag>
+        </div>
+        <div class="prefix-action-row">
+          <el-button type="info" :loading="prefixPreviewLoading" @click="previewPrefix" :disabled="prefixTags.length === 0">预览匹配文件</el-button>
+          <el-checkbox v-model="prefixSlimForcePush" label="瘦身后强制推送远端" size="small" />
+        </div>
+      </div>
+
+      <div v-if="prefixPreviewLoading" class="slim-loading">
+        <el-icon class="is-loading" :size="24"><Refresh /></el-icon>
+        <span>正在扫描匹配文件...</span>
+      </div>
+
+      <template v-if="prefixPreview && !prefixPreviewLoading">
+        <div class="prefix-summary">
+          <span>匹配 <strong>{{ prefixPreview.totalCount }}</strong> 个文件，总计 <strong>{{ prefixPreview.totalSize }}</strong></span>
+          <el-button type="danger" @click="handlePrefixSlimConfirm" :disabled="prefixPreview.totalCount === 0">执行前缀瘦身</el-button>
+        </div>
+        <el-table :data="prefixPreview.files.slice(0, 100)" style="width: 100%" size="small" max-height="300" empty-text="未找到匹配文件">
+          <el-table-column prop="path" label="文件路径" min-width="260">
+            <template #default="{ row }"><span class="mono">{{ row.path }}</span></template>
+          </el-table-column>
+          <el-table-column prop="size" label="大小" width="100" />
+          <el-table-column label="状态" width="80">
+            <template #default="{ row }">
+              <el-tag :type="row.exists ? 'success' : 'info'" size="small">{{ row.exists ? '存在' : '已删除' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="commitCount" label="涉及提交" width="80" />
+        </el-table>
+        <div v-if="prefixPreview.totalCount > 100" class="prefix-more-hint">仅显示前 100 个文件（共 {{ prefixPreview.totalCount }} 个）</div>
+      </template>
     </div>
 
     <div v-if="!healthReport && !healthLoading" class="slim-empty">
@@ -269,6 +314,16 @@ const {
   loadRecords,
   analyzeWithAI,
   acceptAIRecommendations,
+  prefixInput,
+  prefixTags,
+  prefixPreview,
+  prefixPreviewLoading,
+  prefixSlimForcePush,
+  addPrefix,
+  removePrefix,
+  previewPrefix,
+  handlePrefixSlimConfirm,
+  handleForcePush,
 } = useMaintenance(props.repoKey)
 
 function statusTagType(status: string) {
