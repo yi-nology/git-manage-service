@@ -64,6 +64,9 @@ func GeneratedRegister(h *server.Hertz) {
 	author.Register(h)
 
 	maintenance.Register(h)
+	h.POST("/api/v1/repo/:repo_key/maintenance/slim-prefix/preview", handler_maintenance.PreviewPrefixSlim)
+	h.POST("/api/v1/repo/:repo_key/maintenance/slim-prefix", handler_maintenance.SlimByPrefix)
+	h.POST("/api/v1/repo/:repo_key/maintenance/force-push", handler_maintenance.ForcePushRemotes)
 
 	settings.Register(h)
 	h.GET("/api/v1/settings/ollama-models", handler_settings.FetchOllamaModels)

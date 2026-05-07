@@ -32,9 +32,9 @@ func Register(r *server.Hertz) {
 				_ai.POST("/spec/template", append(_generatespectemplateMw(), ai.GenerateSpecTemplate)...)
 				_ai.POST("/stats/insight", append(_analyzestatsinsightMw(), ai.AnalyzeStatsInsight)...)
 				_ai.POST("/sync/failure", append(_diagnosesyncfailureMw(), ai.DiagnoseSyncFailure)...)
- 				_ai.POST("/webhook/failure", append(_analyzewebhookfailureMw(), ai.AnalyzeWebhookFailure)...)
- 				_ai.POST("/feedback", ai.SubmitUserFeedback)
- 			}
- 		}
- 	}
- }
+				_ai.POST("/webhook/failure", append(_analyzewebhookfailureMw(), ai.AnalyzeWebhookFailure)...)
+				_ai.POST("/feedback", ai.SubmitUserFeedback)
+			}
+		}
+	}
+}

@@ -75,7 +75,7 @@ var taskDefaultConfig = map[TaskType]TaskConfig{
 	TaskConflictExplain:        {Timeout: 30 * time.Second, MaxInputChars: 40000, OutputMode: OutputModeText, AllowAutoApply: false},
 	TaskAuthorIdentity:         {Timeout: 60 * time.Second, MaxInputChars: 60000, OutputMode: OutputModeJSON, AllowAutoApply: false},
 	TaskAuthorMergePlan:        {Timeout: 60 * time.Second, MaxInputChars: 60000, OutputMode: OutputModeJSON, AllowAutoApply: false},
-	TaskMaintenance:            {Timeout: 60 * time.Second, MaxInputChars: 40000, OutputMode: OutputModeJSON, AllowAutoApply: false},
+	TaskMaintenance:            {Timeout: 120 * time.Second, MaxInputChars: 40000, OutputMode: OutputModeJSON, AllowAutoApply: false},
 	TaskRepoSummary:            {Timeout: 60 * time.Second, MaxInputChars: 60000, OutputMode: OutputModeJSON, AllowAutoApply: false},
 	TaskRepoRegisterAdvice:     {Timeout: 60 * time.Second, MaxInputChars: 40000, OutputMode: OutputModeJSON, AllowAutoApply: false},
 	TaskRepoOperationRisk:      {Timeout: 30 * time.Second, MaxInputChars: 30000, OutputMode: OutputModeJSON, AllowAutoApply: false},

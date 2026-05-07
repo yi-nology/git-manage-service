@@ -10,10 +10,10 @@ import (
 type Platform string
 
 const (
-	PlatformGitLab       Platform = "gitlab"
-	PlatformGitHub       Platform = "github"
-	PlatformGitea        Platform = "gitea"
-	PlatformTencentCode  Platform = "tencent_code"
+	PlatformGitLab      Platform = "gitlab"
+	PlatformGitHub      Platform = "github"
+	PlatformGitea       Platform = "gitea"
+	PlatformTencentCode Platform = "tencent_code"
 )
 
 type Provider interface {
@@ -150,6 +150,7 @@ type NormalizedEvent struct {
 	CR         *ChangeRequest  `json:"cr,omitempty"`
 	Branch     string          `json:"branch,omitempty"`
 	Tag        string          `json:"tag,omitempty"`
+	CommitSHA  string          `json:"commit_sha,omitempty"`
 	RawPayload json.RawMessage `json:"raw_payload"`
 }
 

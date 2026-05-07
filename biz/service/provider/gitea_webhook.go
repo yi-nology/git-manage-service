@@ -35,6 +35,7 @@ func (g *giteaProvider) ParseWebhookEvent(r *http.Request, secret string) (*Norm
 			State  string `json:"state"`
 			Head   struct {
 				Ref string `json:"ref"`
+				SHA string `json:"sha"`
 			} `json:"head"`
 			Base struct {
 				Ref string `json:"ref"`
@@ -50,6 +51,7 @@ func (g *giteaProvider) ParseWebhookEvent(r *http.Request, secret string) (*Norm
 		} `json:"pull_request"`
 		Number int    `json:"number"`
 		Ref    string `json:"ref"`
+		After  string `json:"after"`
 	}
 	if err := json.Unmarshal(body, &pl); err != nil {
 		return nil, err
@@ -76,6 +78,7 @@ func (g *giteaProvider) ParseWebhookEvent(r *http.Request, secret string) (*Norm
 		}
 		event.Type = "cr." + action
 		if pl.PullRequest != nil {
+			event.CommitSHA = pl.PullRequest.Head.SHA
 			event.CR = &ChangeRequest{
 				ID: int64(pl.PullRequest.Number), Number: pl.PullRequest.Number,
 				Title: pl.PullRequest.Title, Description: pl.PullRequest.Body,
@@ -89,6 +92,7 @@ func (g *giteaProvider) ParseWebhookEvent(r *http.Request, secret string) (*Norm
 	case "push":
 		event.Type = "push"
 		event.Branch = strings.TrimPrefix(pl.Ref, "refs/heads/")
+		event.CommitSHA = pl.After
 	case "create":
 		event.Type = "branch.created"
 		event.Branch = pl.Ref

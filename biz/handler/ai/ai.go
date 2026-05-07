@@ -5,8 +5,8 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
-	"github.com/yi-nology/git-manage-service/pkg/response"
 	aiSvc "github.com/yi-nology/git-manage-service/biz/service/ai"
+	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
 var aiService = aiSvc.NewService()
@@ -243,24 +243,24 @@ func AnalyzeWebhookFailure(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
- 	resp, err := aiService.AnalyzeWebhookFailure(ctx, req)
- 	if err != nil {
- 		response.InternalError(c, err)
- 		return
- 	}
- 	response.Success(c, resp)
- }
+	resp, err := aiService.AnalyzeWebhookFailure(ctx, req)
+	if err != nil {
+		response.InternalError(c, err)
+		return
+	}
+	response.Success(c, resp)
+}
 
- func SubmitUserFeedback(ctx context.Context, c *app.RequestContext) {
- 	var req api.AIFeedbackRequest
- 	if err := c.BindAndValidate(&req); err != nil {
- 		response.BadRequest(c, err.Error())
- 		return
- 	}
+func SubmitUserFeedback(ctx context.Context, c *app.RequestContext) {
+	var req api.AIFeedbackRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
 
- 	if err := aiService.SubmitUserFeedback(req); err != nil {
- 		response.InternalError(c, err)
- 		return
- 	}
- 	response.Success(c, map[string]bool{"success": true})
- }
+	if err := aiService.SubmitUserFeedback(req); err != nil {
+		response.InternalError(c, err)
+		return
+	}
+	response.Success(c, map[string]bool{"success": true})
+}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/provider"
 )
 
@@ -46,6 +47,27 @@ func RegisterWebhook(ctx context.Context, id uint) (*api.RepoProviderBindingDTO,
 	b.WebhookURL = wh.URL
 	if err := dao.Save(b); err != nil {
 		return nil, fmt.Errorf("failed to save webhook info: %w", err)
+	}
+
+	ruleDAO := db.NewWebhookRuleDAO()
+	repoPattern := b.PlatformOwner + "/" + b.PlatformRepo
+	existingRules, _ := ruleDAO.FindByProviderConfigID(b.ProviderConfigID)
+	ruleExists := false
+	for _, r := range existingRules {
+		if r.Action == "code_review" && r.RepoPattern == repoPattern {
+			ruleExists = true
+			break
+		}
+	}
+	if !ruleExists {
+		ruleDAO.Create(&po.WebhookRule{
+			Name:             fmt.Sprintf("auto-review-%s-%s", b.PlatformOwner, b.PlatformRepo),
+			ProviderConfigID: b.ProviderConfigID,
+			EventTypePattern: "cr.*",
+			RepoPattern:      repoPattern,
+			Action:           "code_review",
+			Enabled:          true,
+		})
 	}
 
 	updated, err := dao.FindByID(id)

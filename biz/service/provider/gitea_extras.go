@@ -6,7 +6,7 @@ import (
 )
 
 func (g *giteaProvider) ListBranches(ctx context.Context, owner, repo string) ([]*PlatformBranch, error) {
-	path := fmt.Sprintf("/api/v1/repos/%s/%s/branches?limit=100", owner, repo)
+	path := fmt.Sprintf("/repos/%s/%s/branches?limit=100", owner, repo)
 	var branches []struct {
 		Name string `json:"name"`
 	}
@@ -25,14 +25,14 @@ func (g *giteaProvider) CreateBranch(ctx context.Context, owner, repo, branch, r
 	var res struct {
 		Name string `json:"name"`
 	}
-	if err := g.doRequest(ctx, "POST", fmt.Sprintf("/api/v1/repos/%s/%s/branches", owner, repo), body, &res); err != nil {
+	if err := g.doRequest(ctx, "POST", fmt.Sprintf("/repos/%s/%s/branches", owner, repo), body, &res); err != nil {
 		return nil, err
 	}
 	return &PlatformBranch{Name: res.Name}, nil
 }
 
 func (g *giteaProvider) DeleteBranch(ctx context.Context, owner, repo, branch string) error {
-	return g.doRequest(ctx, "DELETE", fmt.Sprintf("/api/v1/repos/%s/%s/branches/%s", owner, repo, branch), nil, nil)
+	return g.doRequest(ctx, "DELETE", fmt.Sprintf("/repos/%s/%s/branches/%s", owner, repo, branch), nil, nil)
 }
 
 func (g *giteaProvider) GetCRDiff(ctx context.Context, owner, repo string, number int) (*MergeDiff, error) {

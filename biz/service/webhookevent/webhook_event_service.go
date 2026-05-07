@@ -92,6 +92,9 @@ func ProcessIncomingEvent(event *provider.NormalizedEvent, providerCfgID uint) e
 	if event.Tag != "" {
 		payload["tag"] = event.Tag
 	}
+	if event.CommitSHA != "" {
+		payload["commit_sha"] = event.CommitSHA
+	}
 
 	whEvent := &po.WebhookEvent{
 		EventID:          eventID,

@@ -142,6 +142,29 @@ func CreateBinding(ctx context.Context, req *api.CreateBindingReq) (*api.RepoPro
 		return nil, fmt.Errorf("failed to create binding: %w", err)
 	}
 
+	if binding.WebhookID != "" {
+		ruleDAO := db.NewWebhookRuleDAO()
+		repoPattern := req.PlatformOwner + "/" + req.PlatformRepo
+		existingRules, _ := ruleDAO.FindByProviderConfigID(req.ProviderConfigID)
+		ruleExists := false
+		for _, r := range existingRules {
+			if r.Action == "code_review" && r.RepoPattern == repoPattern {
+				ruleExists = true
+				break
+			}
+		}
+		if !ruleExists {
+			ruleDAO.Create(&po.WebhookRule{
+				Name:             fmt.Sprintf("auto-review-%s-%s", req.PlatformOwner, req.PlatformRepo),
+				ProviderConfigID: req.ProviderConfigID,
+				EventTypePattern: "cr.*",
+				RepoPattern:      repoPattern,
+				Action:           "code_review",
+				Enabled:          true,
+			})
+		}
+	}
+
 	created, err := bindingDAO.FindByID(binding.ID)
 	if err != nil {
 		return nil, fmt.Errorf("binding created but failed to reload: %w", err)

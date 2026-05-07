@@ -28,19 +28,23 @@ func (g *gitlabProvider) ParseWebhookEvent(r *http.Request, secret string) (*Nor
 			PathWithNS string `json:"path_with_namespace"`
 		} `json:"project"`
 		ObjectAttributes struct {
-			IID          int       `json:"iid"`
-			Title        string    `json:"title"`
-			Description  string    `json:"description"`
-			State        string    `json:"state"`
-			SourceBranch string    `json:"source_branch"`
-			TargetBranch string    `json:"target_branch"`
-			Action       string    `json:"action"`
-			MergeStatus  string    `json:"merge_status"`
-			URL          string    `json:"url"`
-			CreatedAt    time.Time `json:"created_at"`
-			UpdatedAt    time.Time `json:"updated_at"`
+			IID          int    `json:"iid"`
+			Title        string `json:"title"`
+			Description  string `json:"description"`
+			State        string `json:"state"`
+			SourceBranch string `json:"source_branch"`
+			TargetBranch string `json:"target_branch"`
+			Action       string `json:"action"`
+			MergeStatus  string `json:"merge_status"`
+			URL          string `json:"url"`
+			LastCommit   struct {
+				ID string `json:"id"`
+			} `json:"last_commit"`
+			CreatedAt time.Time `json:"created_at"`
+			UpdatedAt time.Time `json:"updated_at"`
 		} `json:"object_attributes"`
-		Ref string `json:"ref"`
+		Ref   string `json:"ref"`
+		After string `json:"after"`
 	}
 	if err := json.Unmarshal(body, &pl); err != nil {
 		return nil, err
@@ -67,6 +71,7 @@ func (g *gitlabProvider) ParseWebhookEvent(r *http.Request, secret string) (*Nor
 			action = "merged"
 		}
 		event.Type = "cr." + action
+		event.CommitSHA = pl.ObjectAttributes.LastCommit.ID
 		event.CR = &ChangeRequest{
 			ID: int64(pl.ObjectAttributes.IID), Number: pl.ObjectAttributes.IID,
 			Title: pl.ObjectAttributes.Title, Description: pl.ObjectAttributes.Description,
@@ -78,6 +83,7 @@ func (g *gitlabProvider) ParseWebhookEvent(r *http.Request, secret string) (*Nor
 	case "push":
 		event.Type = "push"
 		event.Branch = strings.TrimPrefix(pl.Ref, "refs/heads/")
+		event.CommitSHA = pl.After
 	case "tag_push":
 		event.Type = "tag.created"
 		event.Tag = strings.TrimPrefix(pl.Ref, "refs/tags/")

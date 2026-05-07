@@ -37,6 +37,7 @@ func (g *githubProvider) ParseWebhookEvent(r *http.Request, secret string) (*Nor
 			State  string `json:"state"`
 			Head   struct {
 				Ref string `json:"ref"`
+				SHA string `json:"sha"`
 			} `json:"head"`
 			Base struct {
 				Ref string `json:"ref"`
@@ -51,7 +52,8 @@ func (g *githubProvider) ParseWebhookEvent(r *http.Request, secret string) (*Nor
 			CreatedAt time.Time `json:"created_at"`
 			UpdatedAt time.Time `json:"updated_at"`
 		} `json:"pull_request"`
-		Ref string `json:"ref"`
+		Ref   string `json:"ref"`
+		After string `json:"after"`
 	}
 	if err := json.Unmarshal(body, &pl); err != nil {
 		return nil, err
@@ -78,6 +80,7 @@ func (g *githubProvider) ParseWebhookEvent(r *http.Request, secret string) (*Nor
 		}
 		event.Type = "cr." + action
 		if pl.PullRequest != nil {
+			event.CommitSHA = pl.PullRequest.Head.SHA
 			mergeStatus := "unknown"
 			if pl.PullRequest.Mergeable != nil {
 				if *pl.PullRequest.Mergeable {
@@ -99,6 +102,7 @@ func (g *githubProvider) ParseWebhookEvent(r *http.Request, secret string) (*Nor
 	case "push":
 		event.Type = "push"
 		event.Branch = strings.TrimPrefix(pl.Ref, "refs/heads/")
+		event.CommitSHA = pl.After
 	case "create":
 		event.Type = "branch.created"
 		event.Branch = pl.Ref

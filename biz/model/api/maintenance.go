@@ -111,3 +111,31 @@ type MaintenanceAIAnalysisResponse struct {
 	TotalSaveBytes  int64                  `json:"totalSaveBytes"`
 	Recommendations []FileAIRecommendation `json:"recommendations"`
 }
+
+type PrefixFileEntry struct {
+	Path        string `json:"path"`
+	Size        string `json:"size"`
+	SizeBytes   int64  `json:"sizeBytes"`
+	Exists      bool   `json:"exists"`
+	CommitCount int    `json:"commitCount"`
+}
+
+type PrefixSlimPreview struct {
+	Files      []PrefixFileEntry `json:"files"`
+	TotalCount int               `json:"totalCount"`
+	TotalSize  string            `json:"totalSize"`
+	TotalBytes int64             `json:"totalBytes"`
+}
+
+type ForcePushResult struct {
+	RemoteName string `json:"remoteName"`
+	Platform   string `json:"platform"`
+	Branches   int    `json:"branches"`
+	Success    bool   `json:"success"`
+	Error      string `json:"error,omitempty"`
+}
+
+type ForcePushResponse struct {
+	Results []ForcePushResult `json:"results"`
+	TaskID  string            `json:"taskId"`
+}

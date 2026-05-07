@@ -206,54 +206,29 @@ func (t *tencentCodeProvider) ListCRs(ctx context.Context, opts ListCROptions) (
 }
 
 func (t *tencentCodeProvider) MergeCR(ctx context.Context, owner, repo string, number int, opts MergeCROptions) (*ChangeRequest, error) {
-	encoded := encodeProjectPath(owner, repo)
-	var existingMR tcMR
-	if err := t.doRequest(ctx, "GET", fmt.Sprintf("/projects/%s/merge_requests/%d", encoded, number), nil, &existingMR); err == nil {
-		if existingMR.MergeStatus != "" && existingMR.MergeStatus != "can_be_merged" && existingMR.MergeStatus != "checking" {
-			return nil, fmt.Errorf("MR cannot be merged (status: %s)", existingMR.MergeStatus)
-		}
-		if existingMR.State != "opened" {
-			return nil, fmt.Errorf("MR is not in 'opened' state (current: %s)", existingMR.State)
-		}
-	}
-	body := map[string]interface{}{}
-	if opts.MergeCommitMessage != "" {
-		body["merge_commit_message"] = opts.MergeCommitMessage
-	}
-	if opts.Squash {
-		body["squash"] = true
-	}
-	if opts.RemoveSourceBranch {
-		body["should_remove_source_branch"] = true
-	}
-	var mr tcMR
-	if err := t.doRequest(ctx, "PUT", fmt.Sprintf("/projects/%s/merge_requests/%d/merge", encoded, number), body, &mr); err != nil {
-		return nil, fmt.Errorf("merge failed: %w", err)
-	}
-	return mr.toCR(), nil
+	return nil, fmt.Errorf("腾讯工蜂暂不支持通过 API 合并 MR，请在网页端手动操作")
 }
 
 func (t *tencentCodeProvider) CloseCR(ctx context.Context, owner, repo string, number int) (*ChangeRequest, error) {
-	encoded := encodeProjectPath(owner, repo)
-	body := map[string]interface{}{"state_event": "close"}
-	var mr tcMR
-	if err := t.doRequest(ctx, "PUT", fmt.Sprintf("/projects/%s/merge_requests/%d", encoded, number), body, &mr); err != nil {
-		return nil, err
-	}
-	return mr.toCR(), nil
+	return nil, fmt.Errorf("腾讯工蜂暂不支持通过 API 关闭 MR，请在网页端手动操作")
 }
 
 func (t *tencentCodeProvider) CreateWebhook(ctx context.Context, opts CreateWebhookOptions) (*PlatformWebhook, error) {
 	encoded := encodeProjectPath(opts.Owner, opts.Repo)
-	body := map[string]interface{}{"url": opts.URL, "token": opts.Secret}
+	body := map[string]interface{}{
+		"url": opts.URL, "token": opts.Secret,
+		"push_events": true,
+	}
 	if len(opts.Events) > 0 {
 		em := map[string]bool{}
 		for _, e := range opts.Events {
 			em[e] = true
 		}
-		body["push_events"] = em["push"]
-		body["merge_requests_events"] = em["cr"]
-		body["tag_push_events"] = em["tag"]
+		if v, ok := em["push"]; ok {
+			body["push_events"] = v
+		}
+		body["merge_requests_events"] = em["merge_request"] || em["merge_requests"] || em["pull_request"] || em["cr"]
+		body["tag_push_events"] = em["tag_push"] || em["tag"]
 	}
 	var wh struct {
 		ID  int    `json:"id"`
@@ -453,11 +428,34 @@ type tcMR struct {
 		Username string `json:"username"`
 		Name     string `json:"name"`
 	} `json:"author"`
-	Labels      []string  `json:"labels"`
-	MergeStatus string    `json:"merge_status"`
-	WebURL      string    `json:"web_url"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	Labels      []string `json:"labels"`
+	MergeStatus string   `json:"merge_status"`
+	WebURL      string   `json:"web_url"`
+	CreatedAt   tcTime   `json:"created_at"`
+	UpdatedAt   tcTime   `json:"updated_at"`
+}
+
+type tcTime struct {
+	time.Time
+}
+
+func (t *tcTime) UnmarshalJSON(data []byte) error {
+	s := strings.Trim(string(data), "\"")
+	if s == "null" || s == "" {
+		return nil
+	}
+	formats := []string{
+		"2006-01-02T15:04:05-0700",
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02T15:04:05",
+	}
+	for _, f := range formats {
+		if parsed, err := time.Parse(f, s); err == nil {
+			t.Time = parsed
+			return nil
+		}
+	}
+	return fmt.Errorf("cannot parse time %q", s)
 }
 
 func (mr *tcMR) toCR() *ChangeRequest {
@@ -466,7 +464,7 @@ func (mr *tcMR) toCR() *ChangeRequest {
 		State: mapTCState(mr.State), SourceBranch: mr.SourceBranch, TargetBranch: mr.TargetBranch,
 		Author: &CRUser{ID: int64(mr.Author.ID), Username: mr.Author.Username, Name: mr.Author.Name},
 		Labels: mr.Labels, MergeStatus: mr.MergeStatus, WebURL: mr.WebURL,
-		CreatedAt: mr.CreatedAt, UpdatedAt: mr.UpdatedAt,
+		CreatedAt: mr.CreatedAt.Time, UpdatedAt: mr.UpdatedAt.Time,
 	}
 }
 

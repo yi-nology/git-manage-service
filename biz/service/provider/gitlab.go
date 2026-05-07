@@ -225,15 +225,20 @@ func (g *gitlabProvider) CloseCR(ctx context.Context, owner, repo string, number
 
 func (g *gitlabProvider) CreateWebhook(ctx context.Context, opts CreateWebhookOptions) (*PlatformWebhook, error) {
 	encoded := fmt.Sprintf("%s%%2F%s", opts.Owner, opts.Repo)
-	body := map[string]interface{}{"url": opts.URL, "token": opts.Secret}
+	body := map[string]interface{}{
+		"url": opts.URL, "token": opts.Secret,
+		"push_events": true,
+	}
 	if len(opts.Events) > 0 {
 		em := map[string]bool{}
 		for _, e := range opts.Events {
 			em[e] = true
 		}
-		body["push_events"] = em["push"]
-		body["merge_requests_events"] = em["cr"]
-		body["tag_push_events"] = em["tag"]
+		if v, ok := em["push"]; ok {
+			body["push_events"] = v
+		}
+		body["merge_requests_events"] = em["merge_request"] || em["merge_requests"] || em["pull_request"] || em["cr"]
+		body["tag_push_events"] = em["tag_push"] || em["tag"]
 	}
 	var wh struct {
 		ID  int    `json:"id"`

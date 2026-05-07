@@ -201,7 +201,12 @@ func (g *giteaProvider) CreateWebhook(ctx context.Context, opts CreateWebhookOpt
 		events = []string{"push", "pull_request"}
 	}
 	body := map[string]interface{}{
-		"type": "gitea", "url": opts.URL, "secret": opts.Secret,
+		"type": "gitea",
+		"config": map[string]string{
+			"url":          opts.URL,
+			"content_type": "json",
+			"secret":       opts.Secret,
+		},
 		"events": events, "active": true,
 	}
 	var wh struct {

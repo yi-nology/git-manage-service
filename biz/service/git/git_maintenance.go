@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,129 @@ type MaintenanceService struct{}
 
 func NewMaintenanceService() *MaintenanceService {
 	return &MaintenanceService{}
+}
+
+func (s *MaintenanceService) FindFilesInfo(repoPath string, filePaths []string) ([]api.LargeFileEntry, error) {
+	if len(filePaths) == 0 {
+		return nil, nil
+	}
+
+	pathSet := make(map[string]bool, len(filePaths))
+	for _, p := range filePaths {
+		pathSet[p] = true
+	}
+
+	args := []string{"rev-list", "--objects", "--all", "--"}
+	args = append(args, filePaths...)
+	cmd := exec.Command("git", args...)
+	cmd.Dir = repoPath
+	revOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("git rev-list failed: %w", err)
+	}
+
+	shaToPath := make(map[string]string)
+	for _, line := range strings.Split(string(revOutput), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 2 && pathSet[fields[1]] {
+			shaToPath[fields[0]] = fields[1]
+		}
+	}
+
+	if len(shaToPath) == 0 {
+		return nil, nil
+	}
+
+	shaList := make([]string, 0, len(shaToPath))
+	for sha := range shaToPath {
+		shaList = append(shaList, sha)
+	}
+
+	input := strings.Join(shaList, "\n") + "\n"
+	cmd = exec.Command("git", "cat-file", "--batch-check")
+	cmd.Dir = repoPath
+	cmd.Stdin = strings.NewReader(input)
+	batchOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("git cat-file failed: %w", err)
+	}
+
+	shaSize := make(map[string]int64)
+	for _, line := range strings.Split(string(batchOutput), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && fields[1] == "blob" {
+			if size, err := strconv.ParseInt(fields[2], 10, 64); err == nil {
+				shaSize[fields[0]] = size
+			}
+		}
+	}
+
+	type pathStat struct {
+		maxSize int64
+		count   int
+	}
+	pathStats := make(map[string]*pathStat)
+	for sha, path := range shaToPath {
+		if size, ok := shaSize[sha]; ok {
+			stat, exists := pathStats[path]
+			if !exists {
+				stat = &pathStat{}
+				pathStats[path] = stat
+			}
+			stat.count++
+			if size > stat.maxSize {
+				stat.maxSize = size
+			}
+		}
+	}
+
+	result := make([]api.LargeFileEntry, 0, len(pathStats))
+	for _, fp := range filePaths {
+		stat, ok := pathStats[fp]
+		if !ok {
+			continue
+		}
+		_, statErr := os.Stat(filepath.Join(repoPath, fp))
+		result = append(result, api.LargeFileEntry{
+			Path:        fp,
+			Size:        formatSize(stat.maxSize),
+			SizeBytes:   stat.maxSize,
+			Exists:      statErr == nil,
+			CommitCount: stat.count,
+			Source:      "history",
+		})
+	}
+
+	return result, nil
+}
+
+func (s *MaintenanceService) AnalyzeHealthForPaths(repoPath string, threshold int64, filePaths []string) (*api.RepoHealthReport, error) {
+	if threshold <= 0 {
+		threshold = 1 * 1024 * 1024
+	}
+	snap := s.TakeSnapshot(repoPath)
+	report := &api.RepoHealthReport{
+		GitDirSize:      snap.GitDirSize,
+		GitDirSizeBytes: snap.GitDirSizeBytes,
+		LooseObjects:    snap.LooseObjects,
+		PackFiles:       snap.PackFiles,
+		InPackObjects:   snap.InPackObjects,
+		CommitCount:     snap.CommitCount,
+		BranchCount:     snap.BranchCount,
+		TagCount:        snap.TagCount,
+		Threshold:       threshold,
+		ThresholdHuman:  formatSize(threshold),
+	}
+
+	report.GitDirBreakdown = s.ScanGitDirBreakdown(repoPath)
+
+	largeFiles, err := s.FindFilesInfo(repoPath, filePaths)
+	if err != nil {
+		largeFiles = []api.LargeFileEntry{}
+	}
+	report.LargeFiles = largeFiles
+
+	return report, nil
 }
 
 func (s *MaintenanceService) AnalyzeHealth(repoPath string, threshold int64, excludes []string) (*api.RepoHealthReport, error) {
@@ -750,6 +874,133 @@ func dirSize(path string) (int64, error) {
 		return nil
 	})
 	return size, err
+}
+
+func (s *MaintenanceService) FindByPrefix(repoPath string, prefixes []string) ([]api.PrefixFileEntry, error) {
+	if len(prefixes) == 0 {
+		return nil, nil
+	}
+
+	cmd := exec.Command("git", "rev-list", "--objects", "--all")
+	cmd.Dir = repoPath
+	revOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("git rev-list failed: %w", err)
+	}
+
+	cmd = exec.Command("git", "cat-file", "--batch-check", "--batch-all-objects")
+	cmd.Dir = repoPath
+	batchOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("git cat-file failed: %w", err)
+	}
+
+	blobSize := make(map[string]int64)
+	for _, line := range strings.Split(string(batchOutput), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && fields[1] == "blob" {
+			if size, err := strconv.ParseInt(fields[2], 10, 64); err == nil {
+				blobSize[fields[0]] = size
+			}
+		}
+	}
+
+	type pathStat struct {
+		maxSize int64
+		count   int
+	}
+	pathStats := make(map[string]*pathStat)
+	for _, line := range strings.Split(string(revOutput), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			continue
+		}
+		sha := fields[0]
+		path := fields[1]
+		matched := false
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(path, prefix) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			continue
+		}
+		size, ok := blobSize[sha]
+		if !ok {
+			continue
+		}
+		stat, exists := pathStats[path]
+		if !exists {
+			stat = &pathStat{}
+			pathStats[path] = stat
+		}
+		stat.count++
+		if size > stat.maxSize {
+			stat.maxSize = size
+		}
+	}
+
+	result := make([]api.PrefixFileEntry, 0, len(pathStats))
+	for path, stat := range pathStats {
+		_, statErr := os.Stat(filepath.Join(repoPath, path))
+		result = append(result, api.PrefixFileEntry{
+			Path:        path,
+			Size:        formatSize(stat.maxSize),
+			SizeBytes:   stat.maxSize,
+			Exists:      statErr == nil,
+			CommitCount: stat.count,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].SizeBytes > result[j].SizeBytes
+	})
+
+	return result, nil
+}
+
+func (s *MaintenanceService) SlimHistoryByPrefix(repoPath string, prefixes []string, addGitignore bool, taskID string) error {
+	tm := GlobalTaskManager
+	dao := db.NewMaintenanceDAO()
+	appendLog := func(msg string) {
+		tm.AppendLog(taskID, msg)
+		record, _ := dao.FindByTaskID(taskID)
+		if record != nil {
+			t, ok := tm.GetTask(taskID)
+			if ok {
+				logJSON, _ := json.Marshal(t.Progress)
+				dao.UpdateProgress(taskID, string(logJSON))
+			}
+		}
+	}
+
+	appendLog("扫描匹配前缀的文件...")
+	files, err := s.FindByPrefix(repoPath, prefixes)
+	if err != nil {
+		return fmt.Errorf("scan prefix files failed: %w", err)
+	}
+	if len(files) == 0 {
+		appendLog("未找到匹配的文件")
+		return nil
+	}
+
+	paths := make([]string, 0, len(files))
+	for _, f := range files {
+		paths = append(paths, f.Path)
+	}
+	appendLog(fmt.Sprintf("找到 %d 个匹配文件，总大小 %s", len(paths), formatSize(sumSizeBytes(files))))
+
+	return s.SlimHistory(repoPath, paths, addGitignore, taskID)
+}
+
+func sumSizeBytes(files []api.PrefixFileEntry) int64 {
+	var total int64
+	for _, f := range files {
+		total += f.SizeBytes
+	}
+	return total
 }
 
 func formatSize(bytes int64) string {
