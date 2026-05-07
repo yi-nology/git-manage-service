@@ -381,6 +381,13 @@ function recLabel(rec: string) {
 
 const newExclude = ref('')
 const presetPatterns = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.pdf', '.zip', '.tar.gz', 'docs/', 'dist/', 'node_modules/', 'vendor/', 'build/', 'public/']
+const prefixPresets = ['vendor/', 'node_modules/', 'dist/', 'build/', 'public/', 'docs/', 'third_party/', '.gradle/', '__pycache__/', 'Pods/']
+
+function addPrefixPreset(p: string) {
+  if (!prefixTags.value.includes(p)) {
+    prefixTags.value.push(p)
+  }
+}
 
 function addExclude() {
   const v = newExclude.value.trim()
@@ -462,4 +469,13 @@ onMounted(() => {
 .text-muted { color: var(--text-color-secondary); }
 .ml-4 { margin-left: 8px; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 12px; }
+.prefix-slim-section { padding: 16px; background: var(--surface-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); }
+.prefix-input-row { display: flex; flex-direction: column; gap: 8px; }
+.prefix-tags-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.prefix-tag { font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; }
+.prefix-presets-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.prefix-preset-label { font-size: 12px; color: var(--text-color-secondary); margin-right: 4px; }
+.prefix-action-row { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.prefix-summary { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 14px; }
+.prefix-more-hint { font-size: 12px; color: var(--text-color-secondary); text-align: center; padding: 8px 0; }
 </style>
