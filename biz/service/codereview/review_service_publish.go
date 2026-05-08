@@ -281,31 +281,54 @@ var lineCommentPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(\S+?)[,\s]+(?:line|行)\s*(\d+)`),
 }
 
-const codeReviewSystemPrompt = `You are an expert code reviewer. Analyze the provided diff and identify correctness, security, performance, maintainability, and error-handling issues.
+const systemPromptPrefix = `You are an expert code reviewer.
 
+OUTPUT FORMAT:
 Respond ONLY with valid JSON. Do NOT wrap in markdown code blocks. Use this exact format:
-{"findings":[{"file_path":"actual/file/path.go","line_number":42,"severity":"critical|high|medium|low|info","title":"Brief issue title","message":"Detailed explanation","suggestion":"How to fix"}],"summary":"Brief overall review summary"}
+{"findings":[{"file_path":"actual/file/path.go","line_number":42,"severity":"critical|high|medium|low|info","title":"问题标题","message":"详细说明","suggestion":"修复建议"}],"summary":"整体审查总结"}
 
-CRITICAL RULES:
-- file_path MUST be the actual file path from the diff (e.g., "internal/service/crawler.go"), NOT placeholder paths
-- line_number MUST be the line number shown in the RIGHT side of the diff (the "+" line number from the @@ header range). For example, in "@@ -10,5 +20,7 @@", added lines start at 20. Use THAT number, NOT a relative/sequential position.
-- Look at the @@ -X,Y +N,M @@ headers to determine correct line numbers. The N is the starting line number of the new file side. Each "+" line increments N.
+LINE NUMBER RULES (CRITICAL):
+- line_number MUST be the line number shown in the RIGHT side of the diff (the "+" line number from the @@ header range).
+- For example, in "@@ -10,5 +20,7 @@", added lines start at line 20. Each "+" line increments by 1.
+- DO NOT use relative positions, sequential counters, or line numbers from the original file.
+- Look at the @@ -X,Y +N,M @@ headers. N is the starting new-file line number. Count from there.
+
+FILE PATH RULES:
+- file_path MUST be the actual file path from the diff (e.g., "internal/service/crawler.go"), NOT placeholder or invented paths.`
+
+const intentAnalysisPrompt = `CHANGE INTENT ANALYSIS:
+Before listing findings, you MUST first analyze and understand what the author is trying to accomplish with this change:
+1. What is the overall purpose of this change? (bug fix, new feature, refactor, optimization, etc.)
+2. What problem is the author solving?
+3. What is the expected behavior after this change?
+
+Include your intent analysis in the "summary" field. This helps you review the code in context rather than flagging things that are intentional.
+
+When reviewing, distinguish between:
+- Actual bugs or security issues (MUST report)
+- Style preferences that conflict with the author's intent (report as low/info)
+- Areas where the implementation could better achieve the stated intent (report with constructive suggestions)`
+
+const systemPromptSuffix = `FINAL RULES:
 - Only report real issues visible in the diff, not opinions about file organization
-- If no real issues found, return {"findings":[],"summary":"No issues found"}
-- IMPORTANT: All title, message, suggestion and summary fields MUST be written in Chinese (中文)`
+- If no real issues found, return {"findings":[],"summary":"未发现问题"}
+- All title, message, suggestion and summary fields MUST be written in Chinese (中文)
+- file_path and line_number must be accurate — do NOT fabricate values`
 
 func buildSystemPromptWithRules() string {
-	base := codeReviewSystemPrompt
-	rules, err := db.NewReviewRuleDAO().FindEnabledPromptRules()
-	if err != nil || len(rules) == 0 {
-		return base
-	}
 	var b strings.Builder
-	b.WriteString(base)
-	b.WriteString("\n\nAdditionally, apply these custom review rules:\n")
-	for i, r := range rules {
-		b.WriteString(fmt.Sprintf("%d. [%s] %s\n", i+1, r.Name, r.PromptText))
+	b.WriteString(systemPromptPrefix)
+	b.WriteString("\n\n")
+	b.WriteString(intentAnalysisPrompt)
+	rules, err := db.NewReviewRuleDAO().FindEnabledPromptRules()
+	if err == nil && len(rules) > 0 {
+		b.WriteString("\n\nCUSTOM REVIEW RULES (from user configuration):\n")
+		for i, r := range rules {
+			b.WriteString(fmt.Sprintf("%d. [%s] %s\n", i+1, r.Name, r.PromptText))
+		}
 	}
+	b.WriteString("\n\n")
+	b.WriteString(systemPromptSuffix)
 	return b.String()
 }
 
