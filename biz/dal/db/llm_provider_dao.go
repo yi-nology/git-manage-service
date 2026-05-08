@@ -31,6 +31,12 @@ func (d *LLMProviderDAO) FindByName(name string) (*po.LLMProvider, error) {
 	return &p, err
 }
 
+func (d *LLMProviderDAO) FindByNameUnscoped(name string) (*po.LLMProvider, error) {
+	var p po.LLMProvider
+	err := DB.Unscoped().Where("name = ?", name).First(&p).Error
+	return &p, err
+}
+
 func (d *LLMProviderDAO) FindDefault() (*po.LLMProvider, error) {
 	var p po.LLMProvider
 	err := DB.Where("is_default = ?", true).First(&p).Error
@@ -60,7 +66,7 @@ func (d *LLMProviderDAO) SetDefault(id uint) error {
 
 func (d *LLMProviderDAO) ExistsByName(name string) (bool, error) {
 	var count int64
-	err := DB.Model(&po.LLMProvider{}).Where("name = ?", name).Count(&count).Error
+	err := DB.Model(&po.LLMProvider{}).Where("name = ? AND deleted_at IS NULL", name).Count(&count).Error
 	return count > 0, err
 }
 

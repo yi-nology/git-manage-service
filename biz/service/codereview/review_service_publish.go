@@ -310,7 +310,15 @@ func buildSystemPromptWithRules() string {
 func buildCodeReviewPrompt(files []*FileDiff, repoName, owner string) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("Review this diff for repository %s/%s:\n\n", owner, repoName))
-	b.WriteString("```diff\n")
+	b.WriteString("Files in this diff:\n")
+	for i, f := range files {
+		if i > 30 {
+			b.WriteString(fmt.Sprintf("... and %d more files\n", len(files)-31))
+			break
+		}
+		b.WriteString(fmt.Sprintf("- %s\n", f.NewPath))
+	}
+	b.WriteString("\n```diff\n")
 	diffStr := buildDiffString(files)
 	const maxDiffChars = 50000
 	if len(diffStr) > maxDiffChars {

@@ -8,6 +8,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"gorm.io/gorm"
 )
 
 func ListProviders() ([]api.LLMProviderDTO, error) {
@@ -33,10 +34,6 @@ func GetProviderByID(id uint) (*api.LLMProviderDTO, error) {
 
 func CreateProvider(req api.LLMProviderDTO) (*api.LLMProviderDTO, error) {
 	dao := db.NewLLMProviderDAO()
-	exists, _ := dao.ExistsByName(req.Name)
-	if exists {
-		return nil, fmt.Errorf("provider name %q already exists", req.Name)
-	}
 
 	if req.MaxTokens == 0 {
 		req.MaxTokens = 4096
@@ -58,6 +55,26 @@ func CreateProvider(req api.LLMProviderDTO) (*api.LLMProviderDTO, error) {
 
 	if p.IsDefault {
 		dao.ClearAllDefault()
+	}
+
+	existing, err := dao.FindByNameUnscoped(req.Name)
+	if err == nil && existing != nil {
+		existing.Type = p.Type
+		existing.BaseURL = p.BaseURL
+		existing.APIKey = p.APIKey
+		existing.AIModel = p.AIModel
+		existing.MaxTokens = p.MaxTokens
+		existing.IsDefault = p.IsDefault
+		existing.IsEmbedding = p.IsEmbedding
+		existing.EmbeddingModel = p.EmbeddingModel
+		existing.PresetID = p.PresetID
+		existing.Protocol = p.Protocol
+		existing.DeletedAt = gorm.DeletedAt{}
+		if err := dao.Save(existing); err != nil {
+			return nil, fmt.Errorf("failed to restore provider: %w", err)
+		}
+		dto := api.NewLLMProviderDTO(*existing)
+		return &dto, nil
 	}
 
 	if err := dao.Create(p); err != nil {

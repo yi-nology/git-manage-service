@@ -20,7 +20,7 @@ func NewOpenAICompatible(baseURL, apiKey, model string, maxTokens int, name stri
 	cfg := oai.DefaultConfig(apiKey)
 	if baseURL != "" {
 		cfg.BaseURL = strings.TrimRight(baseURL, "/")
-		if !strings.HasSuffix(cfg.BaseURL, "/v1") {
+		if !strings.Contains(cfg.BaseURL, "/v1") && !strings.Contains(cfg.BaseURL, "/v4") {
 			cfg.BaseURL += "/v1"
 		}
 	}
@@ -46,6 +46,9 @@ func (p *OpenAICompatible) Chat(ctx context.Context, req *ChatRequest) (*ChatRes
 	if maxTokens == 0 {
 		maxTokens = p.maxTokens
 	}
+	if maxTokens < 8192 {
+		maxTokens = 8192
+	}
 	resp, err := p.client.CreateChatCompletion(ctx, oai.ChatCompletionRequest{
 		Model:       p.model,
 		Messages:    msgs,
@@ -58,12 +61,17 @@ func (p *OpenAICompatible) Chat(ctx context.Context, req *ChatRequest) (*ChatRes
 	if len(resp.Choices) == 0 {
 		return nil, fmt.Errorf("no response from LLM")
 	}
-	return &ChatResponse{Content: resp.Choices[0].Message.Content, Raw: resp.Choices[0].Message.Content}, nil
+	content := resp.Choices[0].Message.Content
+	return &ChatResponse{Content: content, Raw: content}, nil
 }
 
 func (p *OpenAICompatible) Review(ctx context.Context, req *ReviewRequest) (*ReviewResponse, error) {
 	prompt := buildReviewPrompt(req)
 
+	maxTokens := p.maxTokens
+	if maxTokens < 8192 {
+		maxTokens = 8192
+	}
 	resp, err := p.client.CreateChatCompletion(ctx, oai.ChatCompletionRequest{
 		Model: p.model,
 		Messages: []oai.ChatCompletionMessage{
@@ -71,7 +79,7 @@ func (p *OpenAICompatible) Review(ctx context.Context, req *ReviewRequest) (*Rev
 			{Role: oai.ChatMessageRoleUser, Content: prompt},
 		},
 		Temperature: 0.2,
-		MaxTokens:   p.maxTokens,
+		MaxTokens:   maxTokens,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("openai compatible API error: %w", err)

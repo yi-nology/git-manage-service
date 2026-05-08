@@ -54,7 +54,15 @@
     </div>
 
     <div class="diff-section" v-if="currentTask.raw_diff && parsedDiffFiles.length > 0">
-      <SectionTitle title="代码变更与问题标注" />
+      <div class="diff-section-header">
+        <SectionTitle title="代码变更与问题标注" />
+        <span class="findings-summary-tag" v-if="findings.length > 0">
+          {{ findings.length }} 个问题
+          <template v-if="findings.filter(f => f.source === 'llm').length > 0">
+            (AI {{ findings.filter(f => f.source === 'llm').length }})
+          </template>
+        </span>
+      </div>
       <div class="global-findings" v-if="globalFindings().length > 0">
         <div v-for="(f, fiIdx) in globalFindings()" :key="'global-'+fiIdx" class="review-comment" :class="'severity-' + f.severity">
           <div class="comment-header">
@@ -160,11 +168,13 @@
       <div class="findings-header">
         <SectionTitle :title="`问题列表 (${filteredFindings.length})`" />
         <div class="filter-pills">
-          <ActionPill small :variant="!severityFilter ? 'primary' : 'outline'" @click="severityFilter = ''">全部</ActionPill>
-          <ActionPill small :variant="severityFilter === 'critical' ? 'danger' : 'outline'" @click="severityFilter = 'critical'">严重</ActionPill>
-          <ActionPill small :variant="severityFilter === 'high' ? 'amber' : 'outline'" @click="severityFilter = 'high'">高危</ActionPill>
-          <ActionPill small :variant="severityFilter === 'medium' ? 'amber' : 'outline'" @click="severityFilter = 'medium'">中等</ActionPill>
-          <ActionPill small :variant="severityFilter === 'low' ? 'primary' : 'outline'" @click="severityFilter = 'low'">低危</ActionPill>
+          <ActionPill small :variant="!severityFilter && !sourceFilter ? 'primary' : 'outline'" @click="severityFilter = ''; sourceFilter = ''">全部</ActionPill>
+          <ActionPill small :variant="sourceFilter === 'llm' ? 'primary' : 'outline'" @click="sourceFilter = 'llm'; severityFilter = ''">AI 审查</ActionPill>
+          <ActionPill small :variant="sourceFilter === 'rule' ? 'primary' : 'outline'" @click="sourceFilter = 'rule'; severityFilter = ''">规则</ActionPill>
+          <ActionPill small :variant="severityFilter === 'critical' ? 'danger' : 'outline'" @click="severityFilter = 'critical'; sourceFilter = ''">严重</ActionPill>
+          <ActionPill small :variant="severityFilter === 'high' ? 'amber' : 'outline'" @click="severityFilter = 'high'; sourceFilter = ''">高危</ActionPill>
+          <ActionPill small :variant="severityFilter === 'medium' ? 'amber' : 'outline'" @click="severityFilter = 'medium'; sourceFilter = ''">中等</ActionPill>
+          <ActionPill small :variant="severityFilter === 'low' ? 'primary' : 'outline'" @click="severityFilter = 'low'; sourceFilter = ''">低危</ActionPill>
         </div>
       </div>
 
@@ -221,6 +231,7 @@ const loading = ref(false)
 const retrying = ref(false)
 const findings = ref<ReviewFindingDTO[]>([])
 const severityFilter = ref('')
+const sourceFilter = ref('')
 const currentTask = ref<ReviewTaskDTO>({ ...props.task })
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
@@ -230,8 +241,10 @@ const renderedSummary = computed(() => {
 })
 
 const filteredFindings = computed(() => {
-  if (!severityFilter.value) return findings.value
-  return findings.value.filter(f => f.severity === severityFilter.value)
+  let result = findings.value
+  if (severityFilter.value) result = result.filter(f => f.severity === severityFilter.value)
+  if (sourceFilter.value) result = result.filter(f => f.source === sourceFilter.value)
+  return result
 })
 
 interface DiffLine {
@@ -285,12 +298,21 @@ const parsedDiffFiles = computed<DiffFile[]>(() => {
   return files
 })
 
+function pathMatches(findingPath: string, diffPath: string): boolean {
+  if (findingPath === diffPath) return true
+  const fb = findingPath.split('/').pop() || ''
+  const db = diffPath.split('/').pop() || ''
+  if (fb && db && fb === db) return true
+  if (diffPath.endsWith('/' + findingPath) || findingPath.endsWith('/' + diffPath)) return true
+  return false
+}
+
 function fileFindings(filePath: string): ReviewFindingDTO[] {
-  return findings.value.filter(f => f.file_path === filePath)
+  return findings.value.filter(f => f.file_path && pathMatches(f.file_path, filePath))
 }
 
 function fileLevelFindings(filePath: string): ReviewFindingDTO[] {
-  return findings.value.filter(f => f.file_path === filePath && (!f.new_line || f.new_line === 0))
+  return findings.value.filter(f => f.file_path && pathMatches(f.file_path, filePath) && (!f.new_line || f.new_line === 0))
 }
 
 function globalFindings(): ReviewFindingDTO[] {
@@ -301,7 +323,7 @@ function lineFindings(filePath: string, lineNum: number | string): ReviewFinding
   if (!lineNum || lineNum === '') return []
   const n = typeof lineNum === 'string' ? parseInt(lineNum) : lineNum
   if (isNaN(n)) return []
-  return findings.value.filter(f => f.file_path === filePath && f.new_line === n)
+  return findings.value.filter(f => f.file_path && pathMatches(f.file_path, filePath) && f.new_line === n)
 }
 
 const expandedFiles = ref<Record<number, boolean>>({})
@@ -615,6 +637,21 @@ onUnmounted(stopPolling)
 .error-text { font-size: 13px; color: #7F1D1D; line-height: 1.5; word-break: break-all; }
 
 .diff-section { margin-top: 8px; }
+
+.diff-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.findings-summary-tag {
+  font-size: 13px;
+  color: #57606A;
+  background: #F6F8FA;
+  border: 1px solid #D0D7DE;
+  border-radius: 12px;
+  padding: 2px 10px;
+}
 
 .diff-file-list { display: flex; flex-direction: column; gap: 16px; }
 
