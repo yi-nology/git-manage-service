@@ -93,13 +93,21 @@
               <span class="file-finding-badge" v-if="fileFindings(file.filePath).length > 0">
                 {{ fileFindings(file.filePath).length }} 个问题
               </span>
+              <button v-if="fileFindings(file.filePath).length > 0" class="toggle-diff-btn" @click.stop="toggleFullDiff(fIdx)">
+                {{ showFullDiff(fIdx) ? '仅看问题' : '完整 Diff' }}
+              </button>
             </div>
           </div>
           <div class="diff-file-body" v-show="isFileExpanded(fIdx)">
             <table class="diff-table">
               <tbody>
-                <template v-for="(line, lIdx) in file.lines" :key="lIdx">
-                  <tr v-if="line.type === 'hunk'" class="dl-hunk">
+                <template v-for="(line, lIdx) in fileVisibleLines(file, fIdx)" :key="lIdx">
+                  <tr v-if="line.type === 'hunk' && line.content === '...'" class="dl-hunk dl-ellipsis">
+                    <td class="dl-num" colspan="3">
+                      <span class="ellipsis-icon">⋯</span>
+                    </td>
+                  </tr>
+                  <tr v-else-if="line.type === 'hunk'" class="dl-hunk">
                     <td class="dl-num" colspan="3">{{ line.content }}</td>
                   </tr>
                   <tr v-else :class="['dl-row', 'dl-' + line.type, { 'dl-flagged': lineFindings(file.filePath, line.newNum).length > 0 }]">
@@ -107,7 +115,7 @@
                     <td class="dl-num dl-num-new">{{ line.newNum || '' }}</td>
                     <td class="dl-code"><pre>{{ line.content }}</pre></td>
                   </tr>
-                  <template v-if="line.type !== 'hunk' && lineFindings(file.filePath, line.newNum).length > 0">
+                  <template v-if="line.type !== 'hunk' && line.content !== '...' && lineFindings(file.filePath, line.newNum).length > 0">
                     <tr v-for="(f, fiIdx) in lineFindings(file.filePath, line.newNum)" :key="'f-'+lIdx+'-'+fiIdx" class="dl-comment-row">
                       <td class="dl-num"></td>
                       <td class="dl-num"></td>
@@ -333,7 +341,16 @@ function lineFindings(filePath: string, lineNum: number | string): ReviewFinding
 }
 
 const expandedFiles = ref<Record<number, boolean>>({})
+const fullDiffFiles = ref<Record<number, boolean>>({})
 const visibleFileLimit = ref(20)
+
+function toggleFullDiff(idx: number) {
+  fullDiffFiles.value[idx] = !fullDiffFiles.value[idx]
+}
+
+function showFullDiff(idx: number): boolean {
+  return !!fullDiffFiles.value[idx]
+}
 
 function toggleFile(idx: number) {
   expandedFiles.value[idx] = !isFileExpanded(idx)
@@ -344,6 +361,46 @@ function isFileExpanded(idx: number): boolean {
   const files = parsedDiffFiles.value
   if (idx < files.length && fileFindings(files[idx].filePath).length > 0) return true
   return false
+}
+
+const CONTEXT_LINES = 3
+
+function fileVisibleLines(file: DiffFile, fIdx: number): DiffFile['lines'] {
+  if (showFullDiff(fIdx)) return file.lines
+  const ff = fileFindings(file.filePath)
+  if (ff.length === 0) return file.lines
+  const flaggedLines = new Set<number>()
+  for (const f of ff) {
+    if (f.new_line && f.new_line > 0) flaggedLines.add(f.new_line)
+  }
+  if (flaggedLines.size === 0) return file.lines
+  const showIdx = new Set<number>()
+  for (let i = 0; i < file.lines.length; i++) {
+    const ln = file.lines[i]
+    if (ln.type === 'hunk') continue
+    const n = typeof ln.newNum === 'number' ? ln.newNum : parseInt(String(ln.newNum))
+    if (!isNaN(n) && flaggedLines.has(n)) {
+      let start = i - CONTEXT_LINES
+      let foundHunk = false
+      for (let j = i - 1; j >= Math.max(0, start); j--) {
+        if (file.lines[j].type === 'hunk') { start = j; foundHunk = true; break }
+      }
+      if (!foundHunk && i > 0 && file.lines[0].type === 'hunk') start = 0
+      const end = Math.min(file.lines.length - 1, i + CONTEXT_LINES)
+      for (let k = Math.max(0, start); k <= end; k++) showIdx.add(k)
+    }
+  }
+  const result: DiffFile['lines'] = []
+  let lastShown = -1
+  const sorted = [...showIdx].sort((a, b) => a - b)
+  for (const idx of sorted) {
+    if (lastShown >= 0 && idx > lastShown + 1) {
+      result.push({ type: 'hunk' as const, content: '...', oldNum: '', newNum: '' })
+    }
+    result.push(file.lines[idx])
+    lastShown = idx
+  }
+  return result
 }
 
 function showMoreFiles() {
@@ -818,6 +875,26 @@ onUnmounted(stopPolling)
   color: #24292F;
 }
 
+.diff-table .dl-ellipsis {
+  background: #F6F8FA;
+  cursor: default;
+}
+.diff-table .dl-ellipsis .dl-num {
+  background: #F6F8FA;
+  color: #6E7781;
+  text-align: center;
+}
+.ellipsis-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  color: #6E7781;
+  font-size: 16px;
+  letter-spacing: 4px;
+  user-select: none;
+}
+
 .diff-table .dl-hunk {
   background: var(--diff-hunk-bg, #F1F8FF);
 }
@@ -958,5 +1035,22 @@ onUnmounted(stopPolling)
 .diff-file-card.has-findings {
   border-color: #BF8700;
   box-shadow: 0 0 0 1px #FFF8C5;
+}
+
+.toggle-diff-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #D0D7DE;
+  background: #F6F8FA;
+  color: #57606A;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.toggle-diff-btn:hover {
+  background: #FFFFFF;
+  border-color: #0969DA;
+  color: #0969DA;
 }
 </style>
