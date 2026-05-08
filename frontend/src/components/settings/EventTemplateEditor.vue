@@ -15,7 +15,7 @@
       <div class="variable-panel">
         <div v-for="category in variableCategories" :key="category.label" class="var-group">
           <div class="var-group-header">
-            <el-tag :type="category.type" size="small" effect="dark">{{ category.label }}</el-tag>
+            <el-tag :type="(category.type || 'info') as any" size="small" effect="dark">{{ category.label }}</el-tag>
           </div>
           <div class="var-buttons">
             <el-tooltip
@@ -28,7 +28,7 @@
             >
               <el-button
                 size="small"
-                :type="category.type || 'primary'"
+                :type="(category.type || 'primary') as any"
                 plain
                 class="var-btn"
                 @click="insertVariable(varName)"

@@ -182,6 +182,12 @@ func (g *giteaProvider) MergeCR(ctx context.Context, owner, repo string, number 
 		body["Do"] = "squash"
 	}
 	if err := g.doRequest(ctx, "POST", fmt.Sprintf("/repos/%s/%s/pulls/%d/merge", owner, repo, number), body, nil); err != nil {
+		if strings.Contains(err.Error(), "405") {
+			cr, getErr := g.GetCR(ctx, owner, repo, number)
+			if getErr == nil && cr.State == CRStateMerged {
+				return cr, nil
+			}
+		}
 		return nil, err
 	}
 	return g.GetCR(ctx, owner, repo, number)

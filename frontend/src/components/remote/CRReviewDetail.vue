@@ -78,10 +78,10 @@
         </div>
       </div>
       <div class="diff-file-list">
-        <div v-for="(file, fIdx) in parsedDiffFiles" :key="fIdx" class="diff-file-card">
+        <div v-for="(file, fIdx) in displayFiles" :key="fIdx" class="diff-file-card" :class="{ 'has-findings': fileFindings(file.filePath).length > 0 }">
           <div class="diff-file-header" @click="toggleFile(fIdx)">
             <div class="file-header-left">
-              <svg class="file-collapse-icon" :class="{ collapsed: !expandedFiles[fIdx] }" width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <svg class="file-collapse-icon" :class="{ collapsed: !isFileExpanded(fIdx) }" width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M4 2L8 6L4 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
               <span class="file-icon">{{ fileIcon(file.filePath) }}</span>
@@ -96,24 +96,6 @@
             </div>
           </div>
           <div class="diff-file-body" v-show="isFileExpanded(fIdx)">
-            <div class="file-level-findings" v-if="fileLevelFindings(file.filePath).length > 0">
-              <div v-for="(f, fiIdx) in fileLevelFindings(file.filePath)" :key="'fl-'+fIdx+'-'+fiIdx" class="review-comment" :class="'severity-' + f.severity">
-                <div class="comment-header">
-                  <span class="comment-severity-dot"></span>
-                  <span class="comment-severity-label">{{ severityText(f.severity) }}</span>
-                  <span class="comment-source">{{ f.source === 'llm' ? 'AI 审查' : '规则检查' }}</span>
-                  <span class="comment-rule">{{ f.rule_id }}</span>
-                </div>
-                <div class="comment-body">
-                  <div class="comment-title">{{ f.title }}</div>
-                  <div class="comment-message" v-if="f.message">{{ f.message }}</div>
-                </div>
-                <div class="comment-suggestion" v-if="f.suggestion">
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M9 1a7 7 0 110 14A7 7 0 019 1zm0 1.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zm.75 7.25v1.5h-1.5v-1.5h1.5zM9.75 4v4.5h-1.5V4h1.5z" fill="currentColor"/></svg>
-                  <span>{{ f.suggestion }}</span>
-                </div>
-              </div>
-            </div>
             <table class="diff-table">
               <tbody>
                 <template v-for="(line, lIdx) in file.lines" :key="lIdx">
@@ -130,20 +112,24 @@
                       <td class="dl-num"></td>
                       <td class="dl-num"></td>
                       <td class="dl-comment-cell">
-                        <div class="review-comment" :class="'severity-' + f.severity">
-                          <div class="comment-header">
-                            <span class="comment-severity-dot"></span>
-                            <span class="comment-severity-label">{{ severityText(f.severity) }}</span>
-                            <span class="comment-source">{{ f.source === 'llm' ? 'AI 审查' : '规则检查' }}</span>
-                            <span class="comment-rule">{{ f.rule_id }}</span>
+                        <div class="gh-comment" :class="'gh-' + f.severity">
+                          <div class="gh-comment-header">
+                            <span class="gh-avatar">AI</span>
+                            <span class="gh-comment-meta">
+                              <strong>{{ f.source === 'llm' ? 'AI Code Reviewer' : 'Rule Engine' }}</strong>
+                              <span class="gh-severity-tag" :class="'tag-' + f.severity">{{ severityText(f.severity) }}</span>
+                            </span>
                           </div>
-                          <div class="comment-body">
-                            <div class="comment-title">{{ f.title }}</div>
-                            <div class="comment-message">{{ f.message }}</div>
+                          <div class="gh-comment-body">
+                            <div class="gh-comment-title">{{ f.title }}</div>
+                            <div class="gh-comment-desc" v-if="f.message">{{ f.message }}</div>
                           </div>
-                          <div class="comment-suggestion" v-if="f.suggestion">
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M9 1a7 7 0 110 14A7 7 0 019 1zm0 1.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zm.75 7.25v1.5h-1.5v-1.5h1.5zM9.75 4v4.5h-1.5V4h1.5z" fill="currentColor"/></svg>
-                            <span>{{ f.suggestion }}</span>
+                          <div class="gh-comment-suggestion" v-if="f.suggestion">
+                            <div class="gh-suggestion-header">
+                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1.5 14h13l-1.5-5H3L1.5 14zM3 6l2-4 2 4M8 6l2-4 2 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                              Suggestion
+                            </div>
+                            <div class="gh-suggestion-body">{{ f.suggestion }}</div>
                           </div>
                         </div>
                       </td>
@@ -152,8 +138,28 @@
                 </template>
               </tbody>
             </table>
+            <div class="file-level-findings" v-if="fileLevelFindings(file.filePath).length > 0">
+              <div v-for="(f, fiIdx) in fileLevelFindings(file.filePath)" :key="'fl-'+fIdx+'-'+fiIdx" class="gh-comment gh-file-level" :class="'gh-' + f.severity">
+                <div class="gh-comment-header">
+                  <span class="gh-avatar">{{ f.source === 'llm' ? 'AI' : 'RE' }}</span>
+                  <span class="gh-comment-meta">
+                    <strong>{{ f.source === 'llm' ? 'AI Code Reviewer' : 'Rule Engine' }}</strong>
+                    <span class="gh-severity-tag" :class="'tag-' + f.severity">{{ severityText(f.severity) }}</span>
+                  </span>
+                </div>
+                <div class="gh-comment-body">
+                  <div class="gh-comment-title">{{ f.title }}</div>
+                  <div class="gh-comment-desc" v-if="f.message">{{ f.message }}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+      <div class="show-more-files" v-if="displayFiles.length < parsedDiffFiles.length">
+        <button class="show-more-btn" @click="showMoreFiles">
+          显示更多文件 ({{ displayFiles.length }}/{{ parsedDiffFiles.length }})
+        </button>
       </div>
     </div>
 
@@ -271,7 +277,7 @@ const parsedDiffFiles = computed<DiffFile[]>(() => {
   for (const line of text.split('\n')) {
     if (line.startsWith('diff --git')) {
       const m = line.match(/diff --git a\/(.+?) b\/(.+)/)
-      if (m) currentPath = m[2]
+      if (m) currentPath = m[2] || ''
       if (currentFile) files.push(currentFile)
       currentFile = { filePath: currentPath, lines: [] }
       oldNum = 0
@@ -281,7 +287,7 @@ const parsedDiffFiles = computed<DiffFile[]>(() => {
     if (!currentFile) continue
     if (line.startsWith('@@')) {
       const m = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
-      if (m) { oldNum = parseInt(m[1]); newNum = parseInt(m[2]) }
+      if (m) { oldNum = parseInt(m[1] || '0'); newNum = parseInt(m[2] || '0') }
       currentFile.lines.push({ type: 'hunk', content: line, oldNum: '', newNum: '' })
     } else if (line.startsWith('+')) {
       currentFile.lines.push({ type: 'add', content: line.slice(1), oldNum: '', newNum: newNum++ })
@@ -327,15 +333,31 @@ function lineFindings(filePath: string, lineNum: number | string): ReviewFinding
 }
 
 const expandedFiles = ref<Record<number, boolean>>({})
+const visibleFileLimit = ref(20)
 
 function toggleFile(idx: number) {
-  expandedFiles.value[idx] = !expandedFiles.value[idx]
+  expandedFiles.value[idx] = !isFileExpanded(idx)
 }
 
 function isFileExpanded(idx: number): boolean {
-  if (expandedFiles.value[idx] === undefined) return true
-  return expandedFiles.value[idx]
+  if (expandedFiles.value[idx] !== undefined) return expandedFiles.value[idx]
+  const files = parsedDiffFiles.value
+  if (idx < files.length && fileFindings(files[idx].filePath).length > 0) return true
+  return false
 }
+
+function showMoreFiles() {
+  visibleFileLimit.value += 20
+}
+
+const displayFiles = computed(() => {
+  const all = parsedDiffFiles.value
+  if (all.length <= visibleFileLimit.value) return all
+  const withFindings = all.filter(f => fileFindings(f.filePath).length > 0)
+  const without = all.filter(f => fileFindings(f.filePath).length === 0)
+  const shown = [...withFindings, ...without].slice(0, visibleFileLimit.value)
+  return shown
+})
 
 function fileIcon(path: string): string {
   if (path.endsWith('.go')) return '🔷'
@@ -653,6 +675,25 @@ onUnmounted(stopPolling)
   padding: 2px 10px;
 }
 
+.show-more-files {
+  text-align: center;
+  padding: 12px;
+}
+
+.show-more-btn {
+  background: #F6F8FA;
+  border: 1px solid #D0D7DE;
+  border-radius: 6px;
+  padding: 6px 16px;
+  color: #0969DA;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.show-more-btn:hover {
+  background: #EAEFF2;
+}
+
 .diff-file-list { display: flex; flex-direction: column; gap: 16px; }
 
 .diff-file-card {
@@ -811,88 +852,111 @@ onUnmounted(stopPolling)
 
 .diff-table .dl-comment-cell { padding: 0; border: none; }
 
-.review-comment {
-  padding: 12px 16px;
-  border-left: 3px solid transparent;
+.diff-table .dl-comment-row {
+  background: #F6F8FA;
+  border-left: 3px solid #D0D7DE;
 }
+.diff-table .dl-comment-cell { padding: 0; border: none; }
 
-.review-comment.severity-critical { border-left-color: #DC2626; background: #FEF2F2; }
-.review-comment.severity-high { border-left-color: #EA580C; background: #FFF7ED; }
-.review-comment.severity-medium { border-left-color: #D97706; background: #FFFBEB; }
-.review-comment.severity-low { border-left-color: #2563EB; background: #EFF6FF; }
-.review-comment.severity-info { border-left-color: #6B7280; background: #F9FAFB; }
+.gh-comment {
+  padding: 16px;
+  border-left: 3px solid #D0D7DE;
+  background: #FFFFFF;
+  margin: 0;
+}
+.gh-comment.gh-file-level { margin: 8px 0; border-radius: 6px; border: 1px solid #D0D7DE; border-left-width: 3px; }
+.gh-comment.gh-critical { border-left-color: #CF222E; }
+.gh-comment.gh-high { border-left-color: #BF8700; }
+.gh-comment.gh-medium { border-left-color: #D29922; }
+.gh-comment.gh-low { border-left-color: #0969DA; }
+.gh-comment.gh-info { border-left-color: #6E7781; }
 
-.comment-header {
+.gh-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.gh-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #0969DA;
+  color: #FFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.gh-comment-meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
-
-.comment-severity-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.severity-critical .comment-severity-dot { background: #DC2626; }
-.severity-high .comment-severity-dot { background: #EA580C; }
-.severity-medium .comment-severity-dot { background: #D97706; }
-.severity-low .comment-severity-dot { background: #2563EB; }
-.severity-info .comment-severity-dot { background: #6B7280; }
-
-.comment-severity-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-}
-
-.comment-source {
-  font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: #EEF2FF;
-  color: #4F46E5;
-  font-weight: 500;
-}
-
-.comment-rule {
-  font-size: 11px;
-  font-family: 'SF Mono', monospace;
-  color: var(--text-color-secondary);
-}
-
-.comment-body {
-  margin-bottom: 8px;
-}
-
-.comment-title {
+.gh-comment-meta strong {
   font-size: 13px;
+  color: #24292F;
+}
+.gh-severity-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
   font-weight: 600;
-  color: var(--text-color-primary);
-  margin-bottom: 4px;
+  line-height: 1;
 }
+.gh-severity-tag.tag-critical { background: #FFEBE9; color: #CF222E; }
+.gh-severity-tag.tag-high { background: #FFF8C5; color: #9A6700; }
+.gh-severity-tag.tag-medium { background: #FFF8C5; color: #9A6700; }
+.gh-severity-tag.tag-low { background: #DDF4FF; color: #0969DA; }
+.gh-severity-tag.tag-info { background: #EFF2F5; color: #6E7781; }
 
-.comment-message {
+.gh-comment-body { margin-bottom: 0; }
+.gh-comment-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #24292F;
+  margin-bottom: 6px;
+}
+.gh-comment-desc {
   font-size: 13px;
-  color: var(--text-color-secondary);
-  line-height: 1.5;
+  color: #57606A;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
-.comment-suggestion {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 8px 10px;
-  background: #F0FDF4;
+.gh-comment-suggestion {
+  margin-top: 10px;
+  border: 1px solid #D0D7DE;
   border-radius: 6px;
-  border: 1px solid #BBF7D0;
+  overflow: hidden;
+}
+.gh-suggestion-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #F6F8FA;
+  border-bottom: 1px solid #D0D7DE;
   font-size: 12px;
-  color: #166534;
-  line-height: 1.5;
+  font-weight: 600;
+  color: #57606A;
+}
+.gh-suggestion-header svg { color: #1A7F37; }
+.gh-suggestion-body {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #1F2328;
+  line-height: 1.6;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  white-space: pre-wrap;
+  background: #F0FFF4;
 }
 
-.comment-suggestion svg { flex-shrink: 0; margin-top: 2px; color: #16A34A; }
+.diff-file-card.has-findings {
+  border-color: #BF8700;
+  box-shadow: 0 0 0 1px #FFF8C5;
+}
 </style>

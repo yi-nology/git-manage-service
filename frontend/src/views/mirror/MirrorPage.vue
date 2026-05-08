@@ -4,7 +4,7 @@
 
     <div class="mirror-content">
       <div class="toolbar">
-        <el-button type="primary" @click="showCreateDialog">创建 Pull Mirror</el-button>
+        <el-button type="primary" @click="showCreateDialog('pull')">创建 Pull Mirror</el-button>
         <el-button @click="showCreateDialog('push')">创建 Push Mirror</el-button>
         <el-button @click="batchTriggerSync" :disabled="selectedMirrors.length === 0" type="success">
           批量同步 ({{ selectedMirrors.length }})
@@ -24,7 +24,7 @@
         <el-table-column label="远程URL" prop="remoteUrl" min-width="250" show-overflow-tooltip />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="statusMap[row.status]?.type || 'info'" size="small">
+            <el-tag :type="(statusMap[row.status]?.type || 'info') as any" size="small">
               {{ statusMap[row.status]?.label || row.status }}
             </el-tag>
           </template>
