@@ -35,3 +35,13 @@ export function deleteReviewRule(ruleId: string) {
 export function batchUpdateReviewRules(rules: Partial<ReviewRuleDTO>[]) {
   return request.put<unknown, ReviewRuleDTO[]>('/settings/review-rules/batch', rules)
 }
+
+export interface PromptStructureDTO {
+  prefix: string
+  intent: string
+  suffix: string
+}
+
+export function getPromptStructure() {
+  return request.get<unknown, PromptStructureDTO>('/reviews/prompt-structure')
+}

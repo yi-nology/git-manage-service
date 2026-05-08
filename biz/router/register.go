@@ -84,6 +84,7 @@ func GeneratedRegister(h *server.Hertz) {
 	h.POST("/api/v1/reviews/tasks/provider", handler_review.CreateTaskByProvider)
 	h.GET("/api/v1/reviews/tasks/provider", handler_review.ListTasksByProvider)
 	h.GET("/api/v1/reviews/stats", handler_review.GetReviewStats)
+	h.GET("/api/v1/reviews/prompt-structure", handler_review.GetPromptStructure)
 	h.POST("/api/v1/reviews/findings/:finding_id/feedback", handler_review.GetReviewFeedback)
 	h.POST("/api/v1/reviews/rag/index/:repo_key", handler_review.IndexRepoRAG)
 	h.GET("/api/v1/reviews/rag/stats", handler_review.GetRAGStats)

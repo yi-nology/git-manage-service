@@ -315,6 +315,14 @@ const systemPromptSuffix = `FINAL RULES:
 - All title, message, suggestion and summary fields MUST be written in Chinese (中文)
 - file_path and line_number must be accurate — do NOT fabricate values`
 
+func GetPromptStructure() map[string]interface{} {
+	return map[string]interface{}{
+		"prefix": systemPromptPrefix,
+		"intent": intentAnalysisPrompt,
+		"suffix": systemPromptSuffix,
+	}
+}
+
 func buildSystemPromptWithRules() string {
 	var b strings.Builder
 	b.WriteString(systemPromptPrefix)

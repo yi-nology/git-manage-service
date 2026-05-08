@@ -5,6 +5,7 @@
     <div class="tab-bar">
       <button class="tab-btn" :class="{ active: activeTab === 'config' }" @click="activeTab = 'config'">审查配置</button>
       <button class="tab-btn" :class="{ active: activeTab === 'rules' }" @click="activeTab = 'rules'">规则管理</button>
+      <button class="tab-btn" :class="{ active: activeTab === 'prompt' }" @click="activeTab = 'prompt'">Prompt 结构</button>
     </div>
 
     <div v-show="activeTab === 'config'" class="tab-content">
@@ -90,6 +91,49 @@
       </div>
     </div>
 
+    <div v-show="activeTab === 'prompt'" class="tab-content">
+      <div class="section-header">
+        <div class="section-info">
+          <h3>Prompt 结构预览</h3>
+          <p class="section-desc">系统内置的 Prompt 分为前缀、意图分析、后缀三部分，用户自定义规则插入在意图分析和后缀之间。以下为实际发送给 LLM 的完整结构。</p>
+        </div>
+        <div class="section-actions">
+          <ActionPill variant="outline" @click="refreshPromptPreview">刷新预览</ActionPill>
+        </div>
+      </div>
+      <div class="prompt-preview-list">
+        <div class="prompt-block">
+          <div class="prompt-block-header">
+            <span class="prompt-block-badge badge-system">系统内置</span>
+            <span class="prompt-block-title">1. 前缀 — 输出格式与行号规则</span>
+          </div>
+          <pre class="prompt-block-content">{{ promptPreview.prefix }}</pre>
+        </div>
+        <div class="prompt-block">
+          <div class="prompt-block-header">
+            <span class="prompt-block-badge badge-system">系统内置</span>
+            <span class="prompt-block-title">2. 变更意图分析</span>
+          </div>
+          <pre class="prompt-block-content">{{ promptPreview.intent }}</pre>
+        </div>
+        <div class="prompt-block">
+          <div class="prompt-block-header">
+            <span class="prompt-block-badge badge-custom">用户自定义</span>
+            <span class="prompt-block-title">3. 自定义审查规则（来自上方「规则管理」）</span>
+          </div>
+          <div v-if="promptPreview.customRules.length === 0" class="prompt-block-content prompt-empty">暂无启用的自定义规则，请在「规则管理」中添加</div>
+          <pre v-else class="prompt-block-content">{{ promptPreview.customRules }}</pre>
+        </div>
+        <div class="prompt-block">
+          <div class="prompt-block-header">
+            <span class="prompt-block-badge badge-system">系统内置</span>
+            <span class="prompt-block-title">4. 后缀 — 最终约束</span>
+          </div>
+          <pre class="prompt-block-content">{{ promptPreview.suffix }}</pre>
+        </div>
+      </div>
+    </div>
+
     <el-dialog v-model="showRuleDialog" :title="editingRule ? '编辑审查规则' : '添加审查规则'" width="480px" destroy-on-close>
       <el-form label-width="90px">
         <el-form-item label="规则 ID">
@@ -150,8 +194,8 @@ import LoadingState from '@/components/common/LoadingState.vue'
 import ActionPill from '@/components/common/ActionPill.vue'
 import { getCodeReviewSettings, updateCodeReviewSettings } from '@/api/modules/llm-settings'
 import type { CodeReviewGlobalSettingsDTO } from '@/api/modules/llm-settings'
-import { listReviewRules, createReviewRule, updateReviewRule, deleteReviewRule } from '@/api/modules/review-rules'
-import type { ReviewRuleDTO } from '@/api/modules/review-rules'
+import { listReviewRules, createReviewRule, updateReviewRule, deleteReviewRule, getPromptStructure } from '@/api/modules/review-rules'
+import type { ReviewRuleDTO, PromptStructureDTO } from '@/api/modules/review-rules'
 
 const activeTab = ref('config')
 const settingsSaving = ref(false)
@@ -187,7 +231,7 @@ async function saveSettings() {
   finally { settingsSaving.value = false }
 }
 
-async function loadRules() {
+async function loadRules(): Promise<void> {
   rulesLoading.value = true
   try { rules.value = await listReviewRules() || [] } catch { rules.value = [] }
   finally { rulesLoading.value = false }
@@ -229,7 +273,32 @@ async function handleDeleteRule(rule: ReviewRuleDTO) {
   catch (e: any) { ElMessage.error('删除失败: ' + (e?.message || '')) }
 }
 
-onMounted(() => { loadSettings(); loadRules() })
+const promptPreview = ref<{ prefix: string; intent: string; suffix: string; customRules: string }>({
+  prefix: '', intent: '', suffix: '', customRules: '',
+})
+
+async function loadPromptPreview() {
+  try {
+    const data = await getPromptStructure()
+    if (data) {
+      promptPreview.value.prefix = data.prefix || ''
+      promptPreview.value.intent = data.intent || ''
+      promptPreview.value.suffix = data.suffix || ''
+    }
+    const enabledRules = rules.value.filter(r => r.enabled && r.rule_type === 'prompt')
+    if (enabledRules.length > 0) {
+      promptPreview.value.customRules = enabledRules.map((r, i) => `${i + 1}. [${r.name}] ${r.prompt_text}`).join('\n\n')
+    } else {
+      promptPreview.value.customRules = ''
+    }
+  } catch { /* ignore */ }
+}
+
+function refreshPromptPreview() {
+  loadPromptPreview()
+}
+
+onMounted(() => { loadSettings(); loadRules().then(() => loadPromptPreview()) })
 </script>
 
 <style scoped>
@@ -290,4 +359,24 @@ onMounted(() => { loadSettings(); loadRules() })
 .act-btn--primary:hover { background: var(--accent-bg); }
 .act-btn--danger { border-color: #EF4444; color: #EF4444; }
 .act-btn--danger:hover { background: #FEF2F2; }
+.prompt-preview-list { display: flex; flex-direction: column; gap: 16px; }
+.prompt-block {
+  border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color-page); overflow: hidden;
+}
+.prompt-block-header {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  background: var(--bg-color-secondary, #F9FAFB); border-bottom: 1px solid var(--border-color);
+}
+.prompt-block-title { font-size: 13px; font-weight: 600; color: var(--text-color-primary); }
+.prompt-block-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+}
+.badge-system { background: #EFF6FF; color: #2563EB; }
+.badge-custom { background: #F0FDF4; color: #16A34A; }
+.prompt-block-content {
+  margin: 0; padding: 16px; font-size: 12px; line-height: 1.7; color: #374151;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+  white-space: pre-wrap; word-break: break-word;
+}
+.prompt-empty { color: var(--text-color-placeholder); font-family: inherit; font-style: italic; }
 </style>

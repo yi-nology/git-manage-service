@@ -496,3 +496,8 @@ func GetRAGStats(ctx context.Context, c *app.RequestContext) {
 		"available": rag.DefaultService().IsAvailable(),
 	})
 }
+
+func GetPromptStructure(ctx context.Context, c *app.RequestContext) {
+	structure := codereview.GetPromptStructure()
+	pkgresponse.Success(c, structure)
+}
