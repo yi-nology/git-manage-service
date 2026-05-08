@@ -147,7 +147,7 @@ export function pushCurrent(repoKey: string, remote = '') {
 }
 
 export function removeTracking(repoKey: string, files: string[]) {
-  return request.post('/workspace/remove-tracking', {
+  return request.post('/workspace/untrack', {
     repo_key: repoKey,
     files,
   })

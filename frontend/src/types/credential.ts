@@ -2,6 +2,24 @@
 export type CredentialType = 'ssh_key' | 'http_basic' | 'http_token'
 
 // 凭证 DTO（脱敏响应）
+export interface CredentialRepoUsage {
+  repoKey: string
+  repoName: string
+}
+
+export interface CredentialProviderUsage {
+  providerId: number
+  providerName: string
+  platform: string
+}
+
+export interface CredentialUsages {
+  repos: CredentialRepoUsage[]
+  providers: CredentialProviderUsage[]
+  totalRepoCount: number
+  totalProviderCount: number
+}
+
 export interface CredentialDTO {
   id: number
   name: string

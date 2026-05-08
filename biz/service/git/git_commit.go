@@ -161,7 +161,11 @@ func (s *GitService) GetLogStats(path, branch string) (string, error) {
 }
 
 func (s *GitService) GetLogStatsStream(path, branch string) (io.ReadCloser, error) {
-	cmd := exec.Command("git", "log", "--numstat", "--no-merges", "--pretty=format:COMMIT|%H|%aN|%aE|%at", branch)
+	args := []string{"log", "--numstat", "--no-merges", "--pretty=format:COMMIT|%H|%aN|%aE|%at"}
+	if branch != "" {
+		args = append(args, branch)
+	}
+	cmd := exec.Command("git", args...)
 	cmd.Dir = path
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")
 

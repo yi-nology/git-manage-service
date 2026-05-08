@@ -159,7 +159,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import type { CredentialDTO, CreateCredentialReq, UpdateCredentialReq } from '@/types/credential'
 import { createCredential, updateCredential, getCredential } from '@/api/modules/credential'
-import { listSSHKeys } from '@/api/modules/ssh-key'
+import { listDBSSHKeys } from '@/api/modules/sshkey'
 import { ElMessage } from 'element-plus'
 
 interface SSHKey {
@@ -228,7 +228,8 @@ watch(
 
 async function loadSSHKeys() {
   try {
-    sshKeys.value = await listSSHKeys()
+    const keys = await listDBSSHKeys()
+    sshKeys.value = keys.map(k => ({ id: k.id, name: k.name }))
   } catch {
     sshKeys.value = []
   }

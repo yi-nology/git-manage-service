@@ -90,19 +90,21 @@ func NewReviewFindingDTO(f po.ReviewFinding) ReviewFindingDTO {
 }
 
 type ReviewRepoConfigDTO struct {
-	ID               uint            `json:"id"`
-	ProviderConfigID uint            `json:"provider_config_id"`
-	PlatformOwner    string          `json:"platform_owner"`
-	PlatformRepo     string          `json:"platform_repo"`
-	Enabled          bool            `json:"enabled"`
-	BlockOnHigh      bool            `json:"block_on_high"`
-	AutoReviewOnMR   bool            `json:"auto_review_on_mr"`
-	LLMProvider      string          `json:"llm_provider"`
-	MaxFiles         int             `json:"max_files"`
-	MaxDiffLines     int             `json:"max_diff_lines"`
-	RuleOverrides    string          `json:"rule_overrides_json"`
-	ScopeNote        string          `json:"scope_note"`
-	LinkedRepos      []LinkedRepoDTO `json:"linked_repos"`
+	ID                   uint            `json:"id"`
+	ProviderConfigID     uint            `json:"provider_config_id"`
+	PlatformOwner        string          `json:"platform_owner"`
+	PlatformRepo         string          `json:"platform_repo"`
+	Enabled              bool            `json:"enabled"`
+	BlockOnHigh          bool            `json:"block_on_high"`
+	AutoReviewOnMR       bool            `json:"auto_review_on_mr"`
+	LLMProvider          string          `json:"llm_provider"`
+	MaxFiles             int             `json:"max_files"`
+	MaxDiffLines         int             `json:"max_diff_lines"`
+	RuleOverrides        string          `json:"rule_overrides_json"`
+	ScopeNote            string          `json:"scope_note"`
+	LinkedRepos          []LinkedRepoDTO `json:"linked_repos"`
+	PromptPrefixOverride string          `json:"prompt_prefix_override"`
+	PromptIntentOverride string          `json:"prompt_intent_override"`
 }
 
 type LinkedRepoDTO struct {
@@ -113,19 +115,21 @@ type LinkedRepoDTO struct {
 
 func NewReviewRepoConfigDTO(c po.ReviewRepoConfig, repos []LinkedRepoDTO) ReviewRepoConfigDTO {
 	return ReviewRepoConfigDTO{
-		ID:               c.ID,
-		ProviderConfigID: c.ProviderConfigID,
-		PlatformOwner:    c.PlatformOwner,
-		PlatformRepo:     c.PlatformRepo,
-		Enabled:          c.Enabled,
-		BlockOnHigh:      c.BlockOnHigh,
-		AutoReviewOnMR:   c.AutoReviewOnMR,
-		LLMProvider:      c.LLMProvider,
-		MaxFiles:         c.MaxFiles,
-		MaxDiffLines:     c.MaxDiffLines,
-		RuleOverrides:    c.RuleOverridesJSON,
-		ScopeNote:        c.ScopeNote,
-		LinkedRepos:      repos,
+		ID:                   c.ID,
+		ProviderConfigID:     c.ProviderConfigID,
+		PlatformOwner:        c.PlatformOwner,
+		PlatformRepo:         c.PlatformRepo,
+		Enabled:              c.Enabled,
+		BlockOnHigh:          c.BlockOnHigh,
+		AutoReviewOnMR:       c.AutoReviewOnMR,
+		LLMProvider:          c.LLMProvider,
+		MaxFiles:             c.MaxFiles,
+		MaxDiffLines:         c.MaxDiffLines,
+		RuleOverrides:        c.RuleOverridesJSON,
+		ScopeNote:            c.ScopeNote,
+		LinkedRepos:          repos,
+		PromptPrefixOverride: c.PromptPrefixOverride,
+		PromptIntentOverride: c.PromptIntentOverride,
 	}
 }
 

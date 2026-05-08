@@ -121,8 +121,8 @@ async function loadSubmodules() {
   }
 }
 
-function statusType(status: string) {
-  const types: Record<string, string> = {
+function statusType(status: string): 'primary' | 'danger' | 'success' | 'info' | 'warning' | undefined {
+  const types: Record<string, 'primary' | 'danger' | 'success' | 'info' | 'warning'> = {
     initialized: 'success',
     uninitialized: 'warning',
     modified: 'danger',

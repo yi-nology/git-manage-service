@@ -66,10 +66,11 @@
 
       <div v-else class="config-panel">
         <div class="config-sidebar">
-          <button class="cfg-nav-btn active">基本设置</button>
+          <button class="cfg-nav-btn" :class="{ active: cfgPanel === 'basic' }" @click="cfgPanel = 'basic'">基本设置</button>
+          <button class="cfg-nav-btn" :class="{ active: cfgPanel === 'prompt' }" @click="switchToPrompt">提示词设计</button>
         </div>
 
-        <div class="config-form-area">
+        <div v-if="cfgPanel === 'basic'" class="config-form-area">
           <div class="form-section">
             <div class="form-row">
               <div class="form-label">
@@ -133,6 +134,67 @@
             <ActionPill variant="primary" @click="saveReviewConfig" :disabled="crCfgSaving">{{ crCfgSaving ? '保存中...' : '保存' }}</ActionPill>
           </div>
         </div>
+
+        <div v-if="cfgPanel === 'prompt'" class="config-form-area">
+          <div class="form-section">
+            <div class="prompt-section-header">
+              <div class="form-label">
+                <span>系统提示词 (System Prompt)</span>
+                <span class="form-desc">自定义发送给 LLM 的系统提示词。留空则使用全局默认值。</span>
+              </div>
+            </div>
+
+            <div class="prompt-block">
+              <div class="prompt-block-header">
+                <span class="prompt-block-title">角色与输出格式</span>
+                <span class="prompt-block-badge">可编辑</span>
+              </div>
+              <textarea
+                v-model="promptCfg.prefix"
+                class="prompt-textarea"
+                rows="10"
+                placeholder="留空使用全局默认"
+              />
+              <div class="prompt-block-actions">
+                <button class="prompt-reset-btn" @click="promptCfg.prefix = ''">恢复默认</button>
+              </div>
+            </div>
+
+            <div class="prompt-block">
+              <div class="prompt-block-header">
+                <span class="prompt-block-title">变更意图分析</span>
+                <span class="prompt-block-badge">可编辑</span>
+              </div>
+              <textarea
+                v-model="promptCfg.intent"
+                class="prompt-textarea"
+                rows="8"
+                placeholder="留空使用全局默认"
+              />
+              <div class="prompt-block-actions">
+                <button class="prompt-reset-btn" @click="promptCfg.intent = ''">恢复默认</button>
+              </div>
+            </div>
+
+            <div class="prompt-block prompt-block-readonly">
+              <div class="prompt-block-header">
+                <span class="prompt-block-title">约束规则</span>
+                <span class="prompt-block-badge prompt-block-badge-locked">系统锁定</span>
+              </div>
+              <textarea
+                :value="promptCfg.suffix"
+                class="prompt-textarea prompt-textarea-readonly"
+                rows="4"
+                readonly
+              />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <ActionPill variant="outline" @click="resetPromptCfg">重置为默认</ActionPill>
+            <ActionPill variant="primary" @click="saveReviewConfig" :disabled="crCfgSaving">{{ crCfgSaving ? '保存中...' : '保存' }}</ActionPill>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -168,6 +230,8 @@ import { listBindings } from '@/api/modules/binding'
 import { getRemoteRepoConfig, updateRemoteRepoConfig } from '@/api/modules/review'
 import type { ReviewRepoConfigDTO } from '@/api/modules/review'
 import type { ReviewTaskDTO } from '@/api/modules/review'
+import { getPromptStructure } from '@/api/modules/review-rules'
+import type { PromptStructureDTO } from '@/api/modules/review-rules'
 import { listLLMProviders } from '@/api/modules/llm-settings'
 import type { LLMProviderDTO } from '@/api/modules/llm-settings'
 import { useProviderStore } from '@/stores/useProviderStore'
@@ -199,6 +263,9 @@ const repoData = ref<{ clone_url?: string; ssh_url?: string; default_branch?: st
 
 const crCfgLoading = ref(false)
 const crCfgSaving = ref(false)
+const cfgPanel = ref<'basic' | 'prompt'>('basic')
+const globalPrompt = ref<PromptStructureDTO>({ prefix: '', intent: '', suffix: '' })
+const promptCfg = ref<{ prefix: string; intent: string; suffix: string }>({ prefix: '', intent: '', suffix: '' })
 const globalProviders = ref<LLMProviderDTO[]>([])
 const reviewCfg = ref<ReviewRepoConfigDTO>({
   id: 0,
@@ -214,6 +281,8 @@ const reviewCfg = ref<ReviewRepoConfigDTO>({
   rule_overrides_json: '',
   scope_note: '',
   linked_repos: [],
+  prompt_prefix_override: '',
+  prompt_intent_override: '',
 })
 
 const PLATFORM_META: Record<string, { label: string; iconBg: string; iconColor: string }> = {
@@ -262,12 +331,19 @@ function handleClone() {
 async function loadReviewConfig() {
   crCfgLoading.value = true
   try {
-    const [res, provs] = await Promise.all([
+    const [res, provs, promptRes] = await Promise.all([
       getRemoteRepoConfig(providerId, repoOwner, repoName),
       listLLMProviders().catch(() => []),
+      getPromptStructure().catch(() => null),
     ])
     if (res) reviewCfg.value = res
     globalProviders.value = provs as LLMProviderDTO[] || []
+    if (promptRes) {
+      globalPrompt.value = promptRes
+      promptCfg.value.suffix = promptRes.suffix
+    }
+    promptCfg.value.prefix = reviewCfg.value.prompt_prefix_override || ''
+    promptCfg.value.intent = reviewCfg.value.prompt_intent_override || ''
   } catch { /* use defaults */ }
   finally { crCfgLoading.value = false }
 }
@@ -283,6 +359,8 @@ async function saveReviewConfig() {
       max_files: reviewCfg.value.max_files,
       max_diff_lines: reviewCfg.value.max_diff_lines,
       scope_note: reviewCfg.value.scope_note,
+      prompt_prefix_override: promptCfg.value.prefix,
+      prompt_intent_override: promptCfg.value.intent,
     })
     if (res) reviewCfg.value = res
     ElMessage.success('配置已保存')
@@ -291,6 +369,15 @@ async function saveReviewConfig() {
   } finally {
     crCfgSaving.value = false
   }
+}
+
+function switchToPrompt() {
+  cfgPanel.value = 'prompt'
+}
+
+function resetPromptCfg() {
+  promptCfg.value.prefix = ''
+  promptCfg.value.intent = ''
 }
 
 watch(activeTab, (tab) => {
@@ -527,5 +614,87 @@ onMounted(loadInitial)
   gap: 10px;
   padding-top: 12px;
   border-top: 1px solid var(--border-color);
+}
+
+.prompt-section-header { margin-bottom: 16px; }
+
+.prompt-block {
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.prompt-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-color-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.prompt-block-title { font-size: 13px; font-weight: 500; color: var(--text-color-primary); }
+
+.prompt-block-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #EEF2FF;
+  color: #6366F1;
+  font-weight: 500;
+}
+
+.prompt-block-badge-locked {
+  background: #FEF2F2;
+  color: #EF4444;
+}
+
+.prompt-block-readonly {
+  opacity: 0.7;
+}
+
+.prompt-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  font-size: 13px;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+  line-height: 1.6;
+  color: var(--text-color-primary);
+  background: transparent;
+  resize: vertical;
+  outline: none;
+}
+
+.prompt-textarea:focus {
+  background: rgba(99, 102, 241, 0.03);
+}
+
+.prompt-textarea-readonly {
+  color: var(--text-color-secondary);
+  cursor: not-allowed;
+  resize: none;
+}
+
+.prompt-block-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 14px;
+}
+
+.prompt-reset-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-color-placeholder);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.prompt-reset-btn:hover {
+  color: var(--accent-primary);
+  background: var(--accent-bg);
 }
 </style>

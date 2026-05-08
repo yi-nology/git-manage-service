@@ -23,6 +23,19 @@ func (d *ReviewRuleDAO) FindEnabledPromptRules() ([]po.ReviewRule, error) {
 	return rules, err
 }
 
+func (d *ReviewRuleDAO) FindEnabledIDs() (map[string]bool, error) {
+	var rules []po.ReviewRule
+	err := DB.Where("enabled = ?", true).Select("id").Find(&rules).Error
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string]bool, len(rules))
+	for _, r := range rules {
+		m[r.ID] = true
+	}
+	return m, nil
+}
+
 func (d *ReviewRuleDAO) FindByID(id string) (*po.ReviewRule, error) {
 	var rule po.ReviewRule
 	err := DB.Where("id = ?", id).First(&rule).Error

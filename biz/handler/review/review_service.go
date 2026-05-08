@@ -196,8 +196,14 @@ func ListFindings(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
+	seen := make(map[string]bool, len(findings))
 	dtos := make([]api.ReviewFindingDTO, 0, len(findings))
 	for _, f := range findings {
+		key := f.Source + ":" + f.FilePath + ":" + f.RuleID + ":" + fmt.Sprintf("%d", f.NewLine)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
 		dtos = append(dtos, api.NewReviewFindingDTO(f))
 	}
 	pkgresponse.Success(c, dtos)

@@ -81,19 +81,27 @@ const commitHistory = ref<{ hash: string; author: string; date: string; message:
 
 async function loadStats() {
   try {
-    statsData.value = await getStatsAnalyze(props.repoKey, {
+    const analyzeRes = await getStatsAnalyze(props.repoKey, {
       branch: statsFilter.value.branch || undefined,
       author: statsFilter.value.author || undefined,
       since: statsFilter.value.since || undefined,
       until: statsFilter.value.until || undefined,
     })
+    if (analyzeRes && (analyzeRes as any).total_lines !== undefined) {
+      statsData.value = analyzeRes as StatsResponse
+    } else if (analyzeRes && (analyzeRes as any).status === 'processing') {
+      statsData.value = null
+      ElMessage.info('统计数据正在计算中，请稍后再试...')
+      return
+    }
     const res = await getStatsCommits(props.repoKey, {
       branch: statsFilter.value.branch || undefined,
       author: statsFilter.value.author || undefined,
       since: statsFilter.value.since || undefined,
       until: statsFilter.value.until || undefined,
     })
-    commitHistory.value = (Array.isArray(res) ? res : []).slice(0, 100)
+    const commits = Array.isArray(res) ? res : (res as any)?.commits || []
+    commitHistory.value = commits.slice(0, 100)
   } catch { /* ignore */ }
 }
 

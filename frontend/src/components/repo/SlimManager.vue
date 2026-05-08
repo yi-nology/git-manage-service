@@ -345,11 +345,11 @@ function statusLabel(status: string) {
   }
 }
 
-function sourceTagType(source: string) {
+function sourceTagType(source: string): 'primary' | 'danger' | 'success' | 'info' | 'warning' | undefined {
   switch (source) {
     case 'stash': return 'warning'
     case 'reflog': return 'danger'
-    default: return ''
+    default: return undefined
   }
 }
 

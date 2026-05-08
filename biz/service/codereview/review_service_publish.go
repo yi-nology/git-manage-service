@@ -25,6 +25,9 @@ func persistFindings(taskID uint, findings []*Finding) (map[string]uint, error) 
 		return idMap, nil
 	}
 	dao := db.NewReviewFindingDAO()
+	if err := dao.DeleteByTaskID(taskID); err != nil {
+		return idMap, fmt.Errorf("failed to clean old findings: %w", err)
+	}
 	records := make([]po.ReviewFinding, 0, len(findings))
 	for _, f := range findings {
 		raw, _ := json.Marshal(f)
@@ -115,7 +118,7 @@ func publishComments(ctx context.Context, p provider.Provider, owner, repo strin
 	return nil
 }
 
-func runLLMReview(ctx context.Context, files []*FileDiff, repoName, owner, providerName string, repoID uint) ([]*Finding, *ProcessStep) {
+func runLLMReview(ctx context.Context, files []*FileDiff, repoName, owner, providerName string, repoID uint, repoCfg *po.ReviewRepoConfig) ([]*Finding, *ProcessStep) {
 	diff := buildDiffString(files)
 	if diff == "" {
 		return nil, nil
@@ -123,7 +126,7 @@ func runLLMReview(ctx context.Context, files []*FileDiff, repoName, owner, provi
 
 	ragContext := retrieveRAGContext(ctx, files, repoID)
 
-	systemPrompt := buildSystemPromptWithRules()
+	systemPrompt := buildSystemPromptWithRules(repoCfg)
 
 	userPrompt := buildCodeReviewPrompt(files, repoName, owner)
 	if ragContext != "" {
@@ -212,7 +215,7 @@ func runLLMReview(ctx context.Context, files []*FileDiff, repoName, owner, provi
 			Title:       lf.Title,
 			Message:     lf.Message,
 			Suggestion:  lf.Suggestion,
-			Fingerprint: computeFingerprint("llm:"+resp.ProviderName, lf.FilePath, lf.LineNumber, lf.Title),
+			Fingerprint: computeFingerprint("llm:"+resp.ProviderName, lf.FilePath, lf.LineNumber, ""),
 		})
 	}
 
@@ -281,39 +284,39 @@ var lineCommentPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(\S+?)[,\s]+(?:line|行)\s*(\d+)`),
 }
 
-const systemPromptPrefix = `You are an expert code reviewer.
+const systemPromptPrefix = `你是一位资深代码审查专家。
 
-OUTPUT FORMAT:
-Respond ONLY with valid JSON. Do NOT wrap in markdown code blocks. Use this exact format:
+输出格式：
+仅返回合法 JSON，不要用 markdown 代码块包裹。严格使用以下格式：
 {"findings":[{"file_path":"actual/file/path.go","line_number":42,"severity":"critical|high|medium|low|info","title":"问题标题","message":"详细说明","suggestion":"修复建议"}],"summary":"整体审查总结"}
 
-LINE NUMBER RULES (CRITICAL):
-- line_number MUST be the line number shown in the RIGHT side of the diff (the "+" line number from the @@ header range).
-- For example, in "@@ -10,5 +20,7 @@", added lines start at line 20. Each "+" line increments by 1.
-- DO NOT use relative positions, sequential counters, or line numbers from the original file.
-- Look at the @@ -X,Y +N,M @@ headers. N is the starting new-file line number. Count from there.
+行号规则（关键）：
+- line_number 必须是 diff 中右侧（"+" 号一侧）的行号。
+- 例如 "@@ -10,5 +20,7 @@" 中，新增行从第 20 行开始，每个 "+" 行递增 1。
+- 不要使用相对位置、顺序计数或原始文件中的行号。
+- 查看 @@ -X,Y +N,M @@ 标记，N 是新文件的起始行号，从这里开始计数。
 
-FILE PATH RULES:
-- file_path MUST be the actual file path from the diff (e.g., "internal/service/crawler.go"), NOT placeholder or invented paths.`
+文件路径规则：
+- file_path 必须是 diff 中的实际文件路径（例如 "internal/service/crawler.go"），不要编造路径。`
 
-const intentAnalysisPrompt = `CHANGE INTENT ANALYSIS:
-Before listing findings, you MUST first analyze and understand what the author is trying to accomplish with this change:
-1. What is the overall purpose of this change? (bug fix, new feature, refactor, optimization, etc.)
-2. What problem is the author solving?
-3. What is the expected behavior after this change?
+const intentAnalysisPrompt = `变更意图分析：
+在列出发现之前，你必须先分析并理解作者本次变更的目的：
+1. 本次变更的整体目的是什么？（Bug 修复、新功能、重构、优化等）
+2. 作者要解决什么问题？
+3. 变更后的预期行为是什么？
 
-Include your intent analysis in the "summary" field. This helps you review the code in context rather than flagging things that are intentional.
+将意图分析写在 "summary" 字段中。这有助于你在上下文中审查代码，而不是标记有意为之的内容。
 
-When reviewing, distinguish between:
-- Actual bugs or security issues (MUST report)
-- Style preferences that conflict with the author's intent (report as low/info)
-- Areas where the implementation could better achieve the stated intent (report with constructive suggestions)`
+审查时请区分：
+- 真实的 Bug 或安全问题（必须报告）
+- 与作者意图冲突的风格偏好（标记为 low/info）
+- 实现方式可以改进以更好达成意图的地方（提供建设性建议）`
 
-const systemPromptSuffix = `FINAL RULES:
-- Only report real issues visible in the diff, not opinions about file organization
-- If no real issues found, return {"findings":[],"summary":"未发现问题"}
-- All title, message, suggestion and summary fields MUST be written in Chinese (中文)
-- file_path and line_number must be accurate — do NOT fabricate values`
+const systemPromptSuffix = `最终规则：
+- 只报告 diff 中可见的真实问题，不要对文件组织方式发表意见
+- 如果没有发现真实问题，返回 {"findings":[],"summary":"未发现问题"}
+- 所有 title、message、suggestion 和 summary 字段必须使用中文撰写
+- file_path 和 line_number 必须准确——不要编造数值`
 
 func GetPromptStructure() map[string]interface{} {
 	return map[string]interface{}{
@@ -323,11 +326,21 @@ func GetPromptStructure() map[string]interface{} {
 	}
 }
 
-func buildSystemPromptWithRules() string {
+func buildSystemPromptWithRules(repoCfg ...*po.ReviewRepoConfig) string {
+	prefix := systemPromptPrefix
+	intent := intentAnalysisPrompt
+	if len(repoCfg) > 0 && repoCfg[0] != nil {
+		if repoCfg[0].PromptPrefixOverride != "" {
+			prefix = repoCfg[0].PromptPrefixOverride
+		}
+		if repoCfg[0].PromptIntentOverride != "" {
+			intent = repoCfg[0].PromptIntentOverride
+		}
+	}
 	var b strings.Builder
-	b.WriteString(systemPromptPrefix)
+	b.WriteString(prefix)
 	b.WriteString("\n\n")
-	b.WriteString(intentAnalysisPrompt)
+	b.WriteString(intent)
 	rules, err := db.NewReviewRuleDAO().FindEnabledPromptRules()
 	if err == nil && len(rules) > 0 {
 		b.WriteString("\n\nCUSTOM REVIEW RULES (from user configuration):\n")

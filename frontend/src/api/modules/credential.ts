@@ -5,6 +5,7 @@ import type {
   UpdateCredentialReq,
   TestCredentialResp,
   MatchCredentialResp,
+  CredentialUsages,
 } from '@/types/credential'
 
 // 列出所有凭证
@@ -40,4 +41,8 @@ export function testCredential(id: number, url: string) {
 // 根据 URL 匹配推荐凭证
 export function matchCredentials(url: string) {
   return request.post<unknown, MatchCredentialResp>('/credentials/match', { url })
+}
+
+export function getCredentialUsages(id: number) {
+  return request.get<unknown, CredentialUsages>(`/credentials/${id}/usages`)
 }

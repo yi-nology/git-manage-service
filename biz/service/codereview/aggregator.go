@@ -1,6 +1,8 @@
 package codereview
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type ProcessStep struct {
 	Name   string
@@ -21,6 +23,7 @@ type AggregatedResult struct {
 
 func Aggregate(findings []*Finding, totalAdd, totalDel, fileCount int, blockOnHigh bool, processLog []*ProcessStep) *AggregatedResult {
 	findings = deduplicate(findings)
+	findings = semanticDedup(findings)
 
 	risk := calculateRisk(findings)
 	blocked := false
@@ -55,6 +58,67 @@ func deduplicate(findings []*Finding) []*Finding {
 		result = append(result, f)
 	}
 	return result
+}
+
+func semanticDedup(findings []*Finding) []*Finding {
+	type key struct {
+		source   string
+		filePath string
+		newLine  int
+	}
+	var severityRank = map[Severity]int{
+		SeverityCritical: 5,
+		SeverityHigh:     4,
+		SeverityMedium:   3,
+		SeverityLow:      2,
+		SeverityInfo:     1,
+	}
+	best := make(map[key]*Finding)
+	for _, f := range findings {
+		k := key{source: f.Source, filePath: f.FilePath, newLine: f.NewLine}
+		if k.filePath == "" && k.newLine == 0 {
+			continue
+		}
+		existing, ok := best[k]
+		if !ok {
+			best[k] = f
+			continue
+		}
+		rankNew := severityRank[f.Severity]
+		rankOld := severityRank[existing.Severity]
+		hasCNNew := containsChinese(f.Title)
+		hasCNOld := containsChinese(existing.Title)
+		if rankNew > rankOld {
+			best[k] = f
+		} else if rankNew == rankOld && hasCNNew && !hasCNOld {
+			best[k] = f
+		}
+	}
+	kept := make(map[*Finding]bool, len(best))
+	for _, f := range best {
+		kept[f] = true
+	}
+	result := make([]*Finding, 0, len(findings))
+	for _, f := range findings {
+		k := key{source: f.Source, filePath: f.FilePath, newLine: f.NewLine}
+		if k.filePath == "" && k.newLine == 0 {
+			result = append(result, f)
+			continue
+		}
+		if kept[f] {
+			result = append(result, f)
+		}
+	}
+	return result
+}
+
+func containsChinese(s string) bool {
+	for _, r := range s {
+		if r >= '\u4e00' && r <= '\u9fff' {
+			return true
+		}
+	}
+	return false
 }
 
 func calculateRisk(findings []*Finding) Severity {

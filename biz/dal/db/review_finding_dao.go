@@ -19,6 +19,10 @@ func (d *ReviewFindingDAO) BatchCreate(findings []po.ReviewFinding) error {
 	return DB.Create(&findings).Error
 }
 
+func (d *ReviewFindingDAO) DeleteByTaskID(taskID uint) error {
+	return DB.Where("task_id = ?", taskID).Delete(&po.ReviewFinding{}).Error
+}
+
 func (d *ReviewFindingDAO) FindByTaskID(taskID uint, severity, source string) ([]po.ReviewFinding, error) {
 	var findings []po.ReviewFinding
 	q := DB.Where("task_id = ?", taskID)

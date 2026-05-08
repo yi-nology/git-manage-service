@@ -4,16 +4,16 @@ import request from '../request'
 
 export interface CommitDetail {
   hash: string
-  short_hash: string
+  shortHash: string
   message: string
-  author_name: string
-  author_email: string
-  author_date: string
-  committer_name: string
-  committer_email: string
-  committer_date: string
-  parent_hashes: string[]
-  files_changed: number
+  authorName: string
+  authorEmail: string
+  authorDate: string
+  committerName: string
+  committerEmail: string
+  committerDate: string
+  parentHashes: string[]
+  filesChanged: number
   additions: number
   deletions: number
 }

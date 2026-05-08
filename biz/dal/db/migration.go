@@ -102,6 +102,13 @@ func RunMigrations() error {
 				return tx.AutoMigrate(&po.ReviewTask{})
 			},
 		},
+		{
+			Version: "2026050901_review_repo_config_prompt_override",
+			Name:    "add prompt override columns to review_repo_configs",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.ReviewRepoConfig{})
+			},
+		},
 	})
 }
 

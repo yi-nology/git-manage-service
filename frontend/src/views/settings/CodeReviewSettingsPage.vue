@@ -195,7 +195,7 @@ import ActionPill from '@/components/common/ActionPill.vue'
 import { getCodeReviewSettings, updateCodeReviewSettings } from '@/api/modules/llm-settings'
 import type { CodeReviewGlobalSettingsDTO } from '@/api/modules/llm-settings'
 import { listReviewRules, createReviewRule, updateReviewRule, deleteReviewRule, getPromptStructure } from '@/api/modules/review-rules'
-import type { ReviewRuleDTO, PromptStructureDTO } from '@/api/modules/review-rules'
+import type { ReviewRuleDTO } from '@/api/modules/review-rules'
 
 const activeTab = ref('config')
 const settingsSaving = ref(false)

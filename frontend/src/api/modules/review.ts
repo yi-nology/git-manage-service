@@ -113,6 +113,8 @@ export interface ReviewRepoConfigDTO {
   rule_overrides_json: string
   scope_note: string
   linked_repos: LinkedRepoDTO[]
+  prompt_prefix_override: string
+  prompt_intent_override: string
 }
 
 export interface LinkedRepoDTO {

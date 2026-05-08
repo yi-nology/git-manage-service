@@ -108,7 +108,12 @@ func RetryTask(ctx context.Context, id uint, owner, repo string) (*po.ReviewTask
 	}
 
 	if task.Status == "running" {
-		return nil, fmt.Errorf("task %d is already running", id)
+		if task.StartedAt != nil && time.Since(*task.StartedAt) < 2*time.Minute {
+			return nil, fmt.Errorf("task %d is already running", id)
+		}
+		logger.Warn("Force-retrying stuck running task", logrus.Fields{
+			"task_id": id, "started_at": task.StartedAt,
+		})
 	}
 
 	task.Status = "pending"
@@ -136,7 +141,7 @@ func RetryTask(ctx context.Context, id uint, owner, repo string) (*po.ReviewTask
 	return task, nil
 }
 
-func RunReview(ctx context.Context, taskID uint) error {
+func RunReview(ctx context.Context, taskID uint) (retErr error) {
 	taskKey := strconv.FormatUint(uint64(taskID), 10)
 	if _, loaded := runningTasks.LoadOrStore(taskKey, struct{}{}); loaded {
 		return fmt.Errorf("review task %d is already running", taskID)
@@ -152,6 +157,16 @@ func RunReview(ctx context.Context, taskID uint) error {
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			logger.ErrorWithErr("RunReview panic recovered", fmt.Errorf("%v", r), logrus.Fields{"task_id": taskID})
+			task.Status = "failed"
+			task.ErrorMessage = fmt.Sprintf("internal error: %v", r)
+			taskDAO.Save(task)
+			retErr = fmt.Errorf("panic: %v", r)
+		}
+	}()
 
 	now := time.Now()
 	task.Status = "running"
@@ -177,6 +192,9 @@ func RunReview(ctx context.Context, taskID uint) error {
 
 	result, rawDiff, err := executeReview(ctx, task, params, taskDAO)
 	if err != nil {
+		task.Status = "failed"
+		task.ErrorMessage = err.Error()
+		taskDAO.Save(task)
 		broadcastReviewStatus(task, repoKey, "failed")
 		return err
 	}
@@ -270,7 +288,16 @@ func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParam
 	}
 
 	var allFindings []*Finding
+	enabledIDs, _ := db.NewReviewRuleDAO().FindEnabledIDs()
 	for _, rule := range GetRules() {
+		if enabledIDs != nil && !enabledIDs[rule.ID()] {
+			processLog = append(processLog, &ProcessStep{
+				Name:   fmt.Sprintf("Rule: %s", rule.ID()),
+				Status: "skip",
+				Detail: "disabled in settings",
+			})
+			continue
+		}
 		findings, rErr := rule.Check(ruleCtx)
 		if rErr != nil {
 			logger.ErrorWithErr("Rule check failed", rErr, logrus.Fields{"rule": rule.ID()})
@@ -300,7 +327,7 @@ func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParam
 		})
 	} else {
 		var llmStep *ProcessStep
-		llmFindings, llmStep = runLLMReview(ctx, files, params.repo, params.owner, cfg.LLMProvider, params.repoID)
+		llmFindings, llmStep = runLLMReview(ctx, files, params.repo, params.owner, cfg.LLMProvider, params.repoID, resolveRepoConfig(params))
 		processLog = append(processLog, llmStep)
 	}
 	allFindings = append(allFindings, llmFindings...)
@@ -504,4 +531,15 @@ func getConfig() reviewConfig {
 		MaxDiffLines:   gc.MaxDiffLines,
 		AutoReviewOnMR: gc.AutoReviewOnMR,
 	}
+}
+
+func resolveRepoConfig(params *reviewParams) *po.ReviewRepoConfig {
+	if params.providerID == 0 || params.owner == "" || params.repo == "" {
+		return nil
+	}
+	cfg, err := db.NewReviewRepoConfigDAO().FindByRemoteRepo(params.providerID, params.owner, params.repo)
+	if err != nil {
+		return nil
+	}
+	return cfg
 }
