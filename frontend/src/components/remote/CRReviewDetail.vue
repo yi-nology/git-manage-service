@@ -110,13 +110,13 @@
                   <tr v-else-if="line.type === 'hunk'" class="dl-hunk">
                     <td class="dl-num" colspan="3">{{ line.content }}</td>
                   </tr>
-                  <tr v-else :class="['dl-row', 'dl-' + line.type, { 'dl-flagged': lineFindingsMapped(file.filePath, line.newNum, getVisibleLines(fIdx).fmap).length > 0 }]">
+                  <tr v-else :class="['dl-row', 'dl-' + line.type, { 'dl-flagged': fmapGet(getVisibleLines(fIdx).fmap, line.newNum).length > 0 }]">
                     <td class="dl-num dl-num-old">{{ line.oldNum || '' }}</td>
                     <td class="dl-num dl-num-new">{{ line.newNum || '' }}</td>
                     <td class="dl-code"><pre>{{ line.content }}</pre></td>
                   </tr>
-                  <template v-if="line.type !== 'hunk' && line.content !== '...' && lineFindingsMapped(file.filePath, line.newNum, getVisibleLines(fIdx).fmap).length > 0">
-                    <tr v-for="(f, fiIdx) in lineFindingsMapped(file.filePath, line.newNum, getVisibleLines(fIdx).fmap)" :key="'f-'+lIdx+'-'+fiIdx" class="dl-comment-row">
+                  <template v-if="line.type !== 'hunk' && line.content !== '...' && fmapGet(getVisibleLines(fIdx).fmap, line.newNum).length > 0">
+                    <tr v-for="(f, fiIdx) in fmapGet(getVisibleLines(fIdx).fmap, line.newNum)" :key="'f-'+lIdx+'-'+fiIdx" class="dl-comment-row">
                       <td class="dl-num"></td>
                       <td class="dl-num"></td>
                       <td class="dl-comment-cell">
@@ -342,43 +342,94 @@ function lineFindings(filePath: string, lineNum: number | string): ReviewFinding
   return []
 }
 
+function fmapGet(fmap: Map<number, ReviewFindingDTO[]>, lineNum: number | string): ReviewFindingDTO[] {
+  if (!lineNum || lineNum === '') return []
+  const n = typeof lineNum === 'string' ? parseInt(lineNum) : lineNum
+  if (isNaN(n)) return []
+  return fmap.get(n) || []
+}
+
 function buildFindingLineMap(file: DiffFile): Map<number, ReviewFindingDTO[]> {
   const ff = fileFindings(file.filePath).filter(f => f.new_line && f.new_line > 0)
   if (ff.length === 0) return new Map()
-  const lineNums = new Set<number>()
-  for (const l of file.lines) {
+
+  const codeLines: { idx: number; newNum: number; content: string; type: string }[] = []
+  for (let i = 0; i < file.lines.length; i++) {
+    const l = file.lines[i]
     if (l.type === 'hunk') continue
     const n = typeof l.newNum === 'number' ? l.newNum : parseInt(String(l.newNum))
-    if (!isNaN(n) && n > 0) lineNums.add(n)
+    if (!isNaN(n) && n > 0) {
+      codeLines.push({ idx: i, newNum: n, content: l.content.toLowerCase(), type: l.type })
+    }
   }
+
   const result = new Map<number, ReviewFindingDTO[]>()
   for (const f of ff) {
     const ln = f.new_line
-    if (lineNums.has(ln)) {
-      const arr = result.get(ln) || []
+    const exact = codeLines.find(c => c.newNum === ln)
+    if (exact) {
+      const arr = result.get(exact.newNum) || []
       arr.push(f)
-      result.set(ln, arr)
+      result.set(exact.newNum, arr)
       continue
     }
-    let best = -1, bestDist = Infinity
-    for (const n of lineNums) {
-      const d = Math.abs(n - ln)
-      if (d < bestDist) { bestDist = d; best = n }
-    }
-    if (best >= 0) {
-      const arr = result.get(best) || []
+
+    const matched = findBestCodeLine(f, codeLines)
+    if (matched) {
+      const arr = result.get(matched.newNum) || []
       arr.push(f)
-      result.set(best, arr)
+      result.set(matched.newNum, arr)
     }
   }
   return result
 }
 
-function lineFindingsMapped(filePath: string, lineNum: number | string, fmap: Map<number, ReviewFindingDTO[]>): ReviewFindingDTO[] {
-  if (!lineNum || lineNum === '') return []
-  const n = typeof lineNum === 'string' ? parseInt(lineNum) : lineNum
-  if (isNaN(n)) return []
-  return fmap.get(n) || []
+function findBestCodeLine(
+  f: ReviewFindingDTO,
+  codeLines: { idx: number; newNum: number; content: string; type: string }[]
+): { idx: number; newNum: number; content: string; type: string } | null {
+  const keywords = extractKeywords(f.title + ' ' + f.message + ' ' + (f.suggestion || ''))
+  if (keywords.length === 0) {
+    return codeLines.length > 0 ? codeLines[0] : null
+  }
+
+  let bestLine: typeof codeLines[0] | null = null
+  let bestScore = -1
+
+  for (const cl of codeLines) {
+    if (cl.type === 'del') continue
+    let score = 0
+    for (const kw of keywords) {
+      if (cl.content.includes(kw.toLowerCase())) score += kw.length
+    }
+    if (cl.type === 'add') score += 1
+    if (score > bestScore) {
+      bestScore = score
+      bestLine = cl
+    }
+  }
+
+  return bestLine
+}
+
+function extractKeywords(text: string): string[] {
+  const stopWords = new Set([
+    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+    'should', 'may', 'might', 'can', 'shall', 'to', 'of', 'in', 'for',
+    'on', 'with', 'at', 'by', 'from', 'as', 'into', 'through', 'during',
+    'before', 'after', 'above', 'below', 'between', 'out', 'off', 'over',
+    'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when',
+    'where', 'why', 'how', 'all', 'both', 'each', 'few', 'more', 'most',
+    'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same',
+    'so', 'than', 'too', 'very', 'just', 'because', 'but', 'and', 'or',
+    'if', 'while', 'this', 'that', 'these', 'those', 'it', 'its',
+    'code', 'file', 'line', 'use', 'used', 'using', 'also', 'which',
+    'about', 'up', 'like', 'what', 'get', 'set', 'new', 'add', 'make',
+  ])
+  const words = text.match(/[a-zA-Z_][a-zA-Z0-9_.]{2,}/g) || []
+  const unique = [...new Set(words.filter(w => !stopWords.has(w.toLowerCase())))]
+  return unique.filter(w => w.length >= 3).slice(0, 15)
 }
 
 const expandedFiles = ref<Record<number, boolean>>({})
