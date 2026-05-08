@@ -11,6 +11,8 @@ type ReviewTask struct {
 	RepoID           uint   `gorm:"index"`
 	ProviderConfigID uint   `gorm:"index"`
 	Platform         string `gorm:"size:20"`
+	PlatformOwner    string `gorm:"size:255"`
+	PlatformRepo     string `gorm:"size:255"`
 	EventType        string `gorm:"size:64"`
 	MRIID            string `gorm:"size:64;index"`
 	SourceBranch     string `gorm:"size:255"`
@@ -23,6 +25,8 @@ type ReviewTask struct {
 	Summary          string `gorm:"type:text"`
 	ErrorMessage     string `gorm:"type:text"`
 	ConfigSnapshot   string `gorm:"type:text"`
+	RawDiff          string `gorm:"type:text"`
+	ProcessLog       string `gorm:"type:text"`
 	StartedAt        *time.Time
 	FinishedAt       *time.Time
 }

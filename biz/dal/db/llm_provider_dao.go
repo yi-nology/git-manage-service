@@ -69,3 +69,9 @@ func (d *LLMProviderDAO) ExistsByNameExcludeID(name string, excludeID uint) (boo
 	err := DB.Model(&po.LLMProvider{}).Where("name = ? AND id != ?", name, excludeID).Count(&count).Error
 	return count > 0, err
 }
+
+func (d *LLMProviderDAO) FindEmbeddingProvider() (*po.LLMProvider, error) {
+	var p po.LLMProvider
+	err := DB.Where("is_embedding = ?", true).Order("updated_at DESC").First(&p).Error
+	return &p, err
+}

@@ -1,6 +1,8 @@
 package db
 
 import (
+	"time"
+
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
@@ -32,7 +34,7 @@ func (d *ReviewTaskDAO) FindByRepoID(repoID uint, status string, page, pageSize 
 
 func (d *ReviewTaskDAO) FindByMRIID(repoID uint, mrIID string) ([]po.ReviewTask, error) {
 	var tasks []po.ReviewTask
-	err := DB.Where("repo_id = ? AND mr_iid = ?", repoID, mrIID).Order("created_at DESC").Find(&tasks).Error
+	err := DB.Where("repo_id = ? AND mri_id = ?", repoID, mrIID).Order("created_at DESC").Find(&tasks).Error
 	return tasks, err
 }
 
@@ -64,4 +66,14 @@ func (d *ReviewTaskDAO) Save(t *po.ReviewTask) error {
 func (d *ReviewTaskDAO) UpdateStatus(id uint, status, riskLevel, errMsg string) error {
 	updates := map[string]interface{}{"status": status, "risk_level": riskLevel, "error_message": errMsg}
 	return DB.Model(&po.ReviewTask{}).Where("id = ?", id).Updates(updates).Error
+}
+
+func (d *ReviewTaskDAO) FindByTimeRange(repoID uint, since, until time.Time) ([]po.ReviewTask, error) {
+	var tasks []po.ReviewTask
+	q := DB.Model(&po.ReviewTask{}).Where("created_at >= ? AND created_at <= ?", since, until)
+	if repoID > 0 {
+		q = q.Where("repo_id = ?", repoID)
+	}
+	err := q.Order("created_at ASC").Find(&tasks).Error
+	return tasks, err
 }

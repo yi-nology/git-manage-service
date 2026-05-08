@@ -29,6 +29,7 @@ type ReviewTaskDTO struct {
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 	FindingsCount    int        `json:"findings_count"`
+	RawDiff          string     `json:"raw_diff"`
 }
 
 func NewReviewTaskDTO(t po.ReviewTask) ReviewTaskDTO {
@@ -48,6 +49,7 @@ func NewReviewTaskDTO(t po.ReviewTask) ReviewTaskDTO {
 		RiskLevel:        t.RiskLevel,
 		Summary:          t.Summary,
 		ErrorMessage:     t.ErrorMessage,
+		RawDiff:          t.RawDiff,
 		StartedAt:        t.StartedAt,
 		FinishedAt:       t.FinishedAt,
 		CreatedAt:        t.CreatedAt,

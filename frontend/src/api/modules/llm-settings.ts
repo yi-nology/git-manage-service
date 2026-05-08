@@ -9,6 +9,8 @@ export interface LLMProviderDTO {
   model: string
   max_tokens: number
   is_default: boolean
+  is_embedding: boolean
+  embedding_model: string
   preset_id?: string
   protocol?: string
   created_at: string
@@ -46,6 +48,7 @@ export interface CodeReviewGlobalSettingsDTO {
   block_on_high: boolean
   max_files: number
   max_diff_lines: number
+  rag_enabled: boolean
 }
 
 export function listLLMProviders() {
@@ -84,6 +87,10 @@ export function testLLMProvider(id: number) {
 export function fetchOllamaModels(baseUrl?: string) {
   const params = baseUrl ? { base_url: baseUrl } : {}
   return request.get<unknown, string[]>('/settings/ollama-models', { params })
+}
+
+export function testEmbedding(id: number) {
+  return request.post<unknown, { status: string; message: string; model: string }>(`/settings/llm-providers/${id}/test-embedding`)
 }
 
 export function getCodeReviewSettings() {

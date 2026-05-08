@@ -3,6 +3,9 @@ package codereview
 import (
 	"fmt"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func BuildSummaryComment(result *AggregatedResult) string {
@@ -26,6 +29,24 @@ func BuildSummaryComment(result *AggregatedResult) string {
 	b.WriteString(fmt.Sprintf("- **Files changed:** %d\n", result.FileCount))
 	b.WriteString(fmt.Sprintf("- **Lines:** +%d / -%d\n", result.TotalAdd, result.TotalDel))
 	b.WriteString(fmt.Sprintf("- **Findings:** %d\n\n", len(result.Findings)))
+
+	if len(result.ProcessLog) > 0 {
+		b.WriteString("<details><summary>Review Process</summary>\n\n")
+		b.WriteString("| Step | Status | Detail |\n|------|--------|--------|\n")
+		for _, step := range result.ProcessLog {
+			icon := "✅"
+			switch step.Status {
+			case "error":
+				icon = "❌"
+			case "warn":
+				icon = "⚠️"
+			case "skip":
+				icon = "⏭️"
+			}
+			b.WriteString(fmt.Sprintf("| %s | %s %s | %s |\n", step.Name, icon, step.Status, step.Detail))
+		}
+		b.WriteString("\n</details>\n\n")
+	}
 
 	critical := countBySeverity(result.Findings, SeverityCritical)
 	high := countBySeverity(result.Findings, SeverityHigh)
@@ -54,13 +75,12 @@ func BuildSummaryComment(result *AggregatedResult) string {
 	}
 
 	grouped := groupFindingsBySeverity(result.Findings)
-	order := []Severity{SeverityCritical, SeverityHigh, SeverityMedium, SeverityLow, SeverityInfo}
-	for _, sev := range order {
+	for _, sev := range SeverityOrder {
 		findings, ok := grouped[sev]
 		if !ok || len(findings) == 0 {
 			continue
 		}
-		b.WriteString(fmt.Sprintf("### %s\n\n", strings.Title(string(sev))))
+		b.WriteString(fmt.Sprintf("### %s\n\n", cases.Title(language.English).String(string(sev))))
 		for _, f := range findings {
 			b.WriteString(formatFinding(f))
 		}

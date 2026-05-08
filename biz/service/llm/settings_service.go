@@ -43,15 +43,17 @@ func CreateProvider(req api.LLMProviderDTO) (*api.LLMProviderDTO, error) {
 	}
 
 	p := &po.LLMProvider{
-		Name:      req.Name,
-		Type:      req.Type,
-		BaseURL:   req.BaseURL,
-		APIKey:    req.APIKey,
-		AIModel:   req.Model,
-		MaxTokens: req.MaxTokens,
-		IsDefault: req.IsDefault,
-		PresetID:  req.PresetID,
-		Protocol:  req.Protocol,
+		Name:           req.Name,
+		Type:           req.Type,
+		BaseURL:        req.BaseURL,
+		APIKey:         req.APIKey,
+		AIModel:        req.Model,
+		MaxTokens:      req.MaxTokens,
+		IsDefault:      req.IsDefault,
+		IsEmbedding:    req.IsEmbedding,
+		EmbeddingModel: req.EmbeddingModel,
+		PresetID:       req.PresetID,
+		Protocol:       req.Protocol,
 	}
 
 	if p.IsDefault {
@@ -90,6 +92,8 @@ func UpdateProvider(id uint, req api.LLMProviderDTO) (*api.LLMProviderDTO, error
 	p.AIModel = req.Model
 	p.MaxTokens = req.MaxTokens
 	p.IsDefault = req.IsDefault
+	p.IsEmbedding = req.IsEmbedding
+	p.EmbeddingModel = req.EmbeddingModel
 	p.PresetID = req.PresetID
 	p.Protocol = req.Protocol
 	if req.APIKey != "" {

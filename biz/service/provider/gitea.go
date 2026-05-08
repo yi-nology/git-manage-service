@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -308,4 +309,9 @@ func mapGiteaState(state string, merged bool) CRState {
 		return CRStateClosed
 	}
 	return CRStateOpened
+}
+
+func decodeGiteaContent(content string) ([]byte, error) {
+	content = strings.ReplaceAll(content, "\n", "")
+	return base64.StdEncoding.DecodeString(content)
 }

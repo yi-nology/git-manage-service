@@ -19,11 +19,12 @@ import (
 	prometheus "github.com/hertz-contrib/monitor-prometheus"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/kitex_gen/git/gitservice"
-	"github.com/yi-nology/git-manage-service/biz/queue"
+	bizqueue "github.com/yi-nology/git-manage-service/biz/queue"
 	"github.com/yi-nology/git-manage-service/biz/router"
 	"github.com/yi-nology/git-manage-service/biz/rpc_handler"
 	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
+	mirrorSvc "github.com/yi-nology/git-manage-service/biz/service/mirror"
 	settingssvc "github.com/yi-nology/git-manage-service/biz/service/settings"
 	"github.com/yi-nology/git-manage-service/biz/service/stats"
 	"github.com/yi-nology/git-manage-service/biz/service/sync"
@@ -31,7 +32,10 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/appinfo"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/embed"
+	"github.com/yi-nology/git-manage-service/pkg/gitbackend"
+	"github.com/yi-nology/git-manage-service/pkg/lock"
 	"github.com/yi-nology/git-manage-service/pkg/metrics"
+	pkgqueue "github.com/yi-nology/git-manage-service/pkg/queue"
 )
 
 // @title Git Manage Service API
@@ -114,7 +118,8 @@ func main() {
 		}
 	}
 
-	queue.CloseClient()
+	bizqueue.CloseClient()
+	mirrorSvc.StopScheduler()
 
 	log.Println("All servers stopped. Exiting.")
 }
@@ -144,6 +149,7 @@ func initResources() {
 	sync.InitCronService()
 	stats.InitStatsService()
 	audit.InitAuditService()
+	initMirrorSystem()
 
 	initQueue()
 
@@ -158,9 +164,46 @@ func initQueue() {
 	}
 	llm.InitProviders()
 	llm.InitProvidersFromDB()
-	queue.InitClient(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
-	go queue.StartWorker(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
+	bizqueue.InitClient(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
+	go bizqueue.StartWorker(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
 	log.Println("[Queue] Asynq client + worker initialized")
+}
+
+func initMirrorSystem() {
+	cfg := configs.GlobalConfig
+
+	backend, err := gitbackend.NewGitBackendFromConfig(cfg.Mirror)
+	if err != nil {
+		log.Printf("[Mirror] Warning: git backend init failed: %v", err)
+		return
+	}
+
+	q, err := pkgqueue.NewQueueFromConfig(cfg.Mirror, cfg.Redis)
+	if err != nil {
+		log.Printf("[Mirror] Warning: queue init failed: %v", err)
+		return
+	}
+
+	var lockSvc lock.DistLock
+	lockSvc, err = lock.NewDistLock(cfg.Lock)
+	if err != nil {
+		log.Printf("[Mirror] Warning: lock init failed: %v", err)
+	}
+
+	mirrorDAO := db.NewMirrorDAO()
+	syncLogDAO := db.NewMirrorSyncLogDAO()
+
+	svc := mirrorSvc.NewMirrorService(mirrorDAO, syncLogDAO, lockSvc, backend, q, cfg.Mirror)
+	mirrorSvc.GlobalMirrorService = svc
+
+	wp := pkgqueue.NewWorkerPool(q, func(req pkgqueue.SyncRequest) {
+		svc.ProcessSyncRequest(req)
+	}, cfg.Mirror.MaxWorkers)
+	wp.Start()
+
+	mirrorSvc.InitScheduler(mirrorDAO, q, cfg.Mirror)
+
+	log.Println("[Mirror] System initialized successfully")
 }
 
 // startHTTPServer 启动 HTTP 服务器

@@ -71,6 +71,7 @@ func (g *gitlabProvider) ParseWebhookEvent(r *http.Request, secret string) (*Nor
 			action = "merged"
 		}
 		event.Type = "cr." + action
+		event.Action = action
 		event.CommitSHA = pl.ObjectAttributes.LastCommit.ID
 		event.CR = &ChangeRequest{
 			ID: int64(pl.ObjectAttributes.IID), Number: pl.ObjectAttributes.IID,
@@ -82,11 +83,20 @@ func (g *gitlabProvider) ParseWebhookEvent(r *http.Request, secret string) (*Nor
 		}
 	case "push":
 		event.Type = "push"
+		event.Action = "push"
 		event.Branch = strings.TrimPrefix(pl.Ref, "refs/heads/")
 		event.CommitSHA = pl.After
 	case "tag_push":
 		event.Type = "tag.created"
 		event.Tag = strings.TrimPrefix(pl.Ref, "refs/tags/")
+	case "note":
+		if pl.ObjectAttributes.IID != 0 {
+			event.Type = "cr.note"
+			event.Action = "note"
+			event.CR = &ChangeRequest{
+				ID: int64(pl.ObjectAttributes.IID), Number: pl.ObjectAttributes.IID,
+			}
+		}
 	}
 	return event, nil
 }

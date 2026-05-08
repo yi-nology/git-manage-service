@@ -17,6 +17,8 @@ type ReviewRuleDTO struct {
 	Category    string `json:"category"`
 	Enabled     bool   `json:"enabled"`
 	SortOrder   int    `json:"sort_order"`
+	RuleType    string `json:"rule_type"`
+	PromptText  string `json:"prompt_text"`
 }
 
 func ListReviewRules() ([]ReviewRuleDTO, error) {
@@ -44,6 +46,9 @@ func CreateReviewRule(dto ReviewRuleDTO) (*ReviewRuleDTO, error) {
 	if dto.ID == "" || dto.Name == "" {
 		return nil, fmt.Errorf("id and name are required")
 	}
+	if dto.RuleType == "" {
+		dto.RuleType = "builtin"
+	}
 	rule := &po.ReviewRule{
 		ID:          dto.ID,
 		Name:        dto.Name,
@@ -52,6 +57,8 @@ func CreateReviewRule(dto ReviewRuleDTO) (*ReviewRuleDTO, error) {
 		Category:    dto.Category,
 		Enabled:     dto.Enabled,
 		SortOrder:   dto.SortOrder,
+		RuleType:    dto.RuleType,
+		PromptText:  dto.PromptText,
 	}
 	if rule.Severity == "" {
 		rule.Severity = "medium"
@@ -85,6 +92,10 @@ func UpdateReviewRule(id string, dto ReviewRuleDTO) (*ReviewRuleDTO, error) {
 	if dto.SortOrder > 0 {
 		rule.SortOrder = dto.SortOrder
 	}
+	if dto.RuleType != "" {
+		rule.RuleType = dto.RuleType
+	}
+	rule.PromptText = dto.PromptText
 	if err := dao.Save(rule); err != nil {
 		return nil, fmt.Errorf("failed to save rule: %w", err)
 	}
@@ -154,5 +165,6 @@ func ruleToDTO(r po.ReviewRule) ReviewRuleDTO {
 		ID: r.ID, Name: r.Name, Description: r.Description,
 		Severity: r.Severity, Category: r.Category,
 		Enabled: r.Enabled, SortOrder: r.SortOrder,
+		RuleType: r.RuleType, PromptText: r.PromptText,
 	}
 }

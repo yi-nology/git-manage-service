@@ -22,14 +22,18 @@ type NotificationChannel struct {
 
 // TriggerEvent 触发事件类型
 const (
-	TriggerSyncSuccess     = "sync_success"     // 同步成功
-	TriggerSyncFailure     = "sync_failure"     // 同步失败
-	TriggerSyncConflict    = "sync_conflict"    // 同步冲突
-	TriggerWebhookReceived = "webhook_received" // Webhook 接收
-	TriggerWebhookError    = "webhook_error"    // Webhook 处理错误
-	TriggerCronTriggered   = "cron_triggered"   // 定时任务触发
-	TriggerBackupSuccess   = "backup_success"   // 备份成功
-	TriggerBackupFailure   = "backup_failure"   // 备份失败
+	TriggerSyncSuccess       = "sync_success"        // 同步成功
+	TriggerSyncFailure       = "sync_failure"        // 同步失败
+	TriggerSyncConflict      = "sync_conflict"       // 同步冲突
+	TriggerWebhookReceived   = "webhook_received"    // Webhook 接收
+	TriggerWebhookError      = "webhook_error"       // Webhook 处理错误
+	TriggerCronTriggered     = "cron_triggered"      // 定时任务触发
+	TriggerBackupSuccess     = "backup_success"      // 备份成功
+	TriggerBackupFailure     = "backup_failure"      // 备份失败
+	TriggerCodeReviewSuccess = "code_review_success" // 代码审查通过
+	TriggerCodeReviewBlocked = "code_review_blocked" // 代码审查阻止
+	TriggerCodeReviewFailed  = "code_review_failed"  // 代码审查失败
+	TriggerCodeReviewDone    = "code_review_completed"
 )
 
 func (NotificationChannel) TableName() string {

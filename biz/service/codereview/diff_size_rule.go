@@ -8,15 +8,42 @@ type DiffSizeRule struct{}
 
 func (r *DiffSizeRule) ID() string { return "diff-size" }
 
-const (
-	maxFileLines  = 500
-	maxTotalLines = 3000
-	maxFilesPerMR = 50
+var (
+	defaultMaxFileLines  = 500
+	defaultMaxTotalLines = 3000
+	defaultMaxFilesPerMR = 50
 )
+
+func getMaxFileLines() int {
+	cfg := getConfig()
+	if cfg.MaxDiffLines > 0 {
+		return cfg.MaxDiffLines / 6
+	}
+	return defaultMaxFileLines
+}
+
+func getMaxTotalLines() int {
+	cfg := getConfig()
+	if cfg.MaxDiffLines > 0 {
+		return cfg.MaxDiffLines
+	}
+	return defaultMaxTotalLines
+}
+
+func getMaxFilesPerMR() int {
+	cfg := getConfig()
+	if cfg.MaxFiles > 0 {
+		return cfg.MaxFiles
+	}
+	return defaultMaxFilesPerMR
+}
 
 func (r *DiffSizeRule) Check(ctx *RuleContext) ([]*Finding, error) {
 	var findings []*Finding
 	totalAdd, totalDel := 0, 0
+	maxFileLines := getMaxFileLines()
+	maxTotalLines := getMaxTotalLines()
+	maxFilesPerMR := getMaxFilesPerMR()
 
 	if len(ctx.Files) > maxFilesPerMR {
 		findings = append(findings, &Finding{

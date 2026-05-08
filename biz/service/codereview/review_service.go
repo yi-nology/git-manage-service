@@ -2,17 +2,33 @@ package codereview
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
+	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"github.com/yi-nology/git-manage-service/biz/service/notification"
 	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/biz/service/ws"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
+	"github.com/yi-nology/git-manage-service/pkg/logger"
 )
+
+var runningTasks sync.Map
+
+type reviewParams struct {
+	p          provider.Provider
+	owner      string
+	repo       string
+	repoKey    string
+	repoID     uint
+	providerID uint
+}
 
 func CreateTask(ctx context.Context, repoKey string, providerConfigID uint, mrIID, commitSHA, triggerType string) (*po.ReviewTask, error) {
 	repo, err := db.NewRepoDAO().FindByKey(repoKey)
@@ -28,6 +44,9 @@ func CreateTask(ctx context.Context, repoKey string, providerConfigID uint, mrII
 		providerConfigID = b.ProviderConfigID
 	}
 
+	cfg := GetMergedConfig(repo.ID)
+	cfgSnapshot, _ := json.Marshal(cfg)
+
 	task := &po.ReviewTask{
 		RepoID:           repo.ID,
 		ProviderConfigID: providerConfigID,
@@ -37,6 +56,7 @@ func CreateTask(ctx context.Context, repoKey string, providerConfigID uint, mrII
 		CommitSHA:        commitSHA,
 		TriggerType:      triggerType,
 		Status:           "pending",
+		ConfigSnapshot:   string(cfgSnapshot),
 	}
 	if err := db.NewReviewTaskDAO().Create(task); err != nil {
 		return nil, fmt.Errorf("failed to create review task: %w", err)
@@ -54,31 +74,41 @@ func CreateTaskByProvider(ctx context.Context, providerConfigID uint, owner, rep
 		return nil, fmt.Errorf("provider_config_id is required")
 	}
 
+	cfg := getConfig()
+	cfgSnapshot, _ := json.Marshal(cfg)
+
 	task := &po.ReviewTask{
 		ProviderConfigID: providerConfigID,
 		Platform:         "remote",
+		PlatformOwner:    owner,
+		PlatformRepo:     repo,
 		EventType:        "manual",
 		MRIID:            mrIID,
 		CommitSHA:        commitSHA,
 		TriggerType:      triggerType,
 		Status:           "pending",
+		ConfigSnapshot:   string(cfgSnapshot),
 	}
 	if err := db.NewReviewTaskDAO().Create(task); err != nil {
 		return nil, fmt.Errorf("failed to create review task: %w", err)
 	}
 
 	go func() {
-		_ = RunReviewByProvider(context.Background(), task.ID, providerConfigID, owner, repo)
+		_ = RunReview(context.Background(), task.ID)
 	}()
 
 	return task, nil
 }
 
-func RetryTask(ctx context.Context, id uint) (*po.ReviewTask, error) {
+func RetryTask(ctx context.Context, id uint, owner, repo string) (*po.ReviewTask, error) {
 	taskDAO := db.NewReviewTaskDAO()
 	task, err := taskDAO.FindByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("review task not found: %w", err)
+	}
+
+	if task.Status == "running" {
+		return nil, fmt.Errorf("task %d is already running", id)
 	}
 
 	task.Status = "pending"
@@ -87,6 +117,14 @@ func RetryTask(ctx context.Context, id uint) (*po.ReviewTask, error) {
 	task.Summary = ""
 	task.StartedAt = nil
 	task.FinishedAt = nil
+
+	if owner != "" && task.PlatformOwner == "" {
+		task.PlatformOwner = owner
+	}
+	if repo != "" && task.PlatformRepo == "" {
+		task.PlatformRepo = repo
+	}
+
 	if err := taskDAO.Save(task); err != nil {
 		return nil, fmt.Errorf("failed to update task: %w", err)
 	}
@@ -99,6 +137,16 @@ func RetryTask(ctx context.Context, id uint) (*po.ReviewTask, error) {
 }
 
 func RunReview(ctx context.Context, taskID uint) error {
+	taskKey := strconv.FormatUint(uint64(taskID), 10)
+	if _, loaded := runningTasks.LoadOrStore(taskKey, struct{}{}); loaded {
+		return fmt.Errorf("review task %d is already running", taskID)
+	}
+	defer runningTasks.Delete(taskKey)
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+
 	taskDAO := db.NewReviewTaskDAO()
 	task, err := taskDAO.FindByID(taskID)
 	if err != nil {
@@ -110,38 +158,114 @@ func RunReview(ctx context.Context, taskID uint) error {
 	task.StartedAt = &now
 	taskDAO.Save(task)
 
-	defer func() {
-		finished := time.Now()
-		task.FinishedAt = &finished
-		taskDAO.Save(task)
-	}()
+	repoKey := ""
+	if task.RepoID > 0 {
+		if r, rErr := db.NewRepoDAO().FindByID(task.RepoID); rErr == nil {
+			repoKey = r.Key
+		}
+	}
+	broadcastReviewStatus(task, repoKey, "running")
 
-	repo, p, owner, repoName, _, err := resolveRepoProvider(task.RepoID, task.ProviderConfigID)
+	params, err := resolveReviewParams(task)
 	if err != nil {
 		task.Status = "failed"
 		task.ErrorMessage = err.Error()
 		taskDAO.Save(task)
+		broadcastReviewStatus(task, repoKey, "failed")
 		return err
 	}
 
-	mrNum, _ := strconv.Atoi(task.MRIID)
+	result, rawDiff, err := executeReview(ctx, task, params, taskDAO)
+	if err != nil {
+		broadcastReviewStatus(task, repoKey, "failed")
+		return err
+	}
 
-	mergeDiff, err := p.GetCRDiff(ctx, owner, repoName, mrNum)
+	finalizeReview(ctx, task, result, rawDiff, params, taskDAO, repoKey)
+	return nil
+}
+
+func resolveReviewParams(task *po.ReviewTask) (*reviewParams, error) {
+	if task.RepoID > 0 {
+		repo, err := db.NewRepoDAO().FindByID(task.RepoID)
+		if err != nil {
+			return nil, fmt.Errorf("repo not found: %w", err)
+		}
+		if repo.PlatformOwner == "" || repo.PlatformRepo == "" {
+			return nil, fmt.Errorf("repo %d missing platform owner/repo", task.RepoID)
+		}
+		p, err := provider.GetManager().GetProvider(task.ProviderConfigID)
+		if err != nil {
+			return nil, fmt.Errorf("provider not found: %w", err)
+		}
+		return &reviewParams{
+			p: p, owner: repo.PlatformOwner, repo: repo.PlatformRepo,
+			repoKey: repo.Key, repoID: repo.ID, providerID: task.ProviderConfigID,
+		}, nil
+	}
+
+	if task.ProviderConfigID == 0 {
+		return nil, fmt.Errorf("task %d has no repo_id and no provider_config_id", task.ID)
+	}
+	p, err := provider.GetManager().GetProvider(task.ProviderConfigID)
+	if err != nil {
+		return nil, fmt.Errorf("provider not found: %w", err)
+	}
+	return &reviewParams{
+		p: p, owner: task.PlatformOwner, repo: task.PlatformRepo,
+		repoKey: "", repoID: 0, providerID: task.ProviderConfigID,
+	}, nil
+}
+
+func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParams, taskDAO *db.ReviewTaskDAO) (*AggregatedResult, string, error) {
+	var processLog []*ProcessStep
+	processLog = append(processLog, &ProcessStep{
+		Name:   "Resolve Provider",
+		Status: "ok",
+		Detail: fmt.Sprintf("owner=%s, repo=%s", params.owner, params.repo),
+	})
+
+	mrNum, err := strconv.Atoi(task.MRIID)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid MR IID %q: %w", task.MRIID, err)
+	}
+
+	mergeDiff, err := params.p.GetCRDiff(ctx, params.owner, params.repo, mrNum)
 	if err != nil {
 		task.Status = "failed"
 		task.ErrorMessage = fmt.Sprintf("failed to fetch diff: %v", err)
 		taskDAO.Save(task)
-		return err
+		return nil, "", err
 	}
+	rawDiff := mergeDiff.RawDiff
+
+	processLog = append(processLog, &ProcessStep{
+		Name:   "Fetch Diff",
+		Status: "ok",
+		Detail: fmt.Sprintf("fetched %d changed files from remote, RawDiff length=%d", len(mergeDiff.Files), len(mergeDiff.RawDiff)),
+	})
 
 	files := ParseDiff(mergeDiff.RawDiff)
+	if len(files) == 0 && len(mergeDiff.Files) > 0 {
+		processLog = append(processLog, &ProcessStep{
+			Name:   "Parse Diff",
+			Status: "warn",
+			Detail: fmt.Sprintf("ParseDiff(RawDiff) returned 0 files, but provider reported %d files; RawDiff may be empty or unsupported format", len(mergeDiff.Files)),
+		})
+	} else {
+		processLog = append(processLog, &ProcessStep{
+			Name:   "Parse Diff",
+			Status: "ok",
+			Detail: fmt.Sprintf("parsed %d files from diff", len(files)),
+		})
+	}
 
 	ruleCtx := &RuleContext{
 		Files:    files,
 		Provider: task.Platform,
-		RepoKey:  repo.Key,
-		Owner:    owner,
-		Repo:     repoName,
+		RepoKey:  params.repoKey,
+		Owner:    params.owner,
+		Repo:     params.repo,
 		MRIID:    task.MRIID,
 	}
 
@@ -149,15 +273,36 @@ func RunReview(ctx context.Context, taskID uint) error {
 	for _, rule := range GetRules() {
 		findings, rErr := rule.Check(ruleCtx)
 		if rErr != nil {
-			log.Printf("[CodeReview] Rule %s error: %v", rule.ID(), rErr)
+			logger.ErrorWithErr("Rule check failed", rErr, logrus.Fields{"rule": rule.ID()})
+			processLog = append(processLog, &ProcessStep{
+				Name:   fmt.Sprintf("Rule: %s", rule.ID()),
+				Status: "error",
+				Detail: rErr.Error(),
+			})
 			continue
 		}
+		processLog = append(processLog, &ProcessStep{
+			Name:   fmt.Sprintf("Rule: %s", rule.ID()),
+			Status: "ok",
+			Detail: fmt.Sprintf("%d findings", len(findings)),
+		})
 		allFindings = append(allFindings, findings...)
 	}
 
-	cfg := GetMergedConfig(task.RepoID)
+	cfg := GetMergedConfig(params.repoID)
 
-	llmFindings := runLLMReview(ctx, files, repoName, owner, cfg.LLMProvider)
+	var llmFindings []*Finding
+	if len(files) == 0 {
+		processLog = append(processLog, &ProcessStep{
+			Name:   "LLM Review",
+			Status: "skip",
+			Detail: "skipped: no diff files to review",
+		})
+	} else {
+		var llmStep *ProcessStep
+		llmFindings, llmStep = runLLMReview(ctx, files, params.repo, params.owner, cfg.LLMProvider, params.repoID)
+		processLog = append(processLog, llmStep)
+	}
 	allFindings = append(allFindings, llmFindings...)
 
 	totalAdd, totalDel := 0, 0
@@ -166,16 +311,25 @@ func RunReview(ctx context.Context, taskID uint) error {
 		totalDel += f.Deletions
 	}
 
-	result := Aggregate(allFindings, totalAdd, totalDel, len(files), cfg.BlockOnHigh)
+	result := Aggregate(allFindings, totalAdd, totalDel, len(files), cfg.BlockOnHigh, processLog)
+	return result, rawDiff, nil
+}
+
+func finalizeReview(ctx context.Context, task *po.ReviewTask, result *AggregatedResult, rawDiff string, params *reviewParams, taskDAO *db.ReviewTaskDAO, repoKey string) {
+	mrNum, _ := strconv.Atoi(task.MRIID)
 
 	task.RiskLevel = string(result.RiskLevel)
 
-	if err := persistFindings(taskID, result.Findings); err != nil {
-		log.Printf("[CodeReview] Failed to persist findings: %v", err)
+	findingIDMap, err := persistFindings(task.ID, result.Findings)
+	if err != nil {
+		logger.ErrorWithErr("Failed to persist findings", err, logrus.Fields{"task_id": task.ID})
 	}
 
-	if err := publishComments(ctx, p, owner, repoName, mrNum, task.ID, result); err != nil {
-		log.Printf("[CodeReview] Failed to publish comments: %v", err)
+	if mrNum > 0 {
+		cleanupOldComments(ctx, params.p, params.owner, params.repo, mrNum, task.ProviderConfigID, task.MRIID)
+		if pErr := publishComments(ctx, params.p, params.owner, params.repo, mrNum, task.ID, result, findingIDMap); pErr != nil {
+			logger.ErrorWithErr("Failed to publish comments", pErr, logrus.Fields{"task_id": task.ID})
+		}
 	}
 
 	if task.CommitSHA != "" {
@@ -185,129 +339,60 @@ func RunReview(ctx context.Context, taskID uint) error {
 			statusState = "failed"
 			statusDesc = result.BlockReason
 		}
-		_ = p.CreateCommitStatus(ctx, owner, repoName, task.CommitSHA, provider.CommitStatusOptions{
+		_ = params.p.CreateCommitStatus(ctx, params.owner, params.repo, task.CommitSHA, provider.CommitStatusOptions{
 			State:       statusState,
-			Context:     "code-review/git-manage-service",
+			Context:     "code-review/git-manage-service/" + params.repoKey,
 			Description: statusDesc,
 		})
 	}
 
 	if err := ApplyPolicy(result, task); err != nil {
-		log.Printf("[CodeReview] Failed to apply policy: %v", err)
+		logger.ErrorWithErr("Failed to apply policy", err, logrus.Fields{"task_id": task.ID})
 	}
 
 	task.Summary = BuildSummaryComment(result)
+	task.RawDiff = rawDiff
+	if logJSON, jErr := json.Marshal(result.ProcessLog); jErr == nil {
+		task.ProcessLog = string(logJSON)
+	}
 	task.Status = "success"
 	if result.Blocked {
 		task.Status = "blocked"
 	}
-	return taskDAO.Save(task)
+
+	finished := time.Now()
+	task.FinishedAt = &finished
+	if err := taskDAO.Save(task); err != nil {
+		logger.ErrorWithErr("Failed to save final task state", err, logrus.Fields{"task_id": task.ID})
+	}
+
+	sendReviewNotification(task, result, repoKey)
+	broadcastReviewStatus(task, repoKey, task.Status)
 }
 
-func RunReviewByProvider(ctx context.Context, taskID, providerConfigID uint, owner, repo string) error {
-	taskDAO := db.NewReviewTaskDAO()
-	task, err := taskDAO.FindByID(taskID)
-	if err != nil {
-		return err
+func sendReviewNotification(task *po.ReviewTask, result *AggregatedResult, repoKey string) {
+	status := "success"
+	if task.Status == "blocked" || task.Status == "failed" {
+		status = "failure"
 	}
+	notification.NotifySvc.Send(&notification.NotificationMessage{
+		Title:        fmt.Sprintf("代码审查完成 - MR !%s - %s", task.MRIID, task.RiskLevel),
+		Content:      fmt.Sprintf("风险等级: %s, 发现问题: %d", task.RiskLevel, len(result.Findings)),
+		Status:       status,
+		TriggerEvent: "code_review_completed",
+		RepoKey:      repoKey,
+	})
+}
 
-	now := time.Now()
-	task.Status = "running"
-	task.StartedAt = &now
-	taskDAO.Save(task)
-
-	defer func() {
-		finished := time.Now()
-		task.FinishedAt = &finished
-		taskDAO.Save(task)
-	}()
-
-	p, err := provider.GetManager().GetProvider(providerConfigID)
-	if err != nil {
-		task.Status = "failed"
-		task.ErrorMessage = fmt.Sprintf("provider not found: %v", err)
-		taskDAO.Save(task)
-		return err
-	}
-
-	mrNum, _ := strconv.Atoi(task.MRIID)
-
-	mergeDiff, err := p.GetCRDiff(ctx, owner, repo, mrNum)
-	if err != nil {
-		task.Status = "failed"
-		task.ErrorMessage = fmt.Sprintf("failed to fetch diff: %v", err)
-		taskDAO.Save(task)
-		return err
-	}
-
-	files := ParseDiff(mergeDiff.RawDiff)
-
-	ruleCtx := &RuleContext{
-		Files:    files,
-		Provider: task.Platform,
-		Owner:    owner,
-		Repo:     repo,
-		MRIID:    task.MRIID,
-	}
-
-	var allFindings []*Finding
-	for _, rule := range GetRules() {
-		findings, rErr := rule.Check(ruleCtx)
-		if rErr != nil {
-			log.Printf("[CodeReview] Rule %s error: %v", rule.ID(), rErr)
-			continue
-		}
-		allFindings = append(allFindings, findings...)
-	}
-
-	cfg := reviewConfig{
-		BlockOnHigh:    configs.GlobalConfig.CodeReview.BlockOnHigh,
-		MaxFiles:       configs.GlobalConfig.CodeReview.MaxFiles,
-		MaxDiffLines:   configs.GlobalConfig.CodeReview.MaxDiffLines,
-		AutoReviewOnMR: configs.GlobalConfig.CodeReview.AutoReviewOnMR,
-	}
-
-	llmFindings := runLLMReview(ctx, files, repo, owner, cfg.LLMProvider)
-	allFindings = append(allFindings, llmFindings...)
-
-	totalAdd, totalDel := 0, 0
-	for _, f := range files {
-		totalAdd += f.Additions
-		totalDel += f.Deletions
-	}
-
-	result := Aggregate(allFindings, totalAdd, totalDel, len(files), cfg.BlockOnHigh)
-
-	task.RiskLevel = string(result.RiskLevel)
-
-	if err := persistFindings(taskID, result.Findings); err != nil {
-		log.Printf("[CodeReview] Failed to persist findings: %v", err)
-	}
-
-	if err := publishComments(ctx, p, owner, repo, mrNum, task.ID, result); err != nil {
-		log.Printf("[CodeReview] Failed to publish comments: %v", err)
-	}
-
-	if task.CommitSHA != "" {
-		statusState := "success"
-		statusDesc := fmt.Sprintf("Review passed (%d findings)", len(result.Findings))
-		if result.Blocked {
-			statusState = "failed"
-			statusDesc = result.BlockReason
-		}
-		_ = p.CreateCommitStatus(ctx, owner, repo, task.CommitSHA, provider.CommitStatusOptions{
-			State:       statusState,
-			Context:     "code-review/git-manage-service",
-			Description: statusDesc,
-		})
-	}
-
-	task.Summary = BuildSummaryComment(result)
-	task.Status = "success"
-	if result.Blocked {
-		task.Status = "blocked"
-	}
-	return taskDAO.Save(task)
+func broadcastReviewStatus(task *po.ReviewTask, repoKey, status string) {
+	ws.DefaultHub.Broadcast("review", "status_update", map[string]interface{}{
+		"task_id":    task.ID,
+		"mr_iid":     task.MRIID,
+		"status":     status,
+		"risk_level": task.RiskLevel,
+		"repo_key":   repoKey,
+		"updated_at": time.Now(),
+	})
 }
 
 func CheckMerge(ctx context.Context, repoKey, mrIID, commitSHA string) (*api.MergeCheckDTO, error) {
@@ -384,25 +469,6 @@ func GetMergedConfig(repoID uint) reviewConfig {
 		cfg.LLMProvider = repoCfg.LLMProvider
 	}
 	return cfg
-}
-
-func resolveRepoProvider(repoID, providerConfigID uint) (*po.Repo, provider.Provider, string, string, uint, error) {
-	repo, err := db.NewRepoDAO().FindByID(repoID)
-	if err != nil {
-		return nil, nil, "", "", 0, fmt.Errorf("repo not found: %w", err)
-	}
-
-	p, err := provider.GetManager().GetProvider(providerConfigID)
-	if err != nil {
-		return nil, nil, "", "", 0, fmt.Errorf("provider not found: %w", err)
-	}
-
-	owner := repo.PlatformOwner
-	repoName := repo.PlatformRepo
-	if owner == "" || repoName == "" {
-		return nil, nil, "", "", 0, fmt.Errorf("repo %d missing platform owner/repo", repoID)
-	}
-	return repo, p, owner, repoName, providerConfigID, nil
 }
 
 func resolveBinding(repoID uint) (*po.RepoProviderBinding, error) {

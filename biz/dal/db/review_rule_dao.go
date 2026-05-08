@@ -15,6 +15,14 @@ func (d *ReviewRuleDAO) FindAll() ([]po.ReviewRule, error) {
 	return rules, err
 }
 
+func (d *ReviewRuleDAO) FindEnabledPromptRules() ([]po.ReviewRule, error) {
+	var rules []po.ReviewRule
+	err := DB.Where("enabled = ? AND rule_type = ? AND prompt_text != ''", true, "prompt", true).
+		Order("sort_order ASC, created_at ASC").
+		Find(&rules).Error
+	return rules, err
+}
+
 func (d *ReviewRuleDAO) FindByID(id string) (*po.ReviewRule, error) {
 	var rule po.ReviewRule
 	err := DB.Where("id = ?", id).First(&rule).Error

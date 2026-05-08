@@ -144,7 +144,7 @@ func TestCountBySeverity(t *testing.T) {
 }
 
 func TestAggregate_EmptyFindings(t *testing.T) {
-	result := Aggregate(nil, 0, 0, 0, true)
+	result := Aggregate(nil, 0, 0, 0, true, nil)
 	if result.Blocked {
 		t.Error("empty findings should not be blocked")
 	}
@@ -154,7 +154,7 @@ func TestAggregate_EmptyFindings(t *testing.T) {
 }
 
 func TestAggregate_StatsPreserved(t *testing.T) {
-	result := Aggregate(nil, 100, 50, 10, false)
+	result := Aggregate(nil, 100, 50, 10, false, nil)
 	if result.TotalAdd != 100 {
 		t.Errorf("expected TotalAdd=100, got %d", result.TotalAdd)
 	}
@@ -170,7 +170,7 @@ func TestAggregate_HighBlockReason(t *testing.T) {
 	findings := []*Finding{
 		{Fingerprint: "a", Severity: SeverityHigh, Title: "Issue"},
 	}
-	result := Aggregate(findings, 10, 5, 3, true)
+	result := Aggregate(findings, 10, 5, 3, true, nil)
 	if !result.Blocked {
 		t.Error("expected blocked on high")
 	}
@@ -183,7 +183,7 @@ func TestAggregate_CriticalBlocked(t *testing.T) {
 	findings := []*Finding{
 		{Fingerprint: "a", Severity: SeverityCritical, Title: "Critical"},
 	}
-	result := Aggregate(findings, 10, 5, 3, true)
+	result := Aggregate(findings, 10, 5, 3, true, nil)
 	if !result.Blocked {
 		t.Error("expected blocked on critical")
 	}
@@ -193,7 +193,7 @@ func TestAggregate_MediumNotBlocked(t *testing.T) {
 	findings := []*Finding{
 		{Fingerprint: "a", Severity: SeverityMedium, Title: "Medium"},
 	}
-	result := Aggregate(findings, 10, 5, 3, true)
+	result := Aggregate(findings, 10, 5, 3, true, nil)
 	if result.Blocked {
 		t.Error("medium should not block")
 	}

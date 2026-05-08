@@ -1,0 +1,254 @@
+syntax = "proto3";
+
+package mirror;
+
+option go_package = "mirror";
+
+import "api.proto";
+import "common.proto";
+
+service MirrorService {
+  rpc ListMirrors(ListMirrorsRequest) returns (ListMirrorsResponse) {
+    option (api.get) = "/api/v1/mirrors";
+  }
+
+  rpc GetMirror(GetMirrorRequest) returns (MirrorResponse) {
+    option (api.get) = "/api/v1/mirror/:id";
+  }
+
+  rpc CreateMirror(CreateMirrorRequest) returns (MirrorResponse) {
+    option (api.post) = "/api/v1/mirror";
+  }
+
+  rpc UpdateMirror(UpdateMirrorRequest) returns (MirrorResponse) {
+    option (api.post) = "/api/v1/mirror/:id/update";
+  }
+
+  rpc DeleteMirror(DeleteMirrorRequest) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/mirror/:id/delete";
+  }
+
+  rpc TriggerSync(TriggerSyncRequest) returns (TriggerSyncResponse) {
+    option (api.post) = "/api/v1/mirror/:id/sync";
+  }
+
+  rpc BatchTriggerSync(BatchTriggerRequest) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/mirrors/sync";
+  }
+
+  rpc PreviewSync(PreviewSyncRequest) returns (PreviewSyncResponse) {
+    option (api.post) = "/api/v1/mirror/:id/preview";
+  }
+
+  rpc ListSyncLogs(ListSyncLogsRequest) returns (ListSyncLogsResponse) {
+    option (api.get) = "/api/v1/mirror/:id/logs";
+  }
+
+  rpc GetSyncLog(GetSyncLogRequest) returns (SyncLogResponse) {
+    option (api.get) = "/api/v1/mirror/log/:log_id";
+  }
+
+  rpc DeleteSyncLog(DeleteSyncLogRequest) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/mirror/log/:log_id/delete";
+  }
+
+  rpc PauseMirror(PauseMirrorRequest) returns (MirrorResponse) {
+    option (api.post) = "/api/v1/mirror/:id/pause";
+  }
+
+  rpc ResumeMirror(ResumeMirrorRequest) returns (MirrorResponse) {
+    option (api.post) = "/api/v1/mirror/:id/resume";
+  }
+
+  rpc AnalyzeRemote(AnalyzeRemoteRequest) returns (AnalyzeRemoteResponse) {
+    option (api.post) = "/api/v1/mirror/analyze";
+  }
+
+  rpc ValidateCredential(ValidateCredentialRequest) returns (ValidateCredentialResponse) {
+    option (api.post) = "/api/v1/mirror/validate-credential";
+  }
+
+  rpc HandleWebhook(HandleWebhookRequest) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/mirror/webhook/:token";
+  }
+}
+
+message Mirror {
+  int64 id = 1;
+  int64 repo_id = 2;
+  string mirror_type = 3;
+  string remote_url = 4;
+  string remote_name = 5;
+  int64 credential_id = 6;
+  string branch_filter = 7;
+  int32 sync_interval = 8;
+  string cron_expr = 9;
+  bool sync_on_push = 10;
+  bool git_force = 11;
+  bool git_prune = 12;
+  bool git_tags = 13;
+  bool enabled = 14;
+  string status = 15;
+  string last_sync_at = 16;
+  string last_error = 17;
+  int32 retry_count = 18;
+  string next_sync_at = 19;
+  string webhook_token = 20;
+  string created_at = 21;
+  string updated_at = 22;
+  string repo_name = 23;
+  string repo_key = 24;
+  string credential_name = 25;
+}
+
+message MirrorSyncLog {
+  int64 id = 1;
+  int64 mirror_id = 2;
+  string trigger_type = 3;
+  string status = 4;
+  string started_at = 5;
+  string finished_at = 6;
+  int64 duration_ms = 7;
+  int32 branches_synced = 8;
+  int32 commits_pushed = 9;
+  string error_message = 10;
+  string detail_log = 11;
+  string created_at = 12;
+}
+
+message ListMirrorsRequest {
+  int64 repo_id = 1 [(api.query) = "repo_id"];
+  string mirror_type = 2 [(api.query) = "mirror_type"];
+}
+
+message ListMirrorsResponse {
+  common.BaseResponse base = 1;
+  repeated Mirror mirrors = 2;
+}
+
+message GetMirrorRequest {
+  int64 id = 1 [(api.path) = "id"];
+}
+
+message MirrorResponse {
+  common.BaseResponse base = 1;
+  Mirror mirror = 2;
+}
+
+message CreateMirrorRequest {
+  int64 repo_id = 1 [(api.body) = "repo_id"];
+  string mirror_type = 2 [(api.body) = "mirror_type"];
+  string remote_url = 3 [(api.body) = "remote_url"];
+  string remote_name = 4 [(api.body) = "remote_name"];
+  int64 credential_id = 5 [(api.body) = "credential_id"];
+  string branch_filter = 6 [(api.body) = "branch_filter"];
+  int32 sync_interval = 7 [(api.body) = "sync_interval"];
+  string cron_expr = 8 [(api.body) = "cron_expr"];
+  bool sync_on_push = 9 [(api.body) = "sync_on_push"];
+  bool git_force = 10 [(api.body) = "git_force"];
+  bool git_prune = 11 [(api.body) = "git_prune"];
+  bool git_tags = 12 [(api.body) = "git_tags"];
+  bool enabled = 13 [(api.body) = "enabled"];
+}
+
+message UpdateMirrorRequest {
+  int64 id = 1 [(api.path) = "id"];
+  string remote_url = 2 [(api.body) = "remote_url"];
+  string remote_name = 3 [(api.body) = "remote_name"];
+  int64 credential_id = 4 [(api.body) = "credential_id"];
+  string branch_filter = 5 [(api.body) = "branch_filter"];
+  int32 sync_interval = 6 [(api.body) = "sync_interval"];
+  string cron_expr = 7 [(api.body) = "cron_expr"];
+  bool sync_on_push = 8 [(api.body) = "sync_on_push"];
+  bool git_force = 9 [(api.body) = "git_force"];
+  bool git_prune = 10 [(api.body) = "git_prune"];
+  bool git_tags = 11 [(api.body) = "git_tags"];
+  bool enabled = 12 [(api.body) = "enabled"];
+}
+
+message DeleteMirrorRequest {
+  int64 id = 1 [(api.path) = "id"];
+}
+
+message TriggerSyncRequest {
+  int64 id = 1 [(api.path) = "id"];
+  string trigger_type = 2 [(api.body) = "trigger_type"];
+}
+
+message TriggerSyncResponse {
+  common.BaseResponse base = 1;
+  string message = 2;
+}
+
+message BatchTriggerRequest {
+  repeated int64 mirror_ids = 1 [(api.body) = "mirror_ids"];
+  string trigger_type = 2 [(api.body) = "trigger_type"];
+}
+
+message PreviewSyncRequest {
+  int64 id = 1 [(api.path) = "id"];
+}
+
+message PreviewSyncResponse {
+  common.BaseResponse base = 1;
+  string preview = 2;
+}
+
+message ListSyncLogsRequest {
+  int64 id = 1 [(api.path) = "id"];
+  int32 limit = 2 [(api.query) = "limit"];
+}
+
+message ListSyncLogsResponse {
+  common.BaseResponse base = 1;
+  repeated MirrorSyncLog logs = 2;
+}
+
+message GetSyncLogRequest {
+  int64 log_id = 1 [(api.path) = "log_id"];
+}
+
+message SyncLogResponse {
+  common.BaseResponse base = 1;
+  MirrorSyncLog log = 2;
+}
+
+message DeleteSyncLogRequest {
+  int64 log_id = 1 [(api.path) = "log_id"];
+}
+
+message PauseMirrorRequest {
+  int64 id = 1 [(api.path) = "id"];
+}
+
+message ResumeMirrorRequest {
+  int64 id = 1 [(api.path) = "id"];
+}
+
+message AnalyzeRemoteRequest {
+  string remote_url = 1 [(api.body) = "remote_url"];
+  int64 credential_id = 2 [(api.body) = "credential_id"];
+}
+
+message AnalyzeRemoteResponse {
+  common.BaseResponse base = 1;
+  bool reachable = 2;
+  repeated string branches = 3;
+  string default_branch = 4;
+  string protocol = 5;
+}
+
+message ValidateCredentialRequest {
+  int64 credential_id = 1 [(api.body) = "credential_id"];
+  string remote_url = 2 [(api.body) = "remote_url"];
+}
+
+message ValidateCredentialResponse {
+  common.BaseResponse base = 1;
+  bool valid = 2;
+  string message = 3;
+}
+
+message HandleWebhookRequest {
+  string token = 1 [(api.path) = "token"];
+}

@@ -24,7 +24,7 @@ func NewOllama(baseURL, model string, maxTokens int) *Ollama {
 		model:     model,
 		maxTokens: maxTokens,
 		httpClient: &http.Client{
-			Timeout: 120 * time.Second,
+			Timeout: 300 * time.Second,
 		},
 	}
 }

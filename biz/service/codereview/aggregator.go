@@ -2,6 +2,12 @@ package codereview
 
 import "fmt"
 
+type ProcessStep struct {
+	Name   string
+	Status string
+	Detail string
+}
+
 type AggregatedResult struct {
 	Findings    []*Finding
 	TotalAdd    int
@@ -10,9 +16,10 @@ type AggregatedResult struct {
 	RiskLevel   Severity
 	Blocked     bool
 	BlockReason string
+	ProcessLog  []*ProcessStep
 }
 
-func Aggregate(findings []*Finding, totalAdd, totalDel, fileCount int, blockOnHigh bool) *AggregatedResult {
+func Aggregate(findings []*Finding, totalAdd, totalDel, fileCount int, blockOnHigh bool, processLog []*ProcessStep) *AggregatedResult {
 	findings = deduplicate(findings)
 
 	risk := calculateRisk(findings)
@@ -33,6 +40,7 @@ func Aggregate(findings []*Finding, totalAdd, totalDel, fileCount int, blockOnHi
 		RiskLevel:   risk,
 		Blocked:     blocked,
 		BlockReason: reason,
+		ProcessLog:  processLog,
 	}
 }
 

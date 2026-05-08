@@ -346,6 +346,11 @@ func (t *tencentCodeProvider) CreateNote(ctx context.Context, owner, repo string
 	return fmt.Sprintf("%d", resp.ID), nil
 }
 
+func (t *tencentCodeProvider) DeleteNote(ctx context.Context, owner, repo string, number int, noteID string) error {
+	encoded := encodeProjectPath(owner, repo)
+	return t.doRequest(ctx, "DELETE", fmt.Sprintf("/projects/%s/merge_requests/%d/notes/%s", encoded, number, noteID), nil, nil)
+}
+
 func (t *tencentCodeProvider) CreateDiscussion(ctx context.Context, owner, repo string, number int, opts DiscussionOptions) (string, error) {
 	return t.CreateNote(ctx, owner, repo, number, opts.Body)
 }

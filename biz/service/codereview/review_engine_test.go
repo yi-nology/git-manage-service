@@ -260,7 +260,7 @@ func TestAggregator_Deduplication(t *testing.T) {
 		{Fingerprint: "abc", Severity: SeverityHigh, Title: "A (dup)"},
 		{Fingerprint: "def", Severity: SeverityLow, Title: "B"},
 	}
-	result := Aggregate(findings, 10, 5, 3, true)
+	result := Aggregate(findings, 10, 5, 3, true, nil)
 	if len(result.Findings) != 2 {
 		t.Errorf("expected 2 deduplicated findings, got %d", len(result.Findings))
 	}
@@ -270,7 +270,7 @@ func TestAggregator_BlockedOnHigh(t *testing.T) {
 	findings := []*Finding{
 		{Fingerprint: "abc", Severity: SeverityCritical, Title: "Critical issue"},
 	}
-	result := Aggregate(findings, 10, 5, 3, true)
+	result := Aggregate(findings, 10, 5, 3, true, nil)
 	if !result.Blocked {
 		t.Error("expected blocked=true")
 	}
@@ -283,7 +283,7 @@ func TestAggregator_PassesOnLow(t *testing.T) {
 	findings := []*Finding{
 		{Fingerprint: "abc", Severity: SeverityLow, Title: "Minor issue"},
 	}
-	result := Aggregate(findings, 10, 5, 3, true)
+	result := Aggregate(findings, 10, 5, 3, true, nil)
 	if result.Blocked {
 		t.Error("expected blocked=false for low severity")
 	}
@@ -293,7 +293,7 @@ func TestAggregator_NoBlockWhenDisabled(t *testing.T) {
 	findings := []*Finding{
 		{Fingerprint: "abc", Severity: SeverityCritical, Title: "Critical issue"},
 	}
-	result := Aggregate(findings, 10, 5, 3, false)
+	result := Aggregate(findings, 10, 5, 3, false, nil)
 	if result.Blocked {
 		t.Error("expected blocked=false when blockOnHigh=false")
 	}

@@ -30,6 +30,13 @@
           </div>
           <el-switch v-model="settings.block_on_high" />
         </div>
+        <div class="form-row">
+          <div class="form-label-col">
+            <span class="form-label">启用 RAG 增强</span>
+            <span class="form-desc">利用向量检索代码上下文，增强 LLM 审查质量。需在 LLM 配置中启用至少一个 Embedding 提供商。</span>
+          </div>
+          <el-switch v-model="settings.rag_enabled" />
+        </div>
         <div class="form-row-inline">
           <div class="form-field">
             <label>单次最大审查文件数</label>
@@ -67,7 +74,10 @@
           <div class="rule-left">
             <el-switch v-model="rule.enabled" size="small" @change="handleRuleToggle(rule)" />
             <div class="rule-info">
-              <span class="rule-name">{{ rule.name }}</span>
+              <span class="rule-name">
+                {{ rule.name }}
+                <span v-if="rule.rule_type === 'prompt'" class="rule-type-tag">Prompt</span>
+              </span>
               <span class="rule-desc">{{ rule.description }}</span>
             </div>
           </div>
@@ -112,6 +122,15 @@
         <el-form-item label="启用">
           <el-switch v-model="ruleForm.enabled" />
         </el-form-item>
+        <el-form-item label="规则类型">
+          <el-radio-group v-model="ruleForm.rule_type">
+            <el-radio value="pattern">模式匹配</el-radio>
+            <el-radio value="prompt">自定义 Prompt</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="ruleForm.rule_type === 'prompt'" label="Prompt 内容">
+          <el-input v-model="ruleForm.prompt_text" type="textarea" :rows="5" placeholder="输入自定义 Prompt，将在 LLM 审查时注入 system prompt 中。例如：请特别关注以下方面的安全问题..." />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showRuleDialog = false">取消</el-button>
@@ -142,6 +161,7 @@ const settings = ref<CodeReviewGlobalSettingsDTO>({
   block_on_high: true,
   max_files: 50,
   max_diff_lines: 3000,
+  rag_enabled: false,
 })
 
 const rules = ref<ReviewRuleDTO[]>([])
@@ -149,7 +169,7 @@ const rulesLoading = ref(false)
 const showRuleDialog = ref(false)
 const editingRule = ref<ReviewRuleDTO | null>(null)
 const ruleSaving = ref(false)
-const ruleForm = ref({ id: '', name: '', description: '', severity: 'medium', category: 'other', enabled: true, sort_order: 0 })
+const ruleForm = ref({ id: '', name: '', description: '', severity: 'medium', category: 'other', enabled: true, sort_order: 0, rule_type: 'pattern', prompt_text: '' })
 
 function severityLabel(s: string) {
   const m: Record<string, string> = { critical: '严重', high: '高危', medium: '中危', low: '低危', info: '信息' }
@@ -175,13 +195,13 @@ async function loadRules() {
 
 function openAddRuleDialog() {
   editingRule.value = null
-  ruleForm.value = { id: '', name: '', description: '', severity: 'medium', category: 'other', enabled: true, sort_order: 0 }
+  ruleForm.value = { id: '', name: '', description: '', severity: 'medium', category: 'other', enabled: true, sort_order: 0, rule_type: 'pattern', prompt_text: '' }
   showRuleDialog.value = true
 }
 
 function openEditRuleDialog(rule: ReviewRuleDTO) {
   editingRule.value = rule
-  ruleForm.value = { id: rule.id, name: rule.name, description: rule.description, severity: rule.severity, category: rule.category, enabled: rule.enabled, sort_order: rule.sort_order }
+  ruleForm.value = { id: rule.id, name: rule.name, description: rule.description, severity: rule.severity, category: rule.category, enabled: rule.enabled, sort_order: rule.sort_order, rule_type: rule.rule_type || 'pattern', prompt_text: rule.prompt_text || '' }
   showRuleDialog.value = true
 }
 
@@ -250,6 +270,10 @@ onMounted(() => { loadSettings(); loadRules() })
 .rule-right { display: flex; align-items: center; gap: 8px; }
 .rule-info { display: flex; flex-direction: column; gap: 2px; }
 .rule-name { font-size: 14px; font-weight: 500; color: var(--text-color-primary); }
+.rule-type-tag {
+  margin-left: 6px; padding: 1px 6px; border-radius: 4px; font-size: 10px;
+  background: #F5F3FF; color: #7C3AED; font-weight: 500;
+}
 .rule-desc { font-size: 12px; color: var(--text-color-placeholder); }
 .severity-pill { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 500; }
 .sev-critical { background: #FEF2F2; color: #DC2626; }

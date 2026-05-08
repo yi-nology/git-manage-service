@@ -24,6 +24,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/router/credential"
 	"github.com/yi-nology/git-manage-service/biz/router/file"
 	maintenance "github.com/yi-nology/git-manage-service/biz/router/maintenance"
+	mirror "github.com/yi-nology/git-manage-service/biz/router/mirror"
 	"github.com/yi-nology/git-manage-service/biz/router/notification"
 	"github.com/yi-nology/git-manage-service/biz/router/patch"
 	"github.com/yi-nology/git-manage-service/biz/router/provider"
@@ -73,6 +74,7 @@ func GeneratedRegister(h *server.Hertz) {
 
 	settings.Register(h)
 	h.GET("/api/v1/settings/ollama-models", handler_settings.FetchOllamaModels)
+	h.POST("/api/v1/settings/llm-providers/:id/test-embedding", handler_settings.TestEmbedding)
 	ai.Register(h)
 	webhook_event.Register(h)
 	provider.Register(h)
@@ -81,6 +83,10 @@ func GeneratedRegister(h *server.Hertz) {
 	review.Register(h)
 	h.POST("/api/v1/reviews/tasks/provider", handler_review.CreateTaskByProvider)
 	h.GET("/api/v1/reviews/tasks/provider", handler_review.ListTasksByProvider)
+	h.GET("/api/v1/reviews/stats", handler_review.GetReviewStats)
+	h.POST("/api/v1/reviews/findings/:finding_id/feedback", handler_review.GetReviewFeedback)
+	h.POST("/api/v1/reviews/rag/index/:repo_key", handler_review.IndexRepoRAG)
+	h.GET("/api/v1/reviews/rag/stats", handler_review.GetRAGStats)
 	audit.Register(h)
 
 	branch.Register(h)
@@ -93,6 +99,7 @@ func GeneratedRegister(h *server.Hertz) {
 	stash.Register(h)
 	submodule.Register(h)
 	sync.Register(h)
+	mirror.RegisterCustomRoutes(h)
 	system.Register(h)
 	tag.Register(h)
 	version.Register(h)

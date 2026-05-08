@@ -11,6 +11,7 @@ type Config struct {
 	CodeReview CodeReviewConfig `mapstructure:"code_review"`
 	Redis      RedisConfig      `mapstructure:"redis"`
 	Prometheus PrometheusConfig `mapstructure:"prometheus"`
+	Mirror     MirrorConfig     `mapstructure:"mirror"`
 }
 
 type ServerConfig struct {
@@ -73,6 +74,16 @@ type CodeReviewConfig struct {
 	AutoReviewOnMR bool                `mapstructure:"auto_review_on_mr"`
 	BlockOnHigh    bool                `mapstructure:"block_on_high"`
 	LLMProviders   []LLMProviderConfig `mapstructure:"llm_providers"`
+	RAG            RAGConfig           `mapstructure:"rag"`
+}
+
+type RAGConfig struct {
+	Enabled         bool    `mapstructure:"enabled"`
+	EmbeddingModel  string  `mapstructure:"embedding_model"`
+	MaxChunks       int     `mapstructure:"max_chunks"`
+	TopK            int     `mapstructure:"top_k"`
+	MinScore        float64 `mapstructure:"min_score"`
+	MaxContextChars int     `mapstructure:"max_context_chars"`
 }
 
 type LLMProviderConfig struct {
@@ -94,4 +105,14 @@ type PrometheusConfig struct {
 	Enabled bool   `mapstructure:"enabled"`
 	Port    int    `mapstructure:"port"`
 	Path    string `mapstructure:"path"`
+}
+
+type MirrorConfig struct {
+	GitBackend          string `mapstructure:"git_backend"`
+	QueueBackend        string `mapstructure:"queue_backend"`
+	MaxWorkers          int    `mapstructure:"max_workers"`
+	ScanInterval        int    `mapstructure:"scan_interval"`
+	MaxRetry            int    `mapstructure:"max_retry"`
+	LogRetentionDays    int    `mapstructure:"log_retention_days"`
+	DefaultSyncInterval int    `mapstructure:"default_sync_interval"`
 }

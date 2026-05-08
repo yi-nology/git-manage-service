@@ -22,6 +22,15 @@ func (d *ReviewCommentDAO) FindByTaskID(taskID uint) ([]po.ReviewComment, error)
 	return comments, err
 }
 
+func (d *ReviewCommentDAO) FindSummaryCommentsByMRIID(providerConfigID uint, mrIID string) ([]po.ReviewComment, error) {
+	var comments []po.ReviewComment
+	err := DB.Joins("JOIN review_tasks ON review_tasks.id = review_comments.task_id").
+		Where("review_tasks.provider_config_id = ? AND review_tasks.mri_id = ? AND review_comments.comment_type = ?", providerConfigID, mrIID, "summary").
+		Order("review_comments.created_at ASC").
+		Find(&comments).Error
+	return comments, err
+}
+
 type MergeCheckResultDAO struct{}
 
 func NewMergeCheckResultDAO() *MergeCheckResultDAO { return &MergeCheckResultDAO{} }

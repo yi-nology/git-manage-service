@@ -98,3 +98,20 @@ prometheus:
   # Metrics endpoint path
   # Default: /metrics
   path: "/metrics"
+
+# 10. Mirror Configuration
+mirror:
+  # Git backend: "native" (git CLI) or "gogit" (pure Go)
+  git_backend: "native"
+  # Queue backend: "memory" or "redis"
+  queue_backend: "memory"
+  # Maximum concurrent sync workers
+  max_workers: 5
+  # Scheduler scan interval in seconds
+  scan_interval: 30
+  # Maximum retry attempts before pausing mirror
+  max_retry: 5
+  # Sync log retention in days
+  log_retention_days: 30
+  # Default sync interval in seconds for new mirrors
+  default_sync_interval: 600

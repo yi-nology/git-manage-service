@@ -23,6 +23,7 @@ export interface ReviewTaskDTO {
   created_at: string
   updated_at: string
   findings_count: number
+  raw_diff: string
 }
 
 export interface ReviewFindingDTO {
@@ -82,8 +83,8 @@ export function listReviewFindings(taskId: number, params?: { severity?: string;
   return request.get<unknown, ReviewFindingDTO[]>(`/reviews/tasks/${taskId}/findings`, { params })
 }
 
-export function retryReviewTask(id: number) {
-  return request.post<unknown, ReviewTaskDTO>(`/reviews/tasks/${id}/retry`)
+export function retryReviewTask(id: number, data?: { owner?: string; repo?: string }) {
+  return request.post<unknown, ReviewTaskDTO>(`/reviews/tasks/${id}/retry`, data || {})
 }
 
 export function checkMerge(params: { repo_key: string; mr_iid: string; commit_sha?: string }) {
@@ -149,4 +150,53 @@ export function listReviewTasksByProvider(params: {
     tasks: ReviewTaskDTO[]
     pagination: { total: number; page: number; page_size: number }
   }>('/reviews/tasks/provider', { params })
+}
+
+export interface ReviewStatsDTO {
+  total_reviews: number
+  total_findings: number
+  pass_count: number
+  blocked_count: number
+  failed_count: number
+  pass_rate: number
+  by_risk_level: Record<string, number>
+  by_severity: Record<string, number>
+  by_source: Record<string, number>
+  by_rule: Array<{ name: string; count: number }>
+  top_files: Array<{ name: string; count: number }>
+  daily_trend: Array<{
+    date: string
+    total: number
+    passed: number
+    rate: number
+  }>
+}
+
+export function getReviewStats(params?: { repo_key?: string; period?: string }) {
+  return request.get<unknown, ReviewStatsDTO>('/reviews/stats', { params })
+}
+
+export function submitFindingFeedback(findingId: number, feedback: 'useful' | 'false_positive') {
+  return request.post<unknown, { status: string }>(`/reviews/findings/${findingId}/feedback`, { feedback })
+}
+
+export interface RAGIndexResult {
+  repo_key: string
+  chunk_count: number
+  file_count: number
+  duration: number
+  error: string
+}
+
+export interface RAGStatsResult {
+  stats: Record<string, number>
+  available: boolean
+}
+
+export function indexRepoRAG(repoKey: string) {
+  return request.post<unknown, RAGIndexResult>(`/reviews/rag/index/${repoKey}`)
+}
+
+export function getRAGStats() {
+  return request.get<unknown, RAGStatsResult>('/reviews/rag/stats')
 }

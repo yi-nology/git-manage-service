@@ -13,6 +13,7 @@ import (
 	settings "github.com/yi-nology/git-manage-service/biz/model/settings"
 	"github.com/yi-nology/git-manage-service/biz/service/branchrule"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
+	"github.com/yi-nology/git-manage-service/biz/service/rag"
 	settingssvc "github.com/yi-nology/git-manage-service/biz/service/settings"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
@@ -139,6 +140,37 @@ func TestLLMProvider(ctx context.Context, c *app.RequestContext) {
 	pkgresponse.Success(c, map[string]string{"status": "ok", "message": "连接测试成功"})
 }
 
+func TestEmbedding(ctx context.Context, c *app.RequestContext) {
+	var req struct {
+		ID uint `path:"id"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+	provider, err := llm.GetProviderByID(req.ID)
+	if err != nil {
+		pkgresponse.NotFound(c, "provider not found: "+err.Error())
+		return
+	}
+	model := provider.EmbeddingModel
+	if model == "" {
+		switch provider.Type {
+		case "ollama":
+			model = "nomic-embed-text"
+		default:
+			model = "text-embedding-3-small"
+		}
+	}
+	client := rag.NewEmbeddingClient(provider.BaseURL, provider.APIKey, model, provider.Type)
+	_, err = client.EmbedQuery(context.Background(), "Hello, world!")
+	if err != nil {
+		pkgresponse.InternalServerError(c, "Embedding test failed: "+err.Error())
+		return
+	}
+	pkgresponse.Success(c, map[string]string{"status": "ok", "message": "Embedding 连接测试成功", "model": model})
+}
+
 func GetCodeReviewSettings(ctx context.Context, c *app.RequestContext) {
 	var req settings.GetCodeReviewSettingsRequest
 	if err := c.BindAndValidate(&req); err != nil {
@@ -152,6 +184,7 @@ func GetCodeReviewSettings(ctx context.Context, c *app.RequestContext) {
 		BlockOnHigh:    cfg.BlockOnHigh,
 		MaxFiles:       cfg.MaxFiles,
 		MaxDiffLines:   cfg.MaxDiffLines,
+		RAGEnabled:     cfg.RAG.Enabled,
 	})
 }
 

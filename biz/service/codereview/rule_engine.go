@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strings"
+	"sync"
 )
 
 type Severity string
@@ -15,6 +16,8 @@ const (
 	SeverityLow      Severity = "low"
 	SeverityInfo     Severity = "info"
 )
+
+var SeverityOrder = []Severity{SeverityCritical, SeverityHigh, SeverityMedium, SeverityLow, SeverityInfo}
 
 type Finding struct {
 	RuleID      string   `json:"rule_id"`
@@ -49,16 +52,17 @@ func computeFingerprint(ruleID, filePath string, line int, content string) strin
 	return fmt.Sprintf("%x", h.Sum(nil))[:16]
 }
 
-var registeredRules []Rule
+var (
+	registeredRules []Rule
+	rulesOnce       sync.Once
+)
 
 func RegisterRule(r Rule) {
 	registeredRules = append(registeredRules, r)
 }
 
 func GetRules() []Rule {
-	if len(registeredRules) == 0 {
-		initDefaultRules()
-	}
+	rulesOnce.Do(initDefaultRules)
 	return registeredRules
 }
 

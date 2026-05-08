@@ -1,6 +1,9 @@
 package db
 
 import (
+	"encoding/json"
+	"time"
+
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
@@ -39,4 +42,38 @@ func (d *ReviewFindingDAO) ExistsByFingerprint(taskID uint, fingerprint string) 
 	var count int64
 	err := DB.Model(&po.ReviewFinding{}).Where("task_id = ? AND fingerprint = ?", taskID, fingerprint).Count(&count).Error
 	return count > 0, err
+}
+
+func (d *ReviewFindingDAO) FindByTimeRange(repoID uint, since, until time.Time) ([]po.ReviewFinding, error) {
+	var findings []po.ReviewFinding
+	q := DB.Model(&po.ReviewFinding{}).
+		Joins("JOIN review_tasks ON review_tasks.id = review_findings.task_id").
+		Where("review_findings.created_at >= ? AND review_findings.created_at <= ?", since, until)
+	if repoID > 0 {
+		q = q.Where("review_tasks.repo_id = ?", repoID)
+	}
+	err := q.Find(&findings).Error
+	return findings, err
+}
+
+func (d *ReviewFindingDAO) UpdateFeedback(id uint, feedback string) error {
+	var finding po.ReviewFinding
+	if err := DB.First(&finding, id).Error; err != nil {
+		return err
+	}
+
+	if finding.RawPayload == "" {
+		return DB.Model(&finding).Update("raw_payload", feedback).Error
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal([]byte(finding.RawPayload), &raw); err != nil {
+		return DB.Model(&finding).Update("raw_payload", feedback).Error
+	}
+	raw["feedback"] = feedback
+	updated, err := json.Marshal(raw)
+	if err != nil {
+		return err
+	}
+	return DB.Model(&finding).Update("raw_payload", string(updated)).Error
 }

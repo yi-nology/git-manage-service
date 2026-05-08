@@ -8,6 +8,8 @@ export interface ReviewRuleDTO {
   category: string
   enabled: boolean
   sort_order: number
+  rule_type: string
+  prompt_text: string
 }
 
 export function listReviewRules() {

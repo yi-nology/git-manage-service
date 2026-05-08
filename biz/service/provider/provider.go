@@ -38,6 +38,7 @@ type Provider interface {
 	GetCRDiff(ctx context.Context, owner, repo string, number int) (*MergeDiff, error)
 	GetCRFiles(ctx context.Context, owner, repo string, number int) ([]*ChangedFile, error)
 	CreateNote(ctx context.Context, owner, repo string, number int, body string) (string, error)
+	DeleteNote(ctx context.Context, owner, repo string, number int, noteID string) error
 	CreateDiscussion(ctx context.Context, owner, repo string, number int, opts DiscussionOptions) (string, error)
 	CreateCommitStatus(ctx context.Context, owner, repo, sha string, opts CommitStatusOptions) error
 	GetFileContent(ctx context.Context, owner, repo, path, ref string) (string, error)
@@ -151,6 +152,7 @@ type NormalizedEvent struct {
 	Branch     string          `json:"branch,omitempty"`
 	Tag        string          `json:"tag,omitempty"`
 	CommitSHA  string          `json:"commit_sha,omitempty"`
+	Action     string          `json:"action,omitempty"`
 	RawPayload json.RawMessage `json:"raw_payload"`
 }
 

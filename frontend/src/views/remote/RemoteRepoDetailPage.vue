@@ -50,7 +50,7 @@
     </div>
 
     <div v-show="activeTab === 'cr'" class="tab-content">
-      <CRReviewDetail v-if="reviewTask" :task="reviewTask" @close="reviewTask = null" />
+      <CRReviewDetail v-if="reviewTask" :task="reviewTask" :repo-owner="repoOwner" :repo-name="repoName" @close="reviewTask = null" @retried="reviewTask = $event" />
       <CRTab v-else :active="activeTab === 'cr'" :provider-id="providerId" :repo-owner="repoOwner" :repo-name="repoName" @show-review="reviewTask = $event" />
     </div>
 

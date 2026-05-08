@@ -66,6 +66,22 @@ func (g *githubProvider) GetCRDiff(ctx context.Context, owner, repo string, numb
 			diff.Files = append(diff.Files, cf)
 			diff.TotalAdd += f.Additions
 			diff.TotalDel += f.Deletions
+			diff.RawDiff += fmt.Sprintf("diff --git a/%s b/%s\n", cf.OldPath, cf.NewPath)
+			if cf.IsNew {
+				diff.RawDiff += "new file mode 100644\n"
+			}
+			if cf.IsDeleted {
+				diff.RawDiff += "deleted file mode 100644\n"
+			}
+			if cf.IsRenamed {
+				diff.RawDiff += fmt.Sprintf("rename from %s\nrename to %s\n", cf.OldPath, cf.NewPath)
+			}
+			if !cf.IsNew {
+				diff.RawDiff += fmt.Sprintf("--- a/%s\n", cf.OldPath)
+			}
+			if !cf.IsDeleted {
+				diff.RawDiff += fmt.Sprintf("+++ b/%s\n", cf.NewPath)
+			}
 			diff.RawDiff += f.Patch + "\n"
 		}
 		if len(files) < 100 {
@@ -93,6 +109,10 @@ func (g *githubProvider) CreateNote(ctx context.Context, owner, repo string, num
 		return "", err
 	}
 	return fmt.Sprintf("%d", resp.ID), nil
+}
+
+func (g *githubProvider) DeleteNote(ctx context.Context, owner, repo string, number int, noteID string) error {
+	return g.doRequest(ctx, "DELETE", fmt.Sprintf("/repos/%s/%s/issues/comments/%s", owner, repo, noteID), nil, nil)
 }
 
 func (g *githubProvider) CreateDiscussion(ctx context.Context, owner, repo string, number int, opts DiscussionOptions) (string, error) {

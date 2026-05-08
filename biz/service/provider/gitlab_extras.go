@@ -68,6 +68,22 @@ func (g *gitlabProvider) GetCRDiff(ctx context.Context, owner, repo string, numb
 		diff.Files = append(diff.Files, cf)
 		diff.TotalAdd += additions
 		diff.TotalDel += deletions
+		diff.RawDiff += fmt.Sprintf("diff --git a/%s b/%s\n", c.OldPath, c.NewPath)
+		if c.NewFile {
+			diff.RawDiff += fmt.Sprintf("new file mode 100644\n")
+		}
+		if c.DeletedFile {
+			diff.RawDiff += fmt.Sprintf("deleted file mode 100644\n")
+		}
+		if c.RenamedFile {
+			diff.RawDiff += fmt.Sprintf("rename from %s\nrename to %s\n", c.OldPath, c.NewPath)
+		}
+		if !c.NewFile {
+			diff.RawDiff += fmt.Sprintf("--- a/%s\n", c.OldPath)
+		}
+		if !c.DeletedFile {
+			diff.RawDiff += fmt.Sprintf("+++ b/%s\n", c.NewPath)
+		}
 		diff.RawDiff += c.Diff + "\n"
 	}
 	return diff, nil
@@ -91,6 +107,11 @@ func (g *gitlabProvider) CreateNote(ctx context.Context, owner, repo string, num
 		return "", err
 	}
 	return fmt.Sprintf("%d", resp.ID), nil
+}
+
+func (g *gitlabProvider) DeleteNote(ctx context.Context, owner, repo string, number int, noteID string) error {
+	encoded := fmt.Sprintf("%s%%2F%s", owner, repo)
+	return g.doRequest(ctx, "DELETE", fmt.Sprintf("/projects/%s/merge_requests/%d/notes/%s", encoded, number, noteID), nil, nil)
 }
 
 func (g *gitlabProvider) CreateDiscussion(ctx context.Context, owner, repo string, number int, opts DiscussionOptions) (string, error) {

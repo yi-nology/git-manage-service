@@ -10,6 +10,8 @@ type ReviewRule struct {
 	Category    string    `gorm:"size:64" json:"category"`
 	Enabled     bool      `gorm:"default:true" json:"enabled"`
 	SortOrder   int       `gorm:"default:0" json:"sort_order"`
+	RuleType    string    `gorm:"size:32;not null;default:builtin" json:"rule_type"`
+	PromptText  string    `gorm:"type:text" json:"prompt_text"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

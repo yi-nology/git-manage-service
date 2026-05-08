@@ -36,6 +36,72 @@ func RunMigrations() error {
 				return tx.AutoMigrate(&po.AIInvocation{})
 			},
 		},
+		{
+			Version: "2026050801_mirror_tables",
+			Name:    "create mirror and mirror_sync_logs tables",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.Mirror{}, &po.MirrorSyncLog{})
+			},
+		},
+		{
+			Version: "2026050802_review_task_platform_fields",
+			Name:    "add platform_owner and platform_repo to review_tasks",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.ReviewTask{})
+			},
+		},
+		{
+			Version: "2026050803_review_rule_prompt_fields",
+			Name:    "add rule_type and prompt_text to review_rules",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.ReviewRule{})
+			},
+		},
+		{
+			Version: "2026050804_llm_provider_embedding_fields",
+			Name:    "add is_embedding and embedding_model to llm_providers",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.LLMProvider{})
+			},
+		},
+		{
+			Version: "2026050805_review_task_process_log",
+			Name:    "add process_log column to review_tasks",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.ReviewTask{})
+			},
+		},
+		{
+			Version: "2026050806_review_composite_indexes",
+			Name:    "add composite indexes for review tables",
+			Run: func(tx *gorm.DB) error {
+				indexes := []struct {
+					name  string
+					table string
+					cols  string
+				}{
+					{"idx_review_tasks_provider_mriid", "review_tasks", "provider_config_id, mri_id"},
+					{"idx_review_findings_task_severity", "review_findings", "task_id, severity"},
+					{"idx_review_comments_task_type", "review_comments", "task_id, comment_type"},
+					{"idx_review_findings_created_at", "review_findings", "created_at"},
+				}
+				for _, idx := range indexes {
+					if !tx.Migrator().HasIndex(idx.table, idx.name) {
+						if err := tx.Exec(fmt.Sprintf("CREATE INDEX %s ON %s (%s)", idx.name, idx.table, idx.cols)).Error; err != nil {
+							return err
+						}
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Version: "2026050807_review_task_raw_diff",
+			Name:    "add raw_diff column to review_tasks",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.ReviewTask{})
+			},
+		},
 	})
 }
 

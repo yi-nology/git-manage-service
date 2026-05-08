@@ -27,13 +27,14 @@ func LoadCodeReviewSettingsFromDB() {
 	cfg.Enabled = dto.Enabled
 	cfg.AutoReviewOnMR = dto.AutoReviewOnMR
 	cfg.BlockOnHigh = dto.BlockOnHigh
+	cfg.RAG.Enabled = dto.RAGEnabled
 	if dto.MaxFiles > 0 {
 		cfg.MaxFiles = dto.MaxFiles
 	}
 	if dto.MaxDiffLines > 0 {
 		cfg.MaxDiffLines = dto.MaxDiffLines
 	}
-	log.Printf("[Settings] Loaded code review settings from DB")
+	log.Printf("[Settings] Loaded code review settings from DB (rag_enabled=%v)", dto.RAGEnabled)
 }
 
 func SaveCodeReviewSettingsToDB(dto api.CodeReviewGlobalSettingsDTO) error {
@@ -41,6 +42,7 @@ func SaveCodeReviewSettingsToDB(dto api.CodeReviewGlobalSettingsDTO) error {
 	cfg.Enabled = dto.Enabled
 	cfg.AutoReviewOnMR = dto.AutoReviewOnMR
 	cfg.BlockOnHigh = dto.BlockOnHigh
+	cfg.RAG.Enabled = dto.RAGEnabled
 	if dto.MaxFiles > 0 {
 		cfg.MaxFiles = dto.MaxFiles
 	}

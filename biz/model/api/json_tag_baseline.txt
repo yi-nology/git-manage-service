@@ -53,11 +53,14 @@ llm_settings.go auto_review_on_mr 1
 llm_settings.go base_url 1
 llm_settings.go block_on_high 1
 llm_settings.go created_at 1
+llm_settings.go embedding_model 1
 llm_settings.go is_default 1
+llm_settings.go is_embedding 1
 llm_settings.go max_diff_lines 1
 llm_settings.go max_files 1
 llm_settings.go max_tokens 1
 llm_settings.go preset_id 1
+llm_settings.go rag_enabled 1
 llm_settings.go updated_at 1
 patch.go applied_commit 1
 patch.go applied_count 1

@@ -38,11 +38,15 @@
       <template #cell-status="{ row }">
         <StatusBadge v-if="row.is_default" variant="success" text="默认" :show-dot="false" />
         <StatusBadge v-else variant="info" text="可用" :show-dot="false" />
+        <StatusBadge v-if="row.is_embedding" variant="warning" text="Embedding" :show-dot="false" style="margin-left:4px" />
       </template>
       <template #row-actions="{ row }">
         <button class="act-btn act-btn--primary" @click="openEditDialog(row)">编辑</button>
         <button class="act-btn act-btn--green" @click="handleTest(row)" :disabled="testingId === row.id">
           {{ testingId === row.id ? '测试中...' : '测试' }}
+        </button>
+        <button class="act-btn act-btn--purple" @click="handleTestEmbedding(row)" :disabled="testingEmbeddingId === row.id">
+          {{ testingEmbeddingId === row.id ? '测试中...' : '测试 Embedding' }}
         </button>
         <button v-if="!row.is_default" class="act-btn act-btn--green" @click="handleSetDefault(row)">设为默认</button>
         <button class="act-btn act-btn--danger" @click="handleDelete(row)">删除</button>
@@ -118,6 +122,16 @@
           <el-form-item label="设为默认">
             <el-switch v-model="form.is_default" />
           </el-form-item>
+          <el-divider content-position="left">Embedding 配置</el-divider>
+          <el-form-item label="用作 Embedding">
+            <el-switch v-model="form.is_embedding" />
+          </el-form-item>
+          <el-form-item v-if="form.is_embedding" label="Embedding 模型">
+            <el-input v-model="form.embedding_model" :placeholder="form.type === 'ollama' ? 'nomic-embed-text' : 'text-embedding-3-small'" />
+            <div style="font-size:11px;color:var(--text-color-secondary);margin-top:4px">
+              留空使用默认模型（Ollama: nomic-embed-text, 其他: text-embedding-3-small）
+            </div>
+          </el-form-item>
         </el-form>
       </div>
 
@@ -150,7 +164,7 @@ import LLMPresetSelector from '@/components/llm/LLMPresetSelector.vue'
 import {
   listLLMProviders, createLLMProvider, updateLLMProvider,
   deleteLLMProvider, setDefaultLLMProvider, testLLMProvider, fetchLLMPresets,
-  fetchOllamaModels,
+  fetchOllamaModels, testEmbedding,
 } from '@/api/modules/llm-settings'
 import type { LLMProviderDTO, LLMPresetDTO } from '@/api/modules/llm-settings'
 
@@ -165,6 +179,7 @@ const providerColumns: TableColumn[] = [
 const loading = ref(false)
 const providers = ref<LLMProviderDTO[]>([])
 const testingId = ref<number | null>(null)
+const testingEmbeddingId = ref<number | null>(null)
 const showDialog = ref(false)
 const editingProvider = ref<LLMProviderDTO | null>(null)
 const saving = ref(false)
@@ -185,6 +200,8 @@ const form = ref({
   base_url: '',
   api_key: '',
   is_default: false,
+  is_embedding: false,
+  embedding_model: '',
   preset_id: '',
   protocol: 'openai',
 })
@@ -221,7 +238,7 @@ function resetDialog() {
   selectedPreset.value = null
   editingProvider.value = null
   ollamaModels.value = []
-  form.value = { type: 'openai_compatible', name: '', model: '', max_tokens: 4096, base_url: '', api_key: '', is_default: false, preset_id: '', protocol: 'openai' }
+  form.value = { type: 'openai_compatible', name: '', model: '', max_tokens: 4096, base_url: '', api_key: '', is_default: false, is_embedding: false, embedding_model: '', preset_id: '', protocol: 'openai' }
 }
 
 async function handleFetchOllamaModels() {
@@ -261,7 +278,7 @@ function onPresetSelected(preset: LLMPresetDTO) {
 
 function onCustomSelected() {
   selectedPreset.value = null
-  form.value = { type: 'openai_compatible', name: '', model: '', max_tokens: 4096, base_url: '', api_key: '', is_default: false, preset_id: '', protocol: 'openai' }
+  form.value = { type: 'openai_compatible', name: '', model: '', max_tokens: 4096, base_url: '', api_key: '', is_default: false, is_embedding: false, embedding_model: '', preset_id: '', protocol: 'openai' }
   dialogStep.value = 'configure'
 }
 
@@ -271,6 +288,7 @@ function openEditDialog(p: LLMProviderDTO) {
   form.value = {
     type: p.type, name: p.name, model: p.model, max_tokens: p.max_tokens,
     base_url: p.base_url, api_key: '', is_default: p.is_default,
+    is_embedding: p.is_embedding || false, embedding_model: p.embedding_model || '',
     preset_id: p.preset_id || '', protocol: p.protocol || 'openai',
   }
   dialogStep.value = 'configure'
@@ -300,7 +318,8 @@ async function handleSave() {
     const payload: any = {
       name: f.name, type: effectiveType, model: f.model,
       max_tokens: f.max_tokens, base_url: effectiveBaseURL,
-      is_default: f.is_default, preset_id: f.preset_id, protocol: f.protocol,
+      is_default: f.is_default, is_embedding: f.is_embedding, embedding_model: f.embedding_model,
+      preset_id: f.preset_id, protocol: f.protocol,
     }
     if (f.api_key) payload.api_key = f.api_key
     if (editingProvider.value) {
@@ -322,6 +341,15 @@ async function handleTest(p: LLMProviderDTO) {
   finally { testingId.value = null }
 }
 
+async function handleTestEmbedding(p: LLMProviderDTO) {
+  testingEmbeddingId.value = p.id
+  try {
+    const res = await testEmbedding(p.id)
+    ElMessage.success(`Embedding 测试成功 (模型: ${res?.model || p.embedding_model || 'default'})`)
+  } catch (e: any) { ElMessage.error('Embedding 测试失败: ' + (e?.message || '')) }
+  finally { testingEmbeddingId.value = null }
+}
+
 async function handleTestForm() {
   testingForm.value = true
   try {
@@ -335,7 +363,8 @@ async function handleTestForm() {
     const tempData: any = {
       name: f.name || '__test__', type: effectiveType, model: f.model,
       base_url: effectiveBaseURL, max_tokens: f.max_tokens,
-      is_default: false, preset_id: f.preset_id, protocol: f.protocol,
+      is_default: false, is_embedding: f.is_embedding, embedding_model: f.embedding_model,
+      preset_id: f.preset_id, protocol: f.protocol,
     }
     if (f.api_key) tempData.api_key = f.api_key
     const created = await createLLMProvider(tempData)
@@ -383,6 +412,8 @@ onMounted(() => { loadProviders() })
 .act-btn--primary:hover { background: var(--accent-bg); }
 .act-btn--green { border-color: #10B981; color: #10B981; }
 .act-btn--green:hover { background: #ECFDF5; }
+.act-btn--purple { border-color: #8B5CF6; color: #8B5CF6; }
+.act-btn--purple:hover { background: #F5F3FF; }
 .act-btn--danger { border-color: #EF4444; color: #EF4444; }
 .act-btn--danger:hover { background: #FEF2F2; }
 .act-btn:disabled { opacity: 0.5; cursor: not-allowed; }

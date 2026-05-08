@@ -43,7 +43,11 @@ func (r *Runner) Chat(ctx context.Context, req TaskRequest) (*TaskResponse, erro
 
 	timeout := req.Timeout
 	if timeout == 0 {
-		timeout = defaultTimeout
+		if spec := GetTaskConfig(req.Type); spec.Timeout > 0 {
+			timeout = spec.Timeout
+		} else {
+			timeout = defaultTimeout
+		}
 	}
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()

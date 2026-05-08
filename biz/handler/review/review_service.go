@@ -5,6 +5,7 @@ package review
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -12,8 +13,55 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	codereview "github.com/yi-nology/git-manage-service/biz/service/codereview"
+	"github.com/yi-nology/git-manage-service/biz/service/rag"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )
+
+var repoKeyPattern = regexp.MustCompile(`^[a-zA-Z0-9._/\-]{1,255}$`)
+
+func validateRepoKey(key string) bool {
+	return repoKeyPattern.MatchString(key)
+}
+
+func validateSHA(sha string) bool {
+	if len(sha) == 0 || len(sha) > 128 {
+		return false
+	}
+	for _, c := range sha {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
+func validateMRIID(s string) bool {
+	if len(s) == 0 || len(s) > 64 {
+		return false
+	}
+	for _, c := range s {
+		if !(c >= '0' && c <= '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func validateSeverity(s string) bool {
+	switch s {
+	case "", "critical", "high", "medium", "low", "info":
+		return true
+	}
+	return false
+}
+
+func validateSource(s string) bool {
+	switch s {
+	case "", "rule", "llm":
+		return true
+	}
+	return false
+}
 
 func CreateTask(ctx context.Context, c *app.RequestContext) {
 	var req struct {
@@ -29,6 +77,18 @@ func CreateTask(ctx context.Context, c *app.RequestContext) {
 	}
 	if req.RepoKey == "" || req.MRIID == "" {
 		pkgresponse.BadRequest(c, "repo_key and mr_iid are required")
+		return
+	}
+	if !validateRepoKey(req.RepoKey) {
+		pkgresponse.BadRequest(c, "repo_key contains invalid characters or exceeds 255 chars")
+		return
+	}
+	if !validateMRIID(req.MRIID) {
+		pkgresponse.BadRequest(c, "mr_iid must be a numeric string (max 64 chars)")
+		return
+	}
+	if req.CommitSHA != "" && !validateSHA(req.CommitSHA) {
+		pkgresponse.BadRequest(c, "commit_sha must be a valid hex string (max 128 chars)")
 		return
 	}
 	if req.TriggerType == "" {
@@ -78,6 +138,10 @@ func ListTasks(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "repo_key is required")
 		return
 	}
+	if !validateRepoKey(repoKey) {
+		pkgresponse.BadRequest(c, "repo_key contains invalid characters or exceeds 255 chars")
+		return
+	}
 
 	repo, err := db.NewRepoDAO().FindByKey(repoKey)
 	if err != nil {
@@ -117,6 +181,14 @@ func ListFindings(ctx context.Context, c *app.RequestContext) {
 	}
 	severity := c.Query("severity")
 	source := c.Query("source")
+	if !validateSeverity(severity) {
+		pkgresponse.BadRequest(c, "invalid severity filter, must be one of: critical, high, medium, low, info")
+		return
+	}
+	if !validateSource(source) {
+		pkgresponse.BadRequest(c, "invalid source filter, must be one of: rule, llm")
+		return
+	}
 
 	findings, err := db.NewReviewFindingDAO().FindByTaskID(taskID, severity, source)
 	if err != nil {
@@ -137,7 +209,12 @@ func RetryTask(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "invalid id")
 		return
 	}
-	task, err := codereview.RetryTask(ctx, id)
+	var body struct {
+		Owner string `json:"owner"`
+		Repo  string `json:"repo"`
+	}
+	_ = c.BindAndValidate(&body)
+	task, err := codereview.RetryTask(ctx, id, body.Owner, body.Repo)
 	if err != nil {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
@@ -153,6 +230,18 @@ func CheckMerge(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "repo_key and mr_iid are required")
 		return
 	}
+	if !validateRepoKey(repoKey) {
+		pkgresponse.BadRequest(c, "repo_key contains invalid characters or exceeds 255 chars")
+		return
+	}
+	if !validateMRIID(mrIID) {
+		pkgresponse.BadRequest(c, "mr_iid must be a numeric string (max 64 chars)")
+		return
+	}
+	if commitSHA != "" && !validateSHA(commitSHA) {
+		pkgresponse.BadRequest(c, "commit_sha must be a valid hex string (max 128 chars)")
+		return
+	}
 
 	result, err := codereview.CheckMerge(ctx, repoKey, mrIID, commitSHA)
 	if err != nil {
@@ -164,8 +253,8 @@ func CheckMerge(ctx context.Context, c *app.RequestContext) {
 
 func GetReviewConfig(ctx context.Context, c *app.RequestContext) {
 	repoKey := c.Param("repo_key")
-	if repoKey == "" {
-		pkgresponse.BadRequest(c, "repo_key is required")
+	if repoKey == "" || !validateRepoKey(repoKey) {
+		pkgresponse.BadRequest(c, "valid repo_key is required")
 		return
 	}
 	config, err := codereview.GetReviewConfig(repoKey)
@@ -247,6 +336,53 @@ func parseID(s string) (uint, error) {
 	return uint(id), nil
 }
 
+func GetReviewStats(ctx context.Context, c *app.RequestContext) {
+	repoKey := c.Query("repo_key")
+	period := c.DefaultQuery("period", "7d")
+
+	if repoKey != "" && !validateRepoKey(repoKey) {
+		pkgresponse.BadRequest(c, "repo_key contains invalid characters or exceeds 255 chars")
+		return
+	}
+
+	var repoID uint
+	if repoKey != "" {
+		repo, err := db.NewRepoDAO().FindByKey(repoKey)
+		if err != nil {
+			pkgresponse.NotFound(c, "repo not found")
+			return
+		}
+		repoID = repo.ID
+	}
+
+	stats := codereview.GetReviewStats(repoID, period)
+	pkgresponse.Success(c, stats)
+}
+
+func GetReviewFeedback(ctx context.Context, c *app.RequestContext) {
+	findingID, err := parseID(c.Param("finding_id"))
+	if err != nil {
+		pkgresponse.BadRequest(c, "invalid finding_id")
+		return
+	}
+	var req struct {
+		Feedback string `json:"feedback"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+	if req.Feedback != "useful" && req.Feedback != "false_positive" {
+		pkgresponse.BadRequest(c, "feedback must be 'useful' or 'false_positive'")
+		return
+	}
+	if err := db.NewReviewFindingDAO().UpdateFeedback(findingID, req.Feedback); err != nil {
+		pkgresponse.InternalServerError(c, err.Error())
+		return
+	}
+	pkgresponse.Success(c, map[string]string{"status": "updated"})
+}
+
 func CreateTaskByProvider(ctx context.Context, c *app.RequestContext) {
 	var req struct {
 		ProviderConfigID uint   `json:"provider_config_id"`
@@ -262,6 +398,14 @@ func CreateTaskByProvider(ctx context.Context, c *app.RequestContext) {
 	}
 	if req.ProviderConfigID == 0 || req.MRIID == "" {
 		pkgresponse.BadRequest(c, "provider_config_id and mr_iid are required")
+		return
+	}
+	if !validateMRIID(req.MRIID) {
+		pkgresponse.BadRequest(c, "mr_iid must be a numeric string (max 64 chars)")
+		return
+	}
+	if req.CommitSHA != "" && !validateSHA(req.CommitSHA) {
+		pkgresponse.BadRequest(c, "commit_sha must be a valid hex string (max 128 chars)")
 		return
 	}
 	if req.TriggerType == "" {
@@ -283,6 +427,10 @@ func ListTasksByProvider(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	mrIID := c.Query("mr_iid")
+	if mrIID != "" && !validateMRIID(mrIID) {
+		pkgresponse.BadRequest(c, "mr_iid must be a numeric string (max 64 chars)")
+		return
+	}
 	status := c.Query("status")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
@@ -316,5 +464,35 @@ func ListTasksByProvider(ctx context.Context, c *app.RequestContext) {
 			"page":     page,
 			"pageSize": pageSize,
 		},
+	})
+}
+
+func IndexRepoRAG(ctx context.Context, c *app.RequestContext) {
+	repoKey := c.Param("repo_key")
+	if repoKey == "" || !validateRepoKey(repoKey) {
+		pkgresponse.BadRequest(c, "valid repo_key is required")
+		return
+	}
+
+	svc := rag.DefaultService()
+	if !svc.IsAvailable() {
+		pkgresponse.BadRequest(c, "RAG service not available (embedding client not configured)")
+		return
+	}
+
+	result, err := svc.IndexRepo(ctx, repoKey)
+	if err != nil {
+		pkgresponse.InternalServerError(c, err.Error())
+		return
+	}
+	c.Set("audit_target", "rag:"+repoKey)
+	pkgresponse.Success(c, result)
+}
+
+func GetRAGStats(ctx context.Context, c *app.RequestContext) {
+	store := rag.DefaultStore()
+	pkgresponse.Success(c, map[string]interface{}{
+		"stats":     store.Stats(),
+		"available": rag.DefaultService().IsAvailable(),
 	})
 }

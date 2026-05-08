@@ -66,7 +66,7 @@ var taskDefaultConfig = map[TaskType]TaskConfig{
 	TaskSpecRewriteSection:     {Timeout: 60 * time.Second, MaxInputChars: 60000, OutputMode: OutputModeText, AllowAutoApply: false},
 	TaskSpecExplainErrors:      {Timeout: 60 * time.Second, MaxInputChars: 40000, OutputMode: OutputModeText, AllowAutoApply: false},
 	TaskSpecGenerateTemplate:   {Timeout: 90 * time.Second, MaxInputChars: 100000, OutputMode: OutputModeJSON, AllowAutoApply: false},
-	TaskCodeReview:             {Timeout: 120 * time.Second, MaxInputChars: 80000, OutputMode: OutputModeJSON, AllowAutoApply: false},
+	TaskCodeReview:             {Timeout: 300 * time.Second, MaxInputChars: 80000, OutputMode: OutputModeJSON, AllowAutoApply: false},
 	TaskCodeReviewReply:        {Timeout: 60 * time.Second, MaxInputChars: 40000, OutputMode: OutputModeText, AllowAutoApply: false},
 	TaskCodeReviewSummary:      {Timeout: 60 * time.Second, MaxInputChars: 60000, OutputMode: OutputModeText, AllowAutoApply: false},
 	TaskCommitMessage:          {Timeout: 30 * time.Second, MaxInputChars: 30000, OutputMode: OutputModeJSON, AllowAutoApply: false},
