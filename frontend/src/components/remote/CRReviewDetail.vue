@@ -99,9 +99,9 @@
             </div>
           </div>
           <div class="diff-file-body" v-show="isFileExpanded(fIdx)">
-            <table class="diff-table">
+            <table class="diff-table" v-if="getVisibleLines(fIdx).lines.length > 0">
               <tbody>
-                <template v-for="(line, lIdx) in fileVisibleLines(file, fIdx)" :key="lIdx">
+                <template v-for="(line, lIdx) in getVisibleLines(fIdx).lines" :key="lIdx">
                   <tr v-if="line.type === 'hunk' && line.content === '...'" class="dl-hunk dl-ellipsis">
                     <td class="dl-num" colspan="3">
                       <span class="ellipsis-icon">⋯</span>
@@ -110,13 +110,13 @@
                   <tr v-else-if="line.type === 'hunk'" class="dl-hunk">
                     <td class="dl-num" colspan="3">{{ line.content }}</td>
                   </tr>
-                  <tr v-else :class="['dl-row', 'dl-' + line.type, { 'dl-flagged': lineFindings(file.filePath, line.newNum).length > 0 }]">
+                  <tr v-else :class="['dl-row', 'dl-' + line.type, { 'dl-flagged': lineFindingsMapped(file.filePath, line.newNum, getVisibleLines(fIdx).fmap).length > 0 }]">
                     <td class="dl-num dl-num-old">{{ line.oldNum || '' }}</td>
                     <td class="dl-num dl-num-new">{{ line.newNum || '' }}</td>
                     <td class="dl-code"><pre>{{ line.content }}</pre></td>
                   </tr>
-                  <template v-if="line.type !== 'hunk' && line.content !== '...' && lineFindings(file.filePath, line.newNum).length > 0">
-                    <tr v-for="(f, fiIdx) in lineFindings(file.filePath, line.newNum)" :key="'f-'+lIdx+'-'+fiIdx" class="dl-comment-row">
+                  <template v-if="line.type !== 'hunk' && line.content !== '...' && lineFindingsMapped(file.filePath, line.newNum, getVisibleLines(fIdx).fmap).length > 0">
+                    <tr v-for="(f, fiIdx) in lineFindingsMapped(file.filePath, line.newNum, getVisibleLines(fIdx).fmap)" :key="'f-'+lIdx+'-'+fiIdx" class="dl-comment-row">
                       <td class="dl-num"></td>
                       <td class="dl-num"></td>
                       <td class="dl-comment-cell">
@@ -337,7 +337,48 @@ function lineFindings(filePath: string, lineNum: number | string): ReviewFinding
   if (!lineNum || lineNum === '') return []
   const n = typeof lineNum === 'string' ? parseInt(lineNum) : lineNum
   if (isNaN(n)) return []
-  return findings.value.filter(f => f.file_path && pathMatches(f.file_path, filePath) && f.new_line === n)
+  const exact = findings.value.filter(f => f.file_path && pathMatches(f.file_path, filePath) && f.new_line === n)
+  if (exact.length > 0) return exact
+  return []
+}
+
+function buildFindingLineMap(file: DiffFile): Map<number, ReviewFindingDTO[]> {
+  const ff = fileFindings(file.filePath).filter(f => f.new_line && f.new_line > 0)
+  if (ff.length === 0) return new Map()
+  const lineNums = new Set<number>()
+  for (const l of file.lines) {
+    if (l.type === 'hunk') continue
+    const n = typeof l.newNum === 'number' ? l.newNum : parseInt(String(l.newNum))
+    if (!isNaN(n) && n > 0) lineNums.add(n)
+  }
+  const result = new Map<number, ReviewFindingDTO[]>()
+  for (const f of ff) {
+    const ln = f.new_line
+    if (lineNums.has(ln)) {
+      const arr = result.get(ln) || []
+      arr.push(f)
+      result.set(ln, arr)
+      continue
+    }
+    let best = -1, bestDist = Infinity
+    for (const n of lineNums) {
+      const d = Math.abs(n - ln)
+      if (d < bestDist) { bestDist = d; best = n }
+    }
+    if (best >= 0) {
+      const arr = result.get(best) || []
+      arr.push(f)
+      result.set(best, arr)
+    }
+  }
+  return result
+}
+
+function lineFindingsMapped(filePath: string, lineNum: number | string, fmap: Map<number, ReviewFindingDTO[]>): ReviewFindingDTO[] {
+  if (!lineNum || lineNum === '') return []
+  const n = typeof lineNum === 'string' ? parseInt(lineNum) : lineNum
+  if (isNaN(n)) return []
+  return fmap.get(n) || []
 }
 
 const expandedFiles = ref<Record<number, boolean>>({})
@@ -365,15 +406,26 @@ function isFileExpanded(idx: number): boolean {
 
 const CONTEXT_LINES = 3
 
-function fileVisibleLines(file: DiffFile, fIdx: number): DiffFile['lines'] {
-  if (showFullDiff(fIdx)) return file.lines
-  const ff = fileFindings(file.filePath)
-  if (ff.length === 0) return file.lines
-  const flaggedLines = new Set<number>()
-  for (const f of ff) {
-    if (f.new_line && f.new_line > 0) flaggedLines.add(f.new_line)
+interface VisibleLinesResult {
+  lines: DiffFile['lines']
+  fmap: Map<number, ReviewFindingDTO[]>
+}
+
+const fileVisibleCache = computed<Map<number, VisibleLinesResult>>(() => {
+  const cache = new Map<number, VisibleLinesResult>()
+  const files = displayFiles.value
+  for (let i = 0; i < files.length; i++) {
+    cache.set(i, computeVisibleLines(files[i], i))
   }
-  if (flaggedLines.size === 0) return file.lines
+  return cache
+})
+
+function computeVisibleLines(file: DiffFile, fIdx: number): VisibleLinesResult {
+  const fmap = buildFindingLineMap(file)
+  if (showFullDiff(fIdx)) return { lines: file.lines, fmap }
+  if (fmap.size === 0) return { lines: file.lines, fmap }
+  const flaggedLines = new Set<number>()
+  for (const [lineNum] of fmap) flaggedLines.add(lineNum)
   const showIdx = new Set<number>()
   for (let i = 0; i < file.lines.length; i++) {
     const ln = file.lines[i]
@@ -400,7 +452,11 @@ function fileVisibleLines(file: DiffFile, fIdx: number): DiffFile['lines'] {
     result.push(file.lines[idx])
     lastShown = idx
   }
-  return result
+  return { lines: result, fmap }
+}
+
+function getVisibleLines(fIdx: number): VisibleLinesResult {
+  return fileVisibleCache.value.get(fIdx) || { lines: [], fmap: new Map() }
 }
 
 function showMoreFiles() {

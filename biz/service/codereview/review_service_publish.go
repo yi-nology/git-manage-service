@@ -288,7 +288,8 @@ Respond ONLY with valid JSON. Do NOT wrap in markdown code blocks. Use this exac
 
 CRITICAL RULES:
 - file_path MUST be the actual file path from the diff (e.g., "internal/service/crawler.go"), NOT placeholder paths
-- line_number MUST be the actual line number from the diff hunk where the issue is located
+- line_number MUST be the line number shown in the RIGHT side of the diff (the "+" line number from the @@ header range). For example, in "@@ -10,5 +20,7 @@", added lines start at 20. Use THAT number, NOT a relative/sequential position.
+- Look at the @@ -X,Y +N,M @@ headers to determine correct line numbers. The N is the starting line number of the new file side. Each "+" line increments N.
 - Only report real issues visible in the diff, not opinions about file organization
 - If no real issues found, return {"findings":[],"summary":"No issues found"}`
 
