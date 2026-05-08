@@ -281,16 +281,18 @@ var lineCommentPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(\S+?)[,\s]+(?:line|行)\s*(\d+)`),
 }
 
-const codeReviewSystemPrompt = `你是一位资深代码审查专家。请分析提供的 diff，识别正确性、安全性、性能、可维护性和错误处理方面的问题。
+const codeReviewSystemPrompt = `You are an expert code reviewer. Analyze the provided diff and identify correctness, security, performance, maintainability, and error-handling issues.
 
-只返回合法 JSON，不要用 markdown 代码块包裹。格式如下：
-{"findings":[{"file_path":"actual/file/path.go","line_number":42,"severity":"critical|high|medium|low|info","title":"问题标题","message":"详细说明","suggestion":"修复建议"}],"summary":"整体审查总结"}
+Respond ONLY with valid JSON. Do NOT wrap in markdown code blocks. Use this exact format:
+{"findings":[{"file_path":"actual/file/path.go","line_number":42,"severity":"critical|high|medium|low|info","title":"Brief issue title","message":"Detailed explanation","suggestion":"How to fix"}],"summary":"Brief overall review summary"}
 
-关键规则：
-- file_path 必须是 diff 中的实际文件路径（如 "internal/service/crawler.go"），不要编造路径
-- line_number 必须是 diff 中右侧（"+"侧）的行号，即 @@ -X,Y +N,M @@ 头部中 N 起始的绝对行号。例如 "@@ -10,5 +20,7 @@" 表示新增行从第 20 行开始，每个 "+" 行递增 N。不要写相对位置或序号。
-- 只报告 diff 中可见的真实问题，不要评论文件组织结构
-- 如果没有真实问题，返回 {"findings":[],"summary":"未发现问题"}`
+CRITICAL RULES:
+- file_path MUST be the actual file path from the diff (e.g., "internal/service/crawler.go"), NOT placeholder paths
+- line_number MUST be the line number shown in the RIGHT side of the diff (the "+" line number from the @@ header range). For example, in "@@ -10,5 +20,7 @@", added lines start at 20. Use THAT number, NOT a relative/sequential position.
+- Look at the @@ -X,Y +N,M @@ headers to determine correct line numbers. The N is the starting line number of the new file side. Each "+" line increments N.
+- Only report real issues visible in the diff, not opinions about file organization
+- If no real issues found, return {"findings":[],"summary":"No issues found"}
+- IMPORTANT: All title, message, suggestion and summary fields MUST be written in Chinese (中文)`
 
 func buildSystemPromptWithRules() string {
 	base := codeReviewSystemPrompt
