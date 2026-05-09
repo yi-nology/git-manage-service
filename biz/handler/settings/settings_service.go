@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/model/api"
 	settings "github.com/yi-nology/git-manage-service/biz/model/settings"
 	"github.com/yi-nology/git-manage-service/biz/service/branchrule"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
@@ -194,18 +193,20 @@ func UpdateCodeReviewSettings(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, err.Error())
 		return
 	}
-	dto := api.CodeReviewGlobalSettingsDTO{
+	maxFiles := int(req.MaxFiles)
+	maxDiffLines := int(req.MaxDiffLines)
+	if maxFiles <= 0 {
+		maxFiles = configs.GlobalConfig.CodeReview.MaxFiles
+	}
+	if maxDiffLines <= 0 {
+		maxDiffLines = configs.GlobalConfig.CodeReview.MaxDiffLines
+	}
+	dto := settingssvc.CodeReviewSettings{
 		Enabled:        req.Enabled,
 		AutoReviewOnMR: req.AutoReviewOnMr,
 		BlockOnHigh:    req.BlockOnHigh,
-		MaxFiles:       int(req.MaxFiles),
-		MaxDiffLines:   int(req.MaxDiffLines),
-	}
-	if dto.MaxFiles <= 0 {
-		dto.MaxFiles = configs.GlobalConfig.CodeReview.MaxFiles
-	}
-	if dto.MaxDiffLines <= 0 {
-		dto.MaxDiffLines = configs.GlobalConfig.CodeReview.MaxDiffLines
+		MaxFiles:       maxFiles,
+		MaxDiffLines:   maxDiffLines,
 	}
 	if err := settingssvc.SaveCodeReviewSettingsToDB(dto); err != nil {
 		pkgresponse.InternalServerError(c, "failed to persist settings: "+err.Error())
