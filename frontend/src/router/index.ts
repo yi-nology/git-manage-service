@@ -73,12 +73,6 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Patch 管理' },
       },
       {
-        path: 'local-repos/:repoKey/sync',
-        name: 'RepoSync',
-        component: () => import('@/views/sync/SyncTaskPage.vue'),
-        meta: { title: '同步任务' },
-      },
-      {
         path: 'local-repos/:repoKey/mirrors',
         name: 'RepoMirrors',
         component: () => import('@/views/mirror/MirrorPage.vue'),

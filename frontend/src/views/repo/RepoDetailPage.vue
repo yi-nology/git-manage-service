@@ -9,9 +9,6 @@
            <ActionPill variant="green" :icon="Share" @click="$router.push(`/local-repos/${repoKey}/branches`)">
              分支管理
            </ActionPill>
-           <ActionPill variant="amber" :icon="Refresh" @click="$router.push(`/local-repos/${repoKey}/sync`)">
-             同步任务
-           </ActionPill>
            <ActionPill variant="ai" :icon="MagicStick" @click="showAIPanel = !showAIPanel">AI 助手</ActionPill>
          </template>
       </PageHeader>
@@ -155,6 +152,10 @@
           <PatchManager :repo-key="repoKey" />
         </div>
 
+        <div v-if="loadedTabs.sync" v-show="activeTab === 'sync'">
+          <SyncConfigPanel :repo-key="repoKey" />
+        </div>
+
         <div v-if="loadedTabs.slim" v-show="activeTab === 'slim'">
           <SlimManager :repo-key="repoKey" />
         </div>
@@ -216,6 +217,7 @@ const CommitSearch = defineAsyncComponent(() => import('@/components/repo/Commit
 const StashManager = defineAsyncComponent(() => import('@/components/repo/StashManager.vue'))
 const SubmoduleManager = defineAsyncComponent(() => import('@/components/repo/SubmoduleManager.vue'))
 const PatchManager = defineAsyncComponent(() => import('@/components/patch/PatchManager.vue'))
+const SyncConfigPanel = defineAsyncComponent(() => import('@/components/sync/SyncConfigPanel.vue'))
 const SpecEditor = defineAsyncComponent(() => import('@/components/spec/SpecEditor.vue'))
 const SlimManager = defineAsyncComponent(() => import('@/components/repo/SlimManager.vue'))
 const AuthorFix = defineAsyncComponent(() => import('@/components/repo/AuthorFix.vue'))
@@ -263,6 +265,7 @@ const sidebarItems = [
   { key: 'stash', label: 'Stash 管理', icon: Box },
   { key: 'submodules', label: 'Submodule', icon: Link },
   { key: 'patches', label: 'Patch 管理', icon: DocumentCopy },
+  { key: 'sync', label: '同步任务', icon: Refresh },
   { key: 'slim', label: '仓库瘦身', icon: Operation },
   { key: 'author', label: '作者修复', icon: User },
 ]
@@ -423,6 +426,7 @@ function handleNavSelect(key: string) {
     router.push(`/local-repos/${repoKey}/${key}`)
   } else {
     activeTab.value = key
+    router.replace({ query: { ...route.query, tab: key } })
    }
  }
 
