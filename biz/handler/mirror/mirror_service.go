@@ -3,9 +3,11 @@ package mirror
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	mirrorModel "github.com/yi-nology/git-manage-service/biz/model/mirror"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	mirrorSvc "github.com/yi-nology/git-manage-service/biz/service/mirror"
 	"github.com/yi-nology/git-manage-service/pkg/response"
@@ -13,6 +15,97 @@ import (
 
 func getMirrorService() *mirrorSvc.MirrorService {
 	return mirrorSvc.GlobalMirrorService
+}
+
+func convertToProtoMirror(m po.Mirror) *mirrorModel.Mirror {
+	proto := &mirrorModel.Mirror{
+		Id:           int64(m.ID),
+		RepoId:       int64(m.RepoID),
+		MirrorType:   m.MirrorType,
+		RemoteUrl:    m.RemoteURL,
+		RemoteName:   m.RemoteName,
+		BranchFilter: m.BranchFilter,
+		SyncInterval: int32(m.SyncInterval),
+		CronExpr:     m.CronExpr,
+		SyncOnPush:   m.SyncOnPush,
+		GitForce:     m.GitForce,
+		GitPrune:     m.GitPrune,
+		GitTags:      m.GitTags,
+		Enabled:      m.Enabled,
+		Status:       m.Status,
+		LastError:    m.LastError,
+		RetryCount:   int32(m.RetryCount),
+		WebhookToken: m.WebhookToken,
+		CreatedAt:    m.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:    m.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+
+	if m.CredentialID != nil {
+		proto.CredentialId = int64(*m.CredentialID)
+	}
+
+	if m.LastSyncAt != nil {
+		proto.LastSyncAt = m.LastSyncAt.Format("2006-01-02T15:04:05Z")
+	}
+
+	if m.NextSyncAt != nil {
+		proto.NextSyncAt = m.NextSyncAt.Format("2006-01-02T15:04:05Z")
+	}
+
+	if m.Repo.ID != 0 {
+		proto.RepoName = m.Repo.Name
+		proto.RepoKey = m.Repo.Key
+	}
+
+	if m.Credential != nil {
+		proto.CredentialName = m.Credential.Name
+	}
+
+	return proto
+}
+
+func convertToProtoMirrorSyncLog(l po.MirrorSyncLog) *mirrorModel.MirrorSyncLog {
+	proto := &mirrorModel.MirrorSyncLog{
+		Id:             int64(l.ID),
+		MirrorId:       int64(l.MirrorID),
+		TriggerType:    l.TriggerType,
+		Status:         l.Status,
+		DurationMs:     l.DurationMs,
+		BranchesSynced: int32(l.BranchesSynced),
+		CommitsPushed:  int32(l.CommitsPushed),
+		ErrorMessage:   l.ErrorMessage,
+		DetailLog:      l.DetailLog,
+		CreatedAt:      l.CreatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+
+	if l.StartedAt != nil {
+		proto.StartedAt = l.StartedAt.Format("2006-01-02T15:04:05Z")
+	}
+
+	if l.FinishedAt != nil {
+		proto.FinishedAt = l.FinishedAt.Format("2006-01-02T15:04:05Z")
+	}
+
+	return proto
+}
+
+func parseTimePtr(s string) *time.Time {
+	if s == "" {
+		return nil
+	}
+	t, err := time.Parse("2006-01-02T15:04:05Z", s)
+	if err != nil {
+		return nil
+	}
+	return &t
+}
+
+func parseUintPtr(v int64) *uint {
+	if v == 0 {
+		return nil
+	}
+	u := uint(v)
+	return &u
 }
 
 func ListMirrors(ctx context.Context, c *app.RequestContext) {
@@ -55,9 +148,9 @@ func ListMirrors(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	dtos := make([]api.MirrorDTO, 0, len(mirrors))
+	dtos := make([]*mirrorModel.Mirror, 0, len(mirrors))
 	for _, m := range mirrors {
-		dtos = append(dtos, api.NewMirrorDTO(m))
+		dtos = append(dtos, convertToProtoMirror(m))
 	}
 	response.Success(c, dtos)
 }
@@ -80,7 +173,7 @@ func GetMirror(ctx context.Context, c *app.RequestContext) {
 		response.NotFound(c, "mirror not found")
 		return
 	}
-	response.Success(c, api.NewMirrorDTO(*mirror))
+	response.Success(c, convertToProtoMirror(*mirror))
 }
 
 func CreateMirror(ctx context.Context, c *app.RequestContext) {
@@ -124,9 +217,9 @@ func CreateMirror(ctx context.Context, c *app.RequestContext) {
 
 	created, _ := svc.GetMirror(mirror.ID)
 	if created != nil {
-		response.Success(c, api.NewMirrorDTO(*created))
+		response.Success(c, convertToProtoMirror(*created))
 	} else {
-		response.Success(c, api.NewMirrorDTO(*mirror))
+		response.Success(c, convertToProtoMirror(*mirror))
 	}
 
 	if mirrorSvc.GlobalScheduler != nil && mirror.CronExpr != "" {
@@ -182,9 +275,9 @@ func UpdateMirror(ctx context.Context, c *app.RequestContext) {
 
 	updated, _ := svc.GetMirror(id)
 	if updated != nil {
-		response.Success(c, api.NewMirrorDTO(*updated))
+		response.Success(c, convertToProtoMirror(*updated))
 	} else {
-		response.Success(c, api.NewMirrorDTO(*mirror))
+		response.Success(c, convertToProtoMirror(*mirror))
 	}
 
 	if mirrorSvc.GlobalScheduler != nil {
@@ -320,9 +413,9 @@ func ListSyncLogs(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	dtos := make([]api.MirrorSyncLogDTO, 0, len(logs))
+	dtos := make([]*mirrorModel.MirrorSyncLog, 0, len(logs))
 	for _, l := range logs {
-		dtos = append(dtos, api.NewMirrorSyncLogDTO(l))
+		dtos = append(dtos, convertToProtoMirrorSyncLog(l))
 	}
 	response.Success(c, dtos)
 }
@@ -345,7 +438,7 @@ func GetSyncLog(ctx context.Context, c *app.RequestContext) {
 		response.NotFound(c, "sync log not found")
 		return
 	}
-	response.Success(c, api.NewMirrorSyncLogDTO(*log))
+	response.Success(c, convertToProtoMirrorSyncLog(*log))
 }
 
 func DeleteSyncLog(ctx context.Context, c *app.RequestContext) {
@@ -392,7 +485,7 @@ func PauseMirror(ctx context.Context, c *app.RequestContext) {
 
 	mirror, _ := svc.GetMirror(id)
 	if mirror != nil {
-		response.Success(c, api.NewMirrorDTO(*mirror))
+		response.Success(c, convertToProtoMirror(*mirror))
 	} else {
 		response.Success(c, nil)
 	}
@@ -422,7 +515,7 @@ func ResumeMirror(ctx context.Context, c *app.RequestContext) {
 	}
 
 	if mirror != nil {
-		response.Success(c, api.NewMirrorDTO(*mirror))
+		response.Success(c, convertToProtoMirror(*mirror))
 	} else {
 		response.Success(c, nil)
 	}
