@@ -9,9 +9,10 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	workspaceModel "github.com/yi-nology/git-manage-service/biz/model/workspace"
 )
 
-func (s *GitService) GetWorkspaceStatus(repoPath string) (*api.WorkspaceStatus, error) {
+func (s *GitService) GetWorkspaceStatus(repoPath string) (*workspaceModel.GetWorkspaceStatusResp, error) {
 	r, err := s.openRepo(repoPath)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
@@ -32,7 +33,7 @@ func (s *GitService) GetWorkspaceStatus(repoPath string) (*api.WorkspaceStatus, 
 		branch = head.Name().Short()
 	}
 
-	result := &api.WorkspaceStatus{
+	result := &workspaceModel.GetWorkspaceStatusResp{
 		Branch:  branch,
 		IsClean: status.IsClean(),
 	}
@@ -43,14 +44,14 @@ func (s *GitService) GetWorkspaceStatus(repoPath string) (*api.WorkspaceStatus, 
 	result.IsRebasing = isRebasing
 
 	ahead, behind := s.getAheadBehind(r, head)
-	result.Ahead = ahead
-	result.Behind = behind
+	result.Ahead = int32(ahead)
+	result.Behind = int32(behind)
 
 	for path, fs := range status {
 		staging := fs.Staging
 		worktree := fs.Worktree
 
-		item := api.WorkspaceFileStatus{
+		item := &workspaceModel.FileStatus{
 			Path: path,
 		}
 		if staging == 'R' {
@@ -59,35 +60,39 @@ func (s *GitService) GetWorkspaceStatus(repoPath string) (*api.WorkspaceStatus, 
 
 		switch {
 		case staging == 'U' || worktree == 'U':
-			item.Status = "conflicted"
+			statusStr := "conflicted"
+			item.Status = statusStr
 			result.Conflicted = append(result.Conflicted, item)
 		case staging == 'A' || staging == 'M' || staging == 'D' || staging == 'R' || staging == 'C':
-			item.Status = string(staging)
-			item.Status = s.readableStatus(string(staging))
+			statusStr := s.readableStatus(string(staging))
+			item.Status = statusStr
 			result.Staged = append(result.Staged, item)
 		case worktree == 'M' || worktree == 'D':
-			item.Status = s.readableStatus(string(worktree))
+			statusStr := s.readableStatus(string(worktree))
+			item.Status = statusStr
 			result.Unstaged = append(result.Unstaged, item)
 		case worktree == '?' && staging == '?':
-			item.Status = "untracked"
+			statusStr := "untracked"
+			item.Status = statusStr
 			result.Untracked = append(result.Untracked, item)
 		case worktree == 'A':
-			item.Status = "added"
+			statusStr := "added"
+			item.Status = statusStr
 			result.Unstaged = append(result.Unstaged, item)
 		}
 	}
 
 	if result.Staged == nil {
-		result.Staged = []api.WorkspaceFileStatus{}
+		result.Staged = []*workspaceModel.FileStatus{}
 	}
 	if result.Unstaged == nil {
-		result.Unstaged = []api.WorkspaceFileStatus{}
+		result.Unstaged = []*workspaceModel.FileStatus{}
 	}
 	if result.Untracked == nil {
-		result.Untracked = []api.WorkspaceFileStatus{}
+		result.Untracked = []*workspaceModel.FileStatus{}
 	}
 	if result.Conflicted == nil {
-		result.Conflicted = []api.WorkspaceFileStatus{}
+		result.Conflicted = []*workspaceModel.FileStatus{}
 	}
 
 	return result, nil
