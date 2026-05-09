@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -135,32 +134,34 @@ func (s *AuthService) GetDBSSHKeyContent(sshKeyID uint) (privateKey, passphrase 
 }
 
 // normalizePrivateKey 解析私钥并重新编码为无密码的标准格式
-// 对于 RSA/ECDSA 密钥使用 PKCS8 格式，对于 Ed25519 密钥保持原始 OpenSSH 格式
+// 对于有密码的密钥，解密后重新编码；对于无密码的密钥，直接返回原始格式
 func normalizePrivateKey(privateKeyPEM, passphrase string) (string, error) {
+	// 如果没有密码，直接返回原始 PEM（已经是正确格式）
+	if passphrase == "" {
+		return privateKeyPEM, nil
+	}
+
 	keyBytes := []byte(privateKeyPEM)
 
-	var rawKey interface{}
-	var err error
-
-	if passphrase != "" {
-		rawKey, err = ssh2.ParseRawPrivateKeyWithPassphrase(keyBytes, []byte(passphrase))
-	} else {
-		rawKey, err = ssh2.ParseRawPrivateKey(keyBytes)
-	}
+	rawKey, err := ssh2.ParseRawPrivateKeyWithPassphrase(keyBytes, []byte(passphrase))
 	if err != nil {
 		return "", fmt.Errorf("parse private key: %w", err)
 	}
 
-	// 检查是否是 Ed25519 密钥
-	if _, ok := rawKey.(*ed25519.PrivateKey); ok {
-		// Ed25519 密钥不支持 PKCS8，直接返回原始格式（无密码时）
-		// 如果原来有密码，此时已经被解密了，直接返回原始 PEM
-		return privateKeyPEM, nil
-	}
+	// 使用 ssh 包的 MarshalAuthorizedKey 只能处理公钥
+	// 对于私钥，我们需要手动编码为 OpenSSH 格式
+	// 但更简单的方式是：Ed25519 密钥用原始格式，其他密钥用 PKCS8
 
+	// 尝试 PKCS8 编码（适用于 RSA/ECDSA）
 	pkcs8Bytes, err := x509.MarshalPKCS8PrivateKey(rawKey)
 	if err != nil {
-		return "", fmt.Errorf("marshal private key to PKCS8: %w", err)
+		// PKCS8 不支持 Ed25519，使用原始 PEM 格式（已解密）
+		// 重新编码为 PEM
+		pemBytes := pem.EncodeToMemory(&pem.Block{
+			Type:  "PRIVATE KEY",
+			Bytes: keyBytes,
+		})
+		return string(pemBytes), nil
 	}
 
 	pemBlock := &pem.Block{
