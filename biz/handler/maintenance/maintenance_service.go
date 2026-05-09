@@ -123,7 +123,7 @@ func Slim(ctx context.Context, c *app.RequestContext) {
 		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
 	}()
 
-	response.Success(c, api.MaintenanceTaskResponse{TaskID: taskID})
+	response.Success(c, &maintenance.MaintenanceTaskResponse{TaskId: &taskID})
 }
 
 func GC(ctx context.Context, c *app.RequestContext) {
@@ -172,7 +172,7 @@ func GC(ctx context.Context, c *app.RequestContext) {
 	record.TaskID = taskID
 	dao.Update(record)
 
-	response.Success(c, api.MaintenanceTaskResponse{TaskID: taskID})
+	response.Success(c, &maintenance.MaintenanceTaskResponse{TaskId: &taskID})
 }
 
 func Gitignore(ctx context.Context, c *app.RequestContext) {
@@ -502,7 +502,7 @@ func SlimByPrefix(ctx context.Context, c *app.RequestContext) {
 		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
 	}()
 
-	response.Success(c, api.MaintenanceTaskResponse{TaskID: taskID})
+	response.Success(c, &maintenance.MaintenanceTaskResponse{TaskId: &taskID})
 }
 
 func ForcePushRemotes(ctx context.Context, c *app.RequestContext) {
@@ -559,7 +559,7 @@ func ForcePushRemotes(ctx context.Context, c *app.RequestContext) {
 		}
 	}()
 
-	response.Success(c, api.ForcePushResponse{TaskID: taskID})
+	response.Success(c, &maintenance.ForcePushResponse{Results: []string{taskID}})
 }
 
 func doForcePushAllRemotes(repoID uint, repoPath string, taskID string) []api.ForcePushResult {
