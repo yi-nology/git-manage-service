@@ -12,6 +12,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	reviewModel "github.com/yi-nology/git-manage-service/biz/model/review"
 	codereview "github.com/yi-nology/git-manage-service/biz/service/codereview"
 	"github.com/yi-nology/git-manage-service/biz/service/rag"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
@@ -63,6 +64,45 @@ func validateSource(s string) bool {
 	return false
 }
 
+func convertToProtoReviewTask(dto api.ReviewTaskDTO) *reviewModel.ReviewTask {
+	return &reviewModel.ReviewTask{
+		Id:               uint64(dto.ID),
+		RepoId:           uint64(dto.RepoID),
+		ProviderConfigId: uint64(dto.ProviderConfigID),
+		Platform:         dto.Platform,
+		EventType:        dto.EventType,
+		MrIid:            dto.MRIID,
+		SourceBranch:     dto.SourceBranch,
+		TargetBranch:     dto.TargetBranch,
+		CommitSha:        dto.CommitSHA,
+		TriggerType:      dto.TriggerType,
+		TriggerUser:      dto.TriggerUser,
+		Status:           dto.Status,
+		RiskLevel:        dto.RiskLevel,
+		Summary:          dto.Summary,
+		ErrorMessage:     dto.ErrorMessage,
+		CreatedAt:        dto.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:        dto.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
+
+func convertToProtoReviewFinding(dto api.ReviewFindingDTO) *reviewModel.ReviewFinding {
+	return &reviewModel.ReviewFinding{
+		Id:          uint64(dto.ID),
+		TaskId:      uint64(dto.TaskID),
+		Source:      dto.Source,
+		RuleId:      dto.RuleID,
+		Severity:    dto.Severity,
+		FilePath:    dto.FilePath,
+		OldLine:     int32(dto.OldLine),
+		NewLine:     int32(dto.NewLine),
+		Title:       dto.Title,
+		Message:     dto.Message,
+		Suggestion:  dto.Suggestion,
+		Fingerprint: dto.Fingerprint,
+	}
+}
+
 func CreateTask(ctx context.Context, c *app.RequestContext) {
 	var req struct {
 		RepoKey          string `json:"repo_key"`
@@ -101,7 +141,7 @@ func CreateTask(ctx context.Context, c *app.RequestContext) {
 	}
 	c.Set("audit_target", "repo:"+req.RepoKey)
 	c.Set("audit_details", map[string]string{"mr_iid": req.MRIID, "trigger": req.TriggerType})
-	pkgresponse.Success(c, api.NewReviewTaskDTO(*task))
+	pkgresponse.Success(c, convertToProtoReviewTask(api.NewReviewTaskDTO(*task)))
 }
 
 func GetTask(ctx context.Context, c *app.RequestContext) {
@@ -155,12 +195,12 @@ func ListTasks(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	dtos := make([]api.ReviewTaskDTO, 0, len(tasks))
+	dtos := make([]*reviewModel.ReviewTask, 0, len(tasks))
 	for _, t := range tasks {
 		dto := api.NewReviewTaskDTO(t)
 		dto.RepoKey = repoKey
 		dto.RepoName = repo.Name
-		dtos = append(dtos, dto)
+		dtos = append(dtos, convertToProtoReviewTask(dto))
 	}
 
 	pkgresponse.Success(c, map[string]interface{}{
@@ -197,14 +237,14 @@ func ListFindings(ctx context.Context, c *app.RequestContext) {
 	}
 
 	seen := make(map[string]bool, len(findings))
-	dtos := make([]api.ReviewFindingDTO, 0, len(findings))
+	dtos := make([]*reviewModel.ReviewFinding, 0, len(findings))
 	for _, f := range findings {
 		key := f.Source + ":" + f.FilePath + ":" + f.RuleID + ":" + fmt.Sprintf("%d", f.NewLine)
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
-		dtos = append(dtos, api.NewReviewFindingDTO(f))
+		dtos = append(dtos, convertToProtoReviewFinding(api.NewReviewFindingDTO(f)))
 	}
 	pkgresponse.Success(c, dtos)
 }
@@ -225,7 +265,7 @@ func RetryTask(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
-	pkgresponse.Success(c, api.NewReviewTaskDTO(*task))
+	pkgresponse.Success(c, convertToProtoReviewTask(api.NewReviewTaskDTO(*task)))
 }
 
 func CheckMerge(ctx context.Context, c *app.RequestContext) {
@@ -423,7 +463,7 @@ func CreateTaskByProvider(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	c.Set("audit_target", fmt.Sprintf("provider:%d", req.ProviderConfigID))
-	pkgresponse.Success(c, api.NewReviewTaskDTO(*task))
+	pkgresponse.Success(c, convertToProtoReviewTask(api.NewReviewTaskDTO(*task)))
 }
 
 func ListTasksByProvider(ctx context.Context, c *app.RequestContext) {
@@ -455,12 +495,12 @@ func ListTasksByProvider(ctx context.Context, c *app.RequestContext) {
 
 	_ = status
 
-	dtos := make([]api.ReviewTaskDTO, 0, len(tasks))
+	dtos := make([]*reviewModel.ReviewTask, 0, len(tasks))
 	for _, t := range tasks {
 		dto := api.NewReviewTaskDTO(t)
 		findingCount, _ := db.NewReviewFindingDAO().CountByTaskID(t.ID)
 		dto.FindingsCount = int(findingCount)
-		dtos = append(dtos, dto)
+		dtos = append(dtos, convertToProtoReviewTask(dto))
 	}
 
 	pkgresponse.Success(c, map[string]interface{}{

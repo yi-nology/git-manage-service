@@ -5,11 +5,19 @@ import (
 	"log"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
 const codeReviewSettingsKey = "code_review_settings"
+
+type CodeReviewSettings struct {
+	Enabled        bool `json:"enabled"`
+	AutoReviewOnMR bool `json:"auto_review_on_mr"`
+	BlockOnHigh    bool `json:"block_on_high"`
+	MaxFiles       int  `json:"max_files"`
+	MaxDiffLines   int  `json:"max_diff_lines"`
+	RAGEnabled     bool `json:"rag_enabled"`
+}
 
 func LoadCodeReviewSettingsFromDB() {
 	dao := db.NewSystemConfigDAO()
@@ -18,7 +26,7 @@ func LoadCodeReviewSettingsFromDB() {
 		log.Printf("[Settings] No saved code review settings in DB, using config.yaml defaults")
 		return
 	}
-	var dto api.CodeReviewGlobalSettingsDTO
+	var dto CodeReviewSettings
 	if err := json.Unmarshal([]byte(value), &dto); err != nil {
 		log.Printf("[Settings] Failed to parse saved code review settings: %v", err)
 		return
@@ -37,7 +45,7 @@ func LoadCodeReviewSettingsFromDB() {
 	log.Printf("[Settings] Loaded code review settings from DB (rag_enabled=%v)", dto.RAGEnabled)
 }
 
-func SaveCodeReviewSettingsToDB(dto api.CodeReviewGlobalSettingsDTO) error {
+func SaveCodeReviewSettingsToDB(dto CodeReviewSettings) error {
 	cfg := &configs.GlobalConfig.CodeReview
 	cfg.Enabled = dto.Enabled
 	cfg.AutoReviewOnMR = dto.AutoReviewOnMR
