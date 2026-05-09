@@ -152,11 +152,14 @@ review.go llm_provider 1
 review.go max_diff_lines 1
 review.go max_files 1
 review.go mr_iid 1
+review.go prompt_intent_override 1
+review.go prompt_prefix_override 1
 review.go new_line 1
 review.go old_line 1
 review.go platform_owner 1
 review.go platform_repo 1
 review.go provider_config_id 2
+review.go raw_diff 1
 review.go repo_id 1
 review.go repo_key 1
 review.go repo_name 1

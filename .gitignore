@@ -46,8 +46,13 @@ server
 # Database
 data/
 
-# Embedded frontend build
-pkg/embed/
+# Embedded frontend build (keep embed.go tracked)
+pkg/embed/public/
+pkg/embed/docs/
+pkg/embed/assets/
+pkg/embed/favicon.svg
+pkg/embed/index.html
+pkg/embed/logo.svg
 
 # Frontend build output
 /public
