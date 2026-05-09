@@ -148,8 +148,6 @@ github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aN
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/hertz-contrib/monitor-prometheus v0.1.3 h1:gQswZA8AnXHFuULDCRz1A1PDjtKyTh/RatWzCca9b5I=
 github.com/hertz-contrib/monitor-prometheus v0.1.3/go.mod h1:5ZnWsWWdBFJrSRacLfIyudR8+dIvwpBwuYux8ecO3cw=
-github.com/hertz-contrib/swagger-generate v0.0.0-20260422092556-ee5e0551a20c h1:snAww9fI8En0zEXhc9qyjMDFqN98LpMU0OePBHhBG9w=
-github.com/hertz-contrib/swagger-generate v0.0.0-20260422092556-ee5e0551a20c/go.mod h1:yS1Lb7xyxzEr1YGYpZlfuoR3q+9uA5/ZOfwbmw9Tqe0=
 github.com/hibiken/asynq v0.26.0 h1:1Zxr92MlDnb1Zt/QR5g2vSCqUS03i95lUfqx5X7/wrw=
 github.com/hibiken/asynq v0.26.0/go.mod h1:Qk4e57bTnWDoyJ67VkchuV6VzSM9IQW2nPvAGuDyw58=
 github.com/iancoleman/strcase v0.2.0 h1:05I4QRnGpI0m37iZQRuskXh+w77mr6Z41lwQzuHLwW0=

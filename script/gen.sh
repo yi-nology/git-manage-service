@@ -134,23 +134,21 @@ fi
 info "Tidying Go modules..."
 go mod tidy
 
-# 5. 清理 unused imports（hz update 会生成多余的 import）
-info "Removing unused imports..."
-go install golang.org/x/tools/cmd/goimports@latest 2>/dev/null || true
-goimports -w biz/handler/ 2>/dev/null || true
+# 5. 清理 hz update 生成的问题
+info "Cleaning up generated code..."
 
-# 修复 hz update 生成的错误 consts 包路径
-info "Fixing incorrect import paths..."
+# 5a. 修复 hz update 生成的错误 consts 包路径
 find biz/handler -name '*.go' -exec sed -i '' 's|"github.com/hertz-contrib/swagger-generate/common/consts"|"github.com/cloudwego/hertz/pkg/protocol/consts"|g' {} +
 
-# 删除 hz 生成的重复 stub 函数（已有真实实现的文件）
-info "Removing duplicate generated functions..."
-# ListLLMPresets: 在 settings_service.go 中删除（真实实现在 llm_presets_handler.go）
+# 5b. 删除 hz 生成的重复 stub 函数（已有真实实现的文件）
 if grep -q 'func ListLLMPresets' biz/handler/settings/settings_service.go 2>/dev/null; then
-    # 删除从 "// ListLLMPresets" 注释开始到函数结束的整个块
     awk '/^\/\/ ListLLMPresets \./{skip=1} skip && /^}/{skip=0; next} !skip' biz/handler/settings/settings_service.go > biz/handler/settings/settings_service.go.tmp && mv biz/handler/settings/settings_service.go.tmp biz/handler/settings/settings_service.go
     info "Removed duplicate ListLLMPresets from settings_service.go"
 fi
+
+# 5c. 清理 unused imports（删除函数后可能产生）
+go install golang.org/x/tools/cmd/goimports@latest 2>/dev/null || true
+goimports -w biz/handler/ 2>/dev/null || true
 
 # 6. 格式化代码
 info "Formatting code..."

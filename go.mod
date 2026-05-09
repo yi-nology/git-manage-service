@@ -11,7 +11,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hertz-contrib/monitor-prometheus v0.1.3
-	github.com/hertz-contrib/swagger-generate v0.0.0-20260422092556-ee5e0551a20c
 	github.com/hibiken/asynq v0.26.0
 	github.com/minio/minio-go/v7 v7.0.98
 	github.com/prometheus/client_golang v1.23.2
