@@ -9,6 +9,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	common "github.com/yi-nology/git-manage-service/biz/model/common"
 	notification "github.com/yi-nology/git-manage-service/biz/model/notification"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	notificationSvc "github.com/yi-nology/git-manage-service/biz/service/notification"

@@ -12,6 +12,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	common "github.com/yi-nology/git-manage-service/biz/model/common"
 	reviewModel "github.com/yi-nology/git-manage-service/biz/model/review"
 	codereview "github.com/yi-nology/git-manage-service/biz/service/codereview"
 	"github.com/yi-nology/git-manage-service/biz/service/rag"

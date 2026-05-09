@@ -9,7 +9,7 @@
       </template>
     </PageHeader>
 
-    <TabBar :tabs="branchTabs" v-model="activeTab" style="underline" />
+    <TabBar :tabs="branchTabs" v-model="activeTab" :style="'underline'" />
 
     <form @submit.prevent="loadBranches">
       <SearchBar v-model="searchQuery" placeholder="搜索分支名称..." />
@@ -317,11 +317,6 @@ onMounted(async () => {
 
   await loadBranches()
 })
-
-function handleTabChange(tab: string) {
-  activeTab.value = tab
-  loadBranches()
-}
 
 async function loadBranches() {
   loading.value = true

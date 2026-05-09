@@ -43,7 +43,7 @@ export interface AuthorScanResult {
 }
 
 export function listIdentities() {
-  return request.get<AuthorIdentityDTO[]>('/author/identities')
+  return request.get<unknown, AuthorIdentityDTO[]>('/author/identities')
 }
 
 export function createIdentity(data: { canonicalName: string; canonicalEmail: string; aliases: AliasEntry[] }) {
@@ -71,7 +71,7 @@ export function activateIdentity(id: number) {
 }
 
 export function getRepoAuthorConfig(repoKey: string) {
-  return request.get<RepoAuthorConfigDTO>(`/repo/${repoKey}/author/config`)
+  return request.get<unknown, RepoAuthorConfigDTO>(`/repo/${repoKey}/author/config`)
 }
 
 export function setRepoAuthorConfig(repoKey: string, identityId: number | null, clear = false) {

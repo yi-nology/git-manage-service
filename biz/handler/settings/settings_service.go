@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	common "github.com/yi-nology/git-manage-service/biz/model/common"
 	settings "github.com/yi-nology/git-manage-service/biz/model/settings"
 	"github.com/yi-nology/git-manage-service/biz/service/branchrule"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
@@ -445,4 +446,20 @@ func BatchUpdateReviewRules(ctx context.Context, c *app.RequestContext) {
 	c.Set("audit_details", map[string]interface{}{"count": len(dtos)})
 	rules, _ := settingssvc.ListReviewRules()
 	pkgresponse.Success(c, rules)
+}
+
+// ListLLMPresets .
+// @router /api/v1/settings/llm-providers/presets [GET]
+func ListLLMPresets(ctx context.Context, c *app.RequestContext) {
+	var err error
+	var req settings.ListLLMPresetsRequest
+	err = c.BindAndValidate(&req)
+	if err != nil {
+		c.String(consts.StatusBadRequest, err.Error())
+		return
+	}
+
+	resp := new(settings.LLMPresetsResponse)
+
+	c.JSON(consts.StatusOK, resp)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	cr "github.com/yi-nology/git-manage-service/biz/model/cr"
 	"github.com/yi-nology/git-manage-service/biz/service/crservice"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )

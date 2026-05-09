@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	ai "github.com/yi-nology/git-manage-service/biz/model/ai"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	aiSvc "github.com/yi-nology/git-manage-service/biz/service/ai"
 	"github.com/yi-nology/git-manage-service/pkg/response"

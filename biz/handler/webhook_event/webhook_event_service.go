@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	webhook_event "github.com/yi-nology/git-manage-service/biz/model/webhook_event"
 	"github.com/yi-nology/git-manage-service/biz/service/webhookevent"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )

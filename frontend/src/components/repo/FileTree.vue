@@ -228,7 +228,7 @@ defineEmits<{
   openConflict: [path: string]
 }>()
 
-function statusTagType(status: string): string {
+function statusTagType(status: string): 'primary' | 'danger' | 'success' | 'info' | 'warning' {
   switch (status) {
     case 'added': return 'success'
     case 'modified': return 'warning'

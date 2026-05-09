@@ -7,6 +7,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	bindingModel "github.com/yi-nology/git-manage-service/biz/model/binding"
+	common "github.com/yi-nology/git-manage-service/biz/model/common"
 	bindingsvc "github.com/yi-nology/git-manage-service/biz/service/binding"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )

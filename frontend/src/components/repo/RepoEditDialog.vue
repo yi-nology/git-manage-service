@@ -54,7 +54,7 @@
               <div class="edit-remote-cred">
                 <span class="cred-label">凭证:</span>
                 <CredentialSelector
-                  :model-value="editRemoteCredentials[remote.name]"
+                  :model-value="editRemoteCredentials?.[remote.name]"
                   :url="remote.fetch_url"
                   placeholder="选择凭证（可选）"
                   @update:model-value="(v: number | undefined) => updateEditRemoteCred(remote.name, v)"
@@ -206,7 +206,7 @@ async function handleSaveEdit() {
         is_mirror: r.is_mirror,
       }))
     const rc: Record<string, number> = {}
-    for (const [k, v] of Object.entries(editRemoteCredentials.value)) {
+    for (const [k, v] of Object.entries(editRemoteCredentials.value ?? {})) {
       if (v) rc[k] = v
     }
     await updateRepo({
@@ -238,9 +238,9 @@ function addEditRemote() {
 
 function updateEditRemoteCred(name: string, val: number | undefined) {
   if (val) {
-    editRemoteCredentials.value[name] = val
+    editRemoteCredentials.value![name] = val
   } else {
-    delete editRemoteCredentials.value[name]
+    delete editRemoteCredentials.value![name]
   }
 }
 
@@ -288,7 +288,7 @@ async function testEditRemote(index: number) {
   }
   row._testing = true
   try {
-    const credentialId = editRemoteCredentials.value[row.name]
+    const credentialId = editRemoteCredentials.value?.[row.name]
     if (credentialId) {
       const result = await testCredential(credentialId, row.fetch_url)
       if (result.success) {

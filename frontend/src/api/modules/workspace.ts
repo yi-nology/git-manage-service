@@ -161,7 +161,7 @@ export function addToGitignore(repoKey: string, patterns: string[]) {
 }
 
 export function generateCommitMessage(repoKey: string) {
-  return request.post<{ message: string }>('/workspace/generate-commit-msg', {
+  return request.post<unknown, { message: string }>('/workspace/generate-commit-msg', {
     repo_key: repoKey,
   })
 }

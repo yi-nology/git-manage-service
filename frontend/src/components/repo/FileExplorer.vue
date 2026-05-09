@@ -116,7 +116,7 @@ import {
   type AuthorIdentityDTO,
 } from '@/api/modules/author'
 import { getBranchList, getTagList } from '@/api/modules/branch'
-import { showGitError } from '@/utils/git'
+
 import ConflictResolver from './ConflictResolver.vue'
 import FileTree from './FileTree.vue'
 import FileDiffViewer from './FileDiffViewer.vue'
