@@ -124,7 +124,7 @@ const typeLabel = computed(() => {
 })
 
 const typeTagColor = computed(() => {
-  const map: Record<string, string> = { ssh_key: 'success', http_basic: 'warning', http_token: '' }
+  const map: Record<string, string> = { ssh_key: 'success', http_basic: 'warning', http_token: 'info' }
   return map[form.value.type] || 'info'
 })
 

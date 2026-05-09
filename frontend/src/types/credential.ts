@@ -1,5 +1,5 @@
 // 凭证类型
-export type CredentialType = 'ssh_key' | 'http_basic' | 'http_token'
+export type CredentialType = 'ssh_key' | 'http_basic' | 'http_token' | 'platform_token'
 
 // 凭证 DTO（脱敏响应）
 export interface CredentialRepoUsage {

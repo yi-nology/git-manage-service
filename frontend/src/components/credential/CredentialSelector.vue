@@ -109,7 +109,7 @@ function typeTagColor(type: CredentialType): string {
   const map: Record<string, string> = {
     ssh_key: 'success',
     http_basic: 'warning',
-    http_token: '',
+    http_token: 'info',
   }
   return map[type] || 'info'
 }

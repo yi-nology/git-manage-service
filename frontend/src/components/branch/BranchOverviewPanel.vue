@@ -71,7 +71,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Refresh, Plus, Download, Share, CircleCheck, MoreFilled, Select, Top, Bottom } from '@element-plus/icons-vue'
 import { getBranchList, createBranch, checkoutBranch, pushBranch, pullBranch } from '@/api/modules/branch'
 import { getRepoDetail, scanRepo, fetchRepo } from '@/api/modules/repo'

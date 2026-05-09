@@ -72,7 +72,7 @@ watch(() => props.visible, (v) => {
   }
 })
 
-function handleTagVersionTypeChange(type: string | number | boolean) {
+function handleTagVersionTypeChange(type: string | number | boolean | undefined) {
   if (!tagNextVersion.value) return
   switch (type) {
     case 'patch':

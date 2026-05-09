@@ -107,7 +107,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, type VNodeRef } from 'vue'
 import { ElMessage } from 'element-plus'
-import { MagicStick, User, Delete, Close, Link, ThumbUp, ThumbDown } from '@element-plus/icons-vue'
+import { MagicStick, User, Delete, Close, Link } from '@element-plus/icons-vue'
 import { marked } from 'marked'
 import { aiApi } from '@/api/modules/ai'
 

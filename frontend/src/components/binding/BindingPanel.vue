@@ -63,8 +63,8 @@ function platformLabel(platform: string) {
 }
 
 function platformTagType(platform: string) {
-  const map: Record<string, string> = { gitlab: 'danger', github: '', gitea: 'success', tencent_code: 'success' }
-  return (map[platform] || 'info') as '' | 'success' | 'warning' | 'danger' | 'info'
+  const map: Record<string, string> = { gitlab: 'danger', github: 'info', gitea: 'success', tencent_code: 'success' }
+  return (map[platform] || 'info') as 'success' | 'warning' | 'danger' | 'info'
 }
 
 function handleDelete(id: number) {

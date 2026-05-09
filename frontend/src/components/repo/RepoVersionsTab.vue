@@ -166,7 +166,7 @@ async function openCreateTagDialog() {
   } catch { /* ignore */ }
 }
 
-function handleVersionTypeChange(type: string | number | boolean) {
+function handleVersionTypeChange(type: string | number | boolean | undefined) {
   if (!nextVersionInfo.value) return
   switch (type) {
     case 'patch':
