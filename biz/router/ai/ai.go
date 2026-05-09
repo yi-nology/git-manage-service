@@ -7,6 +7,12 @@ import (
 	ai "github.com/yi-nology/git-manage-service/biz/handler/ai"
 )
 
+/*
+ This file will register all the routes of the services in the master idl.
+ And it will update automatically when you use the "update" command for the idl.
+ So don't modify the contents of the file, or your code will be deleted when it is updated.
+*/
+
 // Register register routes based on the IDL 'api.${HTTP Method}' annotation.
 func Register(r *server.Hertz) {
 
@@ -17,23 +23,55 @@ func Register(r *server.Hertz) {
 			_v1 := _api.Group("/v1", _v1Mw()...)
 			{
 				_ai := _v1.Group("/ai", _aiMw()...)
-				_ai.POST("/audit/summary", append(_summarizeauditlogsMw(), ai.SummarizeAuditLogs)...)
-				_ai.POST("/branch/rule", append(_generatebranchruleMw(), ai.GenerateBranchRule)...)
-				_ai.POST("/commit/message", append(_generatecommitmessageMw(), ai.GenerateCommitMessage)...)
-				_ai.POST("/conflict/explain", append(_explainconflictMw(), ai.ExplainConflict)...)
-				_ai.POST("/conflict/resolve", append(_resolveconflictMw(), ai.ResolveConflict)...)
-				_ai.POST("/patch/analyze", append(_analyzepatchriskMw(), ai.AnalyzePatchRisk)...)
-				_ai.POST("/provider/binding", append(_recommendproviderbindingMw(), ai.RecommendProviderBinding)...)
-				_ai.POST("/repo/summary", append(_generatereposummaryMw(), ai.GenerateRepoSummary)...)
 				_ai.POST("/review", append(_codereviewMw(), ai.CodeReview)...)
-				_ai.POST("/review/reply", append(_reviewreplydraftMw(), ai.ReviewReplyDraft)...)
-				_ai.POST("/review/summary", ai.ReviewSummary)
-				_ai.POST("/spec/rewrite", append(_rewritespecsectionMw(), ai.RewriteSpecSection)...)
-				_ai.POST("/spec/template", append(_generatespectemplateMw(), ai.GenerateSpecTemplate)...)
-				_ai.POST("/stats/insight", append(_analyzestatsinsightMw(), ai.AnalyzeStatsInsight)...)
-				_ai.POST("/sync/failure", append(_diagnosesyncfailureMw(), ai.DiagnoseSyncFailure)...)
-				_ai.POST("/webhook/failure", append(_analyzewebhookfailureMw(), ai.AnalyzeWebhookFailure)...)
-				_ai.POST("/feedback", ai.SubmitUserFeedback)
+				_review := _ai.Group("/review", _reviewMw()...)
+				_review.POST("/reply", append(_reviewreplydraftMw(), ai.ReviewReplyDraft)...)
+				{
+					_audit := _ai.Group("/audit", _auditMw()...)
+					_audit.POST("/summary", append(_summarizeauditlogsMw(), ai.SummarizeAuditLogs)...)
+				}
+				{
+					_branch := _ai.Group("/branch", _branchMw()...)
+					_branch.POST("/rule", append(_generatebranchruleMw(), ai.GenerateBranchRule)...)
+				}
+				{
+					_commit := _ai.Group("/commit", _commitMw()...)
+					_commit.POST("/message", append(_generatecommitmessageMw(), ai.GenerateCommitMessage)...)
+				}
+				{
+					_conflict := _ai.Group("/conflict", _conflictMw()...)
+					_conflict.POST("/explain", append(_explainconflictMw(), ai.ExplainConflict)...)
+					_conflict.POST("/resolve", append(_resolveconflictMw(), ai.ResolveConflict)...)
+				}
+				{
+					_patch := _ai.Group("/patch", _patchMw()...)
+					_patch.POST("/analyze", append(_analyzepatchriskMw(), ai.AnalyzePatchRisk)...)
+				}
+				{
+					_provider := _ai.Group("/provider", _providerMw()...)
+					_provider.POST("/binding", append(_recommendproviderbindingMw(), ai.RecommendProviderBinding)...)
+				}
+				{
+					_repo := _ai.Group("/repo", _repoMw()...)
+					_repo.POST("/summary", append(_generatereposummaryMw(), ai.GenerateRepoSummary)...)
+				}
+				{
+					_spec := _ai.Group("/spec", _specMw()...)
+					_spec.POST("/rewrite", append(_rewritespecsectionMw(), ai.RewriteSpecSection)...)
+					_spec.POST("/template", append(_generatespectemplateMw(), ai.GenerateSpecTemplate)...)
+				}
+				{
+					_stats := _ai.Group("/stats", _statsMw()...)
+					_stats.POST("/insight", append(_analyzestatsinsightMw(), ai.AnalyzeStatsInsight)...)
+				}
+				{
+					_sync := _ai.Group("/sync", _syncMw()...)
+					_sync.POST("/failure", append(_diagnosesyncfailureMw(), ai.DiagnoseSyncFailure)...)
+				}
+				{
+					_webhook := _ai.Group("/webhook", _webhookMw()...)
+					_webhook.POST("/failure", append(_analyzewebhookfailureMw(), ai.AnalyzeWebhookFailure)...)
+				}
 			}
 		}
 	}

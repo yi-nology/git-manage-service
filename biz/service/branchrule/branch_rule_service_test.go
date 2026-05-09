@@ -3,11 +3,11 @@ package branchrule
 import (
 	"testing"
 
-	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	settingsModel "github.com/yi-nology/git-manage-service/biz/model/settings"
 )
 
-func TestBranchRuleToDTO(t *testing.T) {
+func TestBranchRuleToProto(t *testing.T) {
 	rule := po.BranchRule{
 		ID:                1,
 		Prefix:            "feature/",
@@ -22,30 +22,30 @@ func TestBranchRuleToDTO(t *testing.T) {
 	rule.SetSourceBranches([]string{"develop"})
 	rule.SetTargetBranches([]string{"develop"})
 
-	dto := BranchRuleToDTO(rule)
-	if dto.Prefix != "feature/" {
-		t.Errorf("expected feature/, got %s", dto.Prefix)
+	proto := branchRuleToProto(rule)
+	if proto.GetPrefix() != "feature/" {
+		t.Errorf("expected feature/, got %s", proto.GetPrefix())
 	}
-	if dto.DisplayName != "功能分支" {
-		t.Errorf("expected 功能分支, got %s", dto.DisplayName)
+	if proto.GetDisplayName() != "功能分支" {
+		t.Errorf("expected 功能分支, got %s", proto.GetDisplayName())
 	}
-	if !dto.RequireTaskID {
-		t.Error("expected RequireTaskID true")
+	if !proto.GetRequireTaskId() {
+		t.Error("expected RequireTaskId true")
 	}
-	if len(dto.SourceBranches) != 1 || dto.SourceBranches[0] != "develop" {
-		t.Errorf("expected [develop], got %v", dto.SourceBranches)
+	if len(proto.SourceBranches) != 1 || proto.SourceBranches[0] != "develop" {
+		t.Errorf("expected [develop], got %v", proto.SourceBranches)
 	}
 }
 
-func TestDtoToRules(t *testing.T) {
-	dtos := []api.BranchRuleDTO{
+func TestProtoToRules(t *testing.T) {
+	protos := []*settingsModel.BranchRule{
 		{
 			Prefix:            "feature/",
 			DisplayName:       "功能分支",
 			SourceBranches:    []string{"develop"},
 			TargetBranches:    []string{"develop"},
-			RequireTaskID:     true,
-			TaskIDPattern:     "[A-Z]+-\\d+",
+			RequireTaskId:     true,
+			TaskIdPattern:     "[A-Z]+-\\d+",
 			AutoDeleteOnMerge: true,
 		},
 		{
@@ -53,12 +53,12 @@ func TestDtoToRules(t *testing.T) {
 			DisplayName:       "紧急修复",
 			SourceBranches:    []string{"main"},
 			TargetBranches:    []string{"main"},
-			RequireTaskID:     true,
-			TaskIDPattern:     "[A-Z]+-\\d+",
+			RequireTaskId:     true,
+			TaskIdPattern:     "[A-Z]+-\\d+",
 			RequireCodeReview: true,
 		},
 	}
-	rules := dtoToRules(dtos)
+	rules := protoToRules(protos)
 	if len(rules) != 2 {
 		t.Fatalf("expected 2 rules, got %d", len(rules))
 	}
@@ -77,31 +77,31 @@ func TestDtoToRules(t *testing.T) {
 	}
 }
 
-func TestDtoToRules_Empty(t *testing.T) {
-	rules := dtoToRules(nil)
+func TestProtoToRules_Empty(t *testing.T) {
+	rules := protoToRules(nil)
 	if len(rules) != 0 {
 		t.Errorf("expected 0 rules for nil input, got %d", len(rules))
 	}
 }
 
-func TestGetDefaultRuleSetDTO(t *testing.T) {
-	dto := getDefaultRuleSetDTO()
+func TestGetDefaultRuleSet(t *testing.T) {
+	dto := getDefaultRuleSet()
 	if !dto.Enabled {
 		t.Error("expected default rules to be enabled")
 	}
 	if len(dto.Rules) == 0 {
 		t.Error("expected non-empty default rules")
 	}
-	if len(dto.Protected) == 0 {
+	if len(dto.ProtectedBranches) == 0 {
 		t.Error("expected non-empty protected branches")
 	}
 }
 
-func TestGetDefaultRuleSetDTO_ContainsStandardPrefixes(t *testing.T) {
-	dto := getDefaultRuleSetDTO()
+func TestGetDefaultRuleSet_ContainsStandardPrefixes(t *testing.T) {
+	dto := getDefaultRuleSet()
 	prefixes := map[string]bool{}
 	for _, r := range dto.Rules {
-		prefixes[r.Prefix] = true
+		prefixes[r.GetPrefix()] = true
 	}
 	expected := []string{"feature/", "bugfix/", "hotfix/", "release/"}
 	for _, p := range expected {
@@ -111,10 +111,10 @@ func TestGetDefaultRuleSetDTO_ContainsStandardPrefixes(t *testing.T) {
 	}
 }
 
-func TestGetDefaultRuleSetDTO_ProtectedBranches(t *testing.T) {
-	dto := getDefaultRuleSetDTO()
+func TestGetDefaultRuleSet_ProtectedBranches(t *testing.T) {
+	dto := getDefaultRuleSet()
 	protected := map[string]bool{}
-	for _, p := range dto.Protected {
+	for _, p := range dto.ProtectedBranches {
 		protected[p] = true
 	}
 	expected := []string{"main", "master", "develop"}
@@ -125,7 +125,7 @@ func TestGetDefaultRuleSetDTO_ProtectedBranches(t *testing.T) {
 	}
 }
 
-func TestRuleSetToDTO(t *testing.T) {
+func TestRuleSetToProto(t *testing.T) {
 	set := &po.BranchRuleSet{
 		Enabled: true,
 	}
@@ -134,48 +134,52 @@ func TestRuleSetToDTO(t *testing.T) {
 	set.SetRules([]po.BranchRule{rule})
 	set.SetProtected([]string{"main"})
 
-	dto := ruleSetToDTO(set)
-	if !dto.Enabled {
+	proto := ruleSetToProto(set)
+	if !proto.Enabled {
 		t.Error("expected enabled")
 	}
-	if len(dto.Rules) != 1 {
-		t.Errorf("expected 1 rule, got %d", len(dto.Rules))
+	if len(proto.Rules) != 1 {
+		t.Errorf("expected 1 rule, got %d", len(proto.Rules))
 	}
-	if dto.Rules[0].Prefix != "feature/" {
-		t.Errorf("expected feature/, got %s", dto.Rules[0].Prefix)
+	if proto.Rules[0].GetPrefix() != "feature/" {
+		t.Errorf("expected feature/, got %s", proto.Rules[0].GetPrefix())
 	}
-	if len(dto.Protected) != 1 || dto.Protected[0] != "main" {
-		t.Errorf("expected [main], got %v", dto.Protected)
-	}
-}
-
-func TestRulesToDTOs_Empty(t *testing.T) {
-	dtos := rulesToDTOs(nil)
-	if len(dtos) != 0 {
-		t.Errorf("expected 0 DTOs, got %d", len(dtos))
+	if len(proto.ProtectedBranches) != 1 || proto.ProtectedBranches[0] != "main" {
+		t.Errorf("expected [main], got %v", proto.ProtectedBranches)
 	}
 }
 
-func TestRoundTrip_DTOToRulesToDTO(t *testing.T) {
-	original := []api.BranchRuleDTO{
+func TestRulesToProtos_Empty(t *testing.T) {
+	protos := rulesToProtos(nil)
+	if len(protos) != 0 {
+		t.Errorf("expected 0 protos, got %d", len(protos))
+	}
+}
+
+func TestRoundTrip_ProtoToRulesToProto(t *testing.T) {
+	original := []*settingsModel.BranchRule{
 		{
 			Prefix:            "feature/",
 			DisplayName:       "功能分支",
 			SourceBranches:    []string{"develop"},
 			TargetBranches:    []string{"develop"},
-			RequireTaskID:     true,
-			TaskIDPattern:     "[A-Z]+-\\d+",
+			RequireTaskId:     true,
+			TaskIdPattern:     "[A-Z]+-\\d+",
 			AutoDeleteOnMerge: true,
 			AllowDirectPush:   false,
 			RequireCodeReview: false,
 		},
 	}
-	rules := dtoToRules(original)
-	dtos := rulesToDTOs(rules)
-	if dtos[0].Prefix != original[0].Prefix {
-		t.Errorf("round-trip prefix mismatch: %s vs %s", dtos[0].Prefix, original[0].Prefix)
+	rules := protoToRules(original)
+	protos := rulesToProtos(rules)
+	if protos[0].Prefix != original[0].Prefix {
+		t.Errorf("round-trip prefix mismatch: %s vs %s", protos[0].Prefix, original[0].Prefix)
 	}
-	if dtos[0].DisplayName != original[0].DisplayName {
-		t.Errorf("round-trip displayName mismatch: %s vs %s", dtos[0].DisplayName, original[0].DisplayName)
+	if protos[0].DisplayName != original[0].DisplayName {
+		t.Errorf("round-trip displayName mismatch: %s vs %s", protos[0].DisplayName, original[0].DisplayName)
 	}
 }
+
+// Helper functions
+func strPtr(s string) *string { return &s }
+func boolPtr(b bool) *bool    { return &b }

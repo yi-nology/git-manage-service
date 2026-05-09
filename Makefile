@@ -173,7 +173,7 @@ test:
 	go test -v ./...
 
 test-unit:
-	go list ./... | grep -v '/tests/integration$$' | xargs go test -v -short
+	go list ./... | grep -v '/tests/integration$$' | grep -v 'cmd/desktop' | grep -v '/frontend/dist' | xargs go test -v -short
 
 test-integration:
 	go test -v ./tests/integration -count=1 -timeout=2m

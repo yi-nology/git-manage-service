@@ -194,3 +194,35 @@ func FixAuthor(ctx context.Context, c *app.RequestContext) {
 	}
 	response.Success(c, api.MaintenanceTaskResponse{TaskID: taskID})
 }
+
+// AuthorAI .
+// @router /api/v1/repo/:repo_key/author/ai [POST]
+func AuthorAI(ctx context.Context, c *app.RequestContext) {
+	var err error
+	var req author.AuthorAIRequest
+	err = c.BindAndValidate(&req)
+	if err != nil {
+		c.String(consts.StatusBadRequest, err.Error())
+		return
+	}
+
+	resp := new(author.AuthorAIResponse)
+
+	c.JSON(consts.StatusOK, resp)
+}
+
+// AuthorChat .
+// @router /api/v1/repo/:repo_key/author/chat [POST]
+func AuthorChat(ctx context.Context, c *app.RequestContext) {
+	var err error
+	var req author.AuthorChatRequest
+	err = c.BindAndValidate(&req)
+	if err != nil {
+		c.String(consts.StatusBadRequest, err.Error())
+		return
+	}
+
+	resp := new(author.AuthorChatResponse)
+
+	c.JSON(consts.StatusOK, resp)
+}

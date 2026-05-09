@@ -77,3 +77,63 @@ func _diagnosesyncfailureMw() []app.HandlerFunc {
 func _analyzewebhookfailureMw() []app.HandlerFunc {
 	return nil
 }
+
+func _reviewMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _auditMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _branchMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _commitMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _conflictMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _patchMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _providerMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _repoMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _specMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _statsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _syncMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _webhookMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

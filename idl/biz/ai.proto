@@ -1,5 +1,5 @@
 // idl/biz/ai.proto - AI 相关 API 定义
-syntax = "proto2";
+syntax = "proto3";
 
 package ai;
 
@@ -185,11 +185,14 @@ message AuditSummaryRequest {
 // Stats 洞察
 message StatsInsightRequest {
     map<string, string> stats = 1;
-    message TrendsEntry {
-        repeated int32 value = 1;
-    }
-    map<string, TrendsEntry> trends = 2;
+    repeated StatsTrends trends = 2;
     map<string, int32> author_activity = 3;
+}
+
+// Stats 趋势
+message StatsTrends {
+    string key = 1;
+    repeated int32 values = 2;
 }
 
 // Webhook 失败
