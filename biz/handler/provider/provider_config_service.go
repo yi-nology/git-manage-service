@@ -9,9 +9,24 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	providerModel "github.com/yi-nology/git-manage-service/biz/model/provider"
 	"github.com/yi-nology/git-manage-service/biz/service/provider"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )
+
+func toProtoProviderConfig(cfg *po.ProviderConfig) *providerModel.ProviderConfig {
+	return &providerModel.ProviderConfig{
+		Id:            uint64(cfg.ID),
+		Name:          cfg.Name,
+		Platform:      cfg.Platform,
+		BaseUrl:       cfg.BaseURL,
+		CredentialId:  uint64(cfg.CredentialID),
+		WebhookSecret: cfg.WebhookSecret,
+		SkipTls:       cfg.SkipTLS,
+		CreatedAt:     cfg.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:     cfg.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
 
 func List(ctx context.Context, c *app.RequestContext) {
 	dao := db.NewProviderConfigDAO()
@@ -21,9 +36,9 @@ func List(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	credDAO := db.NewCredentialDAO()
-	result := make([]api.ProviderConfigDTO, 0, len(configs))
+	result := make([]*providerModel.ProviderConfig, 0, len(configs))
 	for _, cfg := range configs {
-		dto := toProviderConfigDTO(&cfg)
+		dto := toProtoProviderConfig(&cfg)
 		if cfg.CredentialID > 0 {
 			if cred, err := credDAO.FindByID(cfg.CredentialID); err == nil {
 				dto.CredentialName = cred.Name
@@ -46,7 +61,7 @@ func Get(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.NotFound(c, "Provider config not found")
 		return
 	}
-	dto := toProviderConfigDTO(cfg)
+	dto := toProtoProviderConfig(cfg)
 	if cfg.CredentialID > 0 {
 		credDAO := db.NewCredentialDAO()
 		if cred, err := credDAO.FindByID(cfg.CredentialID); err == nil {
@@ -90,7 +105,7 @@ func Create(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	c.Set("audit_details", map[string]string{"name": req.Name, "platform": req.Platform})
-	pkgresponse.Success(c, toProviderConfigDTO(cfg))
+	pkgresponse.Success(c, toProtoProviderConfig(cfg))
 }
 
 func Update(ctx context.Context, c *app.RequestContext) {
@@ -135,7 +150,7 @@ func Update(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	provider.GetManager().Invalidate(id)
-	pkgresponse.Success(c, toProviderConfigDTO(cfg))
+	pkgresponse.Success(c, toProtoProviderConfig(cfg))
 }
 
 func Delete(ctx context.Context, c *app.RequestContext) {

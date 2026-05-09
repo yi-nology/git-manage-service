@@ -17,6 +17,9 @@ message ProviderConfig {
   bool skip_tls = 7;
   string created_at = 8;
   string updated_at = 9;
+  string credential_name = 10;
+  string webhook_endpoint = 11;
+  bool has_webhook_secret = 12;
 }
 
 message RemoteRepo {
