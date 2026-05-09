@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"log"
 
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -78,18 +79,18 @@ func (s *AuthService) ResolveAuthFromParams(authType, authKey, authSecret string
 
 // resolveDBSSHKey 从数据库加载SSH密钥并创建认证方法
 func (s *AuthService) resolveDBSSHKey(sshKeyID uint) (transport.AuthMethod, error) {
-	// 从数据库加载密钥
-	sshKey, err := s.sshKeyDAO.FindByID(sshKeyID)
+	// 使用 GetDBSSHKeyContent 获取解密归一化后的私钥
+	privateKey, _, err := s.GetDBSSHKeyContent(sshKeyID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load SSH key from database: %w", err)
 	}
 
-	if sshKey.PrivateKey == "" {
+	if privateKey == "" {
 		return nil, fmt.Errorf("SSH key %d has no private key content", sshKeyID)
 	}
 
 	// 使用私钥内容创建认证
-	publicKeys, err := ssh.NewPublicKeys("git", []byte(sshKey.PrivateKey), sshKey.Passphrase)
+	publicKeys, err := ssh.NewPublicKeys("git", []byte(privateKey), "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse SSH private key: %w", err)
 	}
@@ -138,6 +139,11 @@ func (s *AuthService) GetDBSSHKeyContent(sshKeyID uint) (privateKey, passphrase 
 func normalizePrivateKey(privateKeyPEM, passphrase string) (string, error) {
 	// 如果没有密码，直接返回原始 PEM（已经是正确格式）
 	if passphrase == "" {
+		if len(privateKeyPEM) > 50 {
+			log.Printf("[DEBUG] normalizePrivateKey: no passphrase, key starts with: %s", privateKeyPEM[:50])
+		} else {
+			log.Printf("[DEBUG] normalizePrivateKey: no passphrase, key: %s", privateKeyPEM)
+		}
 		return privateKeyPEM, nil
 	}
 

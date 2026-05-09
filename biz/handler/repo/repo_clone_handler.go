@@ -180,41 +180,47 @@ func Fetch(ctx context.Context, c *app.RequestContext) {
 	}
 
 	var errors []string
-	for _, remote := range remotes {
+	for _, remoteName := range remotes {
+		remoteURL, urlErr := gitSvc.GetRemoteURL(repo.Path, remoteName)
+		if urlErr != nil {
+			errors = append(errors, fmt.Sprintf("%s: failed to get URL: %v", remoteName, urlErr))
+			continue
+		}
+
 		authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
 			repo.RemoteCredentials,
 			repo.DefaultCredentialID,
 			repo.RemoteAuths,
-			remote,
+			remoteName,
 			repo.AuthType, repo.AuthKey, repo.AuthSecret,
 		)
 
 		if resolveErr != nil {
-			errors = append(errors, fmt.Sprintf("%s: failed to resolve auth: %v", remote, resolveErr))
+			errors = append(errors, fmt.Sprintf("%s: failed to resolve auth: %v", remoteName, resolveErr))
 			continue
 		}
 
 		var fetchErr error
 		if isDBKey {
-			credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, remote)
+			credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, remoteName)
 			if credID > 0 {
 				privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
 				if keyErr != nil {
-					errors = append(errors, fmt.Sprintf("%s: failed to load SSH key: %v", remote, keyErr))
+					errors = append(errors, fmt.Sprintf("%s: failed to load SSH key: %v", remoteName, keyErr))
 					continue
 				}
-				fetchErr = gitSvc.FetchWithDBKey(repo.Path, remote, privateKey, passphrase, nil)
+				fetchErr = gitSvc.FetchWithDBKey(repo.Path, remoteURL, privateKey, passphrase, nil)
 			} else {
-				fetchErr = gitSvc.Fetch(repo.Path, remote, nil)
+				fetchErr = gitSvc.Fetch(repo.Path, remoteName, nil)
 			}
 		} else if authMethod != nil {
-			fetchErr = gitSvc.Fetch(repo.Path, remote, nil)
+			fetchErr = gitSvc.Fetch(repo.Path, remoteName, nil)
 		} else {
-			fetchErr = gitSvc.Fetch(repo.Path, remote, nil)
+			fetchErr = gitSvc.Fetch(repo.Path, remoteName, nil)
 		}
 
 		if fetchErr != nil && fetchErr.Error() != "already up-to-date" {
-			errors = append(errors, fmt.Sprintf("%s: %v", remote, fetchErr))
+			errors = append(errors, fmt.Sprintf("%s: %v", remoteName, fetchErr))
 		}
 	}
 

@@ -1,6 +1,8 @@
 package po
 
 import (
+	"log"
+
 	"github.com/yi-nology/git-manage-service/biz/utils"
 	"gorm.io/gorm"
 )
@@ -48,17 +50,21 @@ func (s *SSHKey) BeforeSave(tx *gorm.DB) (err error) {
 func (s *SSHKey) AfterFind(tx *gorm.DB) (err error) {
 	// 解密私钥
 	if s.PrivateKey != "" {
-		dec, err := utils.Decrypt(s.PrivateKey)
-		if err == nil {
+		dec, decErr := utils.Decrypt(s.PrivateKey)
+		if decErr == nil {
 			s.PrivateKey = dec
+		} else {
+			log.Printf("[WARN] Failed to decrypt SSH private key %d: %v", s.ID, decErr)
 		}
 	}
 
 	// 解密密码短语
 	if s.Passphrase != "" {
-		dec, err := utils.Decrypt(s.Passphrase)
-		if err == nil {
+		dec, decErr := utils.Decrypt(s.Passphrase)
+		if decErr == nil {
 			s.Passphrase = dec
+		} else {
+			log.Printf("[WARN] Failed to decrypt SSH passphrase %d: %v", s.ID, decErr)
 		}
 	}
 
