@@ -113,7 +113,7 @@ func Create(ctx context.Context, c *app.RequestContext) {
 	skipRules := string(c.GetHeader("X-Skip-Branch-Rules")) == "true"
 	validation, err := branchrule.ValidateBranchName(req.GetRepoKey(), req.GetName(), req.GetBaseRef(), skipRules)
 	if err == nil && !validation.Valid {
-		response.BadRequest(c, fmt.Sprintf("分支规则校验失败: %s", validation.Errors[0].Message))
+		response.BadRequest(c, fmt.Sprintf("分支规则校验失败: %s", validation.Message))
 		return
 	}
 
