@@ -31,15 +31,35 @@ func Push(ctx context.Context, c *app.RequestContext) {
 
 	var errors []string
 	for _, remote := range req.GetRemotes() {
-		authInfo := auth.GetAuthInfoForRemote(repo.RemoteAuths, remote, repo.AuthType, repo.AuthKey, repo.AuthSecret)
+		authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
+			repo.RemoteCredentials,
+			repo.DefaultCredentialID,
+			repo.RemoteAuths,
+			remote,
+			repo.AuthType, repo.AuthKey, repo.AuthSecret,
+		)
 
-		if authInfo.Type == "ssh" && authInfo.Source == "database" && authInfo.SSHKeyID > 0 {
-			privateKey, passphrase, err := authSvc.GetDBSSHKeyContent(authInfo.SSHKeyID)
-			if err != nil {
-				errors = append(errors, fmt.Sprintf("%s: failed to load SSH key: %v", remote, err))
-				continue
+		if resolveErr != nil {
+			errors = append(errors, fmt.Sprintf("%s: failed to resolve auth: %v", remote, resolveErr))
+			continue
+		}
+
+		if isDBKey {
+			credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, remote)
+			if credID > 0 {
+				privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
+				if keyErr != nil {
+					errors = append(errors, fmt.Sprintf("%s: failed to load SSH key: %v", remote, keyErr))
+					continue
+				}
+				if err := gitSvc.PushBranchWithDBKey(repo.Path, remote, req.GetName(), privateKey, passphrase); err != nil {
+					errors = append(errors, fmt.Sprintf("%s: %v", remote, err))
+				}
+			} else {
+				errors = append(errors, fmt.Sprintf("%s: no credential configured", remote))
 			}
-			if err := gitSvc.PushBranchWithDBKey(repo.Path, remote, req.GetName(), privateKey, passphrase); err != nil {
+		} else if authMethod != nil {
+			if err := gitSvc.PushBranchWithAuth(repo.Path, remote, req.GetName(), authMethod); err != nil {
 				errors = append(errors, fmt.Sprintf("%s: %v", remote, err))
 			}
 		} else {
@@ -103,21 +123,34 @@ func Pull(ctx context.Context, c *app.RequestContext) {
 		remoteBranch = req.GetName()
 	}
 
-	authInfo := auth.GetAuthInfoForRemote(repo.RemoteAuths, upstreamRemote, repo.AuthType, repo.AuthKey, repo.AuthSecret)
+	authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
+		repo.RemoteCredentials,
+		repo.DefaultCredentialID,
+		repo.RemoteAuths,
+		upstreamRemote,
+		repo.AuthType, repo.AuthKey, repo.AuthSecret,
+	)
+	if resolveErr != nil {
+		response.InternalServerError(c, fmt.Sprintf("failed to resolve auth: %v", resolveErr))
+		return
+	}
 
-	useDBKey := authInfo.Type == "ssh" && authInfo.Source == "database" && authInfo.SSHKeyID > 0
 	var privateKey, passphrase string
-	if useDBKey {
-		privateKey, passphrase, err = authSvc.GetDBSSHKeyContent(authInfo.SSHKeyID)
-		if err != nil {
-			response.InternalServerError(c, fmt.Sprintf("failed to load SSH key: %v", err))
-			return
+	if isDBKey {
+		credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, upstreamRemote)
+		if credID > 0 {
+			var keyErr error
+			privateKey, passphrase, keyErr = authSvc.GetCredentialKeyContent(credID)
+			if keyErr != nil {
+				response.InternalServerError(c, fmt.Sprintf("failed to load SSH key: %v", keyErr))
+				return
+			}
 		}
 	}
 
 	if !isCurrent {
 		var updateErr error
-		if useDBKey {
+		if isDBKey {
 			updateErr = gitSvc.FetchBranchWithDBKey(repo.Path, upstreamRemote, remoteBranch, privateKey, passphrase)
 		} else {
 			updateErr = gitSvc.UpdateBranchFastForward(repo.Path, upstreamRemote, req.GetName(), remoteBranch)
@@ -132,8 +165,10 @@ func Pull(ctx context.Context, c *app.RequestContext) {
 	}
 
 	var pullErr error
-	if useDBKey {
+	if isDBKey {
 		pullErr = gitSvc.PullBranchWithDBKey(repo.Path, upstreamRemote, req.GetName(), privateKey, passphrase)
+	} else if authMethod != nil {
+		pullErr = gitSvc.PullBranchWithAuth(repo.Path, upstreamRemote, req.GetName(), authMethod)
 	} else {
 		pullErr = gitSvc.PullBranch(repo.Path, upstreamRemote, req.GetName())
 	}
