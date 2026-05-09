@@ -229,6 +229,7 @@ import type { SpecFileNode, LintIssue } from '@/types/spec'
 import AIChatPanel from './AIChatPanel.vue'
 import RuleManagerDialog from './RuleManagerDialog.vue'
 import FormatPreviewDialog from './FormatPreviewDialog.vue'
+import '../../spec-editor.css'
 
 interface Props { repoKey: string }
 const props = defineProps<Props>()
