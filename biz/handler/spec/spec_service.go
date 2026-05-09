@@ -11,7 +11,6 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
-	common "github.com/yi-nology/git-manage-service/biz/model/common"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	spec "github.com/yi-nology/git-manage-service/biz/model/spec"
 	gitSvc "github.com/yi-nology/git-manage-service/biz/service/git"

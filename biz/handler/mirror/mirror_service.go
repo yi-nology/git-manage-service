@@ -7,7 +7,6 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
-	common "github.com/yi-nology/git-manage-service/biz/model/common"
 	mirrorModel "github.com/yi-nology/git-manage-service/biz/model/mirror"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	mirrorSvc "github.com/yi-nology/git-manage-service/biz/service/mirror"
