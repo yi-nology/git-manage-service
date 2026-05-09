@@ -8,7 +8,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model/api"
+	specModel "github.com/yi-nology/git-manage-service/biz/model/spec"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -34,8 +34,8 @@ func GetSpecTree(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, tree)
 }
 
-func buildSpecTree(repoPath string) ([]api.SpecFile, error) {
-	nodes := make(map[string]*api.SpecFile)
+func buildSpecTree(repoPath string) ([]*specModel.SpecFile, error) {
+	nodes := make(map[string]*specModel.SpecFile)
 
 	err := filepath.Walk(repoPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -49,12 +49,17 @@ func buildSpecTree(repoPath string) ([]api.SpecFile, error) {
 		relPath, _ := filepath.Rel(repoPath, path)
 
 		if strings.HasSuffix(info.Name(), ".spec") || info.IsDir() {
-			nodes[relPath] = &api.SpecFile{
-				Name:    info.Name(),
-				Path:    relPath,
-				IsDir:   info.IsDir(),
-				Size:    info.Size(),
-				ModTime: info.ModTime(),
+			name := info.Name()
+			p := relPath
+			isDir := info.IsDir()
+			size := info.Size()
+			modTime := info.ModTime().Format("2006-01-02T15:04:05Z")
+			nodes[relPath] = &specModel.SpecFile{
+				Name:    &name,
+				Path:    &p,
+				IsDir:   &isDir,
+				Size:    &size,
+				ModTime: &modTime,
 			}
 		}
 
@@ -65,7 +70,7 @@ func buildSpecTree(repoPath string) ([]api.SpecFile, error) {
 		return nil, err
 	}
 
-	childrenMap := make(map[string][]*api.SpecFile)
+	childrenMap := make(map[string][]*specModel.SpecFile)
 
 	for path, node := range nodes {
 		if path == "." {
@@ -80,8 +85,8 @@ func buildSpecTree(repoPath string) ([]api.SpecFile, error) {
 		childrenMap[parentPath] = append(childrenMap[parentPath], node)
 	}
 
-	var buildTree func(path string) *api.SpecFile
-	buildTree = func(path string) *api.SpecFile {
+	var buildTree func(path string) *specModel.SpecFile
+	buildTree = func(path string) *specModel.SpecFile {
 		node := nodes[path]
 		if node == nil {
 			return nil
@@ -89,10 +94,9 @@ func buildSpecTree(repoPath string) ([]api.SpecFile, error) {
 
 		children := childrenMap[path]
 		if len(children) > 0 {
-			node.Children = make([]api.SpecFile, 0, len(children))
+			node.Children = children
 			for _, child := range children {
-				buildTree(child.Path)
-				node.Children = append(node.Children, *child)
+				buildTree(*child.Path)
 			}
 		}
 
@@ -101,7 +105,7 @@ func buildSpecTree(repoPath string) ([]api.SpecFile, error) {
 
 	root := buildTree(".")
 	if root == nil {
-		return []api.SpecFile{}, nil
+		return []*specModel.SpecFile{}, nil
 	}
 
 	filterTree(root)
@@ -110,10 +114,10 @@ func buildSpecTree(repoPath string) ([]api.SpecFile, error) {
 		return root.Children, nil
 	}
 
-	return []api.SpecFile{}, nil
+	return []*specModel.SpecFile{}, nil
 }
 
-func createDirChain(pathMap map[string]*api.SpecFile, path string, repoPath string) *api.SpecFile {
+func createDirChain(pathMap map[string]*specModel.SpecFile, path string, repoPath string) *specModel.SpecFile {
 	if path == "." || path == "" {
 		return pathMap["."]
 	}
@@ -127,11 +131,15 @@ func createDirChain(pathMap map[string]*api.SpecFile, path string, repoPath stri
 		return nil
 	}
 
-	dir := &api.SpecFile{
-		Name:    filepath.Base(path),
-		Path:    path,
-		IsDir:   true,
-		ModTime: info.ModTime(),
+	name := filepath.Base(path)
+	p := path
+	isDir := true
+	modTime := info.ModTime().Format("2006-01-02T15:04:05Z")
+	dir := &specModel.SpecFile{
+		Name:    &name,
+		Path:    &p,
+		IsDir:   &isDir,
+		ModTime: &modTime,
 	}
 	pathMap[path] = dir
 
@@ -142,23 +150,23 @@ func createDirChain(pathMap map[string]*api.SpecFile, path string, repoPath stri
 
 	parent := createDirChain(pathMap, parentPath, repoPath)
 	if parent != nil {
-		parent.Children = append(parent.Children, *dir)
+		parent.Children = append(parent.Children, dir)
 	}
 
 	return dir
 }
 
-func filterTree(node *api.SpecFile) bool {
-	if !node.IsDir {
-		return strings.HasSuffix(node.Name, ".spec")
+func filterTree(node *specModel.SpecFile) bool {
+	if !*node.IsDir {
+		return strings.HasSuffix(*node.Name, ".spec")
 	}
 
 	var hasSpecFile bool
-	var filteredChildren []api.SpecFile
+	var filteredChildren []*specModel.SpecFile
 
-	for i := range node.Children {
-		if filterTree(&node.Children[i]) {
-			filteredChildren = append(filteredChildren, node.Children[i])
+	for _, child := range node.Children {
+		if filterTree(child) {
+			filteredChildren = append(filteredChildren, child)
 			hasSpecFile = true
 		}
 	}
