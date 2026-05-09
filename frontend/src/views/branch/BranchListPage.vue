@@ -9,20 +9,7 @@
       </template>
     </PageHeader>
 
-    <div class="tab-bar">
-      <div
-        class="tab-item"
-        :class="{ active: activeTab === 'local' }"
-        @click="handleTabChange('local')"
-      >本地分支</div>
-      <div
-        v-for="remoteName in remoteNames"
-        :key="remoteName"
-        class="tab-item"
-        :class="{ active: activeTab === `remote-${remoteName}` }"
-        @click="handleTabChange(`remote-${remoteName}`)"
-      >远程分支 - {{ remoteName }}</div>
-    </div>
+    <TabBar :tabs="branchTabs" v-model="activeTab" style="underline" />
 
     <form @submit.prevent="loadBranches">
       <SearchBar v-model="searchQuery" placeholder="搜索分支名称..." />
@@ -212,6 +199,8 @@ import type { TableColumn } from '@/components/common/DataTable.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import ActionPill from '@/components/common/ActionPill.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import TabBar from '@/components/common/TabBar.vue'
+import type { TabItem } from '@/components/common/TabBar.vue'
 import CreateTagDialog from '@/components/branch/CreateTagDialog.vue'
 
 const route = useRoute()
@@ -226,6 +215,14 @@ const total = ref(0)
 const activeTab = ref('local')
 const searchQuery = ref('')
 const remoteNames = ref<string[]>([])
+
+const branchTabs = computed<TabItem[]>(() => {
+  const tabs: TabItem[] = [{ key: 'local', label: '本地分支' }]
+  for (const name of remoteNames.value) {
+    tabs.push({ key: `remote-${name}`, label: `远程分支 - ${name}` })
+  }
+  return tabs
+})
 
 const showCreateDialog = ref(false)
 const createForm = ref({ name: '', base_ref: '' })
@@ -546,36 +543,9 @@ function handleRemoteBranchCommand(command: string, row: BranchInfo) {
 
 <style scoped>
 .branch-list-page {
-  padding: var(--spacing-xl);
   display: flex;
   flex-direction: column;
   gap: 20px;
-  min-height: 100vh;
-  background: var(--bg-color);
-}
-
-.tab-bar {
-  display: flex;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.tab-item {
-  padding: 10px 20px;
-  font-size: 14px;
-  color: var(--text-color-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  border-bottom: 2px solid transparent;
-}
-
-.tab-item:hover {
-  color: var(--primary-color);
-}
-
-.tab-item.active {
-  color: var(--primary-color);
-  font-weight: 500;
-  border-bottom-color: var(--primary-color);
 }
 
 .branch-name-cell {

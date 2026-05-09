@@ -49,7 +49,7 @@
             </div>
             <input v-model="remote.fetch_url" :placeholder="remoteUrlModes[index] === 'ssh' ? 'git@host:user/repo.git' : 'https://host/repo.git'" class="field-input remote-url-input" @blur="validateRemoteUrl(index)" />
             <button class="icon-btn icon-btn--primary" @click="testEditRemote(index)" :disabled="remote._testing" title="测试连接">
-              <el-icon><Connection /><span v-if="remote._testing" class="loading-spinner-sm"></span></el-icon>
+              <el-icon><Connection /><span v-if="remote._testing" class="btn-spinner btn-spinner--sm"></span></el-icon>
             </button>
             <button class="icon-btn icon-btn--danger" @click="removeEditRemote(index)" title="删除">
               <el-icon><Delete /></el-icon>
@@ -556,18 +556,4 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-.loading-spinner-sm {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-left: 4px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 </style>

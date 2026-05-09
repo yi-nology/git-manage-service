@@ -47,7 +47,7 @@
             <input v-model="testUrl" placeholder="git@github.com:user/repo.git" class="field-input" />
           </div>
           <button class="test-btn" @click="handleTest" :disabled="!testCredId || !testUrl">
-            <span v-if="testing" class="loading-spinner-sm"></span>
+            <span v-if="testing" class="btn-spinner btn-spinner--sm"></span>
             <span v-else>测试连接</span>
           </button>
         </div>
@@ -245,21 +245,6 @@ onMounted(() => {
 .test-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.loading-spinner-sm {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .test-result {

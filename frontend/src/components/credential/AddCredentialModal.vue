@@ -147,7 +147,7 @@
           取消
         </button>
         <button class="btn btn-primary" @click="handleSubmit" :disabled="loading || !canSubmit">
-          <span v-if="loading" class="loading-spinner"></span>
+          <span v-if="loading" class="btn-spinner"></span>
           <span v-else>{{ isEdit ? '保存修改' : '添加凭证' }}</span>
         </button>
       </div>
@@ -430,18 +430,4 @@ async function handleSubmit() {
   cursor: not-allowed;
 }
 
-.loading-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 </style>
