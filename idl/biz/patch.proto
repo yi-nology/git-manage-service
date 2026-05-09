@@ -89,6 +89,25 @@ message PatchInfo {
     optional string path = 4;
     optional int64 size = 5;
     optional string created_at = 6;
+    optional string mod_time = 7;
+    optional int32 sequence = 8;
+    optional bool is_applied = 9;
+    optional bool can_apply = 10;
+    optional bool has_conflict = 11;
+}
+
+// Patch 统计信息
+message PatchStats {
+    optional string stat = 1;
+    optional bool can_apply = 2;
+    optional string error = 3;
+    optional string applied_commit = 4;
+}
+
+// Patch 统计响应
+message PatchStatsResponse {
+    optional common.BaseResponse base = 1;
+    optional PatchStats stats = 2;
 }
 
 // Patch 内容请求

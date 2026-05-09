@@ -7,9 +7,23 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	patchModel "github.com/yi-nology/git-manage-service/biz/model/patch"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
+
+func toProtoPatchInfo(name, path, modTime string, size int64, sequence int32, isApplied, canApply, hasConflict bool) *patchModel.PatchInfo {
+	return &patchModel.PatchInfo{
+		Name:        &name,
+		Path:        &path,
+		Size:        &size,
+		ModTime:     &modTime,
+		Sequence:    &sequence,
+		IsApplied:   &isApplied,
+		CanApply:    &canApply,
+		HasConflict: &hasConflict,
+	}
+}
 
 // GeneratePatch 生成 patch
 // @router /api/v1/patch/generate [POST]
@@ -111,18 +125,12 @@ func ListPatches(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var dtos []api.PatchInfoDTO
+	var dtos []*patchModel.PatchInfo
 	for _, p := range patches {
-		dtos = append(dtos, api.PatchInfoDTO{
-			Name:        p.Name,
-			Path:        p.Path,
-			Size:        p.Size,
-			ModTime:     p.ModTime,
-			Sequence:    p.Sequence,
-			IsApplied:   p.IsApplied,
-			CanApply:    p.CanApply,
-			HasConflict: p.HasConflict,
-		})
+		dtos = append(dtos, toProtoPatchInfo(
+			p.Name, p.Path, p.ModTime, p.Size,
+			int32(p.Sequence), p.IsApplied, p.CanApply, p.HasConflict,
+		))
 	}
 
 	response.Success(c, dtos)
@@ -234,12 +242,17 @@ func CheckPatch(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	dto := api.PatchStatsDTO{
-		Stat:     stats["stat"].(string),
-		CanApply: stats["can_apply"].(bool),
+	statStr, _ := stats["stat"].(string)
+	canApply, _ := stats["can_apply"].(bool)
+	var errStr string
+	if e, ok := stats["error"].(string); ok {
+		errStr = e
 	}
-	if errStr, ok := stats["error"].(string); ok {
-		dto.Error = errStr
+
+	dto := &patchModel.PatchStats{
+		Stat:     &statStr,
+		CanApply: &canApply,
+		Error:    &errStr,
 	}
 
 	response.Success(c, dto)
