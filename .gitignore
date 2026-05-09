@@ -44,13 +44,14 @@ server
 /build/
 
 # Database
-data/git_sync.db
+data/
 
 # Embedded frontend build
 pkg/embed/
 
 # Frontend build output
 /public
+.vite/
 
 # Docs
 docs/.vuepress/dist

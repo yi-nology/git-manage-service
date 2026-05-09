@@ -6,9 +6,6 @@
           <StatusBadge v-if="currentVersion" variant="success" :text="currentVersion" :show-dot="false" />
         </template>
          <template #actions>
-           <ActionPill variant="green" :icon="Share" @click="$router.push(`/local-repos/${repoKey}/branches`)">
-             分支管理
-           </ActionPill>
            <ActionPill variant="ai" :icon="MagicStick" @click="showAIPanel = !showAIPanel">AI 助手</ActionPill>
          </template>
       </PageHeader>
@@ -98,6 +95,10 @@
           :providers="availableProviders"
           @created="loadBindings"
         />
+
+        <div v-if="loadedTabs.branches" v-show="activeTab === 'branches'">
+          <BranchOverviewPanel :repo-key="repoKey" />
+        </div>
 
         <div v-if="loadedTabs.spec" v-show="activeTab === 'spec'" class="spec-full-area">
           <SpecEditor ref="specEditorRef" :repo-key="repoKey" />
@@ -213,6 +214,7 @@ import SectionTitle from '@/components/common/SectionTitle.vue'
 import AIPanel from '@/components/ai/AIPanel.vue'
 
 const FileExplorer = defineAsyncComponent(() => import('@/components/repo/FileExplorer.vue'))
+const BranchOverviewPanel = defineAsyncComponent(() => import('@/components/branch/BranchOverviewPanel.vue'))
 const CommitSearch = defineAsyncComponent(() => import('@/components/repo/CommitSearch.vue'))
 const StashManager = defineAsyncComponent(() => import('@/components/repo/StashManager.vue'))
 const SubmoduleManager = defineAsyncComponent(() => import('@/components/repo/SubmoduleManager.vue'))
@@ -256,6 +258,7 @@ const aiPanelRef = ref<{
 
 const sidebarItems = [
   { key: 'info', label: '基本信息', icon: InfoFilled },
+  { key: 'branches', label: '分支管理', icon: Share },
   { key: 'spec', label: 'Spec 编辑器', icon: Document },
   { key: 'stats', label: 'Git 有效提交度量', icon: DataAnalysis },
   { key: 'lines', label: '真实工程代码度量', icon: Files },
