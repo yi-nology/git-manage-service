@@ -33,6 +33,11 @@ jobs:
       - name: Download Go dependencies
         run: go mod download
 
+      - name: Prepare embed directory
+        run: |
+          mkdir -p pkg/embed/public
+          mkdir -p pkg/embed/docs
+
       - name: Run unit tests
         run: make test-unit
 

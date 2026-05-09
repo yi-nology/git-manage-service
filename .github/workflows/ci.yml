@@ -31,6 +31,11 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Prepare embed directory
+        run: |
+          mkdir -p pkg/embed/public
+          mkdir -p pkg/embed/docs
+
       - name: Run Go unit tests
         run: |
           go list ./... | grep -v '/tests/integration$' | grep -v 'cmd/desktop' | grep -v 'cmd/server' | grep -v '/frontend/dist' | grep -v 'pkg/embed' | xargs go test -v -short
