@@ -13,6 +13,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/handler/helper"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	statsModel "github.com/yi-nology/git-manage-service/biz/model/stats"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	statsSvc "github.com/yi-nology/git-manage-service/biz/service/stats"
 	"github.com/yi-nology/git-manage-service/pkg/response"
@@ -237,27 +238,27 @@ func GetLineStats(ctx context.Context, c *app.RequestContext) {
 // @router /api/v1/stats/lines/config [GET]
 func GetLineStatsConfig(ctx context.Context, c *app.RequestContext) {
 	// 返回默认配置
-	response.Success(c, api.LineStatsConfig{
-		ExcludeDirs:     statsSvc.DefaultExcludeDirs,
-		ExcludePatterns: statsSvc.DefaultExcludePatterns,
+	response.Success(c, &statsModel.LineStatsConfig{
+		ExcludedPaths:      statsSvc.DefaultExcludeDirs,
+		ExcludedExtensions: statsSvc.DefaultExcludePatterns,
 	})
 }
 
 // SaveLineStatsConfig .
 // @router /api/v1/stats/lines/config [POST]
 func SaveLineStatsConfig(ctx context.Context, c *app.RequestContext) {
-	var req api.LineStatsConfigRequest
+	var req statsModel.LineStatsConfigRequest
 	if err := c.BindAndValidate(&req); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
 
-	if req.RepoKey == "" {
+	if req.RepoKey == nil || *req.RepoKey == "" {
 		response.BadRequest(c, "repo_key is required")
 		return
 	}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
+	repo, err := db.NewRepoDAO().FindByKey(*req.RepoKey)
 	if err != nil {
 		response.NotFound(c, "repo not found")
 		return

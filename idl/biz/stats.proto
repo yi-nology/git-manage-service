@@ -91,11 +91,12 @@ message LanguageStats {
 
 // 代码行统计配置请求
 message LineStatsConfigRequest {
-    optional bool enable_submodule_scan = 1;
-    optional bool enable_comment_detection = 2;
-    repeated string excluded_paths = 3;
-    repeated string excluded_extensions = 4;
-    optional int64 max_file_size = 5;
+    optional string repo_key = 1 [(api.body) = "repo_key"];
+    optional bool enable_submodule_scan = 2;
+    optional bool enable_comment_detection = 3;
+    repeated string excluded_paths = 4;
+    repeated string excluded_extensions = 5;
+    optional int64 max_file_size = 6;
 }
 
 // 代码行统计配置响应
