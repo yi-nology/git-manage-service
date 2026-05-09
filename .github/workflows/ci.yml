@@ -34,7 +34,9 @@ jobs:
       - name: Prepare embed directory
         run: |
           mkdir -p pkg/embed/public
+          touch pkg/embed/public/.gitkeep
           mkdir -p pkg/embed/docs
+          touch pkg/embed/docs/.gitkeep
 
       - name: Run Go unit tests
         run: |
