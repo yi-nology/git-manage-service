@@ -6,9 +6,26 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	bindingModel "github.com/yi-nology/git-manage-service/biz/model/binding"
 	bindingsvc "github.com/yi-nology/git-manage-service/biz/service/binding"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )
+
+func convertToProtoBinding(dto api.RepoProviderBindingDTO) *bindingModel.BindingInfo {
+	return &bindingModel.BindingInfo{
+		Id:               uint64(dto.ID),
+		RepoKey:          dto.RepoKey,
+		ProviderConfigId: uint64(dto.ProviderConfigID),
+		Platform:         dto.Platform,
+		PlatformOwner:    dto.PlatformOwner,
+		PlatformRepo:     dto.PlatformRepo,
+		RemoteName:       dto.RemoteName,
+		IsPrimary:        dto.IsPrimary,
+		PlatformRepoId:   dto.PlatformRepoID,
+		CreatedAt:        dto.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:        dto.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
 
 func List(ctx context.Context, c *app.RequestContext) {
 	var req api.ListBindingsReq
@@ -25,7 +42,11 @@ func List(ctx context.Context, c *app.RequestContext) {
 	if result == nil {
 		result = []api.RepoProviderBindingDTO{}
 	}
-	pkgresponse.Success(c, result)
+	protos := make([]*bindingModel.BindingInfo, 0, len(result))
+	for _, dto := range result {
+		protos = append(protos, convertToProtoBinding(dto))
+	}
+	pkgresponse.Success(c, protos)
 }
 
 func Get(ctx context.Context, c *app.RequestContext) {
@@ -40,7 +61,7 @@ func Get(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.NotFound(c, err.Error())
 		return
 	}
-	pkgresponse.Success(c, result)
+	pkgresponse.Success(c, convertToProtoBinding(*result))
 }
 
 func Create(ctx context.Context, c *app.RequestContext) {
