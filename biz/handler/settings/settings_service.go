@@ -242,17 +242,17 @@ func UpdateBranchRules(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, err.Error())
 		return
 	}
-	dto := api.BranchRuleSetDTO{
-		Enabled:   req.Enabled,
-		Rules:     convertBranchRules(req.Rules),
-		Protected: req.ProtectedBranches,
+	protoReq := &settings.BranchRuleSet{
+		Enabled:           req.Enabled,
+		Rules:             req.Rules,
+		ProtectedBranches: req.ProtectedBranches,
 	}
-	result, err := branchrule.UpdateGlobalRules(dto)
+	result, err := branchrule.UpdateGlobalRules(protoReq)
 	if err != nil {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
-	c.Set("audit_details", map[string]interface{}{"rules_count": len(dto.Rules)})
+	c.Set("audit_details", map[string]interface{}{"rules_count": len(protoReq.Rules)})
 	pkgresponse.Success(c, result)
 }
 
@@ -294,44 +294,21 @@ func UpdateRemoteRepoBranchRules(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, err.Error())
 		return
 	}
-	dto := api.RemoteRepoBranchRulesDTO{
-		ProviderConfigID: uint(req.ProviderId),
-		PlatformOwner:    req.Owner,
-		PlatformRepo:     req.Repo,
-		UseCustomRules:   req.UseCustomRules,
-		Rules:            convertBranchRules(req.Rules),
-		Protected:        req.ProtectedBranches,
+	protoReq := &settings.RemoteRepoBranchRuleSet{
+		ProviderConfigId:  req.ProviderId,
+		PlatformOwner:     req.Owner,
+		PlatformRepo:      req.Repo,
+		UseCustomRules:    req.UseCustomRules,
+		Rules:             req.Rules,
+		ProtectedBranches: req.ProtectedBranches,
 	}
-	result, err := branchrule.UpdateRemoteRepoRules(uint(req.ProviderId), req.Owner, req.Repo, dto)
+	result, err := branchrule.UpdateRemoteRepoRules(uint(req.ProviderId), req.Owner, req.Repo, protoReq)
 	if err != nil {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
 	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", uint(req.ProviderId), req.Owner, req.Repo))
 	pkgresponse.Success(c, result)
-}
-
-func convertBranchRules(rules []*settings.BranchRule) []api.BranchRuleDTO {
-	if len(rules) == 0 {
-		return nil
-	}
-	result := make([]api.BranchRuleDTO, 0, len(rules))
-	for _, r := range rules {
-		result = append(result, api.BranchRuleDTO{
-			ID:                uint(r.Id),
-			Prefix:            r.Prefix,
-			DisplayName:       r.DisplayName,
-			SourceBranches:    r.SourceBranches,
-			TargetBranches:    r.TargetBranches,
-			RequireTaskID:     r.RequireTaskId,
-			TaskIDPattern:     r.TaskIdPattern,
-			AutoDeleteOnMerge: r.AutoDeleteOnMerge,
-			AllowDirectPush:   r.AllowDirectPush,
-			RequireCodeReview: r.RequireCodeReview,
-			SortOrder:         int(r.SortOrder),
-		})
-	}
-	return result
 }
 
 func FetchOllamaModels(ctx context.Context, c *app.RequestContext) {
