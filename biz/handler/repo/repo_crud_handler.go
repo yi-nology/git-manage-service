@@ -8,10 +8,31 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	repoModel "github.com/yi-nology/git-manage-service/biz/model/repo"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/biz/service/stats"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
+
+func toProtoRepo(r po.Repo) *repoModel.RepoDTO {
+	return &repoModel.RepoDTO{
+		Id:                  uint64(r.ID),
+		Key:                 r.Key,
+		Name:                r.Name,
+		Path:                r.Path,
+		RemoteUrl:           r.RemoteURL,
+		AuthType:            r.AuthType,
+		AuthKey:             r.AuthKey,
+		AuthSecret:          r.AuthSecret,
+		DefaultCredentialId: uint64(r.DefaultCredentialID),
+		ProviderConfigId:    uint64(r.ProviderConfigID),
+		PlatformRepoId:      r.PlatformRepoID,
+		PlatformOwner:       r.PlatformOwner,
+		PlatformRepo:        r.PlatformRepo,
+		CreatedAt:           r.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:           r.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
 
 func List(ctx context.Context, c *app.RequestContext) {
 	repos, err := db.NewRepoDAO().FindAll()
@@ -19,9 +40,9 @@ func List(ctx context.Context, c *app.RequestContext) {
 		response.InternalServerError(c, err.Error())
 		return
 	}
-	var dtos []api.RepoDTO
+	var dtos []*repoModel.RepoDTO
 	for _, r := range repos {
-		dtos = append(dtos, api.NewRepoDTO(r))
+		dtos = append(dtos, toProtoRepo(r))
 	}
 	response.Success(c, dtos)
 }
@@ -37,7 +58,7 @@ func Get(ctx context.Context, c *app.RequestContext) {
 		response.NotFound(c, "repo not found")
 		return
 	}
-	response.Success(c, api.NewRepoDTO(*repo))
+	response.Success(c, toProtoRepo(*repo))
 }
 
 func Create(ctx context.Context, c *app.RequestContext) {
@@ -103,7 +124,7 @@ func Create(ctx context.Context, c *app.RequestContext) {
 		}
 	}()
 
-	response.Success(c, api.NewRepoDTO(repo))
+	response.Success(c, toProtoRepo(repo))
 }
 
 func Update(ctx context.Context, c *app.RequestContext) {
@@ -173,7 +194,7 @@ func Update(ctx context.Context, c *app.RequestContext) {
 		response.InternalServerError(c, err.Error())
 		return
 	}
-	response.Success(c, api.NewRepoDTO(*repo))
+	response.Success(c, toProtoRepo(*repo))
 }
 
 func Delete(ctx context.Context, c *app.RequestContext) {
