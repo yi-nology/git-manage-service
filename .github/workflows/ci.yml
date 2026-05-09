@@ -49,7 +49,7 @@ jobs:
       - name: Check Go code formatting
         run: |
           go fmt ./...
-          git diff --exit-code || (echo "Go code is not formatted. Please run 'go fmt ./...' and commit changes."; exit 1)
+          git diff --exit-code -- '*.go' || (echo "Go code is not formatted. Please run 'go fmt ./...' and commit changes."; exit 1)
 
   generated-code-check:
     name: Verify Generated Code
