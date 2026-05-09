@@ -90,11 +90,6 @@ type MessageResponse struct {
 	Message string `json:"message"`
 }
 
-type HealthResponse struct {
-	Report   *RepoHealthReport `json:"report"`
-	RecordID uint              `json:"recordId"`
-}
-
 type FileAIRecommendation struct {
 	Path           string `json:"path"`
 	Size           string `json:"size"`
@@ -133,9 +128,4 @@ type ForcePushResult struct {
 	Branches   int    `json:"branches"`
 	Success    bool   `json:"success"`
 	Error      string `json:"error,omitempty"`
-}
-
-type ForcePushResponse struct {
-	Results []ForcePushResult `json:"results"`
-	TaskID  string            `json:"taskId"`
 }

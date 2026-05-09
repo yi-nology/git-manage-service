@@ -199,26 +199,6 @@ type AIChatRequest struct {
 	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
-type AIChatResponse struct {
-	Answer     string  `json:"answer"`
-	References []AIRef `json:"references,omitempty"`
-	Raw        string  `json:"raw,omitempty"`
-}
-
-type AIApplyRequest struct {
-	TaskID    string `json:"taskId"`
-	ApplyType string `json:"applyType"`
-	Content   string `json:"content"`
-	CommitMsg string `json:"commitMsg,omitempty"`
-	RepoKey   string `json:"repoKey"`
-}
-
-type AIApplyResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	Commit  string `json:"commit,omitempty"`
-}
-
 type AIFeedbackRequest struct {
 	InvocationID uint   `json:"invocationId"`
 	Feedback     string `json:"feedback"`
