@@ -33,13 +33,6 @@ type UpdateProviderConfigReq struct {
 	SkipTLS       *bool  `json:"skip_tls"`
 }
 
-type TestProviderConfigResp struct {
-	Connected bool   `json:"connected"`
-	Platform  string `json:"platform"`
-	UserName  string `json:"user_name"`
-	Message   string `json:"message,omitempty"`
-}
-
 type CRDTO struct {
 	ID             uint       `json:"id"`
 	RepoID         uint       `json:"repo_id"`

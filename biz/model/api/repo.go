@@ -38,10 +38,6 @@ type CloneRepoReq struct {
 	PlatformRepo     string `json:"platform_repo"`
 }
 
-type TestConnectionReq struct {
-	URL string `json:"url"`
-}
-
 // ScanDirectoryReq 扫描目录请求
 type ScanDirectoryReq struct {
 	Path      string `json:"path"`      // 要扫描的父目录
@@ -88,13 +84,6 @@ type BatchFailedItem struct {
 	Name   string `json:"name"`
 	Path   string `json:"path"`
 	Reason string `json:"reason"`
-}
-
-type MergeReq struct {
-	Source   string `json:"source"`
-	Target   string `json:"target"`
-	Message  string `json:"message"`
-	Strategy string `json:"strategy"` // Not implemented yet
 }
 
 type RepoDTO struct {

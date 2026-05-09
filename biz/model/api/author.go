@@ -55,12 +55,3 @@ type AuthorScanResult struct {
 	TotalCommits int64              `json:"totalCommits"`
 	MatchCount   int                `json:"matchCount"`
 }
-
-type AuthorFixRequest struct {
-	CommitHashes []string `json:"commitHashes"`
-	PushRemote   string   `json:"pushRemote"`
-}
-
-type AuthorFixAllRequest struct {
-	PushRemote string `json:"pushRemote"`
-}
