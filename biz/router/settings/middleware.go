@@ -170,3 +170,13 @@ func _createreviewruleMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _testembeddingMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _fetchollamamodelsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

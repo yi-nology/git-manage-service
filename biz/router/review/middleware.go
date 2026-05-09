@@ -120,3 +120,58 @@ func _updateremoterepoconfigMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _getpromptstructureMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _getreviewstatsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _listtasksbyproviderMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _createtaskbyproviderMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _findingsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _finding_idMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _getreviewfeedbackMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _ragMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _getragstatsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _indexMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _indexreporagMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

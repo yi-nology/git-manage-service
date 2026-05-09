@@ -28,6 +28,7 @@ func Register(r *server.Hertz) {
 					{
 						_maintenance := _repo_key.Group("/maintenance", _maintenanceMw()...)
 						_maintenance.POST("/ai-analyze", append(_aianalyzeMw(), maintenance.AIAnalyze)...)
+						_maintenance.POST("/force-push", append(_forcepushremotesMw(), maintenance.ForcePushRemotes)...)
 						_maintenance.POST("/gc", append(_gcMw(), maintenance.GC)...)
 						_maintenance.POST("/gitignore", append(_gitignoreMw(), maintenance.Gitignore)...)
 						_maintenance.GET("/health", append(_healthMw(), maintenance.Health)...)
@@ -35,6 +36,11 @@ func Register(r *server.Hertz) {
 						_records := _maintenance.Group("/records", _recordsMw()...)
 						_records.GET("/:id", append(_getrecordMw(), maintenance.GetRecord)...)
 						_maintenance.POST("/slim", append(_slimMw(), maintenance.Slim)...)
+						_maintenance.POST("/slim-prefix", append(_slimbyprefixMw(), maintenance.SlimByPrefix)...)
+						{
+							_slim_prefix := _maintenance.Group("/slim-prefix", _slim_prefixMw()...)
+							_slim_prefix.POST("/preview", append(_previewprefixslimMw(), maintenance.PreviewPrefixSlim)...)
+						}
 					}
 				}
 			}
