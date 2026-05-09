@@ -61,16 +61,16 @@ func CreateLLMProvider(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "base_url is required")
 		return
 	}
-	dto := api.LLMProviderDTO{
+	providerInfo := &settings.LLMProviderInfo{
 		Name:      req.Name,
 		Type:      req.Type,
-		BaseURL:   req.BaseUrl,
-		APIKey:    req.ApiKey,
+		BaseUrl:   req.BaseUrl,
+		ApiKey:    req.ApiKey,
 		Model:     req.Model,
-		MaxTokens: int(req.MaxTokens),
+		MaxTokens: req.MaxTokens,
 		IsDefault: req.IsDefault,
 	}
-	result, err := llm.CreateProvider(dto)
+	result, err := llm.CreateProvider(providerInfo)
 	if err != nil {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
@@ -84,16 +84,16 @@ func UpdateLLMProvider(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, err.Error())
 		return
 	}
-	dto := api.LLMProviderDTO{
+	providerInfo := &settings.LLMProviderInfo{
 		Name:      req.Name,
 		Type:      req.Type,
-		BaseURL:   req.BaseUrl,
-		APIKey:    req.ApiKey,
+		BaseUrl:   req.BaseUrl,
+		ApiKey:    req.ApiKey,
 		Model:     req.Model,
-		MaxTokens: int(req.MaxTokens),
+		MaxTokens: req.MaxTokens,
 		IsDefault: req.IsDefault,
 	}
-	result, err := llm.UpdateProvider(uint(req.Id), dto)
+	result, err := llm.UpdateProvider(uint(req.Id), providerInfo)
 	if err != nil {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
@@ -162,7 +162,7 @@ func TestEmbedding(ctx context.Context, c *app.RequestContext) {
 			model = "text-embedding-3-small"
 		}
 	}
-	client := rag.NewEmbeddingClient(provider.BaseURL, provider.APIKey, model, provider.Type)
+	client := rag.NewEmbeddingClient(provider.BaseUrl, provider.ApiKey, model, provider.Type)
 	_, err = client.EmbedQuery(context.Background(), "Hello, world!")
 	if err != nil {
 		pkgresponse.InternalServerError(c, "Embedding test failed: "+err.Error())
@@ -178,13 +178,13 @@ func GetCodeReviewSettings(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	cfg := configs.GlobalConfig.CodeReview
-	pkgresponse.Success(c, api.CodeReviewGlobalSettingsDTO{
+	pkgresponse.Success(c, &settings.CodeReviewSettings{
 		Enabled:        cfg.Enabled,
-		AutoReviewOnMR: cfg.AutoReviewOnMR,
+		AutoReviewOnMr: cfg.AutoReviewOnMR,
 		BlockOnHigh:    cfg.BlockOnHigh,
-		MaxFiles:       cfg.MaxFiles,
-		MaxDiffLines:   cfg.MaxDiffLines,
-		RAGEnabled:     cfg.RAG.Enabled,
+		MaxFiles:       int32(cfg.MaxFiles),
+		MaxDiffLines:   int32(cfg.MaxDiffLines),
+		RagEnabled:     cfg.RAG.Enabled,
 	})
 }
 
@@ -212,7 +212,14 @@ func UpdateCodeReviewSettings(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	c.Set("audit_details", map[string]interface{}{"enabled": dto.Enabled, "auto_review": dto.AutoReviewOnMR})
-	pkgresponse.Success(c, dto)
+	pkgresponse.Success(c, &settings.CodeReviewSettings{
+		Enabled:        dto.Enabled,
+		AutoReviewOnMr: dto.AutoReviewOnMR,
+		BlockOnHigh:    dto.BlockOnHigh,
+		MaxFiles:       int32(dto.MaxFiles),
+		MaxDiffLines:   int32(dto.MaxDiffLines),
+		RagEnabled:     dto.RAGEnabled,
+	})
 }
 
 func GetBranchRules(ctx context.Context, c *app.RequestContext) {

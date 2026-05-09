@@ -4,52 +4,53 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	settingsModel "github.com/yi-nology/git-manage-service/biz/model/settings"
 	"gorm.io/gorm"
 )
 
-func ListProviders() ([]api.LLMProviderDTO, error) {
+func ListProviders() ([]*settingsModel.LLMProviderInfo, error) {
 	providers, err := db.NewLLMProviderDAO().FindAll()
 	if err != nil {
 		return nil, err
 	}
-	dtos := make([]api.LLMProviderDTO, 0, len(providers))
+	dtos := make([]*settingsModel.LLMProviderInfo, 0, len(providers))
 	for _, p := range providers {
-		dtos = append(dtos, api.NewLLMProviderDTO(p))
+		dtos = append(dtos, convertToProtoLLMProvider(&p))
 	}
 	return dtos, nil
 }
 
-func GetProviderByID(id uint) (*api.LLMProviderDTO, error) {
+func GetProviderByID(id uint) (*settingsModel.LLMProviderInfo, error) {
 	p, err := db.NewLLMProviderDAO().FindByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("provider not found: %w", err)
 	}
-	dto := api.NewLLMProviderDTO(*p)
-	return &dto, nil
+	return convertToProtoLLMProvider(p), nil
 }
 
-func CreateProvider(req api.LLMProviderDTO) (*api.LLMProviderDTO, error) {
+func CreateProvider(req *settingsModel.LLMProviderInfo) (*settingsModel.LLMProviderInfo, error) {
 	dao := db.NewLLMProviderDAO()
 
-	if req.MaxTokens == 0 {
-		req.MaxTokens = 4096
+	maxTokens := int(req.MaxTokens)
+	if maxTokens == 0 {
+		maxTokens = 4096
 	}
 
 	p := &po.LLMProvider{
 		Name:           req.Name,
 		Type:           req.Type,
-		BaseURL:        req.BaseURL,
-		APIKey:         req.APIKey,
+		BaseURL:        req.BaseUrl,
+		APIKey:         req.ApiKey,
 		AIModel:        req.Model,
-		MaxTokens:      req.MaxTokens,
+		MaxTokens:      maxTokens,
 		IsDefault:      req.IsDefault,
 		IsEmbedding:    req.IsEmbedding,
 		EmbeddingModel: req.EmbeddingModel,
-		PresetID:       req.PresetID,
+		PresetID:       req.PresetId,
 		Protocol:       req.Protocol,
 	}
 
@@ -73,8 +74,7 @@ func CreateProvider(req api.LLMProviderDTO) (*api.LLMProviderDTO, error) {
 		if err := dao.Save(existing); err != nil {
 			return nil, fmt.Errorf("failed to restore provider: %w", err)
 		}
-		dto := api.NewLLMProviderDTO(*existing)
-		return &dto, nil
+		return convertToProtoLLMProvider(existing), nil
 	}
 
 	if err := dao.Create(p); err != nil {
@@ -87,11 +87,10 @@ func CreateProvider(req api.LLMProviderDTO) (*api.LLMProviderDTO, error) {
 	}
 
 	RegisterProvider(p)
-	dto := api.NewLLMProviderDTO(*p)
-	return &dto, nil
+	return convertToProtoLLMProvider(p), nil
 }
 
-func UpdateProvider(id uint, req api.LLMProviderDTO) (*api.LLMProviderDTO, error) {
+func UpdateProvider(id uint, req *settingsModel.LLMProviderInfo) (*settingsModel.LLMProviderInfo, error) {
 	dao := db.NewLLMProviderDAO()
 	p, err := dao.FindByID(id)
 	if err != nil {
@@ -105,16 +104,16 @@ func UpdateProvider(id uint, req api.LLMProviderDTO) (*api.LLMProviderDTO, error
 
 	p.Name = req.Name
 	p.Type = req.Type
-	p.BaseURL = req.BaseURL
+	p.BaseURL = req.BaseUrl
 	p.AIModel = req.Model
-	p.MaxTokens = req.MaxTokens
+	p.MaxTokens = int(req.MaxTokens)
 	p.IsDefault = req.IsDefault
 	p.IsEmbedding = req.IsEmbedding
 	p.EmbeddingModel = req.EmbeddingModel
-	p.PresetID = req.PresetID
+	p.PresetID = req.PresetId
 	p.Protocol = req.Protocol
-	if req.APIKey != "" {
-		p.APIKey = req.APIKey
+	if req.ApiKey != "" {
+		p.APIKey = req.ApiKey
 	}
 
 	if p.IsDefault {
@@ -126,8 +125,7 @@ func UpdateProvider(id uint, req api.LLMProviderDTO) (*api.LLMProviderDTO, error
 	}
 
 	RegisterProvider(p)
-	dto := api.NewLLMProviderDTO(*p)
-	return &dto, nil
+	return convertToProtoLLMProvider(p), nil
 }
 
 func DeleteProvider(id uint) error {
@@ -196,6 +194,25 @@ func isFirstProvider(id uint) bool {
 	return len(all) == 1 && all[0].ID == id
 }
 
+func convertToProtoLLMProvider(p *po.LLMProvider) *settingsModel.LLMProviderInfo {
+	return &settingsModel.LLMProviderInfo{
+		Id:             uint64(p.ID),
+		Name:           p.Name,
+		Type:           p.Type,
+		BaseUrl:        p.BaseURL,
+		ApiKey:         p.APIKey,
+		Model:          p.AIModel,
+		MaxTokens:      int32(p.MaxTokens),
+		IsDefault:      p.IsDefault,
+		IsEmbedding:    p.IsEmbedding,
+		EmbeddingModel: p.EmbeddingModel,
+		PresetId:       p.PresetID,
+		Protocol:       p.Protocol,
+		CreatedAt:      p.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:      p.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
+
 func RegisterProvider(p *po.LLMProvider) {
 	providersMu.Lock()
 	defer providersMu.Unlock()
@@ -243,4 +260,8 @@ func GetProviderNames() []string {
 		names = append(names, k)
 	}
 	return names
+}
+
+func init() {
+	_ = strconv.Itoa
 }

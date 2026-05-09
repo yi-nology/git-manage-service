@@ -19,6 +19,10 @@ message LLMProviderInfo {
   bool is_default = 8;
   string created_at = 9;
   string updated_at = 10;
+  bool is_embedding = 11;
+  string embedding_model = 12;
+  string preset_id = 13;
+  string protocol = 14;
 }
 
 message CodeReviewSettings {
@@ -27,6 +31,7 @@ message CodeReviewSettings {
   bool block_on_high = 3;
   int32 max_files = 4;
   int32 max_diff_lines = 5;
+  bool rag_enabled = 6;
 }
 
 message BranchRule {
