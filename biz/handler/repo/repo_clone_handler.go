@@ -2,8 +2,10 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/google/uuid"
@@ -171,45 +173,53 @@ func Fetch(ctx context.Context, c *app.RequestContext) {
 	gitSvc := git.NewGitService()
 	authSvc := auth.NewAuthService()
 
-	useDBKey := false
-	var dbPrivateKey, dbPassphrase string
-
-	if repo.DefaultCredentialID > 0 && authSvc.IsCredentialDBKey(repo.DefaultCredentialID) {
-		pk, pp, err := authSvc.GetCredentialKeyContent(repo.DefaultCredentialID)
-		if err != nil {
-			response.InternalServerError(c, "failed to resolve credential key: "+err.Error())
-			return
-		}
-		dbPrivateKey = pk
-		dbPassphrase = pp
-		useDBKey = true
+	remotes, err := gitSvc.GetRemotes(repo.Path)
+	if err != nil {
+		response.InternalServerError(c, "failed to list remotes: "+err.Error())
+		return
 	}
 
-	if !useDBKey && repo.RemoteAuths != nil {
-		for _, authInfo := range repo.RemoteAuths {
-			if authInfo.Type == "ssh" && authInfo.Source == "database" && authInfo.SSHKeyID > 0 {
-				pk, pp, err := authSvc.GetDBSSHKeyContent(authInfo.SSHKeyID)
-				if err != nil {
-					response.InternalServerError(c, "failed to resolve SSH key: "+err.Error())
-					return
+	var errors []string
+	for _, remote := range remotes {
+		authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
+			repo.RemoteCredentials,
+			repo.DefaultCredentialID,
+			repo.RemoteAuths,
+			remote,
+			repo.AuthType, repo.AuthKey, repo.AuthSecret,
+		)
+
+		if resolveErr != nil {
+			errors = append(errors, fmt.Sprintf("%s: failed to resolve auth: %v", remote, resolveErr))
+			continue
+		}
+
+		var fetchErr error
+		if isDBKey {
+			credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, remote)
+			if credID > 0 {
+				privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
+				if keyErr != nil {
+					errors = append(errors, fmt.Sprintf("%s: failed to load SSH key: %v", remote, keyErr))
+					continue
 				}
-				dbPrivateKey = pk
-				dbPassphrase = pp
-				useDBKey = true
-				break
+				fetchErr = gitSvc.FetchWithDBKey(repo.Path, remote, privateKey, passphrase, nil)
+			} else {
+				fetchErr = gitSvc.Fetch(repo.Path, remote, nil)
 			}
+		} else if authMethod != nil {
+			fetchErr = gitSvc.Fetch(repo.Path, remote, nil)
+		} else {
+			fetchErr = gitSvc.Fetch(repo.Path, remote, nil)
+		}
+
+		if fetchErr != nil && fetchErr.Error() != "already up-to-date" {
+			errors = append(errors, fmt.Sprintf("%s: %v", remote, fetchErr))
 		}
 	}
 
-	var fetchErr error
-	skipTLS := db.NewRepoProviderBindingDAO().GetSkipTLSForRepo(repo.ID)
-	if useDBKey {
-		fetchErr = gitSvc.FetchAllWithDBKey(repo.Path, dbPrivateKey, dbPassphrase)
-	} else {
-		fetchErr = gitSvc.FetchAll(repo.Path, skipTLS)
-	}
-	if fetchErr != nil {
-		response.InternalServerError(c, fetchErr.Error())
+	if len(errors) > 0 {
+		response.InternalServerError(c, strings.Join(errors, "; "))
 		return
 	}
 
