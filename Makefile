@@ -34,8 +34,10 @@ build-full:
 	@rm -rf public
 	@cp -r frontend/dist public
 	@echo "Copying frontend assets to embed directory..."
+	@mkdir -p pkg/embed/public
 	@rm -rf pkg/embed/public/*
 	@cp -r public/* pkg/embed/public/
+	@mkdir -p pkg/embed/docs
 	@rm -rf pkg/embed/docs/*
 	@cp -r docs/* pkg/embed/docs/ 2>/dev/null || true
 	@echo "✓ Frontend build complete"
@@ -112,8 +114,10 @@ build-frontend-integrate:
 	@rm -rf public
 	@cp -r frontend/dist public
 	@echo "Copying frontend assets to embed directory..."
+	@mkdir -p pkg/embed/public
 	@rm -rf pkg/embed/public/*
 	@cp -r public/* pkg/embed/public/
+	@mkdir -p pkg/embed/docs
 	@rm -rf pkg/embed/docs/*
 	@cp -r docs/* pkg/embed/docs/ 2>/dev/null || true
 	@echo "Frontend integrated successfully. Backend can now serve frontend from ./public/"
