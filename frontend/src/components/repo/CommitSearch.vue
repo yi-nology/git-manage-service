@@ -184,8 +184,8 @@ async function viewCommitDetail(row: CommitDetail) {
   }
 }
 
-function statusType(status: string) {
-  const types: Record<string, string> = {
+function statusType(status: string): 'success' | 'warning' | 'danger' | 'info' {
+  const types: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     added: 'success',
     modified: 'warning',
     deleted: 'danger',

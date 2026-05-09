@@ -123,8 +123,8 @@ const typeLabel = computed(() => {
   return map[form.value.type] || form.value.type
 })
 
-const typeTagColor = computed(() => {
-  const map: Record<string, string> = { ssh_key: 'success', http_basic: 'warning', http_token: 'info' }
+const typeTagColor = computed((): 'success' | 'warning' | 'info' => {
+  const map: Record<string, 'success' | 'warning' | 'info'> = { ssh_key: 'success', http_basic: 'warning', http_token: 'info' }
   return map[form.value.type] || 'info'
 })
 
@@ -194,8 +194,8 @@ const SSH_KEY_TYPE_COLORS: Record<string, string> = {
 function sshKeyTypeLabel(t: string): string {
   return SSH_KEY_TYPE_LABELS[t?.toLowerCase()] ?? t?.toUpperCase() ?? ''
 }
-function sshKeyTypeColor(t: string): string {
-  return SSH_KEY_TYPE_COLORS[t?.toLowerCase()] ?? ''
+function sshKeyTypeColor(t: string): 'primary' | 'success' | 'warning' | 'danger' | 'info' | undefined {
+  return (SSH_KEY_TYPE_COLORS[t?.toLowerCase()] ?? '') as 'primary' | 'success' | 'warning' | 'danger' | 'info' || undefined
 }
 
 onMounted(async () => {

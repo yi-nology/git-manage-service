@@ -33,7 +33,7 @@
             :type="statusTagType(getFileStatus(item.path)!)"
             class="fe-tree-badge"
           >
-            {{ getFileStatus(item.path)![0].toUpperCase() }}
+            {{ getFileStatus(item.path)?.[0]?.toUpperCase() }}
           </el-tag>
           <div class="fe-tree-actions">
             <template v-if="isFileUntracked(item.path)">
@@ -88,7 +88,7 @@
         >
           <el-icon :size="14"><Document /></el-icon>
           <span class="fe-change-name" :title="f.path">{{ f.path }}</span>
-          <el-tag size="small" :type="statusTagType(f.status)">{{ f.status[0].toUpperCase() }}</el-tag>
+          <el-tag size="small" :type="statusTagType(f.status)">{{ f.status?.[0]?.toUpperCase() }}</el-tag>
           <el-dropdown trigger="click" @command="(cmd: string) => $emit('fileAction', cmd, f.path)" @click.stop teleported>
             <el-button size="small" type="primary" link @click.stop>
               <el-icon><Operation /></el-icon>
@@ -119,7 +119,7 @@
         >
           <el-icon :size="14"><Document /></el-icon>
           <span class="fe-change-name" :title="f.path">{{ f.path }}</span>
-          <el-tag size="small" :type="statusTagType(f.status)">{{ f.status[0].toUpperCase() }}</el-tag>
+          <el-tag size="small" :type="statusTagType(f.status)">{{ f.status?.[0]?.toUpperCase() }}</el-tag>
           <el-dropdown trigger="click" @command="(cmd: string) => $emit('fileAction', cmd, f.path)" @click.stop teleported>
             <el-button size="small" type="primary" link @click.stop>
               <el-icon><Operation /></el-icon>

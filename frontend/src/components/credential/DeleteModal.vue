@@ -20,22 +20,22 @@
         <p class="subtitle">此操作不可撤销，删除后所有相关配置将无法正常使用。</p>
       </div>
 
-      <div v-if="usages && (usages.total_repo_count > 0 || usages.total_provider_count > 0)" class="usage-warning">
+      <div v-if="usages && (usages.totalRepoCount > 0 || usages.totalProviderCount > 0)" class="usage-warning">
         <h4>该凭证当前正在被使用：</h4>
         <div class="usage-list">
-          <div v-if="usages.total_repo_count > 0" class="usage-item">
+          <div v-if="usages.totalRepoCount > 0" class="usage-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
               <polyline points="13,2 13,9 20,9"/>
             </svg>
-            <span>{{ usages.total_repo_count }} 个仓库</span>
+            <span>{{ usages.totalRepoCount }} 个仓库</span>
           </div>
-          <div v-if="usages.total_provider_count > 0" class="usage-item">
+          <div v-if="usages.totalProviderCount > 0" class="usage-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
               <circle cx="12" cy="7" r="4"/>
             </svg>
-            <span>{{ usages.total_provider_count }} 个平台配置</span>
+            <span>{{ usages.totalProviderCount }} 个平台配置</span>
           </div>
         </div>
         <p class="danger-text">删除将导致上述引用该凭证的功能失效，请谨慎操作。</p>

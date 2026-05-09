@@ -17,7 +17,7 @@
       <div class="config-right">
         <template v-if="allIdentities.length > 0">
           <el-select v-model="selectedIdentityId" placeholder="选择身份" size="small" style="width: 200px" :disabled="configSaving" @change="handleConfigChange">
-            <el-option label="使用全局默认" :value="null" />
+            <el-option label="使用全局默认" :value="(null as any)" />
             <el-option v-for="id in allIdentities" :key="id.id" :label="`${id.canonicalName} (${id.canonicalEmail})`" :value="id.id" />
           </el-select>
         </template>
@@ -166,7 +166,7 @@ import { User, Search, ChatDotRound } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import SectionTitle from '@/components/common/SectionTitle.vue'
 import { useAuthorIdentity, useAuthorFix, useAuthorAI } from '@/composables/useAuthor'
-import type { MismatchedCommit } from '@/api/modules/author'
+import type { MismatchedCommit as _MismatchedCommit } from '@/api/modules/author'
 
 const props = withDefaults(defineProps<{
   repoKey: string
@@ -235,7 +235,7 @@ const chatContainer = ref<HTMLElement | null>(null)
 const {
   aiLoading, aiAnalysis, aiRisk,
   chatMessages, chatLoading,
-  analyzeScan, assessRisk, sendChat, clearChat,
+  analyzeScan, assessRisk, sendChat, clearChat: _clearChat,
 } = useAuthorAI(props.repoKey)
 
 async function doAnalyzeScan() {

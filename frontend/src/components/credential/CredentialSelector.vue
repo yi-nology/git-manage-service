@@ -105,8 +105,8 @@ function typeLabel(type: CredentialType): string {
   return map[type] || type
 }
 
-function typeTagColor(type: CredentialType): string {
-  const map: Record<string, string> = {
+function typeTagColor(type: CredentialType): 'success' | 'warning' | 'info' {
+  const map: Record<string, 'success' | 'warning' | 'info'> = {
     ssh_key: 'success',
     http_basic: 'warning',
     http_token: 'info',

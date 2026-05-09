@@ -36,7 +36,7 @@
       <el-switch
         :model-value="pushAfterCommit"
         size="small"
-        @update:model-value="$emit('update:pushAfterCommit', $event)"
+        @update:model-value="$emit('update:pushAfterCommit', !!$event)"
       />
     </div>
     <el-button

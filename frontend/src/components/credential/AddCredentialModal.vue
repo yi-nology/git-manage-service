@@ -156,8 +156,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import type { CredentialDTO, CreateCredentialReq, UpdateCredentialReq } from '@/types/credential'
+import { ref, computed, watch } from 'vue'
+import type { CreateCredentialReq, UpdateCredentialReq } from '@/types/credential'
 import { createCredential, updateCredential, getCredential } from '@/api/modules/credential'
 import { listDBSSHKeys } from '@/api/modules/sshkey'
 import { ElMessage } from 'element-plus'
@@ -196,7 +196,7 @@ const form = ref<CreateCredentialReq>({
 const canSubmit = computed(() => {
   if (!form.value.name) return false
   if (form.value.type === 'ssh_key') {
-    return form.value.ssh_key_id > 0 || !!form.value.ssh_key_path
+    return (form.value.ssh_key_id ?? 0) > 0 || !!form.value.ssh_key_path
   }
   return !!form.value.secret
 })

@@ -83,8 +83,8 @@ function parseDiffLines(text: string): DiffLine[] {
     if (line.startsWith('@@')) {
       const m = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
       if (m) {
-        oldNum = parseInt(m[1])
-        newNum = parseInt(m[2])
+        oldNum = parseInt(m[1] ?? '0')
+        newNum = parseInt(m[2] ?? '0')
       }
       result.push({ type: 'hunk', content: line, oldNum: '', newNum: '' })
     } else if (line.startsWith('+')) {

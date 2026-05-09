@@ -130,7 +130,7 @@ function crStateVariant(s: string): 'success' | 'info' | 'danger' | 'default' {
 function getReviewStatus(crNumber: number): ReviewTaskDTO | null {
   const tasks = reviewTasks.value.filter(t => String(t.mr_iid) === String(crNumber))
   if (tasks.length === 0) return null
-  return tasks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+  return tasks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] ?? null
 }
 
 function reviewStatusVariant(s: string): 'success' | 'danger' | 'warning' | 'info' | 'running' | 'default' {

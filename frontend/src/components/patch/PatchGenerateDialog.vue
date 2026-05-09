@@ -37,7 +37,7 @@
               <el-option
                 v-for="commit in recentCommits"
                 :key="commit.hash"
-                :label="`${commit.short_hash} - ${commit.message.slice(0, 50)}`"
+                :label="`${commit.shortHash} - ${commit.message.slice(0, 50)}`"
                 :value="commit.hash"
               />
             </el-option-group>
@@ -71,7 +71,7 @@
               <el-option
                 v-for="commit in recentCommits"
                 :key="commit.hash"
-                :label="`${commit.short_hash} - ${commit.message.slice(0, 50)}`"
+                :label="`${commit.shortHash} - ${commit.message.slice(0, 50)}`"
                 :value="commit.hash"
               />
             </el-option-group>
@@ -91,7 +91,7 @@
             <el-option
               v-for="commit in recentCommits"
               :key="commit.hash"
-              :label="`${commit.short_hash} - ${commit.message.slice(0, 60)} (${commit.author_name})`"
+              :label="`${commit.shortHash} - ${commit.message.slice(0, 60)} (${commit.authorName})`"
               :value="commit.hash"
             />
           </el-select>

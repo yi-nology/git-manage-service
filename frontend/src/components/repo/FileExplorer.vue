@@ -108,7 +108,7 @@ import {
 } from '@element-plus/icons-vue'
 import { getFileBlob, type BlobContent } from '@/api/modules/file'
 import {
-  commitChanges, pushCurrent, generateCommitMessage,
+  commitChanges, generateCommitMessage,
   type WorkspaceDiff,
 } from '@/api/modules/workspace'
 import {
@@ -164,7 +164,7 @@ const activeAuthor = computed(() => {
 
 const currentDiffFile = computed(() => {
   if (!diff.value?.files?.length) return null
-  return diff.value.files.find(f => f.file === selectedFile.value) || diff.value.files[0]
+  return (diff.value.files.find(f => f.file === selectedFile.value) || diff.value.files[0]) ?? null
 })
 
 const currentDiffText = computed(() => currentDiffFile.value?.diff || '')

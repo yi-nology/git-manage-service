@@ -166,7 +166,7 @@
           type="primary"
           @click="handleApply"
           :loading="applying"
-          :disabled="patchStats && !patchStats.can_apply"
+          :disabled="!!patchStats && !patchStats.can_apply"
         >
           应用
         </el-button>

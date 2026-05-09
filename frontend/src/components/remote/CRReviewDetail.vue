@@ -333,15 +333,6 @@ function globalFindings(): ReviewFindingDTO[] {
   return findings.value.filter(f => !f.file_path)
 }
 
-function lineFindings(filePath: string, lineNum: number | string): ReviewFindingDTO[] {
-  if (!lineNum || lineNum === '') return []
-  const n = typeof lineNum === 'string' ? parseInt(lineNum) : lineNum
-  if (isNaN(n)) return []
-  const exact = findings.value.filter(f => f.file_path && pathMatches(f.file_path, filePath) && f.new_line === n)
-  if (exact.length > 0) return exact
-  return []
-}
-
 function fmapGet(fmap: Map<number, ReviewFindingDTO[]>, lineNum: number | string): ReviewFindingDTO[] {
   if (!lineNum || lineNum === '') return []
   const n = typeof lineNum === 'string' ? parseInt(lineNum) : lineNum
@@ -356,7 +347,7 @@ function buildFindingLineMap(file: DiffFile): Map<number, ReviewFindingDTO[]> {
   const codeLines: { idx: number; newNum: number; content: string; type: string }[] = []
   for (let i = 0; i < file.lines.length; i++) {
     const l = file.lines[i]
-    if (l.type === 'hunk') continue
+    if (!l || l.type === 'hunk') continue
     const n = typeof l.newNum === 'number' ? l.newNum : parseInt(String(l.newNum))
     if (!isNaN(n) && n > 0) {
       codeLines.push({ idx: i, newNum: n, content: l.content.toLowerCase(), type: l.type })
@@ -390,7 +381,7 @@ function findBestCodeLine(
 ): { idx: number; newNum: number; content: string; type: string } | null {
   const keywords = extractKeywords(f.title + ' ' + f.message + ' ' + (f.suggestion || ''))
   if (keywords.length === 0) {
-    return codeLines.length > 0 ? codeLines[0] : null
+    return codeLines.length > 0 ? codeLines[0]! : null
   }
 
   let bestLine: typeof codeLines[0] | null = null
@@ -451,7 +442,7 @@ function toggleFile(idx: number) {
 function isFileExpanded(idx: number): boolean {
   if (expandedFiles.value[idx] !== undefined) return expandedFiles.value[idx]
   const files = parsedDiffFiles.value
-  if (idx < files.length && fileFindings(files[idx].filePath).length > 0) return true
+  if (idx < files.length && fileFindings(files[idx]!.filePath).length > 0) return true
   return false
 }
 
@@ -466,7 +457,7 @@ const fileVisibleCache = computed<Map<number, VisibleLinesResult>>(() => {
   const cache = new Map<number, VisibleLinesResult>()
   const files = displayFiles.value
   for (let i = 0; i < files.length; i++) {
-    cache.set(i, computeVisibleLines(files[i], i))
+    cache.set(i, computeVisibleLines(files[i]!, i))
   }
   return cache
 })
@@ -480,15 +471,15 @@ function computeVisibleLines(file: DiffFile, fIdx: number): VisibleLinesResult {
   const showIdx = new Set<number>()
   for (let i = 0; i < file.lines.length; i++) {
     const ln = file.lines[i]
-    if (ln.type === 'hunk') continue
+    if (!ln || ln.type === 'hunk') continue
     const n = typeof ln.newNum === 'number' ? ln.newNum : parseInt(String(ln.newNum))
     if (!isNaN(n) && flaggedLines.has(n)) {
       let start = i - CONTEXT_LINES
       let foundHunk = false
       for (let j = i - 1; j >= Math.max(0, start); j--) {
-        if (file.lines[j].type === 'hunk') { start = j; foundHunk = true; break }
+        if (file.lines[j]?.type === 'hunk') { start = j; foundHunk = true; break }
       }
-      if (!foundHunk && i > 0 && file.lines[0].type === 'hunk') start = 0
+      if (!foundHunk && i > 0 && file.lines[0]?.type === 'hunk') start = 0
       const end = Math.min(file.lines.length - 1, i + CONTEXT_LINES)
       for (let k = Math.max(0, start); k <= end; k++) showIdx.add(k)
     }
@@ -500,7 +491,7 @@ function computeVisibleLines(file: DiffFile, fIdx: number): VisibleLinesResult {
     if (lastShown >= 0 && idx > lastShown + 1) {
       result.push({ type: 'hunk' as const, content: '...', oldNum: '', newNum: '' })
     }
-    result.push(file.lines[idx])
+    result.push(file.lines[idx]!)
     lastShown = idx
   }
   return { lines: result, fmap }

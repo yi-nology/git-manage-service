@@ -5,7 +5,7 @@
       <polyline points="22,4 12,14.01 9,11.01"/>
     </svg>
     <span>
-      {{ usages.total_repo_count + usages.total_provider_count }} 处引用
+      {{ usages.totalRepoCount + usages.totalProviderCount }} 处引用
     </span>
   </div>
 </template>
