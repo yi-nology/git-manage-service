@@ -44,6 +44,28 @@ message AIAnalyzeRequest {
     optional int64 threshold = 3 [(api.body) = "threshold"];
 }
 
+message PrefixSlimPreviewRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    repeated string prefixes = 2 [(api.body) = "prefixes"];
+}
+
+message PrefixSlimRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    repeated string prefixes = 2 [(api.body) = "prefixes"];
+    optional bool add_gitignore = 3 [(api.body) = "add_gitignore"];
+}
+
+message ForcePushRequest {
+    optional string repo_key = 1 [(api.path) = "repo_key"];
+    repeated string remotes = 2 [(api.body) = "remotes"];
+    optional string branch = 3 [(api.body) = "branch"];
+}
+
+message ForcePushResponse {
+    optional common.BaseResponse base = 1;
+    repeated string results = 2;
+}
+
 service MaintenanceService {
     rpc Health(HealthRequest) returns (MaintenanceTaskResponse) {
         option (api.get) = "/api/v1/repo/:repo_key/maintenance/health";
@@ -71,5 +93,17 @@ service MaintenanceService {
 
     rpc AIAnalyze(AIAnalyzeRequest) returns (MaintenanceTaskResponse) {
         option (api.post) = "/api/v1/repo/:repo_key/maintenance/ai-analyze";
+    }
+
+    rpc PreviewPrefixSlim(PrefixSlimPreviewRequest) returns (MaintenanceTaskResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/maintenance/slim-prefix/preview";
+    }
+
+    rpc SlimByPrefix(PrefixSlimRequest) returns (MaintenanceTaskResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/maintenance/slim-prefix";
+    }
+
+    rpc ForcePushRemotes(ForcePushRequest) returns (ForcePushResponse) {
+        option (api.post) = "/api/v1/repo/:repo_key/maintenance/force-push";
     }
 }

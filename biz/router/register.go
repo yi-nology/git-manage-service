@@ -10,9 +10,6 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
-	handler_maintenance "github.com/yi-nology/git-manage-service/biz/handler/maintenance"
-	handler_review "github.com/yi-nology/git-manage-service/biz/handler/review"
-	handler_settings "github.com/yi-nology/git-manage-service/biz/handler/settings"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
 	"github.com/yi-nology/git-manage-service/biz/router/ai"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"
@@ -68,26 +65,15 @@ func GeneratedRegister(h *server.Hertz) {
 	author.Register(h)
 
 	maintenance.Register(h)
-	h.POST("/api/v1/repo/:repo_key/maintenance/slim-prefix/preview", handler_maintenance.PreviewPrefixSlim)
-	h.POST("/api/v1/repo/:repo_key/maintenance/slim-prefix", handler_maintenance.SlimByPrefix)
-	h.POST("/api/v1/repo/:repo_key/maintenance/force-push", handler_maintenance.ForcePushRemotes)
 
 	settings.Register(h)
-	h.GET("/api/v1/settings/ollama-models", handler_settings.FetchOllamaModels)
-	h.POST("/api/v1/settings/llm-providers/:id/test-embedding", handler_settings.TestEmbedding)
+
 	ai.Register(h)
 	webhook_event.Register(h)
 	provider.Register(h)
 	cr.Register(h)
 
 	review.Register(h)
-	h.POST("/api/v1/reviews/tasks/provider", handler_review.CreateTaskByProvider)
-	h.GET("/api/v1/reviews/tasks/provider", handler_review.ListTasksByProvider)
-	h.GET("/api/v1/reviews/stats", handler_review.GetReviewStats)
-	h.GET("/api/v1/reviews/prompt-structure", handler_review.GetPromptStructure)
-	h.POST("/api/v1/reviews/findings/:finding_id/feedback", handler_review.GetReviewFeedback)
-	h.POST("/api/v1/reviews/rag/index/:repo_key", handler_review.IndexRepoRAG)
-	h.GET("/api/v1/reviews/rag/stats", handler_review.GetRAGStats)
 	audit.Register(h)
 
 	branch.Register(h)
@@ -100,7 +86,7 @@ func GeneratedRegister(h *server.Hertz) {
 	stash.Register(h)
 	submodule.Register(h)
 	sync.Register(h)
-	mirror.RegisterCustomRoutes(h)
+	mirror.Register(h)
 	system.Register(h)
 	tag.Register(h)
 	version.Register(h)

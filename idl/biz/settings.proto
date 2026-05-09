@@ -259,6 +259,27 @@ message LLMPresetsResponse {
   repeated LLMPresetInfo presets = 2;
 }
 
+message FetchOllamaModelsRequest {
+  string base_url = 1 [(api.query) = "base_url"];
+}
+
+message FetchOllamaModelsResponse {
+  common.BaseResponse base = 1;
+  repeated string models = 2;
+}
+
+message TestEmbeddingRequest {
+  uint64 id = 1 [(api.path) = "id"];
+  string test_text = 2 [(api.body) = "test_text"];
+}
+
+message TestEmbeddingResponse {
+  common.BaseResponse base = 1;
+  bool success = 2;
+  string message = 3;
+  repeated float embedding = 4;
+}
+
 service SettingsService {
   rpc ListLLMProviders(ListLLMProvidersRequest) returns (ListLLMProvidersResponse) {
     option (api.get) = "/api/v1/settings/llm-providers";
@@ -322,5 +343,11 @@ service SettingsService {
   }
   rpc BatchUpdateReviewRules(BatchUpdateReviewRulesRequest) returns (ReviewRuleListResponse) {
     option (api.put) = "/api/v1/settings/review-rules/batch";
+  }
+  rpc FetchOllamaModels(FetchOllamaModelsRequest) returns (FetchOllamaModelsResponse) {
+    option (api.get) = "/api/v1/settings/ollama-models";
+  }
+  rpc TestEmbedding(TestEmbeddingRequest) returns (TestEmbeddingResponse) {
+    option (api.post) = "/api/v1/settings/llm-providers/:id/test-embedding";
   }
 }

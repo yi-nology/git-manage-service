@@ -191,6 +191,88 @@ message UpdateRemoteRepoConfigRequest {
   string scope_note = 11 [(api.body) = "scope_note"];
 }
 
+message HandleWebhookRequest {
+  string token = 1 [(api.path) = "token"];
+}
+
+// CreateTaskByProviderRequest 通过 Provider 创建任务请求
+message CreateTaskByProviderRequest {
+  string repo_key = 1 [(api.body) = "repo_key"];
+  uint64 provider_config_id = 2 [(api.body) = "provider_config_id"];
+  string mr_iid = 3 [(api.body) = "mr_iid"];
+  string commit_sha = 4 [(api.body) = "commit_sha"];
+  string source_branch = 5 [(api.body) = "source_branch"];
+  string target_branch = 6 [(api.body) = "target_branch"];
+  string event_type = 7 [(api.body) = "event_type"];
+}
+
+// ListTasksByProviderRequest 通过 Provider 列出任务请求
+message ListTasksByProviderRequest {
+  string repo_key = 1 [(api.query) = "repo_key"];
+  uint64 provider_config_id = 2 [(api.query) = "provider_config_id"];
+  string status = 3 [(api.query) = "status"];
+  int32 page = 4 [(api.query) = "page"];
+  int32 page_size = 5 [(api.query) = "page_size"];
+}
+
+// ReviewStats 评审统计
+message ReviewStats {
+  int32 total_tasks = 1;
+  int32 completed_tasks = 2;
+  int32 failed_tasks = 3;
+  int32 total_findings = 4;
+  int32 high_severity = 5;
+  int32 medium_severity = 6;
+  int32 low_severity = 7;
+}
+
+// GetReviewStatsResponse 获取评审统计响应
+message GetReviewStatsResponse {
+  common.BaseResponse base = 1;
+  ReviewStats stats = 2;
+}
+
+// PromptStructure 提示词结构
+message PromptStructure {
+  string prefix = 1;
+  string intent = 2;
+  string custom_rules = 3;
+  string suffix = 4;
+}
+
+// GetPromptStructureResponse 获取提示词结构响应
+message GetPromptStructureResponse {
+  common.BaseResponse base = 1;
+  PromptStructure structure = 2;
+}
+
+// GetReviewFeedbackRequest 获取评审反馈请求
+message GetReviewFeedbackRequest {
+  uint64 finding_id = 1 [(api.path) = "finding_id"];
+  string feedback_type = 2 [(api.body) = "feedback_type"];
+  string comment = 3 [(api.body) = "comment"];
+}
+
+// IndexRepoRAGRequest 索引仓库 RAG 请求
+message IndexRepoRAGRequest {
+  string repo_key = 1 [(api.path) = "repo_key"];
+  bool force_reindex = 2 [(api.body) = "force_reindex"];
+}
+
+// RAGStats RAG 统计
+message RAGStats {
+  int32 total_documents = 1;
+  int32 total_chunks = 2;
+  int64 total_size_bytes = 3;
+  string last_indexed_at = 4;
+}
+
+// GetRAGStatsResponse 获取 RAG 统计响应
+message GetRAGStatsResponse {
+  common.BaseResponse base = 1;
+  RAGStats stats = 2;
+}
+
 // ReviewService 代码评审服务
 service ReviewService {
   // CreateTask 创建评审任务
@@ -232,5 +314,33 @@ service ReviewService {
   // UpdateRemoteRepoConfig 更新远端仓库审查配置
   rpc UpdateRemoteRepoConfig(UpdateRemoteRepoConfigRequest) returns (RemoteRepoConfigResponse) {
     option (api.put) = "/api/v1/review/remote-config/:provider_id/:owner/*repo";
+  }
+  // CreateTaskByProvider 通过 Provider 创建任务
+  rpc CreateTaskByProvider(CreateTaskByProviderRequest) returns (ReviewTaskResponse) {
+    option (api.post) = "/api/v1/reviews/tasks/provider";
+  }
+  // ListTasksByProvider 通过 Provider 列出任务
+  rpc ListTasksByProvider(ListTasksByProviderRequest) returns (ListReviewTasksResponse) {
+    option (api.get) = "/api/v1/reviews/tasks/provider";
+  }
+  // GetReviewStats 获取评审统计
+  rpc GetReviewStats(ListReviewTasksRequest) returns (GetReviewStatsResponse) {
+    option (api.get) = "/api/v1/reviews/stats";
+  }
+  // GetPromptStructure 获取提示词结构
+  rpc GetPromptStructure(ListReviewTasksRequest) returns (GetPromptStructureResponse) {
+    option (api.get) = "/api/v1/reviews/prompt-structure";
+  }
+  // GetReviewFeedback 获取评审反馈
+  rpc GetReviewFeedback(GetReviewFeedbackRequest) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/reviews/findings/:finding_id/feedback";
+  }
+  // IndexRepoRAG 索引仓库 RAG
+  rpc IndexRepoRAG(IndexRepoRAGRequest) returns (common.EmptyResponse) {
+    option (api.post) = "/api/v1/reviews/rag/index/:repo_key";
+  }
+  // GetRAGStats 获取 RAG 统计
+  rpc GetRAGStats(ListReviewTasksRequest) returns (GetRAGStatsResponse) {
+    option (api.get) = "/api/v1/reviews/rag/stats";
   }
 }
