@@ -75,3 +75,23 @@ func _aianalyzeMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _forcepushremotesMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _slimbyprefixMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _slim_prefixMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _previewprefixslimMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

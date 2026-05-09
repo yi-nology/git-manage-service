@@ -14,7 +14,6 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model/api"
 	systemModel "github.com/yi-nology/git-manage-service/biz/model/system"
 	"github.com/yi-nology/git-manage-service/biz/service/auth"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
@@ -85,15 +84,16 @@ func ListDirs(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var dirs []api.DirItem
+	var dirs []*systemModel.DirEntry
 	for _, entry := range entries {
 		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
 			if req.Search != "" && !strings.Contains(strings.ToLower(entry.Name()), strings.ToLower(req.Search)) {
 				continue
 			}
-			dirs = append(dirs, api.DirItem{
-				Name: entry.Name(),
-				Path: filepath.Join(currentPath, entry.Name()),
+			dirs = append(dirs, &systemModel.DirEntry{
+				Name:  entry.Name(),
+				Path:  filepath.Join(currentPath, entry.Name()),
+				IsDir: true,
 			})
 		}
 	}
@@ -107,10 +107,10 @@ func ListDirs(ctx context.Context, c *app.RequestContext) {
 		parent = ""
 	}
 
-	response.Success(c, api.ListDirsResp{
-		Parent:  parent,
-		Current: currentPath,
-		Dirs:    dirs,
+	response.Success(c, map[string]interface{}{
+		"parent":  parent,
+		"current": currentPath,
+		"dirs":    dirs,
 	})
 }
 
@@ -126,14 +126,14 @@ func ListSSHKeys(ctx context.Context, c *app.RequestContext) {
 	sshDir := filepath.Join(home, ".ssh")
 	entries, err := os.ReadDir(sshDir)
 	if err != nil {
-		response.Success(c, []api.SSHKey{})
+		response.Success(c, []*systemModel.SSHKey{})
 		return
 	}
 
-	var keys []api.SSHKey
+	var keys []*systemModel.SSHKey
 	for _, entry := range entries {
 		if !entry.IsDir() {
-			keys = append(keys, api.SSHKey{
+			keys = append(keys, &systemModel.SSHKey{
 				Name: entry.Name(),
 				Path: filepath.Join(sshDir, entry.Name()),
 			})

@@ -38,8 +38,12 @@ func Register(r *server.Hertz) {
 			}
 			{
 				_reviews := _v1.Group("/reviews", _reviewsMw()...)
+				_reviews.GET("/prompt-structure", append(_getpromptstructureMw(), review.GetPromptStructure)...)
+				_reviews.GET("/stats", append(_getreviewstatsMw(), review.GetReviewStats)...)
 				_reviews.GET("/tasks", append(_listtasksMw(), review.ListTasks)...)
 				_tasks := _reviews.Group("/tasks", _tasksMw()...)
+				_tasks.GET("/provider", append(_listtasksbyproviderMw(), review.ListTasksByProvider)...)
+				_tasks.POST("/provider", append(_createtaskbyproviderMw(), review.CreateTaskByProvider)...)
 				{
 					_id := _tasks.Group("/:id", _idMw()...)
 					_id.POST("/retry", append(_retrytaskMw(), review.RetryTask)...)
@@ -55,6 +59,21 @@ func Register(r *server.Hertz) {
 					_config := _reviews.Group("/config", _configMw()...)
 					_config.GET("/:repo_key", append(_getreviewconfigMw(), review.GetReviewConfig)...)
 					_config.PUT("/:repo_key", append(_updatereviewconfigMw(), review.UpdateReviewConfig)...)
+				}
+				{
+					_findings := _reviews.Group("/findings", _findingsMw()...)
+					{
+						_finding_id := _findings.Group("/:finding_id", _finding_idMw()...)
+						_finding_id.POST("/feedback", append(_getreviewfeedbackMw(), review.GetReviewFeedback)...)
+					}
+				}
+				{
+					_rag := _reviews.Group("/rag", _ragMw()...)
+					_rag.GET("/stats", append(_getragstatsMw(), review.GetRAGStats)...)
+					{
+						_index := _rag.Group("/index", _indexMw()...)
+						_index.POST("/:repo_key", append(_indexreporagMw(), review.IndexRepoRAG)...)
+					}
 				}
 			}
 		}

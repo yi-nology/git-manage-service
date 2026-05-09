@@ -4,13 +4,14 @@ package audit
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model/api"
 	auditModel "github.com/yi-nology/git-manage-service/biz/model/audit"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -41,9 +42,9 @@ func List(ctx context.Context, c *app.RequestContext) {
 
 	total, _ := dao.CountWithFilters(req.Action, req.Target, req.StartDate, req.EndDate)
 
-	dtos := make([]api.AuditLogDTO, len(logs))
+	dtos := make([]*auditModel.AuditLog, len(logs))
 	for i, log := range logs {
-		dtos[i] = api.NewAuditLogDTO(log)
+		dtos[i] = convertToProtoAuditLog(&log)
 	}
 
 	c.JSON(consts.StatusOK, map[string]interface{}{
@@ -79,5 +80,18 @@ func Get(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	response.Success(c, api.NewAuditLogDTO(*log))
+	response.Success(c, convertToProtoAuditLog(log))
+}
+
+func convertToProtoAuditLog(l *po.AuditLog) *auditModel.AuditLog {
+	return &auditModel.AuditLog{
+		Id:        int64(l.ID),
+		Action:    l.Action,
+		Target:    l.Target,
+		Detail:    l.Details,
+		Operator:  l.Operator,
+		Ip:        l.IPAddress,
+		UserAgent: l.UserAgent,
+		CreatedAt: fmt.Sprintf("%d", l.CreatedAt.Unix()),
+	}
 }
