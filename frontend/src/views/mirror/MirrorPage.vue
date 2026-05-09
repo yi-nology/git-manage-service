@@ -139,7 +139,7 @@
       </el-table>
     </el-dialog>
 
-    <el-dialog v-model="logDetailVisible" title="日志详情" width="700px">
+    <el-dialog v-model="logDetailVisible" title="日志详情" width="700px" destroy-on-close>
       <div v-if="currentLog">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="状态">{{ currentLog.status }}</el-descriptions-item>

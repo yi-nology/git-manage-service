@@ -56,23 +56,6 @@
   color: #D97706;
 }
 
-.spec-editor-container .el-dialog {
-  background: #fff;
-  border: 1px solid var(--border-color, #E2E8F0);
-}
-
-.spec-editor-container .el-dialog__header {
-  border-bottom: 1px solid var(--border-color, #E2E8F0);
-}
-
-.spec-editor-container .el-dialog__title {
-  color: var(--text-color-primary, #1E293B);
-}
-
-.spec-editor-container .el-dialog__body {
-  color: var(--text-color-regular, #475569);
-}
-
 .spec-editor-container .el-table {
   background: transparent;
   color: var(--text-color-regular, #475569);

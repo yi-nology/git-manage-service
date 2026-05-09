@@ -64,6 +64,8 @@
   --z-index-modal: 1050;
   --z-index-popover: 1060;
   --z-index-tooltip: 1070;
+  --z-index-notification: 1080;
+  --z-index-loading: 2000;
 
   /* Diff colors */
   --diff-num-bg: #f1f8ff;
@@ -327,4 +329,31 @@ a:hover {
   border-radius: var(--border-radius-sm);
   padding: 6px 10px;
   font-size: var(--font-size-sm);
+}
+
+/* 按钮内联加载旋转器 */
+.btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+
+.btn-spinner--sm {
+  width: 14px;
+  height: 14px;
+  border-top-color: currentColor;
+}
+
+.btn-spinner + span,
+.btn-spinner + el-icon {
+  margin-left: 4px;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
 }

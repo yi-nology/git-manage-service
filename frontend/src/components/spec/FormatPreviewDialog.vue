@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="optionsVisible" width="520px" :close-on-click-modal="false" :show-close="false" class="fmt-opt-dialog">
+  <el-dialog v-model="optionsVisible" width="520px" :close-on-click-modal="false" :show-close="false" append-to-body class="fmt-opt-dialog">
     <template #header>
       <div class="fmt-opt-header">
         <span class="fmt-opt-title">格式化选项</span>
@@ -109,7 +109,7 @@
     </template>
   </el-dialog>
 
-  <el-dialog v-model="previewVisible" width="1000px" :close-on-click-modal="false" :show-close="false" class="fmt-preview-dialog">
+  <el-dialog v-model="previewVisible" width="1000px" :close-on-click-modal="false" :show-close="false" append-to-body class="fmt-preview-dialog">
     <template #header>
       <div class="fmt-diff-header">
         <span class="fmt-diff-title">格式化预览 — {{ formatChanges.length }} 处变更</span>

@@ -89,7 +89,7 @@
           <el-icon :size="14"><Document /></el-icon>
           <span class="fe-change-name" :title="f.path">{{ f.path }}</span>
           <el-tag size="small" :type="statusTagType(f.status)">{{ f.status[0].toUpperCase() }}</el-tag>
-          <el-dropdown trigger="click" @command="(cmd: string) => $emit('fileAction', cmd, f.path)" @click.stop>
+          <el-dropdown trigger="click" @command="(cmd: string) => $emit('fileAction', cmd, f.path)" @click.stop teleported>
             <el-button size="small" type="primary" link @click.stop>
               <el-icon><Operation /></el-icon>
             </el-button>
@@ -120,7 +120,7 @@
           <el-icon :size="14"><Document /></el-icon>
           <span class="fe-change-name" :title="f.path">{{ f.path }}</span>
           <el-tag size="small" :type="statusTagType(f.status)">{{ f.status[0].toUpperCase() }}</el-tag>
-          <el-dropdown trigger="click" @command="(cmd: string) => $emit('fileAction', cmd, f.path)" @click.stop>
+          <el-dropdown trigger="click" @command="(cmd: string) => $emit('fileAction', cmd, f.path)" @click.stop teleported>
             <el-button size="small" type="primary" link @click.stop>
               <el-icon><Operation /></el-icon>
             </el-button>
@@ -152,7 +152,7 @@
           <el-icon :size="14"><Document /></el-icon>
           <span class="fe-change-name" :title="f.path">{{ f.path }}</span>
           <el-tag size="small" type="info">?</el-tag>
-          <el-dropdown trigger="click" @command="(cmd: string) => $emit('fileAction', cmd, f.path)" @click.stop>
+          <el-dropdown trigger="click" @command="(cmd: string) => $emit('fileAction', cmd, f.path)" @click.stop teleported>
             <el-button size="small" type="primary" link @click.stop>
               <el-icon><Operation /></el-icon>
             </el-button>

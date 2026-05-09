@@ -170,7 +170,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showHistoryDialog" title="同步历史" width="900px">
+    <el-dialog v-model="showHistoryDialog" title="同步历史" width="900px" destroy-on-close>
       <el-table :data="historyList" size="small" border>
         <el-table-column prop="start_time" label="时间" width="160">
           <template #default="{ row }">{{ formatDate(row.start_time) }}</template>
@@ -199,7 +199,7 @@
       </el-table>
     </el-dialog>
 
-     <el-dialog v-model="showLogDialog" title="执行详情" width="700px">
+     <el-dialog v-model="showLogDialog" title="执行详情" width="700px" destroy-on-close>
        <pre class="log-content">{{ logContent }}</pre>
      </el-dialog>
 

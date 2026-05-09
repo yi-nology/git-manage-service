@@ -89,7 +89,7 @@ function clearAll() {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 9998;
+  z-index: var(--z-index-notification);
   overflow: hidden;
   display: flex;
   flex-direction: column;

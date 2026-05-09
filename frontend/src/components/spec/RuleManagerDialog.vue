@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="visible" title="规则管理" width="700px" :close-on-click-modal="false">
+  <el-dialog v-model="visible" title="规则管理" width="700px" :close-on-click-modal="false" append-to-body>
     <div class="rule-manager">
       <div class="rm-toolbar">
         <el-input v-model="ruleSearch" placeholder="搜索规则" clearable :prefix-icon="Search" style="width:260px" />

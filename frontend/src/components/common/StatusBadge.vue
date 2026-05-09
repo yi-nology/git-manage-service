@@ -39,24 +39,24 @@ withDefaults(defineProps<{
 }
 
 .status-badge--success {
-  background: #ECFDF5;
-  color: #059669;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
 }
 .status-badge--success .status-dot {
   background: var(--success-color);
 }
 
 .status-badge--danger {
-  background: #FEF2F2;
-  color: #DC2626;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
 }
 .status-badge--danger .status-dot {
   background: var(--danger-color);
 }
 
 .status-badge--warning {
-  background: #FFFBEB;
-  color: #D97706;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
 }
 .status-badge--warning .status-dot {
   background: var(--warning-color);
@@ -71,7 +71,7 @@ withDefaults(defineProps<{
 }
 
 .status-badge--running {
-  background: #EFF6FF;
+  background: rgba(59, 130, 246, 0.1);
   color: #3B82F6;
 }
 .status-badge--running .status-dot {

@@ -74,7 +74,7 @@ onMounted(() => {
   height: var(--header-height);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: var(--z-index-sticky);
 }
 
 .logo {

@@ -8,7 +8,6 @@ import './styles/theme.css'
 import './styles/layout.css'
 import './styles/animations.css'
 import './styles/components.css'
-import './spec-editor.css'
 
 const app = createApp(App)
 
