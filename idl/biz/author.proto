@@ -7,6 +7,31 @@ import "common.proto";
 
 option go_package = "/author";
 
+// 别名条目
+message AliasEntry {
+    optional string name = 1;
+    optional string email = 2;
+}
+
+// 作者身份信息
+message AuthorIdentity {
+    optional uint32 id = 1;
+    optional string canonical_name = 2;
+    optional string canonical_email = 3;
+    repeated AliasEntry aliases = 4;
+    optional bool is_default = 5;
+    optional string created_at = 6;
+    optional string updated_at = 7;
+}
+
+// 仓库作者配置
+message RepoAuthorConfig {
+    optional string repo_key = 1;
+    optional uint32 identity_id = 2;
+    optional AuthorIdentity identity = 3;
+    optional string source = 4;
+}
+
 message ListIdentitiesRequest {}
 
 message CreateIdentityRequest {
