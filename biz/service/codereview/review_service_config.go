@@ -49,6 +49,15 @@ func UpdateRemoteRepoConfig(providerConfigID uint, platformOwner, platformRepo s
 		ScopeNote:            req.ScopeNote,
 		PromptPrefixOverride: req.PromptPrefixOverride,
 		PromptIntentOverride: req.PromptIntentOverride,
+		ReviewMode:           req.ReviewMode,
+		CLIConfigJSON:        req.CLIConfigJSON,
+		CustomPrompt:         req.CustomPrompt,
+		UseCustomPrompt:      req.UseCustomPrompt,
+		ExcludeFileTypes:     req.ExcludeFileTypes,
+		IgnorePatterns:       req.IgnorePatterns,
+	}
+	if cfg.ReviewMode == "" {
+		cfg.ReviewMode = "llm"
 	}
 	dao := db.NewReviewRepoConfigDAO()
 	if err := dao.Upsert(cfg); err != nil {

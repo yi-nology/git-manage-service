@@ -56,6 +56,7 @@ func CreateTask(ctx context.Context, repoKey string, providerConfigID uint, mrII
 		CommitSHA:        commitSHA,
 		TriggerType:      triggerType,
 		Status:           "pending",
+		ReviewMode:       cfg.ReviewMode,
 		ConfigSnapshot:   string(cfgSnapshot),
 	}
 	if err := db.NewReviewTaskDAO().Create(task); err != nil {
@@ -74,7 +75,7 @@ func CreateTaskByProvider(ctx context.Context, providerConfigID uint, owner, rep
 		return nil, fmt.Errorf("provider_config_id is required")
 	}
 
-	cfg := getConfig()
+	cfg := GetMergedConfig(0)
 	cfgSnapshot, _ := json.Marshal(cfg)
 
 	task := &po.ReviewTask{
@@ -87,6 +88,7 @@ func CreateTaskByProvider(ctx context.Context, providerConfigID uint, owner, rep
 		CommitSHA:        commitSHA,
 		TriggerType:      triggerType,
 		Status:           "pending",
+		ReviewMode:       cfg.ReviewMode,
 		ConfigSnapshot:   string(cfgSnapshot),
 	}
 	if err := db.NewReviewTaskDAO().Create(task); err != nil {
@@ -236,6 +238,17 @@ func resolveReviewParams(task *po.ReviewTask) (*reviewParams, error) {
 }
 
 func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParams, taskDAO *db.ReviewTaskDAO) (*AggregatedResult, string, error) {
+	cfg := GetMergedConfig(params.repoID)
+
+	switch cfg.ReviewMode {
+	case "claude_cli", "opencode_cli", "qoder_cli", "codex_cli":
+		return executeCLIReview(ctx, task, params, cfg, taskDAO)
+	default:
+		return executeLLMReview(ctx, task, params, cfg, taskDAO)
+	}
+}
+
+func executeLLMReview(ctx context.Context, task *po.ReviewTask, params *reviewParams, cfg reviewConfig, taskDAO *db.ReviewTaskDAO) (*AggregatedResult, string, error) {
 	var processLog []*ProcessStep
 	processLog = append(processLog, &ProcessStep{
 		Name:   "Resolve Provider",
@@ -316,8 +329,6 @@ func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParam
 		allFindings = append(allFindings, findings...)
 	}
 
-	cfg := GetMergedConfig(params.repoID)
-
 	var llmFindings []*Finding
 	if len(files) == 0 {
 		processLog = append(processLog, &ProcessStep{
@@ -340,6 +351,78 @@ func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParam
 
 	result := Aggregate(allFindings, totalAdd, totalDel, len(files), cfg.BlockOnHigh, processLog)
 	return result, rawDiff, nil
+}
+
+func executeCLIReview(ctx context.Context, task *po.ReviewTask, params *reviewParams, cfg reviewConfig, taskDAO *db.ReviewTaskDAO) (*AggregatedResult, string, error) {
+	var processLog []*ProcessStep
+
+	cliService, err := NewCLIService(cfg.ReviewMode, cfg.CLIConfig)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to create CLI service: %w", err)
+	}
+
+	processLog = append(processLog, &ProcessStep{
+		Name:   "Init CLI Service",
+		Status: "ok",
+		Detail: fmt.Sprintf("CLI type: %s", cfg.ReviewMode),
+	})
+
+	if err := cliService.ValidateInstallation(); err != nil {
+		processLog = append(processLog, &ProcessStep{
+			Name:   "Validate CLI",
+			Status: "error",
+			Detail: err.Error(),
+		})
+		return nil, "", fmt.Errorf("CLI validation failed: %w", err)
+	}
+
+	prompt := cfg.CustomPrompt
+	if !cfg.UseCustomPrompt || prompt == "" {
+		prompt = buildSystemPromptWithRules()
+	}
+
+	cliResult, err := cliService.ReviewCode(ctx, &CLIReviewRequest{
+		RepoPath:     params.repoKey,
+		CustomPrompt: prompt,
+	})
+	if err != nil {
+		return nil, "", fmt.Errorf("CLI review failed: %w", err)
+	}
+
+	processLog = append(processLog, &ProcessStep{
+		Name:   "CLI Review",
+		Status: "ok",
+		Detail: fmt.Sprintf("duration: %ds, issues: %d", cliResult.Duration, len(cliResult.Issues)),
+	})
+
+	findings := make([]*Finding, 0, len(cliResult.Issues))
+	for _, issue := range cliResult.Issues {
+		severity := SeverityMedium
+		switch issue.Severity {
+		case "critical":
+			severity = SeverityCritical
+		case "high":
+			severity = SeverityHigh
+		case "low":
+			severity = SeverityLow
+		case "info":
+			severity = SeverityInfo
+		}
+		findings = append(findings, &Finding{
+			RuleID:      issue.RuleID,
+			Source:      "cli",
+			Severity:    severity,
+			FilePath:    issue.FilePath,
+			NewLine:     issue.LineNumber,
+			Title:       issue.Title,
+			Message:     issue.Message,
+			Suggestion:  issue.Suggestion,
+			Fingerprint: computeFingerprint(issue.RuleID, issue.FilePath, issue.LineNumber, issue.Title),
+		})
+	}
+
+	result := Aggregate(findings, 0, 0, 0, cfg.BlockOnHigh, processLog)
+	return result, cliResult.Content, nil
 }
 
 func finalizeReview(ctx context.Context, task *po.ReviewTask, result *AggregatedResult, rawDiff string, params *reviewParams, taskDAO *db.ReviewTaskDAO, repoKey string) {
@@ -495,6 +578,22 @@ func GetMergedConfig(repoID uint) reviewConfig {
 	if repoCfg.LLMProvider != "" {
 		cfg.LLMProvider = repoCfg.LLMProvider
 	}
+	if repoCfg.ReviewMode != "" {
+		cfg.ReviewMode = repoCfg.ReviewMode
+	}
+	if repoCfg.CLIConfigJSON != "" {
+		json.Unmarshal([]byte(repoCfg.CLIConfigJSON), &cfg.CLIConfig)
+	}
+	if repoCfg.CustomPrompt != "" {
+		cfg.CustomPrompt = repoCfg.CustomPrompt
+		cfg.UseCustomPrompt = repoCfg.UseCustomPrompt
+	}
+	if repoCfg.ExcludeFileTypes != "" {
+		json.Unmarshal([]byte(repoCfg.ExcludeFileTypes), &cfg.ExcludeFileTypes)
+	}
+	if repoCfg.IgnorePatterns != "" {
+		json.Unmarshal([]byte(repoCfg.IgnorePatterns), &cfg.IgnorePatterns)
+	}
 	return cfg
 }
 
@@ -516,11 +615,17 @@ func resolveBinding(repoID uint) (*po.RepoProviderBinding, error) {
 }
 
 type reviewConfig struct {
-	BlockOnHigh    bool
-	MaxFiles       int
-	MaxDiffLines   int
-	LLMProvider    string
-	AutoReviewOnMR bool
+	BlockOnHigh      bool
+	MaxFiles         int
+	MaxDiffLines     int
+	LLMProvider      string
+	AutoReviewOnMR   bool
+	ReviewMode       string
+	CLIConfig        map[string]interface{}
+	CustomPrompt     string
+	UseCustomPrompt  bool
+	ExcludeFileTypes []string
+	IgnorePatterns   []string
 }
 
 func getConfig() reviewConfig {
@@ -530,6 +635,7 @@ func getConfig() reviewConfig {
 		MaxFiles:       gc.MaxFiles,
 		MaxDiffLines:   gc.MaxDiffLines,
 		AutoReviewOnMR: gc.AutoReviewOnMR,
+		ReviewMode:     "llm",
 	}
 }
 

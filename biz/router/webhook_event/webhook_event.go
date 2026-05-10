@@ -23,6 +23,12 @@ func Register(r *server.Hertz) {
 			_v1 := _api.Group("/v1", _v1Mw()...)
 			{
 				_webhook := _v1.Group("/webhook", _webhookMw()...)
+				_webhook.GET("/event-rules", append(_listrulesMw(), webhook_event.ListRules)...)
+				_event_rules := _webhook.Group("/event-rules", _event_rulesMw()...)
+				_event_rules.DELETE("/:id", append(_deleteruleMw(), webhook_event.DeleteRule)...)
+				_event_rules.GET("/:id", append(_getruleMw(), webhook_event.GetRule)...)
+				_event_rules.PUT("/:id", append(_updateruleMw(), webhook_event.UpdateRule)...)
+				_webhook.POST("/event-rules", append(_createruleMw(), webhook_event.CreateRule)...)
 				_webhook.GET("/events", append(_listMw(), webhook_event.List)...)
 				_events := _webhook.Group("/events", _eventsMw()...)
 				_events.POST("/retry", append(_retryMw(), webhook_event.Retry)...)

@@ -51,10 +51,13 @@ type WebhookRule struct {
 	ProviderConfigID uint                   `gorm:"index" json:"provider_config_id"`
 	EventTypePattern string                 `gorm:"size:100" json:"event_type_pattern"`
 	RepoPattern      string                 `gorm:"size:200" json:"repo_pattern"`
+	BranchPattern    string                 `gorm:"size:200" json:"branch_pattern"`
 	Action           string                 `gorm:"size:50" json:"action"`
 	ActionConfigJSON string                 `gorm:"type:text" json:"-"`
 	ActionConfig     map[string]interface{} `gorm:"-" json:"action_config"`
 	Enabled          bool                   `gorm:"default:true" json:"enabled"`
+	Priority         int                    `gorm:"default:0" json:"priority"`
+	Description      string                 `gorm:"type:text" json:"description"`
 }
 
 func (WebhookRule) TableName() string { return "webhook_rules" }

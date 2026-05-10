@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import { Key, Lock, Bell, Connection, MagicStick, SetUp, Cpu, User, Document } from '@element-plus/icons-vue'
+import { Key, Lock, Bell, Connection, MagicStick, SetUp, Cpu, User, Document, Monitor, Warning } from '@element-plus/icons-vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 
 const cards = [
@@ -28,6 +28,8 @@ const cards = [
   { title: '分支规则', desc: '定义分支命名前缀和保护规则', icon: SetUp, color: 'teal', route: '/settings/branch-rules' },
   { title: 'Git 作者', desc: '管理 Git 提交身份和别名，修复历史提交作者', icon: User, color: 'green', route: '/settings/author' },
   { title: 'Spec 全局配置', desc: '管理 Spec 文件的默认模板、Lint 规则、格式化选项和 AI 辅助配置', icon: Document, color: 'indigo', route: '/settings/spec' },
+  { title: 'CLI 配置', desc: '管理代码审查使用的 CLI 工具（Claude、opencode、qoder、codex）', icon: Monitor, color: 'gray', route: '/settings/cli' },
+  { title: '事件规则', desc: '配置 Webhook 事件的处理规则和触发策略', icon: Warning, color: 'orange', route: '/settings/event-rules' },
 ]
 </script>
 
@@ -87,6 +89,8 @@ const cards = [
 .card-icon--violet { background: var(--accent-bg); color: #7C3AED; }
 .card-icon--teal { background: var(--accent-bg); color: #14B8A6; }
 .card-icon--green { background: var(--accent-bg); color: #10B981; }
+.card-icon--gray { background: var(--accent-bg); color: #6B7280; }
+.card-icon--orange { background: var(--accent-bg); color: #F97316; }
 
 .card-title {
   margin: 0;

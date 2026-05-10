@@ -175,3 +175,48 @@ func _indexreporagMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _listauditlogsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _cli_configsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _listcliconfigsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _deletecliconfigMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _testcliconfigMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _getcliconfigMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _updatecliconfigMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _createcliconfigMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _id0Mw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

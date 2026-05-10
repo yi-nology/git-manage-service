@@ -40,3 +40,33 @@ func _retryMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _event_rulesMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _listrulesMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _deleteruleMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _getruleMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _updateruleMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _createruleMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

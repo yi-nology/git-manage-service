@@ -104,9 +104,44 @@ func RunMigrations() error {
 		},
 		{
 			Version: "2026050901_review_repo_config_prompt_override",
-			Name:    "add prompt override columns to review_repo_configs",
+			Name:    "add prompt override, review_mode, cli_config, file filters to review_repo_configs",
 			Run: func(tx *gorm.DB) error {
 				return tx.AutoMigrate(&po.ReviewRepoConfig{})
+			},
+		},
+		{
+			Version: "2026051102_review_cli_configs",
+			Name:    "create review_cli_configs table",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.ReviewCLIConfig{})
+			},
+		},
+		{
+			Version: "2026051103_review_audit_logs",
+			Name:    "create review_audit_logs table",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.ReviewAuditLog{})
+			},
+		},
+		{
+			Version: "2026051104_webhook_event_rules",
+			Name:    "create webhook_event_rules table",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.WebhookEventRule{})
+			},
+		},
+		{
+			Version: "2026051105_webhook_rules_enhance",
+			Name:    "add branch_pattern, priority, description to webhook_rules",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.WebhookRule{})
+			},
+		},
+		{
+			Version: "2026051106_review_task_review_mode",
+			Name:    "add review_mode to review_tasks",
+			Run: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&po.ReviewTask{})
 			},
 		},
 	})

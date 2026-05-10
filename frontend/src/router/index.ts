@@ -218,6 +218,18 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Spec 全局配置' },
       },
       {
+        path: 'settings/cli',
+        name: 'CLIConfig',
+        component: () => import('@/views/settings/CLIConfigPage.vue'),
+        meta: { title: 'CLI 配置管理' },
+      },
+      {
+        path: 'settings/event-rules',
+        name: 'WebhookEventRules',
+        component: () => import('@/views/settings/WebhookEventRulesPage.vue'),
+        meta: { title: 'Webhook 事件规则' },
+      },
+      {
         path: 'mcp',
         name: 'MCP',
         component: () => import('@/views/mcp/McpPage.vue'),

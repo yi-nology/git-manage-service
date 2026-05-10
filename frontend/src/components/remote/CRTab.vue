@@ -27,6 +27,7 @@
             :variant="reviewStatusVariant(getReviewStatus(row.cr_number)!.status)"
             :text="reviewStatusLabel(getReviewStatus(row.cr_number)!.status)"
           />
+          <span v-if="getReviewStatus(row.cr_number)!.review_mode && getReviewStatus(row.cr_number)!.review_mode !== 'llm'" class="review-mode-tag">{{ reviewModeShort(getReviewStatus(row.cr_number)!.review_mode) }}</span>
         </template>
         <span v-else class="review-none">未审查</span>
       </template>
@@ -143,6 +144,11 @@ function reviewStatusVariant(s: string): 'success' | 'danger' | 'warning' | 'inf
 function reviewStatusLabel(s: string) {
   const m: Record<string, string> = { pending: '审查中', running: '审查中', success: '通过', failed: '失败', blocked: '阻塞' }
   return m[s] || s
+}
+
+function reviewModeShort(mode: string) {
+  const m: Record<string, string> = { claude_cli: 'Claude', opencode_cli: 'OpenCode', qoder_cli: 'Qoder', codex_cli: 'Codex', hybrid: '混合' }
+  return m[mode] || mode
 }
 
 async function loadBranches() {
@@ -281,5 +287,17 @@ watch(() => props.active, async (val) => {
 .review-none {
   font-size: 12px;
   color: var(--text-color-placeholder);
+}
+
+.review-mode-tag {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 16px;
+  border-radius: 3px;
+  background: var(--el-fill-color-light);
+  color: var(--text-color-secondary);
+  vertical-align: middle;
 }
 </style>

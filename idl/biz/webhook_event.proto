@@ -45,11 +45,88 @@ message RetryWebhookEventResponse {
   string message = 2;
 }
 
+// WebhookEventRule 事件规则
+message WebhookEventRule {
+  uint64 id = 1;
+  string name = 2;
+  string event_type = 3;
+  string description = 4;
+  string match_rules = 5;
+  bool is_active = 6;
+  int32 priority = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+// GetEventRuleRequest 获取事件规则请求
+message GetEventRuleRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+// CreateEventRuleRequest 创建事件规则请求
+message CreateEventRuleRequest {
+  string name = 1 [(api.body) = "name"];
+  string event_type = 2 [(api.body) = "event_type"];
+  string description = 3 [(api.body) = "description"];
+  string match_rules = 4 [(api.body) = "match_rules"];
+  bool is_active = 5 [(api.body) = "is_active"];
+  int32 priority = 6 [(api.body) = "priority"];
+}
+
+// UpdateEventRuleRequest 更新事件规则请求
+message UpdateEventRuleRequest {
+  uint64 id = 1 [(api.path) = "id"];
+  string name = 2 [(api.body) = "name"];
+  string event_type = 3 [(api.body) = "event_type"];
+  string description = 4 [(api.body) = "description"];
+  string match_rules = 5 [(api.body) = "match_rules"];
+  bool is_active = 6 [(api.body) = "is_active"];
+  int32 priority = 7 [(api.body) = "priority"];
+}
+
+// ListEventRulesRequest 列出事件规则请求
+message ListEventRulesRequest {
+  string event_type = 1 [(api.query) = "event_type"];
+  bool is_active = 2 [(api.query) = "is_active"];
+  int32 page = 3 [(api.query) = "page"];
+  int32 page_size = 4 [(api.query) = "page_size"];
+}
+
+// ListEventRulesResponse 列出事件规则响应
+message ListEventRulesResponse {
+  common.BaseResponse base = 1;
+  repeated WebhookEventRule rules = 2;
+  int64 total = 3;
+}
+
+// EventRuleResponse 事件规则响应
+message EventRuleResponse {
+  common.BaseResponse base = 1;
+  WebhookEventRule rule = 2;
+}
+
 service WebhookEventService {
   rpc List(ListWebhookEventsRequest) returns (ListWebhookEventsResponse) {
     option (api.get) = "/api/v1/webhook/events";
   }
   rpc Retry(RetryWebhookEventRequest) returns (RetryWebhookEventResponse) {
     option (api.post) = "/api/v1/webhook/events/retry";
+  }
+  
+  // 事件规则管理
+  rpc ListRules(ListEventRulesRequest) returns (ListEventRulesResponse) {
+    option (api.get) = "/api/v1/webhook/event-rules";
+  }
+  rpc GetRule(GetEventRuleRequest) returns (EventRuleResponse) {
+    option (api.get) = "/api/v1/webhook/event-rules/:id";
+  }
+  rpc CreateRule(CreateEventRuleRequest) returns (EventRuleResponse) {
+    option (api.post) = "/api/v1/webhook/event-rules";
+  }
+  rpc UpdateRule(UpdateEventRuleRequest) returns (EventRuleResponse) {
+    option (api.put) = "/api/v1/webhook/event-rules/:id";
+  }
+  rpc DeleteRule(GetEventRuleRequest) returns (common.EmptyResponse) {
+    option (api.delete) = "/api/v1/webhook/event-rules/:id";
   }
 }

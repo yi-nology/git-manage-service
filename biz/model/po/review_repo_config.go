@@ -19,6 +19,12 @@ type ReviewRepoConfig struct {
 	ScopeNote            string `gorm:"size:500"`
 	PromptPrefixOverride string `gorm:"type:text"`
 	PromptIntentOverride string `gorm:"type:text"`
+	ReviewMode           string `gorm:"size:32;default:'llm'"`
+	CLIConfigJSON        string `gorm:"type:text"`
+	CustomPrompt         string `gorm:"type:text"`
+	UseCustomPrompt      bool   `gorm:"default:false"`
+	ExcludeFileTypes     string `gorm:"type:text"`
+	IgnorePatterns       string `gorm:"type:text"`
 }
 
 func (ReviewRepoConfig) TableName() string { return "review_repo_configs" }

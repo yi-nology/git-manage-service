@@ -22,6 +22,7 @@ type ReviewTask struct {
 	TriggerUser      string `gorm:"size:255"`
 	Status           string `gorm:"size:32;index"`
 	RiskLevel        string `gorm:"size:32"`
+	ReviewMode       string `gorm:"size:32;default:'llm'"`
 	Summary          string `gorm:"type:text"`
 	ErrorMessage     string `gorm:"type:text"`
 	ConfigSnapshot   string `gorm:"type:text"`

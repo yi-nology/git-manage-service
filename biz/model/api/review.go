@@ -24,6 +24,7 @@ type ReviewTaskDTO struct {
 	RiskLevel        string     `json:"risk_level"`
 	Summary          string     `json:"summary"`
 	ErrorMessage     string     `json:"error_message"`
+	ReviewMode       string     `json:"review_mode"`
 	StartedAt        *time.Time `json:"started_at"`
 	FinishedAt       *time.Time `json:"finished_at"`
 	CreatedAt        time.Time  `json:"created_at"`
@@ -50,6 +51,7 @@ func NewReviewTaskDTO(t po.ReviewTask) ReviewTaskDTO {
 		Summary:          t.Summary,
 		ErrorMessage:     t.ErrorMessage,
 		RawDiff:          t.RawDiff,
+		ReviewMode:       t.ReviewMode,
 		StartedAt:        t.StartedAt,
 		FinishedAt:       t.FinishedAt,
 		CreatedAt:        t.CreatedAt,
@@ -102,9 +104,15 @@ type ReviewRepoConfigDTO struct {
 	MaxDiffLines         int             `json:"max_diff_lines"`
 	RuleOverrides        string          `json:"rule_overrides_json"`
 	ScopeNote            string          `json:"scope_note"`
-	LinkedRepos          []LinkedRepoDTO `json:"linked_repos"`
 	PromptPrefixOverride string          `json:"prompt_prefix_override"`
 	PromptIntentOverride string          `json:"prompt_intent_override"`
+	ReviewMode           string          `json:"review_mode"`
+	CLIConfigJSON        string          `json:"cli_config_json"`
+	CustomPrompt         string          `json:"custom_prompt"`
+	UseCustomPrompt      bool            `json:"use_custom_prompt"`
+	ExcludeFileTypes     string          `json:"exclude_file_types"`
+	IgnorePatterns       string          `json:"ignore_patterns"`
+	LinkedRepos          []LinkedRepoDTO `json:"linked_repos"`
 }
 
 type LinkedRepoDTO struct {
@@ -127,9 +135,15 @@ func NewReviewRepoConfigDTO(c po.ReviewRepoConfig, repos []LinkedRepoDTO) Review
 		MaxDiffLines:         c.MaxDiffLines,
 		RuleOverrides:        c.RuleOverridesJSON,
 		ScopeNote:            c.ScopeNote,
-		LinkedRepos:          repos,
 		PromptPrefixOverride: c.PromptPrefixOverride,
 		PromptIntentOverride: c.PromptIntentOverride,
+		ReviewMode:           c.ReviewMode,
+		CLIConfigJSON:        c.CLIConfigJSON,
+		CustomPrompt:         c.CustomPrompt,
+		UseCustomPrompt:      c.UseCustomPrompt,
+		ExcludeFileTypes:     c.ExcludeFileTypes,
+		IgnorePatterns:       c.IgnorePatterns,
+		LinkedRepos:          repos,
 	}
 }
 

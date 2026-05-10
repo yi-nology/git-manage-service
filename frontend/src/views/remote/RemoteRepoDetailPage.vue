@@ -95,6 +95,16 @@
             </div>
             <div class="form-row-inline">
               <div class="form-field">
+                <label>审查模式</label>
+                <el-select v-model="reviewCfg.review_mode" placeholder="LLM 审查" style="width:100%">
+                  <el-option label="LLM 审查（默认）" value="llm" />
+                  <el-option label="Claude CLI" value="claude_cli" />
+                  <el-option label="OpenCode CLI" value="opencode_cli" />
+                  <el-option label="Qoder CLI" value="qoder_cli" />
+                  <el-option label="Codex CLI" value="codex_cli" />
+                </el-select>
+              </div>
+              <div class="form-field">
                 <label>LLM 提供商</label>
                 <el-select v-model="reviewCfg.llm_provider" placeholder="留空使用全局默认" clearable style="width:100%">
                   <el-option v-for="p in globalProviders" :key="p.name" :label="p.name + (p.is_default ? '（默认）' : '')" :value="p.name" />
@@ -110,6 +120,12 @@
               <div class="form-field">
                 <label>最大差异行数</label>
                 <el-input-number v-model="reviewCfg.max_diff_lines" :min="100" :max="50000" :step="500" />
+              </div>
+            </div>
+            <div class="form-row-inline" v-if="reviewCfg.review_mode && reviewCfg.review_mode !== 'llm'">
+              <div class="form-field" style="flex:1">
+                <label>自定义 Prompt（可选）</label>
+                <el-input v-model="reviewCfg.custom_prompt" type="textarea" :rows="3" placeholder="覆盖默认的审查提示词" />
               </div>
             </div>
           </div>
@@ -280,6 +296,12 @@ const reviewCfg = ref<ReviewRepoConfigDTO>({
   max_diff_lines: 3000,
   rule_overrides_json: '',
   scope_note: '',
+  review_mode: 'llm',
+  cli_config_json: '',
+  custom_prompt: '',
+  use_custom_prompt: false,
+  exclude_file_types: '',
+  ignore_patterns: '',
   linked_repos: [],
   prompt_prefix_override: '',
   prompt_intent_override: '',
@@ -361,6 +383,12 @@ async function saveReviewConfig() {
       scope_note: reviewCfg.value.scope_note,
       prompt_prefix_override: promptCfg.value.prefix,
       prompt_intent_override: promptCfg.value.intent,
+      review_mode: reviewCfg.value.review_mode || 'llm',
+      cli_config_json: reviewCfg.value.cli_config_json,
+      custom_prompt: reviewCfg.value.custom_prompt,
+      use_custom_prompt: reviewCfg.value.use_custom_prompt,
+      exclude_file_types: reviewCfg.value.exclude_file_types,
+      ignore_patterns: reviewCfg.value.ignore_patterns,
     })
     if (res) reviewCfg.value = res
     ElMessage.success('配置已保存')

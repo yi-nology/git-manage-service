@@ -24,6 +24,8 @@ export interface ReviewTaskDTO {
   updated_at: string
   findings_count: number
   raw_diff: string
+  review_mode: string
+  process_log: string
 }
 
 export interface ReviewFindingDTO {
@@ -112,6 +114,12 @@ export interface ReviewRepoConfigDTO {
   max_diff_lines: number
   rule_overrides_json: string
   scope_note: string
+  review_mode: string
+  cli_config_json: string
+  custom_prompt: string
+  use_custom_prompt: boolean
+  exclude_file_types: string
+  ignore_patterns: string
   linked_repos: LinkedRepoDTO[]
   prompt_prefix_override: string
   prompt_intent_override: string
@@ -201,4 +209,144 @@ export function indexRepoRAG(repoKey: string) {
 
 export function getRAGStats() {
   return request.get<unknown, RAGStatsResult>('/reviews/rag/stats')
+}
+
+// CLI 配置管理
+export interface ReviewCLIConfigDTO {
+  id: number
+  name: string
+  cliType: string
+  execPath: string
+  configJson: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type ReviewMode = 'llm' | 'claude_cli' | 'opencode_cli' | 'qoder_cli' | 'codex_cli' | 'hybrid'
+
+export function listCLIConfigs() {
+  return request.get<unknown, ReviewCLIConfigDTO[]>('/reviews/cli-configs')
+}
+
+export function scanCLIs() {
+  return request.get<unknown, ScannedCLI[]>('/reviews/cli-configs/scan')
+}
+
+export interface ScannedCLI {
+  cliType: string
+  name: string
+  execPath: string
+  version: string
+  isInstalled: boolean
+}
+
+export function getCLIConfig(id: number) {
+  return request.get<unknown, { config: ReviewCLIConfigDTO }>(`/reviews/cli-configs/${id}`)
+}
+
+export function createCLIConfig(data: {
+  name: string
+  cli_type: string
+  exec_path: string
+  config_json?: string
+  is_active?: boolean
+}) {
+  return request.post<unknown, { config: ReviewCLIConfigDTO }>('/reviews/cli-configs', data)
+}
+
+export function updateCLIConfig(id: number, data: {
+  name?: string
+  cli_type?: string
+  exec_path?: string
+  config_json?: string
+  is_active?: boolean
+}) {
+  return request.put<unknown, { config: ReviewCLIConfigDTO }>(`/reviews/cli-configs/${id}`, data)
+}
+
+export function deleteCLIConfig(id: number) {
+  return request.delete(`/reviews/cli-configs/${id}`)
+}
+
+export function testCLIConfig(id: number) {
+  return request.post<unknown, { success: boolean; message: string; version?: string }>(`/reviews/cli-configs/${id}/test`)
+}
+
+// 审查审计日志
+export interface ReviewAuditLogDTO {
+  id: number
+  task_id: number
+  action: string
+  status: string
+  error_message: string
+  duration: number
+  metadata: string
+  created_at: string
+}
+
+export function listReviewAuditLogs(params?: {
+  task_id?: number
+  action?: string
+  status?: string
+  start_time?: string
+  end_time?: string
+  page?: number
+  page_size?: number
+}) {
+  return request.get<unknown, {
+    logs: ReviewAuditLogDTO[]
+    total: number
+  }>('/reviews/audit-logs', { params })
+}
+
+// Webhook 事件规则
+export interface WebhookEventRuleDTO {
+  id: number
+  name: string
+  event_type: string
+  description: string
+  match_rules: string
+  is_active: boolean
+  priority: number
+  created_at: string
+  updated_at: string
+}
+
+export function listEventRules(params?: {
+  event_type?: string
+  is_active?: boolean
+  page?: number
+  page_size?: number
+}) {
+  return request.get<unknown, {
+    rules: WebhookEventRuleDTO[]
+    total: number
+  }>('/webhook/event-rules', { params })
+}
+
+export function createEventRule(data: {
+  name: string
+  event_type: string
+  description?: string
+  match_rules: string
+  is_active?: boolean
+  priority?: number
+}) {
+  return request.post<unknown, { rule: WebhookEventRuleDTO }>('/webhook/event-rules', data)
+}
+
+export function updateEventRule(id: number, data: {
+  name?: string
+  event_type?: string
+  description?: string
+  match_rules?: string
+  is_active?: boolean
+  priority?: number
+}) {
+  return request.put<unknown, { rule: WebhookEventRuleDTO }>(`/webhook/event-rules/${id}`, data)
+}
+
+export function deleteEventRule(id: number) {
+  return request.delete(`/webhook/event-rules/${id}`)
 }

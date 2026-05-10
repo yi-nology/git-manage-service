@@ -30,6 +30,8 @@ message ReviewTask {
   string finished_at = 17;
   string created_at = 18;
   string updated_at = 19;
+  string review_mode = 20;
+  string process_log = 21;
 }
 
 // ReviewFinding 评审发现项
@@ -161,6 +163,12 @@ message ReviewRepoConfig {
   string scope_note = 12;
   string created_at = 13;
   string updated_at = 14;
+  string review_mode = 15;
+  string cli_config_json = 16;
+  string custom_prompt = 17;
+  bool use_custom_prompt = 18;
+  string exclude_file_types = 19;
+  string ignore_patterns = 20;
 }
 
 // GetRemoteRepoConfigRequest 获取远端仓库审查配置请求
@@ -189,6 +197,98 @@ message UpdateRemoteRepoConfigRequest {
   int32 max_diff_lines = 9 [(api.body) = "max_diff_lines"];
   string rule_overrides_json = 10 [(api.body) = "rule_overrides_json"];
   string scope_note = 11 [(api.body) = "scope_note"];
+  string review_mode = 12 [(api.body) = "review_mode"];
+  string cli_config_json = 13 [(api.body) = "cli_config_json"];
+  string custom_prompt = 14 [(api.body) = "custom_prompt"];
+  bool use_custom_prompt = 15 [(api.body) = "use_custom_prompt"];
+  string exclude_file_types = 16 [(api.body) = "exclude_file_types"];
+  string ignore_patterns = 17 [(api.body) = "ignore_patterns"];
+}
+
+// ReviewCLIConfig CLI 配置
+message ReviewCLIConfig {
+  uint64 id = 1;
+  string name = 2;
+  string cli_type = 3;
+  string exec_path = 4;
+  string config_json = 5;
+  bool is_active = 6;
+  string created_at = 7;
+  string updated_at = 8;
+}
+
+// CreateCLIConfigRequest 创建 CLI 配置请求
+message CreateCLIConfigRequest {
+  string name = 1 [(api.body) = "name"];
+  string cli_type = 2 [(api.body) = "cli_type"];
+  string exec_path = 3 [(api.body) = "exec_path"];
+  string config_json = 4 [(api.body) = "config_json"];
+  bool is_active = 5 [(api.body) = "is_active"];
+}
+
+// UpdateCLIConfigRequest 更新 CLI 配置请求
+message UpdateCLIConfigRequest {
+  uint64 id = 1 [(api.path) = "id"];
+  string name = 2 [(api.body) = "name"];
+  string cli_type = 3 [(api.body) = "cli_type"];
+  string exec_path = 4 [(api.body) = "exec_path"];
+  string config_json = 5 [(api.body) = "config_json"];
+  bool is_active = 6 [(api.body) = "is_active"];
+}
+
+// ListCLIConfigsResponse 列出 CLI 配置响应
+message ListCLIConfigsResponse {
+  common.BaseResponse base = 1;
+  repeated ReviewCLIConfig configs = 2;
+}
+
+// CLIConfigResponse CLI 配置响应
+message CLIConfigResponse {
+  common.BaseResponse base = 1;
+  ReviewCLIConfig config = 2;
+}
+
+// TestCLIConfigRequest 测试 CLI 配置请求
+message TestCLIConfigRequest {
+  uint64 id = 1 [(api.path) = "id"];
+}
+
+// TestCLIConfigResponse 测试 CLI 配置响应
+message TestCLIConfigResponse {
+  common.BaseResponse base = 1;
+  bool success = 2;
+  string message = 3;
+  string version = 4;
+}
+
+// ReviewAuditLog 审查审计日志
+message ReviewAuditLog {
+  uint64 id = 1;
+  uint64 task_id = 2;
+  string action = 3;
+  string status = 4;
+  string error_message = 5;
+  int32 duration = 6;
+  string metadata = 7;
+  string created_at = 8;
+}
+
+// ListReviewAuditLogsRequest 列出审查审计日志请求
+message ListReviewAuditLogsRequest {
+  uint64 task_id = 1 [(api.query) = "task_id"];
+  string action = 2 [(api.query) = "action"];
+  string status = 3 [(api.query) = "status"];
+  string start_time = 4 [(api.query) = "start_time"];
+  string end_time = 5 [(api.query) = "end_time"];
+  int32 page = 6 [(api.query) = "page"];
+  int32 page_size = 7 [(api.query) = "page_size"];
+}
+
+// ListReviewAuditLogsResponse 列出审查审计日志响应
+message ListReviewAuditLogsResponse {
+  common.BaseResponse base = 1;
+  repeated ReviewAuditLog logs = 2;
+  int64 total = 3;
 }
 
 message HandleWebhookRequest {
@@ -342,5 +442,30 @@ service ReviewService {
   // GetRAGStats 获取 RAG 统计
   rpc GetRAGStats(ListReviewTasksRequest) returns (GetRAGStatsResponse) {
     option (api.get) = "/api/v1/reviews/rag/stats";
+  }
+
+  // CLI 配置管理
+  rpc ListCLIConfigs(common.EmptyRequest) returns (ListCLIConfigsResponse) {
+    option (api.get) = "/api/v1/reviews/cli-configs";
+  }
+  rpc GetCLIConfig(GetReviewTaskRequest) returns (CLIConfigResponse) {
+    option (api.get) = "/api/v1/reviews/cli-configs/:id";
+  }
+  rpc CreateCLIConfig(CreateCLIConfigRequest) returns (CLIConfigResponse) {
+    option (api.post) = "/api/v1/reviews/cli-configs";
+  }
+  rpc UpdateCLIConfig(UpdateCLIConfigRequest) returns (CLIConfigResponse) {
+    option (api.put) = "/api/v1/reviews/cli-configs/:id";
+  }
+  rpc DeleteCLIConfig(GetReviewTaskRequest) returns (common.EmptyResponse) {
+    option (api.delete) = "/api/v1/reviews/cli-configs/:id";
+  }
+  rpc TestCLIConfig(TestCLIConfigRequest) returns (TestCLIConfigResponse) {
+    option (api.post) = "/api/v1/reviews/cli-configs/:id/test";
+  }
+
+  // 审查审计日志
+  rpc ListAuditLogs(ListReviewAuditLogsRequest) returns (ListReviewAuditLogsResponse) {
+    option (api.get) = "/api/v1/reviews/audit-logs";
   }
 }

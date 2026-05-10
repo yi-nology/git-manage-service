@@ -25,6 +25,10 @@
         <span class="meta-value">{{ triggerLabel(currentTask.trigger_type) }}</span>
       </div>
       <div class="meta-item">
+        <span class="meta-label">模式</span>
+        <span class="meta-value">{{ reviewModeLabel(currentTask.review_mode) }}</span>
+      </div>
+      <div class="meta-item">
         <span class="meta-label">时间</span>
         <span class="meta-value">{{ timeAgo(currentTask.created_at) }}</span>
       </div>
@@ -559,6 +563,11 @@ function riskLabel(r: string) {
 function triggerLabel(t: string) {
   const m: Record<string, string> = { manual: '手动', webhook: 'Webhook', api: 'API' }
   return m[t] || t
+}
+
+function reviewModeLabel(mode: string) {
+  const m: Record<string, string> = { llm: 'LLM', claude_cli: 'Claude CLI', opencode_cli: 'OpenCode', qoder_cli: 'Qoder CLI', codex_cli: 'Codex CLI', hybrid: '混合' }
+  return m[mode] || mode || 'LLM'
 }
 
 function shortSha(sha: string) {

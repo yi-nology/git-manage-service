@@ -4,6 +4,7 @@ package review
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -12,6 +13,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	common "github.com/yi-nology/git-manage-service/biz/model/common"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	reviewModel "github.com/yi-nology/git-manage-service/biz/model/review"
 	codereview "github.com/yi-nology/git-manage-service/biz/service/codereview"
 	"github.com/yi-nology/git-manage-service/biz/service/rag"
@@ -546,4 +549,260 @@ func GetRAGStats(ctx context.Context, c *app.RequestContext) {
 func GetPromptStructure(ctx context.Context, c *app.RequestContext) {
 	structure := codereview.GetPromptStructure()
 	pkgresponse.Success(c, structure)
+}
+
+// ScanCLIs scans the local system for installed CLI tools.
+func ScanCLIs(ctx context.Context, c *app.RequestContext) {
+	results := codereview.ScanInstalledCLIs()
+	pkgresponse.Success(c, results)
+}
+
+// ListCLIConfigs .
+// @router /api/v1/reviews/cli-configs [GET]
+func ListCLIConfigs(ctx context.Context, c *app.RequestContext) {
+	var req common.EmptyRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+
+	configs, err := db.NewReviewCLIConfigDAO().FindAll()
+	if err != nil {
+		pkgresponse.InternalServerError(c, err.Error())
+		return
+	}
+
+	dtos := make([]map[string]interface{}, 0, len(configs))
+	for _, cfg := range configs {
+		dtos = append(dtos, map[string]interface{}{
+			"id":         cfg.ID,
+			"name":       cfg.Name,
+			"cliType":    cfg.CLIType,
+			"execPath":   cfg.ExecPath,
+			"configJson": cfg.ConfigJSON,
+			"isActive":   cfg.IsActive,
+			"createdAt":  cfg.CreatedAt,
+			"updatedAt":  cfg.UpdatedAt,
+		})
+	}
+
+	pkgresponse.Success(c, dtos)
+}
+
+// GetCLIConfig .
+// @router /api/v1/reviews/cli-configs/:id [GET]
+func GetCLIConfig(ctx context.Context, c *app.RequestContext) {
+	id, err := parseID(c.Param("id"))
+	if err != nil {
+		pkgresponse.BadRequest(c, "invalid id")
+		return
+	}
+
+	cfg, err := db.NewReviewCLIConfigDAO().FindByID(id)
+	if err != nil {
+		pkgresponse.NotFound(c, "CLI config not found")
+		return
+	}
+
+	pkgresponse.Success(c, map[string]interface{}{
+		"id":         cfg.ID,
+		"name":       cfg.Name,
+		"cliType":    cfg.CLIType,
+		"execPath":   cfg.ExecPath,
+		"configJson": cfg.ConfigJSON,
+		"isActive":   cfg.IsActive,
+		"createdAt":  cfg.CreatedAt,
+		"updatedAt":  cfg.UpdatedAt,
+	})
+}
+
+// CreateCLIConfig .
+// @router /api/v1/reviews/cli-configs [POST]
+func CreateCLIConfig(ctx context.Context, c *app.RequestContext) {
+	var req struct {
+		Name       string `json:"name"`
+		CLIType    string `json:"cli_type"`
+		ExecPath   string `json:"exec_path"`
+		ConfigJSON string `json:"config_json"`
+		IsActive   *bool  `json:"is_active"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+	if req.Name == "" || req.CLIType == "" || req.ExecPath == "" {
+		pkgresponse.BadRequest(c, "name, cli_type and exec_path are required")
+		return
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	cfg := &po.ReviewCLIConfig{
+		Name:       req.Name,
+		CLIType:    req.CLIType,
+		ExecPath:   req.ExecPath,
+		ConfigJSON: req.ConfigJSON,
+		IsActive:   isActive,
+	}
+	if err := db.NewReviewCLIConfigDAO().Create(cfg); err != nil {
+		pkgresponse.InternalServerError(c, err.Error())
+		return
+	}
+
+	c.Set("audit_target", "cli_config:"+req.Name)
+	pkgresponse.Success(c, cfg)
+}
+
+// UpdateCLIConfig .
+// @router /api/v1/reviews/cli-configs/:id [PUT]
+func UpdateCLIConfig(ctx context.Context, c *app.RequestContext) {
+	id, err := parseID(c.Param("id"))
+	if err != nil {
+		pkgresponse.BadRequest(c, "invalid id")
+		return
+	}
+
+	cfg, err := db.NewReviewCLIConfigDAO().FindByID(id)
+	if err != nil {
+		pkgresponse.NotFound(c, "CLI config not found")
+		return
+	}
+
+	var req struct {
+		Name       string `json:"name"`
+		CLIType    string `json:"cli_type"`
+		ExecPath   string `json:"exec_path"`
+		ConfigJSON string `json:"config_json"`
+		IsActive   *bool  `json:"is_active"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+
+	if req.Name != "" {
+		cfg.Name = req.Name
+	}
+	if req.CLIType != "" {
+		cfg.CLIType = req.CLIType
+	}
+	if req.ExecPath != "" {
+		cfg.ExecPath = req.ExecPath
+	}
+	if req.ConfigJSON != "" {
+		cfg.ConfigJSON = req.ConfigJSON
+	}
+	if req.IsActive != nil {
+		cfg.IsActive = *req.IsActive
+	}
+
+	if err := db.NewReviewCLIConfigDAO().Save(cfg); err != nil {
+		pkgresponse.InternalServerError(c, err.Error())
+		return
+	}
+
+	pkgresponse.Success(c, cfg)
+}
+
+// DeleteCLIConfig .
+// @router /api/v1/reviews/cli-configs/:id [DELETE]
+func DeleteCLIConfig(ctx context.Context, c *app.RequestContext) {
+	id, err := parseID(c.Param("id"))
+	if err != nil {
+		pkgresponse.BadRequest(c, "invalid id")
+		return
+	}
+
+	cfg, err := db.NewReviewCLIConfigDAO().FindByID(id)
+	if err != nil {
+		pkgresponse.NotFound(c, "CLI config not found")
+		return
+	}
+
+	if err := db.NewReviewCLIConfigDAO().Delete(cfg); err != nil {
+		pkgresponse.InternalServerError(c, err.Error())
+		return
+	}
+
+	pkgresponse.Success(c, map[string]string{"status": "deleted"})
+}
+
+// TestCLIConfig .
+// @router /api/v1/reviews/cli-configs/:id/test [POST]
+func TestCLIConfig(ctx context.Context, c *app.RequestContext) {
+	id, err := parseID(c.Param("id"))
+	if err != nil {
+		pkgresponse.BadRequest(c, "invalid id")
+		return
+	}
+
+	cfg, err := db.NewReviewCLIConfigDAO().FindByID(id)
+	if err != nil {
+		pkgresponse.NotFound(c, "CLI config not found")
+		return
+	}
+
+	cliConfig := map[string]interface{}{"exec_path": cfg.ExecPath}
+	if cfg.ConfigJSON != "" {
+		json.Unmarshal([]byte(cfg.ConfigJSON), &cliConfig)
+	}
+
+	cliSvc, svcErr := codereview.NewCLIService(cfg.CLIType, cliConfig)
+	if svcErr != nil {
+		pkgresponse.InternalServerError(c, svcErr.Error())
+		return
+	}
+
+	if validateErr := cliSvc.ValidateInstallation(); validateErr != nil {
+		pkgresponse.Success(c, map[string]interface{}{
+			"success": false,
+			"message": validateErr.Error(),
+		})
+		return
+	}
+
+	version, _ := cliSvc.GetVersion()
+	pkgresponse.Success(c, map[string]interface{}{
+		"success": true,
+		"message": "CLI is available",
+		"version": version,
+	})
+}
+
+// ListAuditLogs .
+// @router /api/v1/reviews/audit-logs [GET]
+func ListAuditLogs(ctx context.Context, c *app.RequestContext) {
+	var req reviewModel.ListReviewAuditLogsRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+
+	taskID := uint(req.GetTaskId())
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	logs, total, err := db.NewReviewAuditLogDAO().FindByTaskID(taskID, page, pageSize)
+	if err != nil {
+		pkgresponse.InternalServerError(c, err.Error())
+		return
+	}
+
+	pkgresponse.Success(c, map[string]interface{}{
+		"logs": logs,
+		"pagination": map[string]interface{}{
+			"total":    total,
+			"page":     page,
+			"pageSize": pageSize,
+		},
+	})
 }
