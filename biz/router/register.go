@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	handler_review "github.com/yi-nology/git-manage-service/biz/handler/review"
 	"github.com/yi-nology/git-manage-service/biz/middleware"
 	"github.com/yi-nology/git-manage-service/biz/router/ai"
 	"github.com/yi-nology/git-manage-service/biz/router/audit"

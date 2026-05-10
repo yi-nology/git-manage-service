@@ -38,8 +38,6 @@ func Register(r *server.Hertz) {
 			}
 			{
 				_reviews := _v1.Group("/reviews", _reviewsMw()...)
-				_reviews.GET("/prompt-structure", append(_getpromptstructureMw(), review.GetPromptStructure)...)
-				_reviews.GET("/stats", append(_getreviewstatsMw(), review.GetReviewStats)...)
 				_reviews.GET("/audit-logs", append(_listauditlogsMw(), review.ListAuditLogs)...)
 				_reviews.GET("/cli-configs", append(_listcliconfigsMw(), review.ListCLIConfigs)...)
 				_cli_configs := _reviews.Group("/cli-configs", _cli_configsMw()...)
@@ -49,6 +47,8 @@ func Register(r *server.Hertz) {
 				_cli_configs.GET("/:id", append(_getcliconfigMw(), review.GetCLIConfig)...)
 				_cli_configs.PUT("/:id", append(_updatecliconfigMw(), review.UpdateCLIConfig)...)
 				_reviews.POST("/cli-configs", append(_createcliconfigMw(), review.CreateCLIConfig)...)
+				_reviews.GET("/prompt-structure", append(_getpromptstructureMw(), review.GetPromptStructure)...)
+				_reviews.GET("/stats", append(_getreviewstatsMw(), review.GetReviewStats)...)
 				_reviews.GET("/tasks", append(_listtasksMw(), review.ListTasks)...)
 				_tasks := _reviews.Group("/tasks", _tasksMw()...)
 				_tasks.GET("/provider", append(_listtasksbyproviderMw(), review.ListTasksByProvider)...)
