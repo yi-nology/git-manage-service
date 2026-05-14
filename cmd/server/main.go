@@ -32,7 +32,7 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/appinfo"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/embed"
-	"github.com/yi-nology/git-manage-service/pkg/gitbackend"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 	"github.com/yi-nology/git-manage-service/pkg/lock"
 	"github.com/yi-nology/git-manage-service/pkg/metrics"
 	pkgqueue "github.com/yi-nology/git-manage-service/pkg/queue"
@@ -172,7 +172,7 @@ func initQueue() {
 func initMirrorSystem() {
 	cfg := configs.GlobalConfig
 
-	backend, err := gitbackend.NewGitBackendFromConfig(cfg.Mirror)
+	backend, err := gitbackend.NewGitBackend(cfg.Mirror.GitBackend)
 	if err != nil {
 		log.Printf("[Mirror] Warning: git backend init failed: %v", err)
 		return

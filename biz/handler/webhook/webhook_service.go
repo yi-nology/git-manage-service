@@ -13,7 +13,8 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	webhook "github.com/yi-nology/git-manage-service/biz/model/webhook"
-	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
+	"github.com/yi-nology/git-platform-sdk/provider"
 	"github.com/yi-nology/git-manage-service/biz/service/sync"
 	"github.com/yi-nology/git-manage-service/biz/service/webhookevent"
 	"github.com/yi-nology/git-manage-service/pkg/response"
@@ -120,7 +121,7 @@ func Receive(ctx context.Context, c *app.RequestContext) {
 	var matchedProvider provider.Provider
 	var matchedCfg po.ProviderConfig
 	for _, cfg := range configs {
-		p, pErr := provider.GetManager().GetProvider(cfg.ID)
+		p, pErr := provider_manager.GetManager().GetProvider(cfg.ID)
 		if pErr != nil {
 			continue
 		}
@@ -139,7 +140,7 @@ func Receive(ctx context.Context, c *app.RequestContext) {
 		tcEvent := string(c.Request.Header.Peek("X-Event"))
 		if glEvent != "" || ghEvent != "" || gtEvent != "" || tcEvent != "" {
 			for _, cfg := range configs {
-				p, _ := provider.GetManager().GetProvider(cfg.ID)
+				p, _ := provider_manager.GetManager().GetProvider(cfg.ID)
 				if p != nil {
 					matchedProvider = p
 					matchedCfg = cfg

@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/yi-nology/git-manage-service/biz/model/po"
-	"github.com/yi-nology/git-manage-service/pkg/branchfilter"
-	"github.com/yi-nology/git-manage-service/pkg/gitbackend"
+	"github.com/yi-nology/git-platform-sdk/branchfilter"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 type PushExecutor struct {

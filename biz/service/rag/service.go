@@ -9,7 +9,7 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
 type Service struct {

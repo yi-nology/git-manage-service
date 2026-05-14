@@ -1,8 +1,10 @@
-package provider
+package provider_manager
 
 import (
 	"fmt"
 	"sync"
+
+	sdkprov "github.com/yi-nology/git-platform-sdk/provider"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
@@ -15,19 +17,19 @@ var (
 
 type ProviderManager struct {
 	mu    sync.RWMutex
-	cache map[uint]Provider
+	cache map[uint]sdkprov.Provider
 }
 
 func GetManager() *ProviderManager {
 	once.Do(func() {
 		instance = &ProviderManager{
-			cache: make(map[uint]Provider),
+			cache: make(map[uint]sdkprov.Provider),
 		}
 	})
 	return instance
 }
 
-func (m *ProviderManager) GetProvider(configID uint) (Provider, error) {
+func (m *ProviderManager) GetProvider(configID uint) (sdkprov.Provider, error) {
 	m.mu.RLock()
 	if p, ok := m.cache[configID]; ok {
 		m.mu.RUnlock()
@@ -63,8 +65,8 @@ func (m *ProviderManager) Invalidate(configID uint) {
 	delete(m.cache, configID)
 }
 
-func (m *ProviderManager) DetectAndCreate(remoteURL string, credentialID uint) (Provider, *DetectResult, error) {
-	result, err := DetectPlatform(remoteURL)
+func (m *ProviderManager) DetectAndCreate(remoteURL string, credentialID uint) (sdkprov.Provider, *sdkprov.DetectResult, error) {
+	result, err := sdkprov.DetectPlatform(remoteURL)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -74,13 +76,12 @@ func (m *ProviderManager) DetectAndCreate(remoteURL string, credentialID uint) (
 		return nil, nil, err
 	}
 
-	cfg := &po.ProviderConfig{
-		Platform:     string(result.Platform),
-		BaseURL:      result.BaseURL,
-		CredentialID: credentialID,
-	}
-
-	p, err := newProvider(cfg, cred)
+	p, err := sdkprov.NewProvider(sdkprov.Config{
+		Platform: result.Platform,
+		BaseURL:  result.BaseURL,
+		Token:    cred.Secret,
+		SkipTLS:  false,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -106,19 +107,11 @@ func resolveCredential(credentialID uint) (*po.Credential, error) {
 	return cred, nil
 }
 
-func newProvider(cfg *po.ProviderConfig, cred *po.Credential) (Provider, error) {
-	token := cred.Secret
-	skipTLS := cfg.SkipTLS
-	switch Platform(cfg.Platform) {
-	case PlatformGitLab:
-		return NewGitLabProvider(cfg.BaseURL, token, skipTLS), nil
-	case PlatformGitHub:
-		return NewGitHubProvider(cfg.BaseURL, token, skipTLS), nil
-	case PlatformGitea:
-		return NewGiteaProvider(cfg.BaseURL, token, skipTLS), nil
-	case PlatformTencentCode:
-		return NewTencentCodeProvider(cfg.BaseURL, token, skipTLS), nil
-	default:
-		return nil, fmt.Errorf("unsupported platform: %s", cfg.Platform)
-	}
+func newProvider(cfg *po.ProviderConfig, cred *po.Credential) (sdkprov.Provider, error) {
+	return sdkprov.NewProvider(sdkprov.Config{
+		Platform: sdkprov.Platform(cfg.Platform),
+		BaseURL:  cfg.BaseURL,
+		Token:    cred.Secret,
+		SkipTLS:  cfg.SkipTLS,
+	})
 }

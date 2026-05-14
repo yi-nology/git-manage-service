@@ -8,7 +8,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
 func AutoDetect(repoKey string) (*api.AutoDetectResp, error) {

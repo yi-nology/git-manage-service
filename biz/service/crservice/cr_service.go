@@ -9,7 +9,8 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
-	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
+	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
 func CreateCR(ctx context.Context, req *api.CreateCRReq) (*api.CRDTO, error) {
@@ -167,7 +168,7 @@ func resolveRepoProvider(repoKey string) (*po.Repo, provider.Provider, string, s
 	bindingDAO := db.NewRepoProviderBindingDAO()
 	b, err := bindingDAO.FindPrimaryByRepoID(repo.ID)
 	if err == nil && b != nil {
-		p, err := provider.GetManager().GetProvider(b.ProviderConfigID)
+		p, err := provider_manager.GetManager().GetProvider(b.ProviderConfigID)
 		if err != nil {
 			return nil, nil, "", "", 0, err
 		}
@@ -177,7 +178,7 @@ func resolveRepoProvider(repoKey string) (*po.Repo, provider.Provider, string, s
 	if repo.ProviderConfigID == 0 {
 		return nil, nil, "", "", 0, fmt.Errorf("repo %s has no provider configured", repoKey)
 	}
-	p, err := provider.GetManager().GetProvider(repo.ProviderConfigID)
+	p, err := provider_manager.GetManager().GetProvider(repo.ProviderConfigID)
 	if err != nil {
 		return nil, nil, "", "", 0, err
 	}
@@ -259,7 +260,7 @@ func toCRDTO(cr *po.ChangeRequest) *api.CRDTO {
 }
 
 func resolveProvider(providerID uint) (provider.Provider, error) {
-	p, err := provider.GetManager().GetProvider(providerID)
+	p, err := provider_manager.GetManager().GetProvider(providerID)
 	if err != nil {
 		return nil, fmt.Errorf("provider not found: %w", err)
 	}

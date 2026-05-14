@@ -8,7 +8,8 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
-	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
+	"github.com/yi-nology/git-platform-sdk/provider"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
@@ -29,7 +30,7 @@ func RegisterWebhook(ctx context.Context, id uint) (*api.RepoProviderBindingDTO,
 		return nil, fmt.Errorf("provider config not found: %w", err)
 	}
 
-	p, err := provider.GetManager().GetProvider(b.ProviderConfigID)
+	p, err := provider_manager.GetManager().GetProvider(b.ProviderConfigID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
@@ -100,7 +101,7 @@ func DeleteWebhook(ctx context.Context, id uint) (*api.RepoProviderBindingDTO, e
 		return nil, fmt.Errorf("no webhook registered for this binding")
 	}
 
-	p, err := provider.GetManager().GetProvider(b.ProviderConfigID)
+	p, err := provider_manager.GetManager().GetProvider(b.ProviderConfigID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}

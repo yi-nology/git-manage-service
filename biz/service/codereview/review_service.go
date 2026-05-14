@@ -13,7 +13,8 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/notification"
-	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
+	"github.com/yi-nology/git-platform-sdk/provider"
 	"github.com/yi-nology/git-manage-service/biz/service/ws"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
@@ -212,7 +213,7 @@ func resolveReviewParams(task *po.ReviewTask) (*reviewParams, error) {
 		if repo.PlatformOwner == "" || repo.PlatformRepo == "" {
 			return nil, fmt.Errorf("repo %d missing platform owner/repo", task.RepoID)
 		}
-		p, err := provider.GetManager().GetProvider(task.ProviderConfigID)
+		p, err := provider_manager.GetManager().GetProvider(task.ProviderConfigID)
 		if err != nil {
 			return nil, fmt.Errorf("provider not found: %w", err)
 		}
@@ -225,7 +226,7 @@ func resolveReviewParams(task *po.ReviewTask) (*reviewParams, error) {
 	if task.ProviderConfigID == 0 {
 		return nil, fmt.Errorf("task %d has no repo_id and no provider_config_id", task.ID)
 	}
-	p, err := provider.GetManager().GetProvider(task.ProviderConfigID)
+	p, err := provider_manager.GetManager().GetProvider(task.ProviderConfigID)
 	if err != nil {
 		return nil, fmt.Errorf("provider not found: %w", err)
 	}

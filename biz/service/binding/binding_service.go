@@ -11,7 +11,8 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
+	"github.com/yi-nology/git-platform-sdk/provider"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
@@ -89,7 +90,7 @@ func CreateBinding(ctx context.Context, req *api.CreateBindingReq) (*api.RepoPro
 			req.PlatformOwner, req.PlatformRepo, req.ProviderConfigID)
 	}
 
-	p, err := provider.GetManager().GetProvider(req.ProviderConfigID)
+	p, err := provider_manager.GetManager().GetProvider(req.ProviderConfigID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
@@ -223,7 +224,7 @@ func DeleteBinding(ctx context.Context, id uint, cleanupWebhook bool) error {
 	}
 
 	if cleanupWebhook && b.WebhookID != "" {
-		p, err := provider.GetManager().GetProvider(b.ProviderConfigID)
+		p, err := provider_manager.GetManager().GetProvider(b.ProviderConfigID)
 		if err == nil {
 			var webhookInt int64
 			fmt.Sscanf(b.WebhookID, "%d", &webhookInt)

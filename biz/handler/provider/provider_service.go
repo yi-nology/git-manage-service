@@ -10,7 +10,8 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	providerModel "github.com/yi-nology/git-manage-service/biz/model/provider"
-	"github.com/yi-nology/git-manage-service/biz/service/provider"
+	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
+	"github.com/yi-nology/git-platform-sdk/provider"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -174,7 +175,7 @@ func Update(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to update provider config: "+err.Error())
 		return
 	}
-	provider.GetManager().Invalidate(id)
+	provider_manager.GetManager().Invalidate(id)
 	pkgresponse.Success(c, toProtoProviderConfig(cfg))
 }
 
@@ -201,7 +202,7 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to delete provider config: "+err.Error())
 		return
 	}
-	provider.GetManager().Invalidate(id)
+	provider_manager.GetManager().Invalidate(id)
 	pkgresponse.Success(c, map[string]string{"message": "Provider config deleted"})
 }
 
@@ -213,7 +214,7 @@ func Test(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "Invalid ID")
 		return
 	}
-	p, err := provider.GetManager().GetProvider(id)
+	p, err := provider_manager.GetManager().GetProvider(id)
 	if err != nil {
 		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
 		return
@@ -234,7 +235,7 @@ func ListRemoteRepos(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "Invalid ID")
 		return
 	}
-	p, err := provider.GetManager().GetProvider(id)
+	p, err := provider_manager.GetManager().GetProvider(id)
 	if err != nil {
 		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
 		return
@@ -292,7 +293,7 @@ func ListRemoteBranches(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	pid, _ := strconv.ParseUint(providerIDStr, 10, 64)
-	p, err := provider.GetManager().GetProvider(uint(pid))
+	p, err := provider_manager.GetManager().GetProvider(uint(pid))
 	if err != nil {
 		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
 		return
@@ -333,7 +334,7 @@ func CreateRemoteBranch(ctx context.Context, c *app.RequestContext) {
 	if req.Ref == "" {
 		req.Ref = "main"
 	}
-	p, err := provider.GetManager().GetProvider(req.ProviderID)
+	p, err := provider_manager.GetManager().GetProvider(req.ProviderID)
 	if err != nil {
 		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
 		return
@@ -365,7 +366,7 @@ func DeleteRemoteBranch(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "provider_id, owner, repo and branch are required")
 		return
 	}
-	p, err := provider.GetManager().GetProvider(req.ProviderID)
+	p, err := provider_manager.GetManager().GetProvider(req.ProviderID)
 	if err != nil {
 		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
 		return
