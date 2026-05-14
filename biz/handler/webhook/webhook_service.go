@@ -137,8 +137,9 @@ func Receive(ctx context.Context, c *app.RequestContext) {
 		glEvent := string(c.Request.Header.Peek("X-Gitlab-Event"))
 		ghEvent := string(c.Request.Header.Peek("X-GitHub-Event"))
 		gtEvent := string(c.Request.Header.Peek("X-Gitea-Event"))
+		fjEvent := string(c.Request.Header.Peek("X-Forgejo-Event"))
 		tcEvent := string(c.Request.Header.Peek("X-Event"))
-		if glEvent != "" || ghEvent != "" || gtEvent != "" || tcEvent != "" {
+		if glEvent != "" || ghEvent != "" || gtEvent != "" || fjEvent != "" || tcEvent != "" {
 			for _, cfg := range configs {
 				p, _ := provider_manager.GetManager().GetProvider(cfg.ID)
 				if p != nil {

@@ -147,6 +147,7 @@ const platformTypes = [
   { key: 'github', label: 'GitHub' },
   { key: 'gitea', label: 'Gitea' },
   { key: 'tencent_code', label: '腾讯工蜂' },
+  { key: 'forgejo', label: 'Forgejo' },
 ]
 
 const PLATFORM_META: Record<string, { label: string; iconBg: string; iconColor: string; badgeBg: string }> = {
@@ -154,6 +155,7 @@ const PLATFORM_META: Record<string, { label: string; iconBg: string; iconColor: 
   github: { label: 'GitHub', iconBg: '#F3F4F6', iconColor: '#24292F', badgeBg: '#F3F4F6' },
   gitea: { label: 'Gitea', iconBg: '#ECFDF5', iconColor: '#609926', badgeBg: '#ECFDF5' },
   tencent_code: { label: '腾讯工蜂', iconBg: '#E8F5E9', iconColor: '#1B5E20', badgeBg: '#E8F5E9' },
+  forgejo: { label: 'Forgejo', iconBg: '#FFF7ED', iconColor: '#F97316', badgeBg: '#FFF7ED' },
 }
 
 function platformMeta(p: string) {
