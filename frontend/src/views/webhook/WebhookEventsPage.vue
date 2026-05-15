@@ -94,7 +94,7 @@ const eventColumns: TableColumn[] = [
   { key: 'created_at', label: '时间', width: '160px' },
 ]
 
-const PLATFORM_COLORS: Record<string, string> = { gitlab: '#FC6D26', github: '#24292F', gitea: '#609926', forgejo: '#F97316', tencent_code: '#1B5E20' }
+const PLATFORM_COLORS: Record<string, string> = { gitlab: '#FC6D26', github: '#24292F', gitea: '#609926', gitee: '#C71D23', forgejo: '#F97316', tencent_code: '#1B5E20' }
 function platformColor(s: string) { return PLATFORM_COLORS[s?.toLowerCase()] || '#6B7280' }
 function statusLabel(s: string) {
   if (s === 'processed') return '已处理'

@@ -175,12 +175,12 @@ function reset() {
 }
 
 function platformLabel(platform: string) {
-  const map: Record<string, string> = { gitlab: 'GitLab', github: 'GitHub', gitea: 'Gitea', forgejo: 'Forgejo', tencent_code: '腾讯工蜂' }
+  const map: Record<string, string> = { gitlab: 'GitLab', github: 'GitHub', gitea: 'Gitea', gitee: 'Gitee', forgejo: 'Forgejo', tencent_code: '腾讯工蜂' }
   return map[platform] || platform
 }
 
 function platformTagType(platform: string) {
-  const map: Record<string, string> = { gitlab: 'danger', github: 'info', gitea: 'success', forgejo: 'warning', tencent_code: 'success' }
+  const map: Record<string, string> = { gitlab: 'danger', github: 'info', gitea: 'success', gitee: 'danger', forgejo: 'warning', tencent_code: 'success' }
   return (map[platform] || 'info') as 'success' | 'warning' | 'danger' | 'info'
 }
 </script>

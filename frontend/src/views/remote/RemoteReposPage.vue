@@ -112,6 +112,7 @@ const PLATFORM_META: Record<string, { label: string; iconBg: string; iconColor: 
   gitlab: { label: 'GitLab', iconBg: '#FFF4E6', iconColor: '#FC6D26' },
   github: { label: 'GitHub', iconBg: '#F3F4F6', iconColor: '#24292F' },
   gitea: { label: 'Gitea', iconBg: '#ECFDF5', iconColor: '#609926' },
+  gitee: { label: 'Gitee', iconBg: '#FEF2F2', iconColor: '#C71D23' },
   tencent_code: { label: '腾讯工蜂', iconBg: '#E8F5E9', iconColor: '#1B5E20' },
   forgejo: { label: 'Forgejo', iconBg: '#FFF7ED', iconColor: '#F97316' },
 }

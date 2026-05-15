@@ -11,8 +11,8 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	providerModel "github.com/yi-nology/git-manage-service/biz/model/provider"
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
-	"github.com/yi-nology/git-platform-sdk/provider"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
 func toProtoProviderConfig(cfg *po.ProviderConfig) *providerModel.ProviderConfig {
@@ -105,8 +105,8 @@ func Create(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "name and platform are required")
 		return
 	}
-	if req.Platform != "gitlab" && req.Platform != "github" && req.Platform != "gitea" && req.Platform != "forgejo" && req.Platform != "tencent_code" {
-		pkgresponse.BadRequest(c, "platform must be gitlab, github, gitea, forgejo or tencent_code")
+	if req.Platform != "gitlab" && req.Platform != "github" && req.Platform != "gitea" && req.Platform != "forgejo" && req.Platform != "tencent_code" && req.Platform != "gitee" {
+		pkgresponse.BadRequest(c, "platform must be gitlab, github, gitea, forgejo, tencent_code or gitee")
 		return
 	}
 	if req.CredentialID == 0 {

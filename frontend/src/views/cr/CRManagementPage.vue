@@ -121,8 +121,8 @@ const filters = [
   { key: 'closed', label: '已关闭' },
 ]
 
-const PLATFORM_COLORS: Record<string, string> = { gitlab: '#FC6D26', github: '#24292F', gitea: '#609926', forgejo: '#F97316', tencent_code: '#1B5E20' }
-const PLATFORM_LABELS: Record<string, string> = { gitlab: 'GitLab', github: 'GitHub', gitea: 'Gitea', forgejo: 'Forgejo', tencent_code: '腾讯工蜂' }
+const PLATFORM_COLORS: Record<string, string> = { gitlab: '#FC6D26', github: '#24292F', gitea: '#609926', gitee: '#C71D23', forgejo: '#F97316', tencent_code: '#1B5E20' }
+const PLATFORM_LABELS: Record<string, string> = { gitlab: 'GitLab', github: 'GitHub', gitea: 'Gitea', gitee: 'Gitee', forgejo: 'Forgejo', tencent_code: '腾讯工蜂' }
 
 function platformColor(p?: string) { return PLATFORM_COLORS[p || ''] || '#6B7280' }
 function platformLabel(p?: string) { return PLATFORM_LABELS[p || ''] || p || '-' }

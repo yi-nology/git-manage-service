@@ -117,7 +117,7 @@ async function loadPlatformBadges() {
     for (const b of allBindings) {
       const key = b.repo_key
       if (!map[key]) map[key] = []
-      const label = { gitlab: 'GitLab', github: 'GitHub', gitea: 'Gitea' }[b.platform] || b.platform
+      const label = { gitlab: 'GitLab', github: 'GitHub', gitea: 'Gitea', gitee: 'Gitee' }[b.platform] || b.platform
       if (!map[key].includes(label)) map[key].push(label)
     }
     repoPlatformBadges.value = map
