@@ -1,538 +1,568 @@
 <template>
   <div class="sync-config-panel">
-    <div class="sync-toolbar">
-      <ActionPill variant="green" :icon="Refresh" @click="handleBatchSync" :disabled="selectedTasks.length === 0">
-        同步选中 ({{ selectedTasks.length }})
-      </ActionPill>
-      <ActionPill variant="primary" :icon="Plus" @click="showQuickPanel = !showQuickPanel">快速同步</ActionPill>
-      <ActionPill variant="outline" :icon="Setting" @click="openAddTask">新建规则</ActionPill>
-      <ActionPill variant="ai" :icon="MagicStick" @click="showAIPanel = !showAIPanel">AI 诊断</ActionPill>
+    <div class="panel-header">
+      <div class="header-left">
+        <h2 class="page-title">镜像同步</h2>
+        <p class="page-subtitle">配置仓库的双向镜像同步，支持 Pull 和 Push 两种模式</p>
+      </div>
+      <div class="header-actions">
+        <ActionPill variant="outline" :icon="Refresh" @click="loadMirrors">刷新</ActionPill>
+        <ActionPill variant="primary" :icon="Plus" @click="showCreateDialog('pull')">
+          <span class="btn-content">
+            <el-icon><Download /></el-icon>
+            新建 Pull Mirror
+          </span>
+        </ActionPill>
+        <ActionPill variant="warning" :icon="Plus" @click="showCreateDialog('push')">
+          <span class="btn-content">
+            <el-icon><Upload /></el-icon>
+            新建 Push Mirror
+          </span>
+        </ActionPill>
+      </div>
     </div>
 
-    <QuickSyncPanel v-model="showQuickPanel" :repo-key="repoKey" :remote-names="remoteNames" />
+    <el-empty v-if="!loading && mirrors.length === 0" description="暂无镜像配置" image-size="120">
+      <div class="empty-actions">
+        <el-button type="primary" @click="showCreateDialog('pull')">
+          <el-icon style="margin-right: 6px;"><Download /></el-icon>
+          创建 Pull Mirror
+        </el-button>
+        <el-button @click="showCreateDialog('push')">
+          <el-icon style="margin-right: 6px;"><Upload /></el-icon>
+          创建 Push Mirror
+        </el-button>
+      </div>
+    </el-empty>
 
-    <SectionTitle title="同步任务列表" />
-    <el-checkbox-group v-model="selectedTasks" class="task-list" v-loading="loading">
-      <el-empty v-if="tasks.length === 0 && !loading" description="暂无同步规则">
-        <el-button type="primary" @click="openAddTask">创建第一条规则</el-button>
-      </el-empty>
-
-      <el-card v-for="task in tasks" :key="task.key" class="task-card" :class="{ disabled: !task.enabled }">
-        <div class="task-content">
-          <el-checkbox :value="task.key" class="task-checkbox" />
-
-          <div class="direction-flow">
-            <div class="endpoint source">
-              <span class="label">{{ task.source_remote }}</span>
-              <span class="branch">{{ task.source_branch }}</span>
-            </div>
-            <div class="flow-arrow">
-              <el-icon><Right /></el-icon>
-              <el-tag v-if="task.sync_mode === 'all-branch'" size="small" type="info">全分支</el-tag>
-            </div>
-            <div class="endpoint target">
-              <span class="label">{{ task.target_remote }}</span>
-              <span class="branch">{{ task.target_branch }}</span>
-            </div>
-          </div>
-
-          <div class="task-meta">
-            <el-tag :type="task.enabled ? 'success' : 'info'" size="small">
-              {{ task.enabled ? '已启用' : '已暂停' }}
+    <div v-if="mirrors.length > 0" class="mirror-grid">
+      <div v-for="mirror in mirrors" :key="mirror.id" class="mirror-card" :class="`type-${mirror.mirrorType}`">
+        <div class="card-header">
+          <div class="card-title">
+            <el-tag :type="mirror.mirrorType === 'pull' ? 'primary' : 'warning'" size="large">
+              <el-icon v-if="mirror.mirrorType === 'pull'"><Download /></el-icon>
+              <el-icon v-else><Upload /></el-icon>
+              {{ mirror.mirrorType.toUpperCase() }}
             </el-tag>
-            <span v-if="task.cron" class="cron">
-              <el-icon><AlarmClock /></el-icon> {{ task.cron }}
-            </span>
+            <el-tag :type="getStatusType(mirror.status)" size="small">
+              {{ getStatusLabel(mirror.status) }}
+            </el-tag>
           </div>
-
-          <div class="git-options">
-            <el-tag v-if="task.git_tags" size="small" effect="plain">--tags</el-tag>
-            <el-tag v-if="task.git_force" size="small" type="warning" effect="plain">--force</el-tag>
-            <el-tag v-if="task.git_prune" size="small" effect="plain">--prune</el-tag>
-            <el-tag v-if="task.git_no_verify" size="small" effect="plain">--no-verify</el-tag>
-          </div>
-
-          <div class="task-actions">
-            <el-button size="small" type="success" @click="handleRun(task.key)" :icon="CaretRight" round>执行</el-button>
-            <el-button size="small" @click="showHistory(task.key)" :icon="Clock" round>历史</el-button>
-            <el-dropdown trigger="click">
-              <el-button size="small" :icon="More" round />
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="openEditTask(task)">编辑</el-dropdown-item>
-                  <el-dropdown-item @click="toggleEnabled(task)">
-                    {{ task.enabled ? '暂停' : '启用' }}
-                  </el-dropdown-item>
-                  <el-dropdown-item divided @click="handleDelete(task.key)" style="color: #f56c6c">删除</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+          <div class="card-actions">
+            <el-switch v-model="mirror.enabled" @change="toggleEnabled(mirror)" :loading="updatingId === mirror.id" />
           </div>
         </div>
-      </el-card>
-    </el-checkbox-group>
 
-    <el-dialog v-model="showTaskDialog" :title="editingTask ? '编辑同步规则' : '新建同步规则'" width="700px" destroy-on-close>
-      <el-form :model="taskForm" label-width="100px">
-        <el-form-item label="同步模式">
-          <el-radio-group v-model="taskForm.sync_mode">
-            <el-radio value="single">单分支同步</el-radio>
-            <el-radio value="all-branch">全分支同步</el-radio>
-          </el-radio-group>
+        <div class="card-body">
+          <div class="info-row">
+            <span class="info-label">远程 URL</span>
+            <span class="info-value mono">{{ mirror.remoteUrl }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Remote 名称</span>
+            <span class="info-value">{{ mirror.remoteName }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">分支过滤</span>
+            <span class="info-value">{{ mirror.branchFilter || '全部分支' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">同步间隔</span>
+            <span class="info-value">{{ mirror.cronExpr || `${mirror.syncInterval}s` }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Git 选项</span>
+            <div class="git-options">
+              <el-tag v-if="mirror.gitForce" size="small" type="danger" effect="plain">--force</el-tag>
+              <el-tag v-if="mirror.gitPrune" size="small" effect="plain">--prune</el-tag>
+              <el-tag v-if="mirror.gitTags" size="small" effect="plain">--tags</el-tag>
+              <el-tag v-if="!mirror.gitForce && !mirror.gitPrune && !mirror.gitTags" size="small" type="info">无</el-tag>
+            </div>
+          </div>
+           <div class="info-row">
+             <span class="info-label">上次同步</span>
+             <span class="info-value">{{ mirror.lastSyncAt ? formatTime(mirror.lastSyncAt) : '从未' }}</span>
+           </div>
+           <div class="info-row">
+             <span class="info-label">下次同步</span>
+             <span class="info-value" :class="{ 'syncing': syncingId === mirror.id }">
+               {{ syncingId === mirror.id ? '同步中...' : (mirror.nextSyncAt ? formatTime(mirror.nextSyncAt) : '-') }}
+             </span>
+           </div>
+          <div v-if="mirror.lastError" class="info-row error-row">
+            <span class="info-label">错误</span>
+            <span class="info-value">{{ mirror.lastError }}</span>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <el-button-group>
+            <el-button type="primary" size="small" @click="triggerSync(mirror)" :loading="syncingId === mirror.id">
+              <el-icon><Refresh /></el-icon>
+              同步
+            </el-button>
+            <el-button size="small" @click="showLogs(mirror)">
+              <el-icon><Document /></el-icon>
+              日志
+            </el-button>
+            <el-button size="small" @click="editMirror(mirror)">
+              <el-icon><Edit /></el-icon>
+              编辑
+            </el-button>
+            <el-button type="danger" size="small" @click="deleteMirror(mirror)">
+              <el-icon><Delete /></el-icon>
+              删除
+            </el-button>
+          </el-button-group>
+        </div>
+      </div>
+    </div>
+
+    <el-dialog v-model="dialogVisible" :title="editingMirror ? '编辑镜像' : `创建 ${createType === 'push' ? 'Push' : 'Pull'} 镜像`" width="700px" destroy-on-close class="mirror-dialog">
+      <el-form :model="form" label-width="100px">
+        <el-form-item label="远程仓库">
+          <el-select v-model="selectedRemote" placeholder="选择当前仓库远程" style="width: 100%" @change="onRemoteChange">
+            <el-option v-for="r in repoRemotes" :key="r.name" :label="`${r.name} (${r.url})`" :value="r">
+              <span style="font-weight: 600;">{{ r.name }}</span>
+              <span style="color: var(--text-color-secondary); margin-left: 8px; font-size: 12px;">{{ r.url }}</span>
+            </el-option>
+          </el-select>
+          <div class="form-tip">从当前仓库远程列表中选择，或手动填写下方</div>
         </el-form-item>
-
-        <el-row :gutter="16">
+        <el-form-item label="远程 URL" required>
+          <el-input v-model="form.remoteUrl" placeholder="https://github.com/user/repo.git" />
+        </el-form-item>
+        <el-form-item label="Remote 名称">
+          <el-input v-model="form.remoteName" placeholder="origin" />
+        </el-form-item>
+        <el-form-item label="凭据">
+          <el-select v-model="form.credentialId" clearable placeholder="选择凭据（可选）" style="width: 100%">
+            <el-option v-for="c in credentials" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="分支过滤">
+          <el-select
+            v-model="selectedBranches"
+            multiple
+            filterable
+            allow-create
+            placeholder="选择或输入分支"
+            style="width: 100%"
+            @change="onBranchesChange"
+          >
+            <el-option v-for="b in repoBranches" :key="b" :label="b" :value="b" />
+          </el-select>
+          <div class="form-tip">选择要同步的分支，支持手动输入 glob 模式。留空同步全部分支</div>
+        </el-form-item>
+        <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="源 (Source)">
-              <el-select v-model="taskForm.source_remote" style="width: 100%" @change="onSourceRemoteChange">
-                <el-option label="Local (本地)" value="local" />
-                <el-option v-for="r in remoteNames" :key="r" :label="r" :value="r" />
-              </el-select>
-            </el-form-item>
-            <el-form-item v-if="taskForm.sync_mode !== 'all-branch'" label="源分支">
-              <el-select
-                v-model="taskForm.source_branch"
-                filterable
-                style="width: 100%"
-                placeholder="选择源分支"
-                :loading="branchLoading"
-              >
-                <el-option v-for="b in sourceBranches" :key="b" :label="b" :value="b" />
-              </el-select>
+            <el-form-item label="同步间隔">
+              <el-input-number v-model="form.syncInterval" :min="30" :step="30" style="width: 100%" />
+              <span style="margin-left: 8px">秒</span>
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="目标 (Target)">
-              <el-select v-model="taskForm.target_remote" style="width: 100%">
-                <el-option v-for="r in remoteNames" :key="r" :label="r" :value="r" />
-              </el-select>
-            </el-form-item>
-            <el-form-item v-if="taskForm.sync_mode !== 'all-branch'" label="目标分支">
-              <el-select
-                v-model="taskForm.target_branch"
-                filterable
-                allow-create
-                default-first-option
-                style="width: 100%"
-                placeholder="选择或输入目标分支（回车新建）"
-                :loading="branchLoading"
-              >
-                <el-option v-for="b in targetBranches" :key="b" :label="b" :value="b" />
-              </el-select>
+            <el-form-item label="Cron 表达式">
+              <el-input v-model="form.cronExpr" placeholder="0 */5 * * *" />
             </el-form-item>
           </el-col>
         </el-row>
-
-        <el-alert v-if="taskForm.sync_mode === 'all-branch'" title="全分支模式将自动同步源端所有分支到目标端对应分支" type="info" :closable="false" show-icon class="mb-3" />
-        <el-alert v-if="taskForm.source_remote === taskForm.target_remote" title="源和目标不能相同" type="warning" :closable="false" show-icon class="mb-3" />
-
+        <el-form-item label="触发设置">
+          <el-checkbox v-model="form.syncOnPush">Push 事件自动触发同步</el-checkbox>
+        </el-form-item>
         <el-divider content-position="left">Git 选项</el-divider>
-
-        <el-row :gutter="16">
-          <el-col :span="12">
+        <el-row :gutter="20">
+          <el-col :span="8">
             <el-form-item>
-              <el-checkbox v-model="taskForm.git_tags">--tags 推送所有标签</el-checkbox>
-            </el-form-item>
-            <el-form-item>
-              <el-checkbox v-model="taskForm.git_prune">--prune 清理已删除分支</el-checkbox>
+              <el-checkbox v-model="form.gitForce">
+                <span class="checkbox-label">强制推送 <span class="warning-text">⚠️</span></span>
+              </el-checkbox>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item>
-              <el-checkbox v-model="taskForm.git_force">--force 强制推送 ⚠️</el-checkbox>
-            </el-form-item>
-            <el-form-item>
-              <el-checkbox v-model="taskForm.git_no_verify">--no-verify 跳过钩子</el-checkbox>
+              <el-checkbox v-model="form.gitPrune">清理已删除分支</el-checkbox>
             </el-form-item>
           </el-col>
-        </el-row>
-
-        <el-divider content-position="left">定时任务</el-divider>
-
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="Cron">
-              <el-input v-model="taskForm.cron" placeholder="0 2 * * * (留空禁用)" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="启用">
-              <el-switch v-model="taskForm.enabled" />
+          <el-col :span="8">
+            <el-form-item>
+              <el-checkbox v-model="form.gitTags">同步标签</el-checkbox>
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="启用状态">
+          <el-switch v-model="form.enabled" />
+        </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showTaskDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveTask" :loading="saving">保存</el-button>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitForm" :loading="saving">确定</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showHistoryDialog" title="同步历史" width="900px" destroy-on-close>
-      <el-table :data="historyList" size="small" border>
-        <el-table-column prop="start_time" label="时间" width="160">
-          <template #default="{ row }">{{ formatDate(row.start_time) }}</template>
-        </el-table-column>
-        <el-table-column prop="trigger_source" label="触发" width="100">
+    <el-dialog v-model="logDialogVisible" title="同步日志" width="900px" destroy-on-close class="log-dialog">
+      <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: var(--text-color-secondary); font-size: 12px;">
+          提示：同步任务在后台异步执行，如无数据请点击刷新按钮
+        </span>
+        <el-button size="small" @click="loadSyncLogs" :loading="logLoading">
+          <el-icon><Refresh /></el-icon>
+          刷新
+        </el-button>
+      </div>
+      <el-empty v-if="!logLoading && syncLogs.length === 0" description="暂无同步日志" image-size="120" />
+      <el-table v-if="syncLogs.length > 0" :data="syncLogs" v-loading="logLoading" stripe max-height="500">
+        <el-table-column label="触发类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="getTriggerTagType(row.trigger_source)" size="small">{{ getTriggerLabel(row.trigger_source) }}</el-tag>
+            <el-tag :type="getTriggerType(row.triggerType)" size="small">
+              {{ getTriggerLabel(row.triggerType) }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column label="状态" width="90">
           <template #default="{ row }">
-            <el-tag :type="getRunStatusTagType(row.status)" size="small">{{ row.status }}</el-tag>
+            <el-tag :type="row.status === 'success' ? 'success' : row.status === 'failed' ? 'danger' : 'warning'" size="small">
+              {{ row.status }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="耗时" width="100">
-          <template #default="{ row }">
-            {{ row.end_time ? (new Date(row.end_time).getTime() - new Date(row.start_time).getTime()) + 'ms' : '-' }}
-          </template>
+        <el-table-column label="耗时" width="90">
+          <template #default="{ row }">{{ row.durationMs ? `${(row.durationMs / 1000).toFixed(1)}s` : '-' }}</template>
         </el-table-column>
-        <el-table-column label="详情">
+        <el-table-column label="分支" prop="branchesSynced" width="70" align="center" />
+        <el-table-column label="提交" prop="commitsPushed" width="70" align="center" />
+        <el-table-column label="开始时间" width="170">
+          <template #default="{ row }">{{ row.startedAt ? formatTime(row.startedAt) : '-' }}</template>
+        </el-table-column>
+        <el-table-column label="错误" prop="errorMessage" min-width="200" show-overflow-tooltip />
+        <el-table-column label="操作" width="80" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" link @click="showLog(row.details)">日志</el-button>
-            <span v-if="row.error_message" class="error-msg">{{ row.error_message }}</span>
+            <el-button size="small" type="primary" link @click="showLogDetail(row)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-dialog>
 
-    <el-dialog v-model="showLogDialog" title="执行详情" width="700px" destroy-on-close>
-      <pre class="log-content">{{ logContent }}</pre>
+    <el-dialog v-model="logDetailVisible" title="日志详情" width="750px" destroy-on-close class="detail-dialog">
+      <div v-if="currentLog">
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="状态">
+            <el-tag :type="currentLog.status === 'success' ? 'success' : 'danger'">{{ currentLog.status }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="触发类型">{{ getTriggerLabel(currentLog.triggerType) }}</el-descriptions-item>
+          <el-descriptions-item label="耗时">{{ currentLog.durationMs ? `${(currentLog.durationMs / 1000).toFixed(2)}s` : '-' }}</el-descriptions-item>
+          <el-descriptions-item label="分支 / 提交">
+            {{ currentLog.branchesSynced || 0 }} / {{ currentLog.commitsPushed || 0 }}
+          </el-descriptions-item>
+          <el-descriptions-item label="错误" :span="2" v-if="currentLog.errorMessage">
+            <span class="error-text">{{ currentLog.errorMessage }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+        <div v-if="currentLog.detailLog" class="log-section">
+          <div class="log-section-title">执行日志</div>
+          <pre class="log-content">{{ currentLog.detailLog }}</pre>
+        </div>
+      </div>
     </el-dialog>
-
-    <AIPanel
-      ref="aiPanelRef"
-      v-if="showAIPanel"
-      title="AI 同步诊断"
-      v-model:visible="showAIPanel"
-      empty-hint="选择一个失败的同步任务，AI 将分析失败原因并给出修复建议"
-      :ai-loading="aiLoading"
-      @send="handleAIAnalyze"
-      @apply="handleAIApply"
-      @close="showAIPanel = false"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Plus, Setting, Refresh, Right, CaretRight, Clock,
-  AlarmClock, More, MagicStick
-} from '@element-plus/icons-vue'
-import {
-  getSyncTasks, createSyncTask, updateSyncTask, deleteSyncTask,
-  runSyncTask, getSyncHistory, batchSync
-} from '@/api/modules/sync'
+import { Refresh, Plus, Download, Upload, Document, Edit, Delete } from '@element-plus/icons-vue'
+import * as mirrorApi from '@/api/modules/mirror'
+import { listCredentials } from '@/api/modules/credential'
 import { getRepoDetail, scanRepo } from '@/api/modules/repo'
 import { getBranchList } from '@/api/modules/branch'
-import { aiApi } from '@/api/modules/ai'
-import type { BranchInfo } from '@/types/branch'
-import type { SyncTaskDTO, SyncRunDTO } from '@/types/sync'
-import { formatDate, getStatusColor } from '@/utils/format'
-import SectionTitle from '@/components/common/SectionTitle.vue'
+import type { MirrorDTO, MirrorSyncLogDTO, CreateMirrorReq, UpdateMirrorReq } from '@/types/mirror'
+import { MIRROR_STATUS_MAP, TRIGGER_TYPE_MAP } from '@/types/mirror'
 import ActionPill from '@/components/common/ActionPill.vue'
-import QuickSyncPanel from '@/components/sync/QuickSyncPanel.vue'
-import AIPanel from '@/components/ai/AIPanel.vue'
 
-const props = defineProps<{
-  repoKey: string
-}>()
+const props = defineProps<{ repoKey: string }>()
 
 const loading = ref(false)
 const saving = ref(false)
-const branchLoading = ref(false)
-const tasks = ref<SyncTaskDTO[]>([])
-const remoteNames = ref<string[]>([])
-const allBranches = ref<BranchInfo[]>([])
-const selectedTasks = ref<string[]>([])
-const showQuickPanel = ref(false)
+const syncingId = ref<number | null>(null)
+const updatingId = ref<number | null>(null)
+const mirrors = ref<MirrorDTO[]>([])
+const credentials = ref<{ id: number; name: string }[]>([])
+const repoRemotes = ref<{ name: string; url: string }[]>([])
+const repoBranches = ref<string[]>([])
+const selectedRemote = ref<{ name: string; url: string } | null>(null)
+const selectedBranches = ref<string[]>([])
+const currentRepoId = ref<number>(0)
 
-const sourceBranches = computed(() => {
-  const remote = taskForm.value.source_remote
-  if (remote === 'local') {
-    return allBranches.value.filter(b => b.type === 'local').map(b => b.name)
-  }
-  const prefix = remote + '/'
-  return allBranches.value
-    .filter(b => b.type === 'remote' && b.name.startsWith(prefix))
-    .map(b => b.name.slice(prefix.length))
-})
+const dialogVisible = ref(false)
+const editingMirror = ref<MirrorDTO | null>(null)
+const createType = ref<'pull' | 'push'>('pull')
 
-const targetBranches = computed(() => {
-  return allBranches.value.filter(b => b.type === 'local').map(b => b.name)
-})
+const logDialogVisible = ref(false)
+const logLoading = ref(false)
+const syncLogs = ref<MirrorSyncLogDTO[]>([])
+const currentLogMirrorId = ref<number>(0)
 
-const showTaskDialog = ref(false)
-const editingTask = ref<SyncTaskDTO | null>(null)
-const taskForm = ref({
-  source_remote: 'local',
-  source_branch: 'main',
-  target_remote: '',
-  target_branch: 'main',
-  cron: '',
+const logDetailVisible = ref(false)
+const currentLog = ref<MirrorSyncLogDTO | null>(null)
+
+const form = ref({
+  remoteUrl: '',
+  remoteName: 'origin',
+  credentialId: null as number | null,
+  branchFilter: '',
+  syncInterval: 600,
+  cronExpr: '',
+  syncOnPush: false,
+  gitForce: false,
+  gitPrune: true,
+  gitTags: true,
   enabled: true,
-  sync_mode: 'single',
-  git_tags: false,
-  git_force: false,
-  git_prune: false,
-  git_no_verify: false,
 })
-
-const showHistoryDialog = ref(false)
-const historyList = ref<SyncRunDTO[]>([])
-const showLogDialog = ref(false)
-const logContent = ref('')
-const showAIPanel = ref(false)
-const aiLoading = ref(false)
-const aiPanelRef = ref<{
-  addResponse: (content: string) => void
-} | null>(null)
-
-function getTriggerTagType(source: string): 'primary' | 'success' | 'warning' | 'danger' | 'info' {
-  switch (source) {
-    case 'cron': return 'warning'
-    case 'webhook': return 'success'
-    case 'manual': return 'primary'
-    default: return 'info'
-  }
-}
-
-function getRunStatusTagType(status: string): 'primary' | 'success' | 'warning' | 'danger' | 'info' {
-  const type = getStatusColor(status)
-  return type === 'success' || type === 'warning' || type === 'danger' || type === 'primary' ? type : 'info'
-}
-
-function getTriggerLabel(source: string) {
-  switch (source) {
-    case 'cron': return '定时'
-    case 'webhook': return 'Webhook'
-    case 'manual': return '手动'
-    default: return source || '手动'
-  }
-}
-
-function onSourceRemoteChange() {
-  taskForm.value.source_branch = ''
-}
 
 onMounted(async () => {
-  await loadTasks()
-  try {
-    const repo = await getRepoDetail(props.repoKey)
-    if (repo?.path) {
-      const scan = await scanRepo(repo.path)
-      remoteNames.value = (scan.remotes || []).map((r) => r.name)
-      taskForm.value.target_remote = remoteNames.value[0] || ''
-    }
-  } catch { /* ignore */ }
-  branchLoading.value = true
-  try {
-    const result = await getBranchList(props.repoKey, { page_size: 500 })
-    allBranches.value = result?.list || []
-  } catch { /* ignore */ } finally {
-    branchLoading.value = false
-  }
+  await loadRepoInfo()
+  await Promise.all([loadMirrors(), loadCredentials()])
 })
 
-async function loadTasks() {
+async function loadRepoInfo() {
+  try {
+    const repo = await getRepoDetail(props.repoKey)
+    currentRepoId.value = repo.id
+  } catch {}
+}
+
+async function loadMirrors() {
   loading.value = true
   try {
-    tasks.value = (await getSyncTasks(props.repoKey)) || []
+    const all = await mirrorApi.getMirrors(currentRepoId.value || undefined)
+    mirrors.value = all || []
+  } catch (e: any) {
+    ElMessage.error('加载镜像列表失败: ' + e.message)
   } finally {
     loading.value = false
   }
 }
 
-function openAddTask() {
-  editingTask.value = null
-  taskForm.value = {
-    source_remote: 'local',
-    source_branch: 'main',
-    target_remote: remoteNames.value[0] || '',
-    target_branch: 'main',
-    cron: '',
+async function loadCredentials() {
+  try {
+    const list = await listCredentials()
+    credentials.value = (list || []).map((c: any) => ({ id: c.id, name: c.name }))
+  } catch {}
+}
+
+function getStatusType(status: string): 'success' | 'warning' | 'danger' | 'info' {
+  const type = MIRROR_STATUS_MAP[status]?.type
+  return (type as 'success' | 'warning' | 'danger' | 'info') || 'info'
+}
+
+function getStatusLabel(status: string): string {
+  return MIRROR_STATUS_MAP[status]?.label || status
+}
+
+function getTriggerType(type: string): 'success' | 'warning' | 'danger' | 'primary' | 'info' {
+  const map: Record<string, 'success' | 'warning' | 'danger' | 'primary' | 'info'> = {
+    manual: 'primary',
+    cron: 'warning',
+    webhook: 'success',
+    push_event: 'info',
+  }
+  return map[type] || 'info'
+}
+
+function getTriggerLabel(type: string): string {
+  return TRIGGER_TYPE_MAP[type] || type
+}
+
+async function loadRepoRemoteInfo() {
+  try {
+    const repo = await getRepoDetail(props.repoKey)
+    if (repo?.path) {
+      const scan = await scanRepo(repo.path)
+      repoRemotes.value = (scan.remotes || []).map((r: any) => ({
+        name: r.name,
+        url: r.fetch_url || r.url,
+      }))
+    }
+    const branches = await getBranchList(props.repoKey, { page_size: 200 })
+    repoBranches.value = (branches?.list || []).map((b: any) => b.name)
+  } catch {}
+}
+
+function onRemoteChange(remote: { name: string; url: string }) {
+  if (remote) {
+    form.value.remoteUrl = remote.url
+    form.value.remoteName = remote.name
+  }
+}
+
+function onBranchesChange(branches: string[]) {
+  form.value.branchFilter = branches.join(', ')
+}
+
+async function showCreateDialog(type: 'pull' | 'push' = 'pull') {
+  editingMirror.value = null
+  createType.value = type
+  selectedRemote.value = null
+  selectedBranches.value = []
+  form.value = {
+    remoteUrl: '',
+    remoteName: 'origin',
+    credentialId: null,
+    branchFilter: '',
+    syncInterval: 600,
+    cronExpr: '',
+    syncOnPush: false,
+    gitForce: false,
+    gitPrune: true,
+    gitTags: true,
     enabled: true,
-    sync_mode: 'single',
-    git_tags: false,
-    git_force: false,
-    git_prune: false,
-    git_no_verify: false,
   }
-  showTaskDialog.value = true
+  await loadRepoRemoteInfo()
+  if (repoRemotes.value.length > 0 && type === 'pull') {
+    selectedRemote.value = repoRemotes.value[0]
+    form.value.remoteUrl = repoRemotes.value[0].url
+    form.value.remoteName = repoRemotes.value[0].name
+  }
+  dialogVisible.value = true
 }
 
-function openEditTask(task: SyncTaskDTO) {
-  editingTask.value = task
-  taskForm.value = {
-    source_remote: task.source_remote,
-    source_branch: task.source_branch,
-    target_remote: task.target_remote,
-    target_branch: task.target_branch,
-    cron: task.cron,
-    enabled: task.enabled,
-    sync_mode: task.sync_mode || 'single',
-    git_tags: task.git_tags,
-    git_force: task.git_force,
-    git_prune: task.git_prune,
-    git_no_verify: task.git_no_verify,
+async function editMirror(mirror: MirrorDTO) {
+  editingMirror.value = mirror
+  createType.value = mirror.mirrorType
+  await loadRepoRemoteInfo()
+  selectedBranches.value = mirror.branchFilter
+    ? mirror.branchFilter.split(',').map((b: string) => b.trim()).filter(Boolean)
+    : []
+  const matchedRemote = repoRemotes.value.find((r: any) => r.name === mirror.remoteName)
+  selectedRemote.value = matchedRemote || null
+  form.value = {
+    remoteUrl: mirror.remoteUrl,
+    remoteName: mirror.remoteName,
+    credentialId: mirror.credentialId,
+    branchFilter: mirror.branchFilter,
+    syncInterval: mirror.syncInterval,
+    cronExpr: mirror.cronExpr,
+    syncOnPush: mirror.syncOnPush,
+    gitForce: mirror.gitForce,
+    gitPrune: mirror.gitPrune,
+    gitTags: mirror.gitTags,
+    enabled: mirror.enabled,
   }
-  showTaskDialog.value = true
+  dialogVisible.value = true
 }
 
-async function handleSaveTask() {
-  if (taskForm.value.source_remote === taskForm.value.target_remote) {
-    ElMessage.warning('源和目标不能相同')
+async function submitForm() {
+  if (!form.value.remoteUrl) {
+    ElMessage.warning('请输入远程 URL')
     return
   }
   saving.value = true
   try {
-    if (editingTask.value) {
-      await updateSyncTask({
-        key: editingTask.value.key,
-        source_repo_key: props.repoKey,
-        target_repo_key: props.repoKey,
-        ...taskForm.value,
-      })
+    if (editingMirror.value) {
+      const data: UpdateMirrorReq = { ...form.value }
+      await mirrorApi.updateMirror(editingMirror.value.id, data)
+      ElMessage.success('更新成功')
     } else {
-      await createSyncTask({
-        source_repo_key: props.repoKey,
-        target_repo_key: props.repoKey,
-        ...taskForm.value,
-      })
+      const data: CreateMirrorReq = {
+        repoId: currentRepoId.value,
+        mirrorType: createType.value,
+        ...form.value,
+      }
+      await mirrorApi.createMirror(data)
+      ElMessage.success('创建成功')
     }
-    ElMessage.success('保存成功')
-    showTaskDialog.value = false
-    await loadTasks()
+    dialogVisible.value = false
+    loadMirrors()
+  } catch (e: any) {
+    ElMessage.error('操作失败: ' + e.message)
   } finally {
     saving.value = false
   }
 }
 
-async function handleRun(key: string) {
+async function deleteMirror(mirror: MirrorDTO) {
   try {
-    await runSyncTask(key)
-    ElMessage.success('任务已触发')
-  } catch { /* handled */ }
+    await ElMessageBox.confirm('确认删除此镜像？', '删除确认', { type: 'warning' })
+    await mirrorApi.deleteMirror(mirror.id)
+    ElMessage.success('已删除')
+    loadMirrors()
+  } catch {}
 }
 
-async function handleBatchSync() {
-  if (selectedTasks.value.length === 0) return
+async function triggerSync(mirror: MirrorDTO) {
+  syncingId.value = mirror.id
   try {
-    await ElMessageBox.confirm(`确定同步 ${selectedTasks.value.length} 个规则？`, '批量同步', { type: 'info' })
-    await batchSync(selectedTasks.value)
-    ElMessage.success('批量同步已触发')
-    selectedTasks.value = []
-  } catch { /* cancelled */ }
-}
-
-async function toggleEnabled(task: SyncTaskDTO) {
-  try {
-    await updateSyncTask({
-      key: task.key,
-      source_repo_key: props.repoKey,
-      target_repo_key: props.repoKey,
-      source_remote: task.source_remote,
-      source_branch: task.source_branch,
-      target_remote: task.target_remote,
-      target_branch: task.target_branch,
-      enabled: !task.enabled,
-    })
-    ElMessage.success(task.enabled ? '已暂停' : '已启用')
-    await loadTasks()
-  } catch { /* handled */ }
-}
-
-async function handleDelete(key: string) {
-  try {
-    await ElMessageBox.confirm('确定删除该同步规则吗？', '确认删除', { type: 'warning' })
-    await deleteSyncTask(key)
-    ElMessage.success('删除成功')
-    await loadTasks()
-  } catch { /* cancelled */ }
-}
-
-async function showHistory(taskKey: string) {
-  try {
-    const all = await getSyncHistory()
-    historyList.value = all.filter((h) => h.task_key === taskKey)
-    showHistoryDialog.value = true
-  } catch { /* handled */ }
-}
-
-function showLog(details: string) {
-  logContent.value = details || '无详情'
-  showLogDialog.value = true
-}
-
-function formatSyncDiagnosis(rootCause: string, evidence: string[] = [], actions: string[] = [], riskLevel?: string, fixDraft?: string) {
-  const lines = [rootCause]
-  if (riskLevel) {
-    lines.push(``, `风险等级：${riskLevel}`)
-  }
-  if (evidence.length > 0) {
-    lines.push(``, `证据：`, ...evidence.map((item, index) => `${index + 1}. ${item}`))
-  }
-  if (actions.length > 0) {
-    lines.push(``, `建议操作：`, ...actions.map((item, index) => `${index + 1}. ${item}`))
-  }
-  if (fixDraft) {
-    lines.push(``, `建议命令/草案：`, '```bash', fixDraft, '```')
-  }
-  return lines.join('\n')
-}
-
-async function handleAIAnalyze(message: string) {
-  const latestHistory = await getSyncHistory(props.repoKey).catch(() => [])
-  const failedRuns = latestHistory.filter(h => h.status === 'failed' || h.status === 'error')
-  if (failedRuns.length === 0) {
-    aiPanelRef.value?.addResponse('没有可分析的失败同步记录。请先执行失败任务或打开同步历史确认最近失败 run。')
-    ElMessage.warning('没有失败的同步任务可供分析')
-    return
-  }
-
-  failedRuns.sort((a, b) => new Date(b.start_time || b.created_at).getTime() - new Date(a.start_time || a.created_at).getTime())
-  const failedRun = failedRuns[0]!
-  aiLoading.value = true
-  try {
-    const response = await aiApi.diagnoseSyncFailure({
-      repoKey: props.repoKey,
-      logs: failedRun.details || '',
-      stderr: failedRun.error_message || '',
-      currentBranch: failedRun.task?.source_branch || '',
-      trackingBranch: failedRun.task ? `${failedRun.task.target_remote}/${failedRun.task.target_branch}` : '',
-      recentActions: [
-        `task=${failedRun.task_key}`,
-        `trigger=${failedRun.trigger_source}`,
-        `status=${failedRun.status}`,
-      ],
-      userInstruction: message,
-    })
-
-    const contextInfo = `> 📊 **分析对象：** Task ${failedRun.task_key} (${new Date(failedRun.start_time || failedRun.created_at).toLocaleString()})`
-    aiPanelRef.value?.addResponse(
-      contextInfo + '\n\n' + formatSyncDiagnosis(
-        response.rootCause,
-        response.evidence || [],
-        response.recommendedActions || [],
-        response.riskLevel,
-        response.fixDraft
-      )
-    )
-  } catch {
-    aiPanelRef.value?.addResponse('AI 诊断失败，请稍后重试。')
-    ElMessage.error('AI 诊断失败，请稍后重试')
+    await mirrorApi.triggerMirrorSync(mirror.id)
+    ElMessage.success('同步已触发，任务正在后台执行')
+    // 刷新状态
+    setTimeout(() => {
+      loadMirrors()
+      if (logDialogVisible.value && currentLogMirrorId.value === mirror.id) {
+        loadSyncLogs()
+      }
+    }, 2000)
+  } catch (e: any) {
+    ElMessage.error('触发失败: ' + e.message)
   } finally {
-    aiLoading.value = false
+    // 保持 loading 状态一段时间
+    setTimeout(() => {
+      syncingId.value = null
+    }, 3000)
   }
 }
 
-function handleAIApply(content: string) {
-  logContent.value = content
-  showLogDialog.value = true
-  ElMessage.info('AI 建议已展开，请手动执行相应操作')
+async function toggleEnabled(mirror: MirrorDTO) {
+  updatingId.value = mirror.id
+  try {
+    if (mirror.status === 'paused' && mirror.enabled) {
+      await mirrorApi.resumeMirror(mirror.id)
+    } else if (!mirror.enabled) {
+      await mirrorApi.pauseMirror(mirror.id)
+    } else {
+      await mirrorApi.updateMirror(mirror.id, { enabled: mirror.enabled })
+    }
+    ElMessage.success('状态已更新')
+    loadMirrors()
+  } catch (e: any) {
+    ElMessage.error('更新失败: ' + e.message)
+    mirror.enabled = !mirror.enabled
+  } finally {
+    updatingId.value = null
+  }
+}
+
+async function showLogs(mirror: MirrorDTO) {
+  currentLogMirrorId.value = mirror.id
+  logDialogVisible.value = true
+  await loadSyncLogs()
+}
+
+async function loadSyncLogs() {
+  if (!currentLogMirrorId.value) return
+  logLoading.value = true
+  try {
+    syncLogs.value = await mirrorApi.getMirrorSyncLogs(currentLogMirrorId.value, 50)
+  } catch (e: any) {
+    ElMessage.error('加载日志失败')
+  } finally {
+    logLoading.value = false
+  }
+}
+
+async function showLogDetail(log: MirrorSyncLogDTO) {
+  try {
+    currentLog.value = await mirrorApi.getSyncLogDetail(log.id)
+    logDetailVisible.value = true
+  } catch (e: any) {
+    currentLog.value = log
+    logDetailVisible.value = true
+  }
+}
+
+function formatTime(timeStr: string): string {
+  if (!timeStr) return '-'
+  const d = new Date(timeStr)
+  return d.toLocaleString('zh-CN')
 }
 </script>
 
@@ -540,138 +570,254 @@ function handleAIApply(content: string) {
 .sync-config-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
+  padding: 8px 0;
 }
 
-.sync-toolbar {
+.panel-header {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
 }
 
-.task-list {
+.header-left {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
 }
 
-.task-card {
-  transition: all var(--transition-normal);
-  border-left: 4px solid var(--primary-color);
-  border-radius: var(--border-radius-md);
-}
-
-.task-card.disabled {
-  opacity: 0.6;
-  border-left-color: var(--text-color-secondary);
-}
-
-.task-content {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-sm) 0;
-}
-
-.task-checkbox {
-  flex-shrink: 0;
-}
-
-.direction-flow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-}
-
-.endpoint {
-  display: flex;
-  flex-direction: column;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--border-radius-sm);
-  min-width: 100px;
-}
-
-.endpoint.source {
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-}
-
-.endpoint.target {
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.2);
-}
-
-.endpoint .label {
+.page-title {
+  margin: 0;
+  font-size: 20px;
   font-weight: 600;
-  font-size: var(--font-size-md);
   color: var(--text-color-primary);
 }
 
-.endpoint .branch {
-  font-size: var(--font-size-xs);
+.page-subtitle {
+  margin: 0;
+  font-size: 13px;
   color: var(--text-color-secondary);
-  font-family: monospace;
 }
 
-.flow-arrow {
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-content {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  font-size: 18px;
-  color: var(--primary-color);
+  gap: 6px;
 }
 
-.task-meta {
+.empty-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.mirror-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 16px;
+}
+
+.mirror-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  background: var(--fill-color-blank);
+  transition: all 0.2s ease;
+}
+
+.mirror-card:hover {
+  box-shadow: var(--box-shadow-light);
+  border-color: var(--primary-color-lighter);
+}
+
+.mirror-card.type-pull {
+  border-left: 4px solid var(--el-color-primary);
+}
+
+.mirror-card.type-push {
+  border-left: 4px solid var(--el-color-warning);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bg-color-page);
+  border-bottom: 1px solid var(--border-color-lighter);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title .el-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-  align-items: flex-end;
+  gap: 12px;
 }
 
-.cron {
+.info-row {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-size: var(--font-size-xs);
+  align-items: baseline;
+  gap: 12px;
+}
+
+.info-label {
+  min-width: 80px;
+  font-size: 12px;
   color: var(--text-color-secondary);
+  flex-shrink: 0;
+}
+
+.info-value {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-color-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-value.mono {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.info-value.syncing {
+  color: var(--el-color-primary);
+  font-weight: 600;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .git-options {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: 4px;
   flex-wrap: wrap;
 }
 
-.task-actions {
-  display: flex;
-  gap: var(--spacing-sm);
+.error-row {
+  padding: 8px 12px;
+  background: var(--el-color-danger-lighter);
+  border-radius: var(--border-radius-base);
+  margin: 0 -4px;
 }
 
-.mb-3 {
-  margin-bottom: 12px;
+.error-row .info-label,
+.error-row .info-value {
+  color: var(--el-color-danger);
+}
+
+.card-footer {
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border-color-lighter);
+}
+
+.card-footer .el-button-group {
+  width: 100%;
+}
+
+.card-footer .el-button {
+  flex: 1;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  margin-top: 4px;
+}
+
+.checkbox-label {
+  font-size: 13px;
+}
+
+.warning-text {
+  color: var(--el-color-warning);
+}
+
+.log-section {
+  margin-top: 20px;
+}
+
+.log-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-color-primary);
 }
 
 .log-content {
-  background: var(--bg-color);
+  background: var(--bg-color-page);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-base);
   padding: 12px;
-  border-radius: var(--border-radius-sm);
-  max-height: 400px;
+  margin: 0;
+  max-height: 300px;
   overflow-y: auto;
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
   white-space: pre-wrap;
-  font-size: var(--font-size-sm);
-  font-family: monospace;
+  word-wrap: break-word;
 }
 
-.error-msg {
-  color: var(--danger-color);
-  font-size: var(--font-size-xs);
-  margin-left: var(--spacing-sm);
+.error-text {
+  color: var(--el-color-danger);
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 12px;
+}
+
+:deep(.mirror-dialog .el-dialog__body),
+:deep(.log-dialog .el-dialog__body),
+:deep(.detail-dialog .el-dialog__body) {
+  padding-top: 16px;
 }
 
 @media (max-width: 768px) {
-  .task-content {
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-actions {
+    width: 100%;
     flex-wrap: wrap;
+  }
+
+  .mirror-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-footer .el-button-group {
+    flex-wrap: wrap;
+  }
+
+  .card-footer .el-button {
+    flex: 1 1 calc(50% - 2px);
   }
 }
 </style>

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
@@ -47,17 +48,19 @@ func (p *WorkerPool) ActiveWorkers() int32 {
 
 func (p *WorkerPool) worker() {
 	defer p.wg.Done()
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-p.stop:
 			return
-		default:
+		case <-ticker.C:
 		}
 
 		req, ok := p.queue.Pop()
 		if !ok {
-			return
+			continue
 		}
 
 		atomic.AddInt32(&p.activeCount, 1)
