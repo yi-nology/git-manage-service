@@ -9,12 +9,13 @@
         <router-link to="/" class="nav-item" :class="{ active: isActive('/') }">
           <el-icon><HomeFilled /></el-icon><span>首页</span>
         </router-link>
-        <router-link to="/sync" class="nav-item" :class="{ active: isActive('/sync') }">
+        <!-- 同步任务和 Webhook 已迁移到 V2，暂不显示 -->
+        <!-- <router-link to="/sync" class="nav-item" :class="{ active: isActive('/sync') }">
           <el-icon><RefreshRight /></el-icon><span>同步任务</span>
         </router-link>
         <router-link to="/webhook/rules" class="nav-item" :class="{ active: isActive('/webhook') }">
           <el-icon><Link /></el-icon><span>Webhook</span>
-        </router-link>
+        </router-link> -->
         <router-link to="/local-repos" class="nav-item" :class="{ active: isActive('/local-repos') }">
           <el-icon><FolderOpened /></el-icon><span>本地仓库</span>
         </router-link>

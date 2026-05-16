@@ -14,8 +14,8 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'sync',
-        name: 'SyncDashboard',
-        component: () => import('@/views/sync/SyncDashboard.vue'),
+        name: 'SyncTask',
+        component: () => import('@/views/sync/SyncTaskPage.vue'),
         meta: { title: '同步任务' },
       },
       {

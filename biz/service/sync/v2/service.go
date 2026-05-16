@@ -18,11 +18,11 @@ var (
 
 // SyncStats 同步统计数据
 type SyncStats struct {
-	TotalTasks   int `json:"total_tasks"`
-	EnabledTasks int `json:"enabled_tasks"`
-	TodayRuns    int `json:"today_runs"`
-	FailedRuns   int `json:"failed_runs"`
-	RunningTasks int `json:"running_tasks"`
+	TotalTasks   int `json:"totalTasks"`
+	EnabledTasks int `json:"enabledTasks"`
+	TodayRuns    int `json:"todayRuns"`
+	FailedRuns   int `json:"failedRuns"`
+	RunningTasks int `json:"runningTasks"`
 }
 
 // SyncConfigItem 同步配置项
