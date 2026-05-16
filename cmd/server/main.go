@@ -27,15 +27,15 @@ import (
 	mirrorSvc "github.com/yi-nology/git-manage-service/biz/service/mirror"
 	settingssvc "github.com/yi-nology/git-manage-service/biz/service/settings"
 	"github.com/yi-nology/git-manage-service/biz/service/stats"
-	"github.com/yi-nology/git-manage-service/biz/service/sync"
+	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
 	"github.com/yi-nology/git-manage-service/biz/utils"
 	"github.com/yi-nology/git-manage-service/pkg/appinfo"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/embed"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
 	"github.com/yi-nology/git-manage-service/pkg/lock"
 	"github.com/yi-nology/git-manage-service/pkg/metrics"
 	pkgqueue "github.com/yi-nology/git-manage-service/pkg/queue"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 // @title Git Manage Service API
@@ -146,7 +146,7 @@ func initResources() {
 	utils.InitEncryption()
 
 	// 初始化业务服务
-	sync.InitCronService()
+	initSyncV2Service()
 	stats.InitStatsService()
 	audit.InitAuditService()
 	initMirrorSystem()
@@ -154,6 +154,16 @@ func initResources() {
 	initQueue()
 
 	log.Println("Resources initialized successfully")
+}
+
+// initSyncV2Service 初始化 V2 同步服务 (git-sync-service)
+func initSyncV2Service() {
+	log.Println("[SyncV2] Initializing git-sync-service...")
+	if err := syncv2.GetService().Initialize(&configs.GlobalConfig); err != nil {
+		log.Printf("[SyncV2] Warning: failed to initialize: %v\n", err)
+		return
+	}
+	log.Println("[SyncV2] Initialized successfully")
 }
 
 func initQueue() {

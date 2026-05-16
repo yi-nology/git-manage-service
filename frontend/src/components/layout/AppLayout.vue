@@ -9,6 +9,12 @@
         <router-link to="/" class="nav-item" :class="{ active: isActive('/') }">
           <el-icon><HomeFilled /></el-icon><span>首页</span>
         </router-link>
+        <router-link to="/sync" class="nav-item" :class="{ active: isActive('/sync') }">
+          <el-icon><RefreshRight /></el-icon><span>同步任务</span>
+        </router-link>
+        <router-link to="/webhook/rules" class="nav-item" :class="{ active: isActive('/webhook') }">
+          <el-icon><Link /></el-icon><span>Webhook</span>
+        </router-link>
         <router-link to="/local-repos" class="nav-item" :class="{ active: isActive('/local-repos') }">
           <el-icon><FolderOpened /></el-icon><span>本地仓库</span>
         </router-link>
@@ -38,7 +44,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { Connection, HomeFilled, FolderOpened, Setting, Warning, Monitor } from '@element-plus/icons-vue'
+import { Connection, HomeFilled, FolderOpened, Setting, Warning, Monitor, RefreshRight, Link } from '@element-plus/icons-vue'
 import { useUIStore } from '@/stores/useUIStore'
 import { useKeyboard } from '@/composables/useKeyboard'
 import ThemeSwitch from '@/components/common/ThemeSwitch.vue'
@@ -50,6 +56,8 @@ useKeyboard()
 
 function isActive(path: string) {
   if (path === '/') return route.path === '/'
+  if (path === '/sync') return route.path.startsWith('/sync')
+  if (path === '/webhook') return route.path.startsWith('/webhook')
   return route.path.startsWith(path)
 }
 

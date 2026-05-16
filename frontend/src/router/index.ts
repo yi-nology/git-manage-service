@@ -13,6 +13,42 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '首页' },
       },
       {
+        path: 'sync',
+        name: 'SyncDashboard',
+        component: () => import('@/views/sync/SyncDashboard.vue'),
+        meta: { title: '同步任务' },
+      },
+      {
+        path: 'sync/history',
+        name: 'SyncHistory',
+        component: () => import('@/views/sync/SyncHistory.vue'),
+        meta: { title: '同步历史' },
+      },
+      {
+        path: 'sync/new',
+        name: 'NewSyncTask',
+        component: () => import('@/views/sync/NewSyncTask.vue'),
+        meta: { title: '创建同步任务' },
+      },
+      {
+        path: 'sync/config',
+        name: 'SyncConfig',
+        component: () => import('@/views/sync/SyncConfig.vue'),
+        meta: { title: '高级配置' },
+      },
+      {
+        path: 'webhook/rules',
+        name: 'WebhookRules',
+        component: () => import('@/views/webhook/WebhookRules.vue'),
+        meta: { title: 'Webhook 规则管理' },
+      },
+      {
+        path: 'webhook/events',
+        name: 'WebhookEvents',
+        component: () => import('@/views/webhook/WebhookEventsLog.vue'),
+        meta: { title: 'Webhook 事件日志' },
+      },
+      {
         path: 'local-repos',
         name: 'RepoList',
         component: () => import('@/views/repo/RepoListPage.vue'),

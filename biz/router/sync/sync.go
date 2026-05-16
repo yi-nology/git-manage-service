@@ -5,6 +5,7 @@ package sync
 import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	sync "github.com/yi-nology/git-manage-service/biz/handler/sync"
+	syncv2 "github.com/yi-nology/git-manage-service/biz/handler/sync/v2"
 )
 
 /*
@@ -15,11 +16,11 @@ import (
 
 // Register register routes based on the IDL 'api.${HTTP Method}' annotation.
 func Register(r *server.Hertz) {
-
 	root := r.Group("/", rootMw()...)
 	{
 		_api := root.Group("/api", _apiMw()...)
 		{
+			// V1 - Legacy
 			_v1 := _api.Group("/v1", _v1Mw()...)
 			{
 				_sync := _v1.Group("/sync", _syncMw()...)
@@ -37,6 +38,40 @@ func Register(r *server.Hertz) {
 				_task.POST("/delete", append(_deletetaskMw(), sync.DeleteTask)...)
 				_task.POST("/update", append(_updatetaskMw(), sync.UpdateTask)...)
 				_sync.GET("/tasks", append(_listtasksMw(), sync.ListTasks)...)
+			}
+
+			// V2 - New git-sync-service based
+			_v2 := _api.Group("/v2", _v1Mw()...)
+			{
+				_sync := _v2.Group("/sync", _syncMw()...)
+
+				// Stats
+				_sync.GET("/stats", syncv2.GetStats)
+
+				// Tasks
+				_sync.GET("/tasks", syncv2.ListTasks)
+				_sync.GET("/task", syncv2.GetTask)
+				_sync.POST("/task", syncv2.CreateTask)
+				_sync.PUT("/task", syncv2.UpdateTask)
+				_sync.DELETE("/task", syncv2.DeleteTask)
+				_sync.POST("/task/run", syncv2.RunTask)
+				_sync.POST("/tasks/batch-run", syncv2.BatchRunTasks)
+				_sync.POST("/preview", syncv2.PreviewSync)
+
+				// History
+				_sync.GET("/history", syncv2.ListHistory)
+				_sync.DELETE("/history", syncv2.DeleteHistory)
+
+				// Webhook Rules
+				_sync.GET("/webhook/rules", syncv2.ListRules)
+				_sync.GET("/webhook/rule", syncv2.GetRule)
+				_sync.POST("/webhook/rule", syncv2.CreateRule)
+				_sync.PUT("/webhook/rule", syncv2.UpdateRule)
+				_sync.DELETE("/webhook/rule", syncv2.DeleteRule)
+
+				// Webhook Events
+				_sync.GET("/webhook/events", syncv2.ListEvents)
+				_sync.POST("/webhook/event/retry", syncv2.RetryEvent)
 			}
 		}
 	}
