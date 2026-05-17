@@ -7,8 +7,6 @@ require (
 	github.com/yi-nology/git-sync-service v1.0.0
 )
 
-replace github.com/yi-nology/git-platform-sdk => ../git-platform-sdk
-
 require (
 	github.com/cloudwego/hertz v0.10.4
 	github.com/cloudwego/kitex v0.15.4
