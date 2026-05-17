@@ -103,27 +103,28 @@ func (s *SyncServiceV2) GetCore() *gitsync.Service {
 
 // ListTasks 获取任务列表
 func (s *SyncServiceV2) ListTasks(ctx context.Context, repoKey string) ([]*gitsyncmodel.SyncTask, error) {
-	return s.core.ListTasks(repoKey)
+	tasks, _, err := s.core.ListTasks(ctx, repoKey, 0, 1000)
+	return tasks, err
 }
 
 // GetTask 获取任务详情
 func (s *SyncServiceV2) GetTask(ctx context.Context, key string) (*gitsyncmodel.SyncTask, error) {
-	return s.core.GetTask(key)
+	return s.core.GetTask(ctx, key)
 }
 
 // CreateTask 创建任务
 func (s *SyncServiceV2) CreateTask(ctx context.Context, req *gitsyncmodel.CreateTaskRequest) (*gitsyncmodel.SyncTask, error) {
-	return s.core.CreateTask(req)
+	return s.core.CreateTask(ctx, req)
 }
 
 // UpdateTask 更新任务
 func (s *SyncServiceV2) UpdateTask(ctx context.Context, req *gitsyncmodel.UpdateTaskRequest) (*gitsyncmodel.SyncTask, error) {
-	return s.core.UpdateTask(req)
+	return s.core.UpdateTask(ctx, req)
 }
 
 // DeleteTask 删除任务
 func (s *SyncServiceV2) DeleteTask(ctx context.Context, key string) error {
-	return s.core.DeleteTask(key)
+	return s.core.DeleteTask(ctx, key)
 }
 
 // RunTask 运行任务
@@ -143,7 +144,7 @@ func (s *SyncServiceV2) BatchRunTasks(ctx context.Context, taskKeys []string) er
 
 // PreviewSync 预览同步
 func (s *SyncServiceV2) PreviewSync(ctx context.Context, req *gitsyncmodel.PreviewSyncRequest) (*gitsyncmodel.PreviewSyncResult, error) {
-	return s.core.PreviewSync(req)
+	return s.core.PreviewSync(ctx, req)
 }
 
 // ==================== History API ====================
@@ -160,7 +161,7 @@ func (s *SyncServiceV2) ListRecentHistory(ctx context.Context, limit int) ([]*gi
 
 // DeleteHistory 删除历史记录
 func (s *SyncServiceV2) DeleteHistory(ctx context.Context, id uint) error {
-	return s.core.DeleteHistory(id)
+	return s.core.DeleteHistory(ctx, id)
 }
 
 // ==================== Stats API ====================
@@ -192,34 +193,35 @@ func (s *SyncServiceV2) GetStats(ctx context.Context) (*SyncStats, error) {
 
 // ListRules 获取 Webhook 规则列表
 func (s *SyncServiceV2) ListRules(ctx context.Context, repoKey string) ([]*gitsyncmodel.WebhookRule, error) {
-	return s.core.ListRules(repoKey)
+	return s.core.ListRules(ctx, repoKey)
 }
 
 // GetRule 获取规则详情
 func (s *SyncServiceV2) GetRule(ctx context.Context, id uint) (*gitsyncmodel.WebhookRule, error) {
-	return s.core.GetRule(id)
+	return s.core.GetRule(ctx, id)
 }
 
 // CreateRule 创建规则
 func (s *SyncServiceV2) CreateRule(ctx context.Context, req *gitsyncmodel.CreateRuleRequest) (*gitsyncmodel.WebhookRule, error) {
-	return s.core.CreateRule(req)
+	return s.core.CreateRule(ctx, req)
 }
 
 // UpdateRule 更新规则
 func (s *SyncServiceV2) UpdateRule(ctx context.Context, req *gitsyncmodel.UpdateRuleRequest) (*gitsyncmodel.WebhookRule, error) {
-	return s.core.UpdateRule(req)
+	return s.core.UpdateRule(ctx, req)
 }
 
 // DeleteRule 删除规则
 func (s *SyncServiceV2) DeleteRule(ctx context.Context, id uint) error {
-	return s.core.DeleteRule(id)
+	return s.core.DeleteRule(ctx, id)
 }
 
 // ==================== Webhook Event API ====================
 
 // ListEvents 获取 Webhook 事件列表
 func (s *SyncServiceV2) ListEvents(ctx context.Context, repoKey string, limit int) ([]*gitsyncmodel.WebhookEvent, error) {
-	return s.core.ListEvents(repoKey, limit)
+	events, _, err := s.core.ListEvents(ctx, repoKey, 0, limit)
+	return events, err
 }
 
 // RetryEvent 重试事件

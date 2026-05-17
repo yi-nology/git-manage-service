@@ -3,14 +3,11 @@ module github.com/yi-nology/git-manage-service
 go 1.26
 
 require (
-	github.com/yi-nology/git-platform-sdk v0.0.0
+	github.com/yi-nology/git-platform-sdk v0.4.4
 	github.com/yi-nology/git-sync-service v1.0.0
 )
 
-replace (
-	github.com/yi-nology/git-platform-sdk => ../git-platform-sdk
-	github.com/yi-nology/git-sync-service => ../git-sync-service
-)
+replace github.com/yi-nology/git-platform-sdk => ../git-platform-sdk
 
 require (
 	github.com/cloudwego/hertz v0.10.4
