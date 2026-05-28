@@ -3,7 +3,7 @@ module github.com/yi-nology/git-manage-service
 go 1.26
 
 require (
-	github.com/yi-nology/git-platform-sdk v0.4.4
+	github.com/yi-nology/git-platform-sdk v0.5.0
 	github.com/yi-nology/git-sync-service v1.0.0
 )
 
@@ -162,6 +162,7 @@ require (
 	github.com/wailsapp/go-webview2 v1.0.22 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
+	github.com/yi-nology/gitcode_api v0.1.0 // indirect
 	gitlab.com/gitlab-org/api/client-go v1.46.0 // indirect
 	go.mongodb.org/mongo-driver v1.17.6 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
