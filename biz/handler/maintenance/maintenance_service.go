@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/google/uuid"
+	"git.enjoye.top/enjoydream/ekit/pkg/uidgen"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	maintenance "github.com/yi-nology/git-manage-service/biz/model/maintenance"
@@ -85,7 +85,7 @@ func Slim(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	taskID := uuid.New().String()
+	taskID := uidgen.UUID()
 	git.GlobalTaskManager.AddTask(taskID)
 
 	paramsJSON, _ := json.Marshal(map[string]interface{}{
@@ -139,7 +139,7 @@ func GC(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	taskID := uuid.New().String()
+	taskID := uidgen.UUID()
 	git.GlobalTaskManager.AddTask(taskID)
 
 	record, err := git.CreateMaintenanceRecord(repo.ID, "gc", repo.Path)
@@ -447,7 +447,7 @@ func SlimByPrefix(ctx context.Context, c *app.RequestContext) {
 		forcePush = *body.ForcePush
 	}
 
-	taskID := uuid.New().String()
+	taskID := uidgen.UUID()
 	git.GlobalTaskManager.AddTask(taskID)
 
 	paramsJSON, _ := json.Marshal(map[string]interface{}{
@@ -518,7 +518,7 @@ func ForcePushRemotes(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	taskID := uuid.New().String()
+	taskID := uidgen.UUID()
 	git.GlobalTaskManager.AddTask(taskID)
 
 	repoID := repo.ID

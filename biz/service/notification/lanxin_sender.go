@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"git.enjoye.top/enjoydream/ekit/pkg/encoding"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
@@ -139,7 +139,7 @@ func (s *LanxinSender) doSend(webhookURL string, req *lanxinRequest) error {
 func (s *LanxinSender) genSign(timestamp string, secret string) string {
 	stringToSign := timestamp + "@" + secret
 	h := hmac.New(sha256.New, []byte(stringToSign))
-	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return encoding.Base64Encode(string(h.Sum(nil)))
 }
 
 // sendAppCard 发送 appCard 格式消息（支持富文本，备用方法）

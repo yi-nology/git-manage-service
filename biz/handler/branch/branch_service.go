@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/google/uuid"
+	"git.enjoye.top/enjoydream/ekit/pkg/uidgen"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/branch"
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
@@ -640,7 +640,7 @@ func Merge(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	if !check.Success {
-		mergeID := uuid.New().String()
+		mergeID := uidgen.UUID()
 		reportURL := fmt.Sprintf("/merge_report.html?repo_key=%s&source=%s&target=%s&merge_id=%s", repo.Key, req.GetSource(), req.GetTarget(), mergeID)
 
 		c.JSON(200, response.Response{

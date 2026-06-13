@@ -8,16 +8,16 @@ import (
 	"io"
 	"net/http"
 
+	"git.enjoye.top/enjoydream/ekit/pkg/uidgen"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/google/uuid"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	webhook "github.com/yi-nology/git-manage-service/biz/model/webhook"
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
-	"github.com/yi-nology/git-platform-sdk/provider"
 	"github.com/yi-nology/git-manage-service/biz/service/sync"
 	"github.com/yi-nology/git-manage-service/biz/service/webhookevent"
 	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
 // TriggerSync .
@@ -48,7 +48,7 @@ func TriggerSync(ctx context.Context, c *app.RequestContext) {
 	}
 
 	// 生成执行ID
-	runID := uuid.New().String()
+	runID := uidgen.UUID()
 
 	// 异步执行同步任务
 	go func() {
@@ -93,7 +93,7 @@ func TriggerSyncByToken(ctx context.Context, c *app.RequestContext) {
 	}
 
 	// 生成执行ID
-	runID := uuid.New().String()
+	runID := uidgen.UUID()
 
 	// 异步执行同步任务
 	go func() {
@@ -118,7 +118,7 @@ func Receive(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var matchedProvider provider.Provider
+	var matchedProvider provider.WebhookManager
 	var matchedCfg po.ProviderConfig
 	for _, cfg := range configs {
 		p, pErr := provider_manager.GetManager().GetProvider(cfg.ID)

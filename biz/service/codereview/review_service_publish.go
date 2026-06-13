@@ -14,9 +14,9 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/ai"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
-	"github.com/yi-nology/git-platform-sdk/provider"
 	"github.com/yi-nology/git-manage-service/biz/service/rag"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
+	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
 func persistFindings(taskID uint, findings []*Finding) (map[string]uint, error) {
@@ -55,7 +55,7 @@ func persistFindings(taskID uint, findings []*Finding) (map[string]uint, error) 
 	return idMap, nil
 }
 
-func cleanupOldComments(ctx context.Context, p provider.Provider, owner, repo string, mrNum int, providerConfigID uint, mrIID string) {
+func cleanupOldComments(ctx context.Context, p provider.DiffManager, owner, repo string, mrNum int, providerConfigID uint, mrIID string) {
 	oldComments, err := db.NewReviewCommentDAO().FindSummaryCommentsByMRIID(providerConfigID, mrIID)
 	if err != nil {
 		return
@@ -69,7 +69,7 @@ func cleanupOldComments(ctx context.Context, p provider.Provider, owner, repo st
 	}
 }
 
-func publishComments(ctx context.Context, p provider.Provider, owner, repo string, mrNum int, taskID uint, result *AggregatedResult, findingIDMap map[string]uint) error {
+func publishComments(ctx context.Context, p provider.DiffManager, owner, repo string, mrNum int, taskID uint, result *AggregatedResult, findingIDMap map[string]uint) error {
 	commentDAO := db.NewReviewCommentDAO()
 
 	summary := BuildSummaryComment(result)

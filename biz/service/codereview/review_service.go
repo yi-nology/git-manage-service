@@ -14,10 +14,10 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/notification"
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
-	"github.com/yi-nology/git-platform-sdk/provider"
 	"github.com/yi-nology/git-manage-service/biz/service/ws"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
+	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
 var runningTasks sync.Map
@@ -333,13 +333,7 @@ func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParam
 	}
 	allFindings = append(allFindings, llmFindings...)
 
-	totalAdd, totalDel := 0, 0
-	for _, f := range files {
-		totalAdd += f.Additions
-		totalDel += f.Deletions
-	}
-
-	result := Aggregate(allFindings, totalAdd, totalDel, len(files), cfg.BlockOnHigh, processLog)
+	result := Aggregate(allFindings, mergeDiff.TotalAdd, mergeDiff.TotalDel, len(files), cfg.BlockOnHigh, processLog)
 	return result, rawDiff, nil
 }
 

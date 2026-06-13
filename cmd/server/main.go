@@ -182,7 +182,7 @@ func initQueue() {
 func initMirrorSystem() {
 	cfg := configs.GlobalConfig
 
-	backend, err := gitbackend.NewGitBackend(cfg.Mirror.GitBackend)
+	backend, err := gitbackend.NewGitBackend(gitbackend.Options{Type: cfg.Mirror.GitBackend})
 	if err != nil {
 		log.Printf("[Mirror] Warning: git backend init failed: %v", err)
 		return

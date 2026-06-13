@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"git.enjoye.top/enjoydream/ekit/pkg/uidgen"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/google/uuid"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
@@ -135,7 +135,7 @@ func Create(ctx context.Context, c *app.RequestContext) {
 	}
 
 	repo := po.Repo{
-		Key:                 uuid.New().String(),
+		Key:                 uidgen.UUID(),
 		Name:                req.Name,
 		Path:                req.Path,
 		RemoteURL:           req.RemoteURL,
@@ -469,7 +469,7 @@ func BatchCreate(ctx context.Context, c *app.RequestContext) {
 		}
 
 		repo := po.Repo{
-			Key:                 uuid.New().String(),
+			Key:                 uidgen.UUID(),
 			Name:                item.Name,
 			Path:                item.Path,
 			RemoteURL:           remoteURL,
@@ -524,7 +524,7 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 		}
 	}
 
-	taskID := uuid.New().String()
+	taskID := uidgen.UUID()
 	git.GlobalTaskManager.AddTask(taskID)
 
 	go func() {
@@ -595,7 +595,7 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 			repoName = name
 		}
 		repo := po.Repo{
-			Key:                 uuid.New().String(),
+			Key:                 uidgen.UUID(),
 			Name:                repoName,
 			Path:                req.LocalPath,
 			RemoteURL:           req.RemoteURL,

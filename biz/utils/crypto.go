@@ -4,10 +4,11 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"io"
 	"os"
+
+	"git.enjoye.top/enjoydream/ekit/pkg/encoding"
 )
 
 var encryptionKey []byte
@@ -40,17 +41,18 @@ func Encrypt(text string) (string, error) {
 	stream := cipher.NewCFBEncrypter(block, iv)
 	stream.XORKeyStream(ciphertext[aes.BlockSize:], b)
 
-	return base64.URLEncoding.EncodeToString(ciphertext), nil
+	return encoding.Base64URLEncode(string(ciphertext)), nil
 }
 
 func Decrypt(cryptoText string) (string, error) {
 	if cryptoText == "" {
 		return "", nil
 	}
-	ciphertext, err := base64.URLEncoding.DecodeString(cryptoText)
+	ciphertextStr, err := encoding.Base64URLDecode(cryptoText)
 	if err != nil {
 		return "", err
 	}
+	ciphertext := []byte(ciphertextStr)
 
 	block, err := aes.NewCipher(encryptionKey)
 	if err != nil {

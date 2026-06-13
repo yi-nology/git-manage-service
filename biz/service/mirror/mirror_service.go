@@ -8,11 +8,11 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
-	"github.com/yi-nology/git-platform-sdk/branchfilter"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
 	"github.com/yi-nology/git-manage-service/pkg/lock"
 	"github.com/yi-nology/git-manage-service/pkg/queue"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	"github.com/yi-nology/git-platform-sdk/pkg/branchfilter"
 )
 
 var GlobalMirrorService *MirrorService

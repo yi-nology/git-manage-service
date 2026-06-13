@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"git.enjoye.top/enjoydream/ekit/pkg/uidgen"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 )
@@ -301,7 +301,7 @@ func StartAuthorFixTask(repoID uint, repoPath string, commitHashes []string, pus
 		return "", fmt.Errorf("已有修复任务在运行，请等待完成后再试")
 	}
 
-	taskID := uuid.New().String()
+	taskID := uidgen.UUID()
 	GlobalTaskManager.AddTask(taskID)
 
 	record, err := CreateMaintenanceRecord(repoID, "author_fix", repoPath)

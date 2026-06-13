@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +13,7 @@ import (
 	"net/url"
 	"time"
 
+	"git.enjoye.top/enjoydream/ekit/pkg/encoding"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
@@ -102,5 +102,5 @@ func (s *DingTalkSender) sign(timestamp int64, secret string) string {
 	stringToSign := fmt.Sprintf("%d\n%s", timestamp, secret)
 	h := hmac.New(sha256.New, []byte(secret))
 	h.Write([]byte(stringToSign))
-	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return encoding.Base64Encode(string(h.Sum(nil)))
 }

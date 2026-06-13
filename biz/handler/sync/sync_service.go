@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/google/uuid"
+	"git.enjoye.top/enjoydream/ekit/pkg/uidgen"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
@@ -79,7 +79,7 @@ func CreateTask(ctx context.Context, c *app.RequestContext) {
 	}
 
 	task := po.SyncTask{
-		Key:           uuid.New().String(),
+		Key:           uidgen.UUID(),
 		SourceRepoKey: req.SourceRepoKey,
 		SourceRemote:  req.SourceRemote,
 		SourceBranch:  req.SourceBranch,
@@ -204,7 +204,7 @@ func ExecuteSync(ctx context.Context, c *app.RequestContext) {
 	}
 
 	task := po.SyncTask{
-		Key:           uuid.New().String(),
+		Key:           uidgen.UUID(),
 		SourceRepoKey: repo.Key,
 		SourceRepo:    *repo,
 		SourceRemote:  req.SourceRemote,

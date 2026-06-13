@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/yi-nology/git-manage-service/biz/model/po"
-	"github.com/yi-nology/git-platform-sdk/branchfilter"
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	"github.com/yi-nology/git-platform-sdk/pkg/branchfilter"
 )
 
 type PullExecutor struct {
@@ -42,7 +42,7 @@ func (e *PullExecutor) Execute(ctx context.Context, mirror *po.Mirror, logf func
 		Remote:   remoteName,
 		Tags:     mirror.GitTags,
 		Prune:    mirror.GitPrune,
-		Auth:     e.resolveAuth(mirror),
+		Auth:     resolveAuth(mirror),
 	}
 
 	if !filter.IsEmpty() {
@@ -67,34 +67,6 @@ func (e *PullExecutor) Execute(ctx context.Context, mirror *po.Mirror, logf func
 
 	logf("Pull completed: %d branches synced", result.BranchesSynced)
 	return result, nil
-}
-
-func (e *PullExecutor) resolveAuth(mirror *po.Mirror) gitbackend.AuthConfig {
-	if mirror.Credential == nil {
-		return gitbackend.AuthConfig{Type: "none"}
-	}
-
-	cred := mirror.Credential
-	switch cred.Type {
-	case "ssh_key":
-		return gitbackend.AuthConfig{
-			Type:   "ssh",
-			SSHKey: cred.SSHKeyPath,
-		}
-	case "http_basic":
-		return gitbackend.AuthConfig{
-			Type:     "http_basic",
-			Username: cred.Username,
-			Password: cred.Secret,
-		}
-	case "http_token":
-		return gitbackend.AuthConfig{
-			Type:  "http_token",
-			Token: cred.Secret,
-		}
-	default:
-		return gitbackend.AuthConfig{Type: "none"}
-	}
 }
 
 func PreviewPull(ctx context.Context, backend gitbackend.GitBackend, mirror *po.Mirror) (string, error) {
