@@ -8,12 +8,12 @@ require (
 )
 
 require (
-	git.enjoye.top/enjoydream/ekit v0.6.7
 	github.com/cloudwego/hertz v0.10.4
 	github.com/cloudwego/kitex v0.15.4
 	github.com/cloudwego/prutal v0.1.3
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-git/go-git/v5 v5.16.4
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hertz-contrib/monitor-prometheus v0.1.3
 	github.com/hibiken/asynq v0.26.0
@@ -97,7 +97,6 @@ require (
 	github.com/google/go-github/v69 v69.2.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/hashicorp/go-version v1.9.0 // indirect
@@ -175,6 +174,7 @@ require (
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	google.golang.org/genproto v0.0.0-20210513213006-bf773b8c8384 // indirect
+	google.golang.org/grpc v1.67.3 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/sqlite v1.6.0 // indirect

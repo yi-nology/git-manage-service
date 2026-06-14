@@ -2,6 +2,8 @@ package stats
 
 import (
 	"bufio"
+	"crypto/md5"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -10,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"git.enjoye.top/enjoydream/ekit/pkg/encoding"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 )
 
@@ -428,7 +429,7 @@ func (lc *LineCounter) generateCacheKey(repoPath string, config CountConfig) str
 		strings.Join(config.ExcludePatterns, ",") + "|" +
 		config.Branch + "|" + config.Author + "|" + config.Since + "|" + config.Until
 
-	hash := encoding.Md5(configStr)
+	hash := fmt.Sprintf("%x", md5.Sum([]byte(configStr)))
 	return "lines:" + repoPath + ":" + hash[:16]
 }
 

@@ -3,6 +3,7 @@
 package git
 
 import (
+	"encoding/base64"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"git.enjoye.top/enjoydream/ekit/pkg/encoding"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
@@ -225,7 +225,7 @@ func (s *GitService) GetBlob(repoPath, ref, filePath string) (*BlobContent, erro
 	}
 
 	if isBinary {
-		result.Content = encoding.Base64Encode(string(content))
+		result.Content = base64.StdEncoding.EncodeToString(content)
 		result.Encoding = "base64"
 	} else {
 		result.Content = string(content)
@@ -251,7 +251,7 @@ func (s *GitService) GetWorktreeBlob(repoPath, filePath string) (*BlobContent, e
 	}
 
 	if isBinary {
-		result.Content = encoding.Base64Encode(string(content))
+		result.Content = base64.StdEncoding.EncodeToString(content)
 		result.Encoding = "base64"
 	} else {
 		result.Content = string(content)

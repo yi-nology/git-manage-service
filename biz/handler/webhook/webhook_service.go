@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 
-	"git.enjoye.top/enjoydream/ekit/pkg/uidgen"
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/google/uuid"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	webhook "github.com/yi-nology/git-manage-service/biz/model/webhook"
@@ -48,7 +48,7 @@ func TriggerSync(ctx context.Context, c *app.RequestContext) {
 	}
 
 	// 生成执行ID
-	runID := uidgen.UUID()
+	runID := uuid.New().String()
 
 	// 异步执行同步任务
 	go func() {
@@ -93,7 +93,7 @@ func TriggerSyncByToken(ctx context.Context, c *app.RequestContext) {
 	}
 
 	// 生成执行ID
-	runID := uidgen.UUID()
+	runID := uuid.New().String()
 
 	// 异步执行同步任务
 	go func() {
