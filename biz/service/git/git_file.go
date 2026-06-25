@@ -3,16 +3,14 @@
 package git
 
 import (
+	"context"
 	"encoding/base64"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
@@ -47,87 +45,77 @@ type FileCommit struct {
 
 // GetTree 获取目录树
 func (s *GitService) GetTree(repoPath, ref, dirPath string, recursive bool) ([]TreeEntry, error) {
-	r, err := s.openRepo(repoPath)
+	// 使用 SDK 获取文件内容来验证 ref 有效
+	_, err := s.backend.GetFileAtRevision(context.Background(), repoPath, ".", ref)
 	if err != nil {
-		return nil, err
-	}
-
-	// 解析ref到commit
-	commit, err := s.resolveCommit(r, ref)
-	if err != nil {
-		return nil, err
-	}
-
-	// 获取tree
-	tree, err := commit.Tree()
-	if err != nil {
-		return nil, err
-	}
-
-	// 规范化路径：处理 "." 和空路径
-	dirPath = strings.TrimSpace(dirPath)
-	if dirPath == "." || dirPath == "" {
-		dirPath = ""
-	}
-
-	// 如果指定了路径，获取子树
-	if dirPath != "" && dirPath != "/" {
-		dirPath = strings.TrimPrefix(dirPath, "/")
-		tree, err = tree.Tree(dirPath)
-		if err != nil {
-			return nil, err
+		// 如果获取失败，尝试使用 go-git
+		r, rErr := s.openRepo(repoPath)
+		if rErr != nil {
+			return nil, rErr
 		}
-	}
 
-	var entries []TreeEntry
+		commit, cErr := s.resolveCommit(r, ref)
+		if cErr != nil {
+			return nil, cErr
+		}
 
-	if recursive {
-		// 递归获取所有文件
-		err = tree.Files().ForEach(func(f *object.File) error {
-			entries = append(entries, TreeEntry{
-				Name: filepath.Base(f.Name),
-				Path: f.Name,
-				Type: "file",
-				Size: f.Size,
-				Mode: f.Mode.String(),
-				Hash: f.Hash.String(),
-			})
-			return nil
-		})
-	} else {
-		// 只获取当前目录
-		for _, entry := range tree.Entries {
-			entryType := "file"
-			if entry.Mode == filemode.Dir {
-				entryType = "dir"
+		tree, tErr := commit.Tree()
+		if tErr != nil {
+			return nil, tErr
+		}
+
+		dirPath = strings.TrimSpace(dirPath)
+		if dirPath == "." || dirPath == "" {
+			dirPath = ""
+		}
+
+		if dirPath != "" && dirPath != "/" {
+			dirPath = strings.TrimPrefix(dirPath, "/")
+			tree, tErr = tree.Tree(dirPath)
+			if tErr != nil {
+				return nil, tErr
 			}
+		}
 
-			var size int64 = 0
-			if entry.Mode.IsFile() {
-				// 获取文件大小
-				blob, err := r.BlobObject(entry.Hash)
-				if err == nil {
-					size = blob.Size
+		var entries []TreeEntry
+		if recursive {
+			_ = tree.Files().ForEach(func(f *object.File) error {
+				entries = append(entries, TreeEntry{
+					Name: filepath.Base(f.Name),
+					Path: f.Name,
+					Type: "file",
+					Size: f.Size,
+					Mode: f.Mode.String(),
+					Hash: f.Hash.String(),
+				})
+				return nil
+			})
+		} else {
+			for _, entry := range tree.Entries {
+				entryType := "file"
+				if entry.Mode == filemode.Dir {
+					entryType = "dir"
 				}
-			}
 
-			path := entry.Name
-			if dirPath != "" {
-				path = filepath.Join(dirPath, entry.Name)
-			}
+				path := entry.Name
+				if dirPath != "" {
+					path = filepath.Join(dirPath, entry.Name)
+				}
 
-			entries = append(entries, TreeEntry{
-				Name: entry.Name,
-				Path: path,
-				Type: entryType,
-				Size: size,
-				Mode: entry.Mode.String(),
-				Hash: entry.Hash.String(),
-			})
+				entries = append(entries, TreeEntry{
+					Name: entry.Name,
+					Path: path,
+					Type: entryType,
+					Mode: entry.Mode.String(),
+					Hash: entry.Hash.String(),
+				})
+			}
 		}
+
+		return entries, nil
 	}
 
-	return entries, err
+	return nil, nil
 }
 
 func (s *GitService) GetWorktree(repoPath, dirPath string) ([]TreeEntry, error) {
@@ -185,41 +173,16 @@ func (s *GitService) GetWorktree(repoPath, dirPath string) ([]TreeEntry, error) 
 }
 
 func (s *GitService) GetBlob(repoPath, ref, filePath string) (*BlobContent, error) {
-	r, err := s.openRepo(repoPath)
+	// 使用 SDK 获取文件内容
+	content, err := s.backend.GetFileAtRevision(context.Background(), repoPath, filePath, ref)
 	if err != nil {
 		return nil, err
 	}
 
-	// 解析ref到commit
-	commit, err := s.resolveCommit(r, ref)
-	if err != nil {
-		return nil, err
-	}
-
-	// 获取文件
-	filePath = strings.TrimPrefix(filePath, "/")
-	file, err := commit.File(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	// 读取内容
-	reader, err := file.Reader()
-	if err != nil {
-		return nil, err
-	}
-	defer reader.Close()
-
-	content, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	// 判断是否是二进制文件
 	isBinary := !utf8.Valid(content) || containsNullByte(content)
 
 	result := &BlobContent{
-		Size:     file.Size,
+		Size:     int64(len(content)),
 		IsBinary: isBinary,
 		MimeType: getMimeType(filePath),
 	}
@@ -263,53 +226,28 @@ func (s *GitService) GetWorktreeBlob(repoPath, filePath string) (*BlobContent, e
 
 // GetFileHistory 获取文件的提交历史
 func (s *GitService) GetFileHistory(repoPath, ref, filePath string, limit int) ([]FileCommit, error) {
-	r, err := s.openRepo(repoPath)
+	// 使用 SDK 获取文件历史
+	commits, err := s.backend.GetFileHistory(context.Background(), repoPath, filePath, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	// 解析ref
-	hash, err := r.ResolveRevision(plumbing.Revision(ref))
-	if err != nil {
-		return nil, err
-	}
-
-	// 获取日志
-	filePath = strings.TrimPrefix(filePath, "/")
-	iter, err := r.Log(&git.LogOptions{
-		From:     *hash,
-		FileName: &filePath,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if limit <= 0 {
-		limit = 50
-	}
-
-	var commits []FileCommit
-	count := 0
-	err = iter.ForEach(func(c *object.Commit) error {
-		if count >= limit {
-			return io.EOF
+	var result []FileCommit
+	for _, c := range commits {
+		shortHash := c.Hash
+		if len(shortHash) > 7 {
+			shortHash = shortHash[:7]
 		}
-		commits = append(commits, FileCommit{
-			Hash:      c.Hash.String(),
-			ShortHash: c.Hash.String()[:7],
-			Message:   strings.Split(c.Message, "\n")[0],
-			Author:    c.Author.Name,
-			Date:      c.Author.When.Format("2006-01-02 15:04:05"),
+		result = append(result, FileCommit{
+			Hash:      c.Hash,
+			ShortHash: shortHash,
+			Message:   c.Message,
+			Author:    c.Author,
+			Date:      c.Date,
 		})
-		count++
-		return nil
-	})
-
-	if err != nil && err != io.EOF {
-		return nil, err
 	}
 
-	return commits, nil
+	return result, nil
 }
 
 // containsNullByte 检查是否包含空字节
