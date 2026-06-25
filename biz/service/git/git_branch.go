@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 )
 
@@ -37,7 +35,6 @@ func (s *GitService) ListBranchesWithInfo(path string) ([]domain.BranchInfo, err
 	var branches []domain.BranchInfo
 
 	err = iter.ForEach(func(ref *plumbing.Reference) error {
-		// 只处理本地分支 (refs/heads/*) 和远程跟踪分支 (refs/remotes/*)
 		isBranch := ref.Name().IsBranch()
 		isRemote := ref.Name().IsRemote()
 
@@ -53,13 +50,11 @@ func (s *GitService) ListBranchesWithInfo(path string) ([]domain.BranchInfo, err
 			Hash: hash.String(),
 		}
 
-		// 明确判断分支类型
 		if isBranch {
 			b.Type = "local"
 		} else if isRemote {
 			b.Type = "remote"
 		} else {
-			// 不应该到这里，但保险起见跳过
 			return nil
 		}
 
@@ -67,7 +62,6 @@ func (s *GitService) ListBranchesWithInfo(path string) ([]domain.BranchInfo, err
 			b.IsCurrent = true
 		}
 
-		// Commit Info
 		commit, commitErr := r.CommitObject(hash)
 		if commitErr == nil {
 			b.Author = commit.Author.Name
@@ -76,7 +70,6 @@ func (s *GitService) ListBranchesWithInfo(path string) ([]domain.BranchInfo, err
 			b.Message = strings.TrimSpace(strings.Split(commit.Message, "\n")[0])
 		}
 
-		// Upstream Info (only for local branches)
 		if ref.Name().IsBranch() {
 			if branchCfg, ok := cfg.Branches[name]; ok {
 				if branchCfg.Remote != "" && branchCfg.Merge != "" {
@@ -97,40 +90,11 @@ func (s *GitService) ListBranchesWithInfo(path string) ([]domain.BranchInfo, err
 }
 
 func (s *GitService) CreateBranch(path, name, base string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	var hash plumbing.Hash
-	if base != "" {
-		// Resolve base
-		h, err := r.ResolveRevision(plumbing.Revision(base))
-		if err != nil {
-			return err
-		}
-		hash = *h
-	} else {
-		// Default to HEAD
-		head, err := r.Head()
-		if err != nil {
-			return err
-		}
-		hash = head.Hash()
-	}
-
-	refName := plumbing.ReferenceName("refs/heads/" + name)
-	return r.Storer.SetReference(plumbing.NewHashReference(refName, hash))
+	return s.backend.CreateBranch(context.Background(), path, name, base)
 }
 
 func (s *GitService) DeleteBranch(path, name string, force bool) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	refName := plumbing.ReferenceName("refs/heads/" + name)
-	return r.Storer.RemoveReference(refName)
+	return s.backend.DeleteBranch(context.Background(), path, name)
 }
 
 func (s *GitService) RenameBranch(path, oldName, newName string) error {
@@ -140,7 +104,6 @@ func (s *GitService) RenameBranch(path, oldName, newName string) error {
 func (s *GitService) GetBranchDescription(path, branch string) (string, error) {
 	out, err := s.RunCommand(path, "config", fmt.Sprintf("branch.%s.description", branch))
 	if err != nil {
-		// Config key might not exist
 		return "", nil
 	}
 	return out, nil
@@ -151,37 +114,14 @@ func (s *GitService) SetBranchDescription(path, branch, desc string) error {
 	return err
 }
 
-// GetBranchMetrics returns simple metrics: commit count, lines of code (approx)
-// This is expensive, use sparingly
+// GetBranchMetrics returns simple metrics: commit count
 func (s *GitService) GetBranchMetrics(path, branch string) (map[string]int, error) {
-	r, err := s.openRepo(path)
+	commits, err := s.backend.GetCommitsBetween(context.Background(), path, "", branch)
 	if err != nil {
 		return nil, err
-	}
-
-	commit, err := s.resolveCommit(r, branch)
-	if err != nil {
-		return nil, err
-	}
-
-	// Commit count
-	// Efficient counting is hard.
-	// We'll use Log and count. Limit to avoiding timeout?
-	cIter, err := r.Log(&git.LogOptions{From: commit.Hash})
-	if err != nil {
-		return nil, err
-	}
-
-	count := 0
-	forEachErr := cIter.ForEach(func(c *object.Commit) error {
-		count++
-		return nil
-	})
-	if forEachErr != nil {
-		return nil, forEachErr
 	}
 
 	return map[string]int{
-		"commit_count": count,
+		"commit_count": len(commits),
 	}, nil
 }

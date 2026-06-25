@@ -1,10 +1,11 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
-	"github.com/go-git/go-git/v5/plumbing/format/diff"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 type DiffStat struct {
@@ -20,193 +21,116 @@ type FileDiffStatus struct {
 
 // GetDiffStat returns the shortstat of diff between base and target
 func (s *GitService) GetDiffStat(path, base, target string) (*DiffStat, error) {
-	r, err := s.openRepo(path)
+	diff, err := s.backend.Diff(context.Background(), path, gitbackend.DiffOptions{
+		From: base,
+		To:   target,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	cBase, cTarget, err := s.resolveCommitPair(r, base, target)
-	if err != nil {
-		return nil, err
-	}
-
-	patch, err := cBase.Patch(cTarget)
-	if err != nil {
-		return nil, err
-	}
-
-	stats := patch.Stats()
 	ds := &DiffStat{}
-	for _, fs := range stats {
-		ds.FilesChanged++
-		ds.Insertions += fs.Addition
-		ds.Deletions += fs.Deletion
+	for _, line := range strings.Split(diff, "\n") {
+		if len(line) == 0 {
+			continue
+		}
+		if line[0] == '+' && !strings.HasPrefix(line, "+++") {
+			ds.Insertions++
+		} else if line[0] == '-' && !strings.HasPrefix(line, "---") {
+			ds.Deletions++
+		}
 	}
+
+	// Count files from diff names
+	names, err := s.backend.DiffNames(context.Background(), path, base, target)
+	if err == nil {
+		ds.FilesChanged = len(names)
+	}
+
 	return ds, nil
 }
 
 // GetDiffFiles returns list of changed files with status
 func (s *GitService) GetDiffFiles(path, base, target string) ([]FileDiffStatus, error) {
-	r, err := s.openRepo(path)
+	names, err := s.backend.DiffNames(context.Background(), path, base, target)
 	if err != nil {
 		return nil, err
 	}
 
-	cBase, cTarget, err := s.resolveCommitPair(r, base, target)
+	deleted, err := s.backend.DeletedFiles(context.Background(), path, base, target)
 	if err != nil {
 		return nil, err
 	}
 
-	patch, err := cBase.Patch(cTarget)
-	if err != nil {
-		return nil, err
+	deletedMap := make(map[string]bool)
+	for _, f := range deleted {
+		deletedMap[f] = true
 	}
 
 	var files []FileDiffStatus
-	for _, fp := range patch.FilePatches() {
-		from, to := fp.Files()
+	for _, name := range names {
 		status := "M"
-		p := ""
-		if from == nil && to != nil {
-			status = "A"
-			p = to.Path()
-		} else if from != nil && to == nil {
+		if deletedMap[name] {
 			status = "D"
-			p = from.Path()
-		} else if from != nil && to != nil {
-			if from.Path() != to.Path() {
-				status = "R" // Treat as rename if paths differ
-				p = to.Path()
-			} else {
-				status = "M"
-				p = to.Path()
-			}
 		}
-
-		if p != "" {
-			files = append(files, FileDiffStatus{
-				Path:   p,
-				Status: status,
-			})
-		}
+		files = append(files, FileDiffStatus{
+			Path:   name,
+			Status: status,
+		})
 	}
 	return files, nil
 }
 
-// simplePatch wrapper for filtering
-type simplePatch struct {
-	filePatches []diff.FilePatch
-}
-
-func (p *simplePatch) FilePatches() []diff.FilePatch {
-	return p.filePatches
-}
-
-func (p *simplePatch) Message() string {
-	return ""
-}
-
-// GetRawDiff returns the full diff content for a specific file or all
+// GetRawDiff returns the full diff content
 func (s *GitService) GetRawDiff(path, base, target, file string) (string, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return "", err
+	opts := gitbackend.DiffOptions{
+		From: base,
+		To:   target,
+	}
+	if file != "" {
+		opts.Paths = []string{file}
 	}
 
-	cBase, cTarget, err := s.resolveCommitPair(r, base, target)
-	if err != nil {
-		return "", err
-	}
-
-	patch, err := cBase.Patch(cTarget)
-	if err != nil {
-		return "", err
-	}
-
-	if file == "" {
-		return patch.String(), nil
-	}
-
-	var filtered []diff.FilePatch
-	for _, fp := range patch.FilePatches() {
-		from, to := fp.Files()
-		if (from != nil && from.Path() == file) || (to != nil && to.Path() == file) {
-			filtered = append(filtered, fp)
-		}
-	}
-
-	if len(filtered) == 0 {
-		return "", nil
-	}
-
-	var sb strings.Builder
-	ue := diff.NewUnifiedEncoder(&sb, diff.DefaultContextLines)
-	if err := ue.Encode(&simplePatch{filePatches: filtered}); err != nil {
-		return "", err
-	}
-	return sb.String(), nil
+	return s.backend.Diff(context.Background(), path, opts)
 }
 
 type MergeResult struct {
 	Success   bool     `json:"success"`
-	Conflicts []string `json:"conflicts"` // List of conflicting files
+	Conflicts []string `json:"conflicts"`
 	Output    string   `json:"output"`
-	MergeID   string   `json:"merge_id"` // Transaction ID if needed
+	MergeID   string   `json:"merge_id"`
 }
 
 // MergeDryRun checks for conflicts without committing
 func (s *GitService) MergeDryRun(path, source, target string) (*MergeResult, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return nil, err
-	}
-
-	cSource, cTarget, err := s.resolveCommitPair(r, source, target)
-	if err != nil {
-		return nil, err
-	}
-
-	bases, err := cSource.MergeBase(cTarget)
-	if err != nil || len(bases) == 0 {
+	// Get merge base
+	baseHash, err := s.backend.MergeBase(context.Background(), path, source, target)
+	if err != nil || baseHash == "" {
 		return nil, fmt.Errorf("no merge base found")
 	}
-	cBase := bases[0]
 
-	patchSource, err := cBase.Patch(cSource)
+	// Get files changed in source
+	sourceFiles, err := s.backend.DiffNames(context.Background(), path, baseHash, source)
 	if err != nil {
 		return nil, err
 	}
 
-	patchTarget, err := cBase.Patch(cTarget)
+	// Get files changed in target
+	targetFiles, err := s.backend.DiffNames(context.Background(), path, baseHash, target)
 	if err != nil {
 		return nil, err
 	}
 
 	// Check overlap
-	changedSource := make(map[string]bool)
-	for _, fp := range patchSource.FilePatches() {
-		from, to := fp.Files()
-		if from != nil {
-			changedSource[from.Path()] = true
-		}
-		if to != nil {
-			changedSource[to.Path()] = true
-		}
+	sourceMap := make(map[string]bool)
+	for _, f := range sourceFiles {
+		sourceMap[f] = true
 	}
 
 	var conflicts []string
-	for _, fp := range patchTarget.FilePatches() {
-		from, to := fp.Files()
-		p := ""
-		if from != nil {
-			p = from.Path()
-		} else if to != nil {
-			p = to.Path()
-		}
-
-		if p != "" && changedSource[p] {
-			// Potential conflict
-			conflicts = append(conflicts, p)
+	for _, f := range targetFiles {
+		if sourceMap[f] {
+			conflicts = append(conflicts, f)
 		}
 	}
 
@@ -216,48 +140,38 @@ func (s *GitService) MergeDryRun(path, source, target string) (*MergeResult, err
 	}, nil
 }
 
-// Merge performs the actual merge with optional no-ff and squash strategies
+// Merge performs the actual merge
 func (s *GitService) Merge(path, source, target, message string, noFF, squash bool) error {
-	// 1. Checkout target
+	// Checkout target
 	if err := s.CheckoutBranch(path, target); err != nil {
 		return fmt.Errorf("checkout target failed: %v", err)
 	}
 
-	// 2. Merge source
-	// We use RunCommand because go-git does not support full merge logic yet
-	args := []string{"merge", source}
+	// Merge source
+	opts := gitbackend.MergeOptions{
+		Message: message,
+		Squash:  squash,
+	}
 	if noFF {
-		args = append(args, "--no-ff")
-	}
-	if squash {
-		args = append(args, "--squash")
-	}
-	if message != "" {
-		args = append(args, "-m", message)
+		opts.FFOnly = false
 	}
 
-	out, err := s.RunCommand(path, args...)
+	err := s.backend.Merge(context.Background(), path, source, opts)
 	if err != nil {
-		// If failed, it's likely a conflict (since we did checkout).
-		// We should abort to restore state
-		if _, abortErr := s.RunCommand(path, "merge", "--abort"); abortErr != nil {
-			// Log the abort error but still return the original merge error
-			// We can't do much more here
-			_ = abortErr // 暂时使用下划线忽略错误，避免空分支
-		}
-		return fmt.Errorf("merge failed (aborted): %v. Output: %s", err, out)
+		// Abort merge on failure
+		_, _ = s.RunCommand(path, "merge", "--abort")
+		return fmt.Errorf("merge failed (aborted): %v", err)
 	}
 
-	// If squash, we need to commit separately
+	// If squash, commit separately
 	if squash {
-		commitArgs := []string{"commit"}
-		if message != "" {
-			commitArgs = append(commitArgs, "-m", message)
-		} else {
-			commitArgs = append(commitArgs, "-m", fmt.Sprintf("Squash merge %s into %s", source, target))
+		commitMsg := message
+		if commitMsg == "" {
+			commitMsg = fmt.Sprintf("Squash merge %s into %s", source, target)
 		}
-		if out, err := s.RunCommand(path, commitArgs...); err != nil {
-			return fmt.Errorf("squash commit failed: %v. Output: %s", err, out)
+		err = s.backend.CommitWithIdentity(context.Background(), path, "Git Manage Service", "git-manage@example.com", commitMsg)
+		if err != nil {
+			return fmt.Errorf("squash commit failed: %v", err)
 		}
 	}
 
@@ -266,20 +180,8 @@ func (s *GitService) Merge(path, source, target, message string, noFF, squash bo
 
 // GetPatch generates a patch file content
 func (s *GitService) GetPatch(path, base, target string) (string, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return "", err
-	}
-
-	cBase, cTarget, err := s.resolveCommitPair(r, base, target)
-	if err != nil {
-		return "", err
-	}
-
-	patch, err := cBase.Patch(cTarget)
-	if err != nil {
-		return "", err
-	}
-
-	return patch.String(), nil
+	return s.backend.Diff(context.Background(), path, gitbackend.DiffOptions{
+		From: base,
+		To:   target,
+	})
 }
