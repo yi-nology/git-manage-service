@@ -69,22 +69,16 @@ func cleanupOldComments(ctx context.Context, p provider.DiffManager, owner, repo
 	}
 }
 
-func publishComments(ctx context.Context, p provider.DiffManager, owner, repo string, mrNum int, taskID uint, result *AggregatedResult, findingIDMap map[string]uint) error {
+func publishComments(ctx context.Context, p provider.DiffManager, owner, repo string, mrNum int, taskID uint, commitSHA string, result *AggregatedResult, findingIDMap map[string]uint) error {
 	commentDAO := db.NewReviewCommentDAO()
-
 	summary := BuildSummaryComment(result)
-	noteID, err := p.CreateNote(ctx, owner, repo, mrNum, summary)
-	if err != nil {
-		return fmt.Errorf("failed to post summary comment: %w", err)
-	}
-	commentDAO.Create(&po.ReviewComment{
-		TaskID:            taskID,
-		ProviderCommentID: noteID,
-		CommentType:       "summary",
-		Body:              summary,
-		Status:            "posted",
-	})
 
+	// Collect filtered findings and build inline review comments
+	type inlineEntry struct {
+		finding *Finding
+		comment provider.ReviewComment
+	}
+	var entries []inlineEntry
 	for _, f := range result.Findings {
 		if f.FilePath == "" || f.NewLine == 0 {
 			continue
@@ -92,25 +86,54 @@ func publishComments(ctx context.Context, p provider.DiffManager, owner, repo st
 		if f.Severity != SeverityCritical && f.Severity != SeverityHigh && f.Severity != SeverityMedium {
 			continue
 		}
-		body := BuildInlineComment(f)
-		discID, dErr := p.CreateDiscussion(ctx, owner, repo, mrNum, provider.DiscussionOptions{
-			Body:     body,
-			FilePath: f.FilePath,
-			NewLine:  f.NewLine,
+		entries = append(entries, inlineEntry{
+			finding: f,
+			comment: provider.ReviewComment{
+				Path: f.FilePath,
+				Body: BuildInlineComment(f),
+				Line: f.NewLine,
+			},
 		})
-		if dErr != nil {
-			logger.ErrorWithErr("Failed to create inline discussion", dErr, logrus.Fields{"file": f.FilePath, "line": f.NewLine})
-			continue
+	}
+
+	reviewComments := make([]provider.ReviewComment, 0, len(entries))
+	for _, e := range entries {
+		reviewComments = append(reviewComments, e.comment)
+	}
+
+	// Single API call: summary body + all inline comments
+	reviewResult, err := p.CreateReview(ctx, owner, repo, mrNum, provider.CreateReviewOptions{
+		CommitID: commitSHA,
+		Event:    "COMMENT",
+		Body:     summary,
+		Comments: reviewComments,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create review: %w", err)
+	}
+
+	commentDAO.Create(&po.ReviewComment{
+		TaskID:            taskID,
+		ProviderCommentID: reviewResult.ID,
+		CommentType:       "summary",
+		Body:              summary,
+		Status:            "posted",
+	})
+
+	for i, e := range entries {
+		externalID := ""
+		if reviewResult.Comments != nil && i < len(reviewResult.Comments) {
+			externalID = reviewResult.Comments[i].ExternalID
 		}
-		findingID := findingIDMap[f.Fingerprint]
+		findingID := findingIDMap[e.finding.Fingerprint]
 		commentDAO.Create(&po.ReviewComment{
 			TaskID:            taskID,
 			FindingID:         findingID,
-			ProviderCommentID: discID,
+			ProviderCommentID: externalID,
 			CommentType:       "inline",
-			FilePath:          f.FilePath,
-			LineNumber:        f.NewLine,
-			Body:              body,
+			FilePath:          e.finding.FilePath,
+			LineNumber:        e.finding.NewLine,
+			Body:              e.comment.Body,
 			Status:            "posted",
 		})
 	}

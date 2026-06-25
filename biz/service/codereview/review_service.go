@@ -349,7 +349,7 @@ func finalizeReview(ctx context.Context, task *po.ReviewTask, result *Aggregated
 
 	if mrNum > 0 {
 		cleanupOldComments(ctx, params.p, params.owner, params.repo, mrNum, task.ProviderConfigID, task.MRIID)
-		if pErr := publishComments(ctx, params.p, params.owner, params.repo, mrNum, task.ID, result, findingIDMap); pErr != nil {
+		if pErr := publishComments(ctx, params.p, params.owner, params.repo, mrNum, task.ID, task.CommitSHA, result, findingIDMap); pErr != nil {
 			logger.ErrorWithErr("Failed to publish comments", pErr, logrus.Fields{"task_id": task.ID})
 		}
 	}
