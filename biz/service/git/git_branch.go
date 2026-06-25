@@ -1,6 +1,7 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -133,27 +134,7 @@ func (s *GitService) DeleteBranch(path, name string, force bool) error {
 }
 
 func (s *GitService) RenameBranch(path, oldName, newName string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	oldRefName := plumbing.ReferenceName("refs/heads/" + oldName)
-	newRefName := plumbing.ReferenceName("refs/heads/" + newName)
-
-	ref, err := r.Reference(oldRefName, true)
-	if err != nil {
-		return err
-	}
-
-	// Create new
-	err = r.Storer.SetReference(plumbing.NewHashReference(newRefName, ref.Hash()))
-	if err != nil {
-		return err
-	}
-
-	// Delete old
-	return r.Storer.RemoveReference(oldRefName)
+	return s.backend.RenameBranch(context.Background(), path, oldName, newName)
 }
 
 func (s *GitService) GetBranchDescription(path, branch string) (string, error) {
