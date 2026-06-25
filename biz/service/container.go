@@ -7,7 +7,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/branch"
 	credentialsvc "github.com/yi-nology/git-manage-service/biz/service/credential"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	syncsvc "github.com/yi-nology/git-manage-service/biz/service/sync"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/lock"
 	"github.com/yi-nology/git-manage-service/pkg/storage"
@@ -17,7 +16,6 @@ import (
 type Container struct {
 	GitService        *git.GitService
 	BranchService     *branch.BranchService
-	SyncService       *syncsvc.SyncService
 	CredentialService *credentialsvc.CredentialService
 	StorageService    storage.Storage
 	LockService       lock.DistLock
@@ -48,7 +46,6 @@ func GetContainer() *Container {
 		container = &Container{
 			GitService:        git.NewGitService(),
 			BranchService:     branch.NewBranchService(),
-			SyncService:       syncsvc.NewSyncService(),
 			CredentialService: credentialsvc.NewCredentialService(),
 			StorageService:    storageSvc,
 			LockService:       lockSvc,
@@ -65,11 +62,6 @@ func Git() *git.GitService {
 // Branch 获取分支服务
 func Branch() *branch.BranchService {
 	return GetContainer().BranchService
-}
-
-// Sync 获取同步服务
-func Sync() *syncsvc.SyncService {
-	return GetContainer().SyncService
 }
 
 // Storage 获取存储服务

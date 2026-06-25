@@ -4,7 +4,6 @@ package sync
 
 import (
 	"github.com/cloudwego/hertz/pkg/app/server"
-	sync "github.com/yi-nology/git-manage-service/biz/handler/sync"
 	syncv2 "github.com/yi-nology/git-manage-service/biz/handler/sync/v2"
 )
 
@@ -20,27 +19,7 @@ func Register(r *server.Hertz) {
 	{
 		_api := root.Group("/api", _apiMw()...)
 		{
-			// V1 - Legacy
-			_v1 := _api.Group("/v1", _v1Mw()...)
-			{
-				_sync := _v1.Group("/sync", _syncMw()...)
-				_sync.POST("/analyze-repo", append(_analyzerepoforsyncMw(), sync.AnalyzeRepoForSync)...)
-				_sync.POST("/batch", append(_batchsyncMw(), sync.BatchSync)...)
-				_sync.POST("/execute", append(_executesyncMw(), sync.ExecuteSync)...)
-				_sync.GET("/history", append(_listhistoryMw(), sync.ListHistory)...)
-				_history := _sync.Group("/history", _historyMw()...)
-				_history.POST("/delete", append(_deletehistoryMw(), sync.DeleteHistory)...)
-				_sync.POST("/preview", append(_previewsyncMw(), sync.PreviewSync)...)
-				_sync.POST("/run", append(_runtaskMw(), sync.RunTask)...)
-				_sync.GET("/task", append(_gettaskMw(), sync.GetTask)...)
-				_task := _sync.Group("/task", _taskMw()...)
-				_task.POST("/create", append(_createtaskMw(), sync.CreateTask)...)
-				_task.POST("/delete", append(_deletetaskMw(), sync.DeleteTask)...)
-				_task.POST("/update", append(_updatetaskMw(), sync.UpdateTask)...)
-				_sync.GET("/tasks", append(_listtasksMw(), sync.ListTasks)...)
-			}
-
-			// V2 - New git-sync-service based
+			// V2 - git-sync-service based
 			_v2 := _api.Group("/v2", _v1Mw()...)
 			{
 				_sync := _v2.Group("/sync", _syncMw()...)

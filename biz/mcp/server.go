@@ -11,14 +11,12 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/biz/service/notification"
-	syncservice "github.com/yi-nology/git-manage-service/biz/service/sync"
 )
 
 type MCPServer struct {
 	tools               map[string]ToolDefinition
 	gitService          *git.GitService
 	notificationService *notification.NotificationService
-	syncService         *syncservice.SyncService
 	auditHandler        *auditHandler
 	statsHandler        *statsHandler
 	storageHandler      *storageHandler
@@ -32,7 +30,6 @@ func NewMCPServer() *MCPServer {
 		tools:               make(map[string]ToolDefinition),
 		gitService:          git.NewGitService(),
 		notificationService: notification.NewNotificationService(),
-		syncService:         syncservice.NewSyncService(),
 		auditHandler:        newAuditHandler(),
 		statsHandler:        newStatsHandler(),
 		storageHandler:      newStorageHandler(),

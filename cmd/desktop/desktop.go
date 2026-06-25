@@ -17,7 +17,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/router"
 	"github.com/yi-nology/git-manage-service/biz/service/audit"
 	"github.com/yi-nology/git-manage-service/biz/service/stats"
-	"github.com/yi-nology/git-manage-service/biz/service/sync"
 	"github.com/yi-nology/git-manage-service/biz/utils"
 	"github.com/yi-nology/git-manage-service/pkg/appinfo"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
@@ -70,10 +69,6 @@ func Startup(ctx context.Context) {
 func Shutdown(ctx context.Context) {
 	log.Println("Application shutting down...")
 
-	// 停止定时任务服务
-	log.Println("Stopping cron service...")
-	sync.StopCronService()
-
 	// 停止 HTTP 服务器
 	app := GetApp()
 	if app.hServer != nil {
@@ -118,7 +113,6 @@ func (a *App) startBackend() {
 	utils.InitEncryption()
 
 	// 初始化业务服务
-	sync.InitCronService()
 	stats.InitStatsService()
 	audit.InitAuditService()
 

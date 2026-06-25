@@ -14,7 +14,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	webhook "github.com/yi-nology/git-manage-service/biz/model/webhook"
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
-	"github.com/yi-nology/git-manage-service/biz/service/sync"
+	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
 	"github.com/yi-nology/git-manage-service/biz/service/webhookevent"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-platform-sdk/provider"
@@ -40,8 +40,8 @@ func TriggerSync(ctx context.Context, c *app.RequestContext) {
 	}
 
 	// 查找任务
-	dao := db.NewSyncTaskDAO()
-	task, err := dao.FindByKey(taskKey)
+	svc := syncv2.GetService()
+	task, err := svc.GetTask(ctx, taskKey)
 	if err != nil {
 		response.NotFound(c, "task not found")
 		return
@@ -52,8 +52,7 @@ func TriggerSync(ctx context.Context, c *app.RequestContext) {
 
 	// 异步执行同步任务
 	go func() {
-		syncSvc := sync.NewSyncService()
-		syncSvc.ExecuteSyncWithTrigger(task, po.TriggerSourceWebhook)
+		_ = svc.RunTask(context.Background(), task.Key)
 	}()
 
 	c.Set("audit_target", "task:"+task.Key)
@@ -96,9 +95,9 @@ func TriggerSyncByToken(ctx context.Context, c *app.RequestContext) {
 	runID := uuid.New().String()
 
 	// 异步执行同步任务
+	svc := syncv2.GetService()
 	go func() {
-		syncSvc := sync.NewSyncService()
-		syncSvc.ExecuteSyncWithTrigger(task, po.TriggerSourceWebhook)
+		_ = svc.RunTask(context.Background(), task.Key)
 	}()
 
 	c.Set("audit_target", "task:"+task.Key)
