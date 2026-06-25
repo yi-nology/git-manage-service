@@ -1,12 +1,11 @@
 package git
 
 import (
+	"context"
 	"fmt"
-	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/sirupsen/logrus"
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
@@ -61,17 +60,7 @@ func (s *GitService) AddRemote(path, name, url string, isMirror bool) error {
 		"isMirror": isMirror,
 	})
 
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	_, err = r.CreateRemote(&config.RemoteConfig{
-		Name:   name,
-		URLs:   []string{url},
-		Mirror: isMirror,
-	})
-
+	err := s.backend.AddRemote(context.Background(), path, name, url)
 	if err != nil {
 		logger.ErrorWithErr("Failed to add remote", err, logrus.Fields{"name": name})
 		return err
@@ -85,12 +74,7 @@ func (s *GitService) AddRemote(path, name, url string, isMirror bool) error {
 func (s *GitService) RemoveRemote(path, name string) error {
 	logger.Info("Removing remote", logrus.Fields{"path": path, "name": name})
 
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	err = r.DeleteRemote(name)
+	err := s.backend.RemoveRemote(context.Background(), path, name)
 	if err != nil {
 		logger.ErrorWithErr("Failed to remove remote", err, logrus.Fields{"name": name})
 		return err
@@ -186,28 +170,7 @@ func (s *GitService) GetRepoConfig(path string) (*domain.GitRepoConfig, error) {
 
 // ListRemoteBranches 获取指定远程的所有分支名（基于本地 remote-tracking refs）
 func (s *GitService) ListRemoteBranches(path, remoteName string) ([]string, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return nil, err
-	}
-
-	prefix := "refs/remotes/" + remoteName + "/"
-	iter, err := r.References()
-	if err != nil {
-		return nil, err
-	}
-
-	var branches []string
-	err = iter.ForEach(func(ref *plumbing.Reference) error {
-		name := ref.Name().String()
-		if strings.HasPrefix(name, prefix) {
-			branch := strings.TrimPrefix(name, prefix)
-			if branch != "HEAD" {
-				branches = append(branches, branch)
-			}
-		}
-		return nil
-	})
+	branches, err := s.backend.ListRemoteBranches(context.Background(), path, remoteName)
 	if err != nil {
 		return nil, err
 	}

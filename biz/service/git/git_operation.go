@@ -1,16 +1,17 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 type channelWriter struct {
@@ -41,90 +42,43 @@ func (s *GitService) IsGitRepo(path string) bool {
 }
 
 func (s *GitService) Fetch(path, remote string, progress io.Writer, skipTLS ...bool) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	var auth transport.AuthMethod
-	rem, err := r.Remote(remote)
-	if err == nil {
-		urls := rem.Config().URLs
-		if len(urls) > 0 {
-			auth = s.detectSSHAuth(urls[0])
-		}
-	}
-
 	insecure := len(skipTLS) > 0 && skipTLS[0]
 
-	fetchOptions := &git.FetchOptions{
-		RemoteName: remote,
-		Progress:   progress,
-		RefSpecs: []config.RefSpec{
-			config.RefSpec("+refs/heads/*:refs/remotes/" + remote + "/*"),
-			config.RefSpec("+refs/tags/*:refs/tags/*"),
-		},
+	_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
+		RepoPath:        path,
+		Remote:          remote,
+		Tags:            true,
 		InsecureSkipTLS: insecure,
-	}
-	if auth != nil {
-		fetchOptions.Auth = auth
-	}
-
-	err = r.Fetch(fetchOptions)
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
+		Progress:        progress,
+	})
 	return err
 }
 
 func (s *GitService) FetchWithAuth(path, remoteURL, authType, authKey, authSecret string, progress io.Writer, skipTLS bool, extraArgs ...string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
+	auth := s.buildSDKAuth(authType, authKey, authSecret)
 
-	auth, err := s.getAuth(authType, authKey, authSecret)
-	if err != nil {
-		return err
-	}
-
-	remote := git.NewRemote(r.Storer, &config.RemoteConfig{
-		Name: "origin",
-		URLs: []string{remoteURL},
-	})
-
-	err = remote.Fetch(&git.FetchOptions{
-		Auth:            auth,
-		RemoteName:      "origin",
-		Progress:        progress,
+	_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
+		RepoPath:        path,
+		Remote:          remoteURL,
+		Tags:            true,
 		InsecureSkipTLS: skipTLS,
+		Auth:            auth,
+		Progress:        progress,
 	})
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
 	return err
 }
 
 func (s *GitService) FetchWithAuthMethod(path, remoteURL string, auth transport.AuthMethod, progress io.Writer, skipTLS bool, extraArgs ...string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
+	sdkAuth := s.ConvertTransportAuth(auth)
 
-	remote := git.NewRemote(r.Storer, &config.RemoteConfig{
-		Name: "origin",
-		URLs: []string{remoteURL},
-	})
-
-	err = remote.Fetch(&git.FetchOptions{
-		Auth:            auth,
-		RemoteName:      "origin",
-		Progress:        progress,
+	_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
+		RepoPath:        path,
+		Remote:          remoteURL,
+		Tags:            true,
 		InsecureSkipTLS: skipTLS,
+		Auth:            sdkAuth,
+		Progress:        progress,
 	})
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
 	return err
 }
 
@@ -133,14 +87,7 @@ func (s *GitService) Clone(remoteURL, localPath, authType, authKey, authSecret s
 }
 
 func (s *GitService) CloneWithProgress(remoteURL, localPath, authType, authKey, authSecret string, progressChan chan string, skipTLS ...bool) error {
-	auth, err := s.getAuth(authType, authKey, authSecret)
-	if err != nil {
-		return err
-	}
-
-	if auth == nil {
-		auth = s.detectSSHAuth(remoteURL)
-	}
+	auth := s.buildSDKAuth(authType, authKey, authSecret)
 
 	var progress io.Writer
 	if progressChan != nil {
@@ -149,19 +96,17 @@ func (s *GitService) CloneWithProgress(remoteURL, localPath, authType, authKey, 
 
 	insecure := len(skipTLS) > 0 && skipTLS[0]
 
-	_, err = git.PlainClone(localPath, false, &git.CloneOptions{
+	return s.backend.Clone(context.Background(), gitbackend.CloneOptions{
 		URL:             remoteURL,
+		Path:            localPath,
 		Auth:            auth,
 		Progress:        progress,
 		InsecureSkipTLS: insecure,
 	})
-	return err
 }
 
 func (s *GitService) CloneWithAuthMethod(remoteURL, localPath string, auth transport.AuthMethod, progressChan chan string, skipTLS ...bool) error {
-	if auth == nil {
-		auth = s.detectSSHAuth(remoteURL)
-	}
+	sdkAuth := s.ConvertTransportAuth(auth)
 
 	var progress io.Writer
 	if progressChan != nil {
@@ -170,13 +115,13 @@ func (s *GitService) CloneWithAuthMethod(remoteURL, localPath string, auth trans
 
 	insecure := len(skipTLS) > 0 && skipTLS[0]
 
-	_, err := git.PlainClone(localPath, false, &git.CloneOptions{
+	return s.backend.Clone(context.Background(), gitbackend.CloneOptions{
 		URL:             remoteURL,
-		Auth:            auth,
+		Path:            localPath,
+		Auth:            sdkAuth,
 		Progress:        progress,
 		InsecureSkipTLS: insecure,
 	})
-	return err
 }
 
 func (s *GitService) GetCommitHash(path, remote, branch string) (string, error) {
@@ -193,24 +138,7 @@ func (s *GitService) GetCommitHash(path, remote, branch string) (string, error) 
 }
 
 func (s *GitService) IsAncestor(path, ancestor, descendant string) (bool, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return false, err
-	}
-
-	h1 := plumbing.NewHash(ancestor)
-	h2 := plumbing.NewHash(descendant)
-
-	c1, err := r.CommitObject(h1)
-	if err != nil {
-		return false, err
-	}
-	c2, err := r.CommitObject(h2)
-	if err != nil {
-		return false, err
-	}
-
-	return c1.IsAncestor(c2)
+	return s.backend.IsAncestor(context.Background(), path, ancestor, descendant)
 }
 
 func (s *GitService) GetBranches(path string) ([]string, error) {
@@ -353,28 +281,9 @@ func (s *GitService) resolveCommitPair(r *git.Repository, base, target string) (
 }
 
 func (s *GitService) ResolveRevision(path, rev string) (string, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return "", err
-	}
-	hash, err := r.ResolveRevision(plumbing.Revision(rev))
-	if err != nil {
-		return "", err
-	}
-	return hash.String(), nil
+	return s.backend.RevParse(context.Background(), path, rev)
 }
 
 func (s *GitService) GetHeadBranch(path string) (string, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return "", err
-	}
-	head, err := r.Head()
-	if err != nil {
-		return "", err
-	}
-	if head.Name().IsBranch() {
-		return head.Name().Short(), nil
-	}
-	return head.Hash().String(), nil
+	return s.backend.GetCurrentBranch(context.Background(), path)
 }

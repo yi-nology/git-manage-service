@@ -689,7 +689,8 @@ func pushBranchToRemote(repoID uint, repoPath, remoteName, remoteURL, branch, ha
 			}
 		}
 		if authMethod != nil {
-			err := gitSvc.PushWithAuthMethod(repoPath, remoteURL, hash, branch, authMethod, pushOpts, nil, skipTLS)
+			sdkAuth := gitSvc.ConvertTransportAuth(authMethod)
+			err := gitSvc.PushWithSDKAuth(repoPath, remoteURL, hash, branch, sdkAuth, pushOpts, nil, skipTLS)
 			if err != nil {
 				return err.Error()
 			}

@@ -10,12 +10,24 @@ import (
 	"strings"
 
 	conf "github.com/yi-nology/git-manage-service/pkg/configs"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
-type GitService struct{}
+type GitService struct {
+	backend gitbackend.GitBackend
+}
 
 func NewGitService() *GitService {
-	return &GitService{}
+	backend, err := gitbackend.NewGitBackend(gitbackend.Options{Type: ""})
+	if err != nil {
+		log.Printf("[WARN] Failed to create git backend: %v, falling back to native", err)
+		backend, _ = gitbackend.NewGitBackend(gitbackend.Options{Type: "native"})
+	}
+	return &GitService{backend: backend}
+}
+
+func (s *GitService) Backend() gitbackend.GitBackend {
+	return s.backend
 }
 
 // RunCommand executes a raw git command.

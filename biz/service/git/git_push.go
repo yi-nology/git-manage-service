@@ -1,151 +1,124 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"strings"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
-func parsePushOptions(options []string) *git.PushOptions {
-	opts := &git.PushOptions{}
-	opts.Options = make(map[string]string)
-
+func parsePushOptions(options []string) (force bool, mirror bool, insecure bool) {
 	for _, o := range options {
 		if o == "-f" || o == "--force" {
-			opts.Force = true
-		} else if o == "--prune" {
-			opts.Prune = true
-		} else if strings.HasPrefix(o, "--push-option=") {
-			kv := strings.TrimPrefix(o, "--push-option=")
-			parts := strings.SplitN(kv, "=", 2)
-			if len(parts) == 2 {
-				opts.Options[parts[0]] = parts[1]
-			}
+			force = true
+		} else if o == "--mirror" {
+			mirror = true
+		} else if o == "--insecure" {
+			insecure = true
 		}
 	}
-	return opts
+	return
 }
 
 func (s *GitService) Push(path, targetRemote, sourceHash, targetBranch string, options []string, progress io.Writer, skipTLS ...bool) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	refSpec := config.RefSpec(fmt.Sprintf("%s:refs/heads/%s", sourceHash, targetBranch))
-
-	var auth transport.AuthMethod
-	rem, err := r.Remote(targetRemote)
-	if err == nil {
-		urls := rem.Config().URLs
-		if len(urls) > 0 {
-			auth = s.detectSSHAuth(urls[0])
-		}
-	}
-
+	force, mirror, _ := parsePushOptions(options)
 	insecure := len(skipTLS) > 0 && skipTLS[0]
 
-	pushOpts := parsePushOptions(options)
-	pushOpts.RemoteName = targetRemote
-	pushOpts.RefSpecs = []config.RefSpec{refSpec}
-	pushOpts.InsecureSkipTLS = insecure
-	if auth != nil {
-		pushOpts.Auth = auth
-	}
-	pushOpts.Progress = progress
+	refSpec := fmt.Sprintf("%s:refs/heads/%s", sourceHash, targetBranch)
 
-	err = r.Push(pushOpts)
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
+	_, err := s.backend.Push(context.Background(), gitbackend.PushOptions{
+		RepoPath:        path,
+		Remote:          targetRemote,
+		RefSpecs:        []string{refSpec},
+		Force:           force,
+		Mirror:          mirror,
+		InsecureSkipTLS: insecure,
+		Progress:        progress,
+	})
 	return err
 }
 
 func (s *GitService) PushWithAuth(path, targetRemoteURL, sourceHash, targetBranch, authType, authKey, authSecret string, options []string, progress io.Writer, skipTLS ...bool) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
+	auth := s.buildSDKAuth(authType, authKey, authSecret)
 
-	auth, err := s.getAuth(authType, authKey, authSecret)
-	if err != nil {
-		return err
-	}
-
-	remote := git.NewRemote(r.Storer, &config.RemoteConfig{
-		Name: "anonymous",
-		URLs: []string{targetRemoteURL},
-	})
-
-	refSpec := config.RefSpec(fmt.Sprintf("%s:refs/heads/%s", sourceHash, targetBranch))
-
-	insecure := len(skipTLS) > 0 && skipTLS[0]
-
-	pushOpts := parsePushOptions(options)
-	pushOpts.Auth = auth
-	pushOpts.RefSpecs = []config.RefSpec{refSpec}
-	pushOpts.Progress = progress
-	pushOpts.InsecureSkipTLS = insecure
-
-	err = remote.Push(pushOpts)
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
-	return err
+	return s.PushWithSDKAuth(path, targetRemoteURL, sourceHash, targetBranch, auth, options, progress, skipTLS...)
 }
 
-func (s *GitService) PushWithAuthMethod(path, targetRemoteURL, sourceHash, targetBranch string, auth transport.AuthMethod, options []string, progress io.Writer, skipTLS ...bool) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
+func (s *GitService) PushWithAuthMethod(path, targetRemoteURL, sourceHash, targetBranch string, authMethod transport.AuthMethod, options []string, progress io.Writer, skipTLS ...bool) error {
+	sdkAuth := s.ConvertTransportAuth(authMethod)
+	return s.PushWithSDKAuth(path, targetRemoteURL, sourceHash, targetBranch, sdkAuth, options, progress, skipTLS...)
+}
 
-	remote := git.NewRemote(r.Storer, &config.RemoteConfig{
-		Name: "anonymous",
-		URLs: []string{targetRemoteURL},
-	})
-
-	refSpec := config.RefSpec(fmt.Sprintf("%s:refs/heads/%s", sourceHash, targetBranch))
-
+func (s *GitService) PushWithSDKAuth(path, targetRemoteURL, sourceHash, targetBranch string, auth gitbackend.AuthConfig, options []string, progress io.Writer, skipTLS ...bool) error {
+	force, mirror, _ := parsePushOptions(options)
 	insecure := len(skipTLS) > 0 && skipTLS[0]
 
-	pushOpts := parsePushOptions(options)
-	pushOpts.Auth = auth
-	pushOpts.RefSpecs = []config.RefSpec{refSpec}
-	pushOpts.Progress = progress
-	pushOpts.InsecureSkipTLS = insecure
+	refSpec := fmt.Sprintf("%s:refs/heads/%s", sourceHash, targetBranch)
 
-	err = remote.Push(pushOpts)
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
+	_, err := s.backend.Push(context.Background(), gitbackend.PushOptions{
+		RepoPath:        path,
+		Remote:          targetRemoteURL,
+		RefSpecs:        []string{refSpec},
+		Force:           force,
+		Mirror:          mirror,
+		InsecureSkipTLS: insecure,
+		Auth:            auth,
+		Progress:        progress,
+	})
 	return err
 }
 
 func (s *GitService) PushCurrent(path string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
+	_, err := s.backend.Push(context.Background(), gitbackend.PushOptions{
+		RepoPath: path,
+		Remote:   "origin",
+	})
+	return err
+}
 
-	var auth transport.AuthMethod
-	rem, err := r.Remote("origin")
-	if err == nil {
-		urls := rem.Config().URLs
-		if len(urls) > 0 {
-			auth = s.detectSSHAuth(urls[0])
+func (s *GitService) buildSDKAuth(authType, authKey, authSecret string) gitbackend.AuthConfig {
+	switch authType {
+	case "http":
+		if authKey != "" {
+			return gitbackend.AuthConfig{
+				Type:     gitbackend.AuthHTTPBasic,
+				Username: authKey,
+				Password: authSecret,
+			}
+		}
+	case "ssh":
+		if authKey != "" {
+			return gitbackend.AuthConfig{
+				Type:   gitbackend.AuthSSH,
+				SSHKey: authKey,
+			}
 		}
 	}
+	return gitbackend.AuthConfig{Type: gitbackend.AuthNone}
+}
 
-	err = r.Push(&git.PushOptions{
-		Auth: auth,
-	})
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
+func (s *GitService) ConvertTransportAuth(authMethod transport.AuthMethod) gitbackend.AuthConfig {
+	if authMethod == nil {
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}
 	}
-	return err
+
+	switch a := authMethod.(type) {
+	case *ssh.PublicKeys:
+		return gitbackend.AuthConfig{
+			Type:   gitbackend.AuthSSH,
+			SSHKey: a.User,
+		}
+	case *http.BasicAuth:
+		return gitbackend.AuthConfig{
+			Type:     gitbackend.AuthHTTPBasic,
+			Username: a.Username,
+			Password: a.Password,
+		}
+	default:
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}
+	}
 }

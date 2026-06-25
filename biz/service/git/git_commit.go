@@ -1,11 +1,11 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
-	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -14,94 +14,37 @@ import (
 )
 
 func (s *GitService) CheckoutBranch(path, branch string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		return err
-	}
-
-	refName := plumbing.ReferenceName("refs/heads/" + branch)
-	_, err = r.Reference(refName, true)
-	if err != nil {
-		remoteRefName := plumbing.ReferenceName("refs/remotes/origin/" + branch)
-		remoteRef, err := r.Reference(remoteRefName, true)
-		if err != nil {
-			return fmt.Errorf("branch %s not found (local or remote)", branch)
-		}
-
-		return w.Checkout(&git.CheckoutOptions{
-			Hash:   remoteRef.Hash(),
-			Branch: refName,
-			Create: true,
-			Force:  true,
-		})
-	}
-
-	return w.Checkout(&git.CheckoutOptions{
-		Branch: refName,
-		Force:  true,
-	})
+	return s.backend.Checkout(context.Background(), path, branch)
 }
 
 func (s *GitService) GetStatus(path string) (string, error) {
-	r, err := s.openRepo(path)
+	status, err := s.backend.GetStatus(context.Background(), path)
 	if err != nil {
 		return "", err
 	}
-	w, err := r.Worktree()
-	if err != nil {
-		return "", err
+
+	result := ""
+	for path, fileStatus := range status.Staged {
+		result += fmt.Sprintf("%c%c %s\n", fileStatus.Staging, fileStatus.Worktree, path)
 	}
-	status, err := w.Status()
-	if err != nil {
-		return "", err
+	for path, fileStatus := range status.Unstaged {
+		result += fmt.Sprintf("%c%c %s\n", fileStatus.Staging, fileStatus.Worktree, path)
 	}
-	return status.String(), nil
+	for _, path := range status.Untracked {
+		result += fmt.Sprintf("?? %s\n", path)
+	}
+	return result, nil
 }
 
 func (s *GitService) AddAll(path string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		return err
-	}
-	_, err = w.Add(".")
-	return err
+	return s.backend.Add(context.Background(), path, []string{"."})
 }
 
 func (s *GitService) AddFiles(path string, files []string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		return err
-	}
-	for _, f := range files {
-		if _, err := w.Add(f); err != nil {
-			return fmt.Errorf("failed to add %s: %w", f, err)
-		}
-	}
-	return nil
+	return s.backend.Add(context.Background(), path, files)
 }
 
 func (s *GitService) Commit(path, message, authorName, authorEmail string) error {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		return err
-	}
-
 	if authorName == "" || authorEmail == "" {
 		if r, _ := db.NewRepoDAO().FindByPath(path); r != nil {
 			authorSvc := NewAuthorService()
@@ -122,14 +65,7 @@ func (s *GitService) Commit(path, message, authorName, authorEmail string) error
 		authorEmail = "git-manage@example.com"
 	}
 
-	_, err = w.Commit(message, &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  authorName,
-			Email: authorEmail,
-			When:  time.Now(),
-		},
-	})
-	return err
+	return s.backend.CommitWithIdentity(context.Background(), path, authorName, authorEmail, message)
 }
 
 func (s *GitService) Reset(path string) error {
