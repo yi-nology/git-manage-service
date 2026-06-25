@@ -1,13 +1,11 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // AuthorInfo 作者信息
@@ -18,32 +16,22 @@ type AuthorInfo struct {
 
 // GetAuthors 获取仓库的所有提交作者列表
 func (s *GitService) GetAuthors(path string) ([]AuthorInfo, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return nil, err
-	}
-
-	// 获取所有提交
-	iter, err := r.Log(&git.LogOptions{All: true})
+	// 使用 SDK 获取最近的提交来提取作者
+	commits, err := s.backend.GetCommitsBetween(context.Background(), path, "", "HEAD")
 	if err != nil {
 		return nil, err
 	}
 
 	// 使用 map 去重
 	authorMap := make(map[string]AuthorInfo)
-
-	err = iter.ForEach(func(c *object.Commit) error {
-		key := c.Author.Name + "|" + c.Author.Email
+	for _, c := range commits {
+		key := c.Author + "|"
 		if _, exists := authorMap[key]; !exists {
 			authorMap[key] = AuthorInfo{
-				Name:  c.Author.Name,
-				Email: c.Author.Email,
+				Name:  c.Author,
+				Email: "",
 			}
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
 
 	// 转换为切片
@@ -57,17 +45,25 @@ func (s *GitService) GetAuthors(path string) ([]AuthorInfo, error) {
 
 // CherryPick 执行cherry-pick操作
 func (s *GitService) CherryPick(path, commitHash string, noCommit bool) (string, []string, error) {
-	args := []string{"cherry-pick"}
 	if noCommit {
-		args = append(args, "-n")
+		// 使用 SDK 的 CherryPick（不提交）
+		err := s.backend.CherryPick(context.Background(), path, commitHash)
+		if err != nil {
+			// 检查是否是冲突
+			if strings.Contains(err.Error(), "conflict") {
+				conflicts := s.getConflictFiles(path)
+				return "", conflicts, fmt.Errorf("cherry-pick conflict")
+			}
+			return "", nil, err
+		}
+		return "", nil, nil
 	}
-	args = append(args, commitHash)
 
-	output, err := s.RunCommand(path, args...)
+	// 使用 SDK 的 CherryPick
+	err := s.backend.CherryPick(context.Background(), path, commitHash)
 	if err != nil {
 		// 检查是否是冲突
-		if strings.Contains(output, "conflict") || strings.Contains(output, "CONFLICT") {
-			// 获取冲突文件列表
+		if strings.Contains(err.Error(), "conflict") {
 			conflicts := s.getConflictFiles(path)
 			return "", conflicts, fmt.Errorf("cherry-pick conflict")
 		}
@@ -75,31 +71,36 @@ func (s *GitService) CherryPick(path, commitHash string, noCommit bool) (string,
 	}
 
 	// 获取新的commit hash
-	if !noCommit {
-		newHash, _ := s.RunCommand(path, "rev-parse", "HEAD")
-		return newHash, nil, nil
-	}
-	return "", nil, nil
+	newHash, _ := s.backend.RevParse(context.Background(), path, "HEAD")
+	return newHash, nil, nil
 }
 
 // CherryPickAbort 中止cherry-pick
 func (s *GitService) CherryPickAbort(path string) error {
+	// SDK 没有 CherryPickAbort，使用 RunCommand
 	_, err := s.RunCommand(path, "cherry-pick", "--abort")
 	return err
 }
 
 // Rebase 执行rebase操作
 func (s *GitService) Rebase(path, upstream, onto string) (bool, []string, error) {
-	args := []string{"rebase"}
 	if onto != "" {
-		args = append(args, "--onto", onto)
+		// SDK 不支持 --onto，使用 RunCommand
+		output, err := s.RunCommand(path, "rebase", "--onto", onto, upstream)
+		if err != nil {
+			if strings.Contains(output, "conflict") || strings.Contains(output, "CONFLICT") {
+				conflicts := s.getConflictFiles(path)
+				return false, conflicts, nil
+			}
+			return false, nil, err
+		}
+		return true, nil, nil
 	}
-	args = append(args, upstream)
 
-	output, err := s.RunCommand(path, args...)
+	// 使用 SDK 的 Rebase
+	err := s.backend.Rebase(context.Background(), path, upstream)
 	if err != nil {
-		// 检查是否是冲突
-		if strings.Contains(output, "conflict") || strings.Contains(output, "CONFLICT") {
+		if strings.Contains(err.Error(), "conflict") {
 			conflicts := s.getConflictFiles(path)
 			return false, conflicts, nil
 		}
@@ -110,15 +111,14 @@ func (s *GitService) Rebase(path, upstream, onto string) (bool, []string, error)
 
 // RebaseAbort 中止rebase
 func (s *GitService) RebaseAbort(path string) error {
-	_, err := s.RunCommand(path, "rebase", "--abort")
-	return err
+	return s.backend.RebaseAbort(context.Background(), path)
 }
 
 // RebaseContinue 继续rebase
 func (s *GitService) RebaseContinue(path string) (bool, []string, error) {
-	output, err := s.RunCommand(path, "rebase", "--continue")
+	err := s.backend.RebaseContinue(context.Background(), path)
 	if err != nil {
-		if strings.Contains(output, "conflict") || strings.Contains(output, "CONFLICT") {
+		if strings.Contains(err.Error(), "conflict") {
 			conflicts := s.getConflictFiles(path)
 			return false, conflicts, nil
 		}

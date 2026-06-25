@@ -1,15 +1,12 @@
 package git
 
 import (
-	"fmt"
+	"context"
 	"time"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/sirupsen/logrus"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 // TagInfo Tag 信息结构
@@ -30,34 +27,7 @@ func (s *GitService) CreateTag(path, tagName, ref, message, authorName, authorEm
 		"message": message,
 	})
 
-	r, err := s.openRepo(path)
-	if err != nil {
-		logger.ErrorWithErr("Failed to open repo for tag creation", err, logrus.Fields{"path": path})
-		return err
-	}
-
-	hash, err := r.ResolveRevision(plumbing.Revision(ref))
-	if err != nil {
-		logger.ErrorWithErr("Invalid reference for tag", err, logrus.Fields{"ref": ref})
-		return fmt.Errorf("invalid reference '%s': %v", ref, err)
-	}
-
-	if authorName == "" {
-		authorName = "Git Manage Service"
-	}
-	if authorEmail == "" {
-		authorEmail = "git-manage@example.com"
-	}
-
-	_, err = r.CreateTag(tagName, *hash, &git.CreateTagOptions{
-		Tagger: &object.Signature{
-			Name:  authorName,
-			Email: authorEmail,
-			When:  time.Now(),
-		},
-		Message: message,
-	})
-
+	err := s.backend.CreateTag(context.Background(), path, tagName, ref)
 	if err != nil {
 		logger.ErrorWithErr("Failed to create tag", err, logrus.Fields{"tag": tagName})
 		return err
@@ -75,40 +45,9 @@ func (s *GitService) PushTag(path, remoteName, tagName, authType, authKey, authS
 		"tag":    tagName,
 	})
 
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
+	auth := s.buildSDKAuth(authType, authKey, authSecret)
 
-	auth, err := s.getAuth(authType, authKey, authSecret)
-	if err != nil {
-		return err
-	}
-
-	if auth == nil {
-		rem, err := r.Remote(remoteName)
-		if err == nil {
-			urls := rem.Config().URLs
-			if len(urls) > 0 {
-				auth = s.detectSSHAuth(urls[0])
-			}
-		}
-	}
-
-	refSpec := config.RefSpec(fmt.Sprintf("refs/tags/%s:refs/tags/%s", tagName, tagName))
-
-	insecure := len(skipTLS) > 0 && skipTLS[0]
-
-	err = r.Push(&git.PushOptions{
-		RemoteName:      remoteName,
-		RefSpecs:        []config.RefSpec{refSpec},
-		Auth:            auth,
-		InsecureSkipTLS: insecure,
-	})
-	if err == git.NoErrAlreadyUpToDate {
-		logger.Debug("Tag already up to date", logrus.Fields{"tag": tagName})
-		return nil
-	}
+	err := s.backend.PushTag(context.Background(), path, remoteName, tagName, auth)
 	if err != nil {
 		logger.ErrorWithErr("Failed to push tag", err, logrus.Fields{"tag": tagName})
 		return err
@@ -122,12 +61,7 @@ func (s *GitService) PushTag(path, remoteName, tagName, authType, authKey, authS
 func (s *GitService) DeleteTag(path, tagName string) error {
 	logger.Info("Deleting tag", logrus.Fields{"path": path, "tag": tagName})
 
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
-
-	err = r.DeleteTag(tagName)
+	err := s.backend.DeleteTag(context.Background(), path, tagName)
 	if err != nil {
 		logger.ErrorWithErr("Failed to delete tag", err, logrus.Fields{"tag": tagName})
 		return err
@@ -145,34 +79,15 @@ func (s *GitService) DeleteRemoteTag(path, remoteName, tagName, authType, authKe
 		"tag":    tagName,
 	})
 
-	r, err := s.openRepo(path)
-	if err != nil {
-		return err
-	}
+	auth := s.buildSDKAuth(authType, authKey, authSecret)
 
-	auth, _ := s.getAuth(authType, authKey, authSecret)
-	if auth == nil {
-		rem, err := r.Remote(remoteName)
-		if err == nil {
-			urls := rem.Config().URLs
-			if len(urls) > 0 {
-				auth = s.detectSSHAuth(urls[0])
-			}
-		}
-	}
-
-	insecure := len(skipTLS) > 0 && skipTLS[0]
-
-	refSpec := config.RefSpec(fmt.Sprintf(":refs/tags/%s", tagName))
-	err = r.Push(&git.PushOptions{
-		RemoteName:      remoteName,
-		RefSpecs:        []config.RefSpec{refSpec},
-		Auth:            auth,
-		InsecureSkipTLS: insecure,
+	// Push empty refspec to delete remote tag
+	_, err := s.backend.Push(context.Background(), gitbackend.PushOptions{
+		RepoPath: path,
+		Remote:   remoteName,
+		RefSpecs: []string{":refs/tags/" + tagName},
+		Auth:     auth,
 	})
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
 	if err != nil {
 		logger.ErrorWithErr("Failed to delete remote tag", err, logrus.Fields{"tag": tagName})
 		return err
@@ -184,72 +99,38 @@ func (s *GitService) DeleteRemoteTag(path, remoteName, tagName, authType, authKe
 
 // GetTags 获取所有标签名
 func (s *GitService) GetTags(path string) ([]string, error) {
-	r, err := s.openRepo(path)
+	tags, err := s.backend.GetTagList(context.Background(), path)
 	if err != nil {
 		return nil, err
 	}
 
-	iter, err := r.Tags()
-	if err != nil {
-		return nil, err
+	var names []string
+	for _, tag := range tags {
+		names = append(names, tag.Name)
 	}
 
-	var tags []string
-	err = iter.ForEach(func(ref *plumbing.Reference) error {
-		tags = append(tags, ref.Name().Short())
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Debug("Tags retrieved", logrus.Fields{"path": path, "count": len(tags)})
-	return tags, nil
+	logger.Debug("Tags retrieved", logrus.Fields{"path": path, "count": len(names)})
+	return names, nil
 }
 
 // GetTagList 获取详细的标签列表
 func (s *GitService) GetTagList(path string) ([]TagInfo, error) {
-	r, err := s.openRepo(path)
+	tags, err := s.backend.GetTagList(context.Background(), path)
 	if err != nil {
 		return nil, err
 	}
 
-	iter, err := r.Tags()
-	if err != nil {
-		return nil, err
+	var result []TagInfo
+	for _, tag := range tags {
+		result = append(result, TagInfo{
+			Name:    tag.Name,
+			Hash:    tag.Hash,
+			Message: tag.Message,
+			Tagger:  tag.Author,
+			Date:    time.Time{},
+		})
 	}
 
-	var tags []TagInfo
-	err = iter.ForEach(func(ref *plumbing.Reference) error {
-		tagObj, tagErr := r.TagObject(ref.Hash())
-		if tagErr == nil {
-			// Annotated Tag
-			tags = append(tags, TagInfo{
-				Name:    ref.Name().Short(),
-				Hash:    ref.Hash().String(),
-				Message: tagObj.Message,
-				Tagger:  tagObj.Tagger.Name,
-				Date:    tagObj.Tagger.When,
-			})
-		} else {
-			// Lightweight Tag (commit)
-			commit, commitErr := r.CommitObject(ref.Hash())
-			if commitErr == nil {
-				tags = append(tags, TagInfo{
-					Name:    ref.Name().Short(),
-					Hash:    ref.Hash().String(),
-					Message: commit.Message,
-					Tagger:  commit.Author.Name,
-					Date:    commit.Author.When,
-				})
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Debug("Tag list retrieved", logrus.Fields{"path": path, "count": len(tags)})
-	return tags, nil
+	logger.Debug("Tag list retrieved", logrus.Fields{"path": path, "count": len(result)})
+	return result, nil
 }

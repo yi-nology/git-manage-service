@@ -1,6 +1,7 @@
 package git
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
@@ -16,12 +17,13 @@ func (s *GitService) GetGitUser(path string) (string, string, error) {
 	var name, email string
 
 	// 1. 尝试本地配置
-	r, err := s.openRepo(path)
+	localName, err := s.backend.GetConfig(context.Background(), path, "user.name")
 	if err == nil {
-		if cfg, err := r.Config(); err == nil {
-			name = cfg.User.Name
-			email = cfg.User.Email
-		}
+		name = localName
+	}
+	localEmail, err := s.backend.GetConfig(context.Background(), path, "user.email")
+	if err == nil {
+		email = localEmail
 	}
 
 	if name != "" && email != "" {
