@@ -151,12 +151,14 @@ func (s *SyncServiceV2) PreviewSync(ctx context.Context, req *gitsyncmodel.Previ
 
 // ListHistoryByTask 获取指定任务的执行历史
 func (s *SyncServiceV2) ListHistoryByTask(ctx context.Context, taskKey string, limit int) ([]*gitsyncmodel.SyncRun, error) {
-	return s.core.ListHistoryByTask(ctx, taskKey, limit)
+	runs, _, err := s.core.ListHistory(ctx, taskKey, 0, limit)
+	return runs, err
 }
 
 // ListRecentHistory 获取最近的执行历史
 func (s *SyncServiceV2) ListRecentHistory(ctx context.Context, limit int) ([]*gitsyncmodel.SyncRun, error) {
-	return s.core.ListRecentHistory(ctx, limit)
+	runs, _, err := s.core.ListHistory(ctx, "", 0, limit)
+	return runs, err
 }
 
 // DeleteHistory 删除历史记录
@@ -168,12 +170,12 @@ func (s *SyncServiceV2) DeleteHistory(ctx context.Context, id uint) error {
 
 // GetStats 获取统计数据
 func (s *SyncServiceV2) GetStats(ctx context.Context) (*SyncStats, error) {
-	tasks, err := s.core.ListAllTasks(ctx)
+	tasks, _, err := s.core.ListTasks(ctx, "", 0, 1000)
 	if err != nil {
 		return nil, err
 	}
 
-	runs, err := s.core.ListRecentHistory(ctx, 100)
+	runs, _, err := s.core.ListHistory(ctx, "", 0, 100)
 	if err != nil {
 		return nil, err
 	}

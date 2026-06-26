@@ -3,8 +3,8 @@ module github.com/yi-nology/git-manage-service
 go 1.26
 
 require (
-	github.com/yi-nology/git-platform-sdk v0.23.0
-	github.com/yi-nology/git-sync-service v1.1.0
+	github.com/yi-nology/git-platform-sdk v0.25.0
+	github.com/yi-nology/git-sync-service v1.2.0
 )
 
 require (
@@ -182,5 +182,3 @@ require (
 	modernc.org/memory v1.5.0 // indirect
 	modernc.org/sqlite v1.23.1 // indirect
 )
-
-replace github.com/yi-nology/git-platform-sdk => /opt/project/wechat_project/git-platform-sdk

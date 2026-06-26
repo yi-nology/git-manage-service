@@ -390,8 +390,10 @@ github.com/wailsapp/wails/v2 v2.12.0 h1:BHO/kLNWFHYjCzucxbzAYZWUjub1Tvb4cSguQozH
 github.com/wailsapp/wails/v2 v2.12.0/go.mod h1:mo1bzK1DEJrobt7YrBjgxvb5Sihb1mhAY09hppbibQg=
 github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM=
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
-github.com/yi-nology/git-sync-service v1.1.0 h1:C7/mK5thr26xvNgWhxMizBjG3P/5TfL/jX91ganW7rk=
-github.com/yi-nology/git-sync-service v1.1.0/go.mod h1:BJqXeM0Rcli+X2ePCqiWPv4mWyBzxczftjNODVZPJ0I=
+github.com/yi-nology/git-platform-sdk v0.25.0 h1:Pkp8y1l7WvQ54fsz+1B77tltYIh5V+Bze54keFzaucQ=
+github.com/yi-nology/git-platform-sdk v0.25.0/go.mod h1:se/kgD1wRQ57PVWTz6i0y5V1W//htyTo8nnGRWFvru4=
+github.com/yi-nology/git-sync-service v1.2.0 h1:Aeo/idAogi/3QVC+LvV9vyJgIX+2SPdc17CteVqC6ho=
+github.com/yi-nology/git-sync-service v1.2.0/go.mod h1:dx19CxG+fbmx5tAciTfItocJvToi2huow0UByFYeG24=
 github.com/yi-nology/gitcode_api v0.3.0 h1:Gp+JD3AXak0JQi4or4p3uP9uPSFYsCYOOxnzxOcXDEE=
 github.com/yi-nology/gitcode_api v0.3.0/go.mod h1:YaRLRDyxaVqy6Nm4xLISmGJ7AZOf5sPWcWtwZOKd8ig=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
