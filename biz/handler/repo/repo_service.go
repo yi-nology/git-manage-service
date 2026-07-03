@@ -18,6 +18,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/biz/service/stats"
 	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 func toProtoRepo(r po.Repo) *repoModel.RepoDTO {
@@ -700,7 +701,7 @@ func Fetch(ctx context.Context, c *app.RequestContext) {
 			} else {
 				fetchErr = gitSvc.Fetch(repo.Path, remoteName, nil)
 			}
-		} else if authMethod != nil {
+		} else if authMethod.Type != gitbackend.AuthNone {
 			fetchErr = gitSvc.Fetch(repo.Path, remoteName, nil)
 		} else {
 			fetchErr = gitSvc.Fetch(repo.Path, remoteName, nil)

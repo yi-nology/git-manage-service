@@ -1,16 +1,51 @@
 package git
 
 import (
-	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
-
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
+
+// initTestRepo creates a git repo at dir and commits the given files in a
+// single commit using the CLI (no go-git dependency).
+func initTestRepo(t *testing.T, dir string, files map[string]string) {
+	t.Helper()
+	run := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, string(out))
+		}
+	}
+	run("init")
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run("add", ".")
+	run("-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "initial")
+}
+
+// commitFile adds and commits a single file in dir via CLI.
+func commitFile(t *testing.T, dir, filename, content, message string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, filename), []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("git", "add", filename)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git add failed: %v: %s", err, string(out))
+	}
+	cmd = exec.Command("git", "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", message)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit failed: %v: %s", err, string(out))
+	}
+}
 
 func TestBranchCRUD(t *testing.T) {
 	// Setup
@@ -22,33 +57,8 @@ func TestBranchCRUD(t *testing.T) {
 
 	s := NewGitService()
 
-	// Init Repo
-	r, err := git.PlainInit(tmpDir, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Create a commit so we have a HEAD
-	if err := os.WriteFile(filepath.Join(tmpDir, "test.txt"), []byte("hello"), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	w, err := r.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := w.Add("."); err != nil {
-		t.Fatalf("w.Add failed: %v", err)
-	}
-	if _, err := w.Commit("initial", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Test",
-			Email: "test@example.com",
-			When:  time.Now(),
-		},
-	}); err != nil {
-		t.Fatalf("w.Commit failed: %v", err)
-	}
+	// Init Repo + initial commit
+	initTestRepo(t, tmpDir, map[string]string{"test.txt": "hello"})
 
 	// Determine default branch name (master or main)
 	branches, err := s.ListBranchesWithInfo(tmpDir)
@@ -139,39 +149,25 @@ func TestGetBranchMetrics(t *testing.T) {
 
 	s := NewGitService()
 
-	// Init Repo
-	r, err := git.PlainInit(tmpDir, false)
+	// Init Repo + initial commit
+	initTestRepo(t, tmpDir, map[string]string{"file0.txt": "content"})
+
+	// Create 2 more commits
+	commitFile(t, tmpDir, "file1.txt", "content", "commit 1")
+	commitFile(t, tmpDir, "file2.txt", "content", "commit 2")
+
+	// Determine default branch name
+	branches, err := s.ListBranchesWithInfo(tmpDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	w, err := r.Worktree()
-	if err != nil {
-		t.Fatal(err)
+	if len(branches) == 0 {
+		t.Fatal("No branches found after init")
 	}
-
-	// Create 3 commits
-	for i := 0; i < 3; i++ {
-		filename := filepath.Join(tmpDir, fmt.Sprintf("file%d.txt", i))
-		if err := os.WriteFile(filename, []byte("content"), 0644); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := w.Add(filepath.Base(filename)); err != nil {
-			t.Fatalf("w.Add failed: %v", err)
-		}
-		if _, err := w.Commit(fmt.Sprintf("commit %d", i), &git.CommitOptions{
-			Author: &object.Signature{
-				Name:  "Test",
-				Email: "test@example.com",
-				When:  time.Now(),
-			},
-		}); err != nil {
-			t.Fatalf("w.Commit failed: %v", err)
-		}
-	}
+	defaultBranch := branches[0].Name
 
 	// Test Metrics
-	metrics, err := s.GetBranchMetrics(tmpDir, "master")
+	metrics, err := s.GetBranchMetrics(tmpDir, defaultBranch)
 	if err != nil {
 		t.Fatalf("GetBranchMetrics failed: %v", err)
 	}

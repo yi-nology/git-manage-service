@@ -10,8 +10,6 @@ import (
 	"sort"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/go-git/go-git/v5/plumbing/filemode"
 )
 
 // TreeEntry 目录树条目
@@ -90,7 +88,7 @@ func (s *GitService) GetWorktree(repoPath, dirPath string) ([]TreeEntry, error) 
 				Name: name,
 				Path: entryPath,
 				Type: "dir",
-				Mode: filemode.Dir.String(),
+				Mode: "40000",
 			})
 		} else {
 			info, err := e.Info()
@@ -102,7 +100,7 @@ func (s *GitService) GetWorktree(repoPath, dirPath string) ([]TreeEntry, error) 
 				Path: entryPath,
 				Type: "file",
 				Size: info.Size(),
-				Mode: filemode.Regular.String(),
+				Mode: "100644",
 			})
 		}
 	}

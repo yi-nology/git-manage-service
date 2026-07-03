@@ -1,6 +1,7 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -8,124 +9,29 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 
-	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	conf "github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
-func (s *GitService) getAuth(authType, authKey, authSecret string) (transport.AuthMethod, error) {
-	if authType == "http" && authKey != "" {
-		return &http.BasicAuth{
-			Username: authKey,
-			Password: authSecret,
-		}, nil
-	} else if authType == "ssh" && authKey != "" {
-		publicKeys, err := ssh.NewPublicKeysFromFile("git", authKey, "")
-		if err != nil {
-			return nil, err
-		}
-		helper := NewSSHKeyHelper()
-		publicKeys.HostKeyCallback = helper.GetHostKeyCallback()
-		return publicKeys, nil
-	}
-	return nil, nil
-}
-
-// getAuthFromInfo 从AuthInfo结构获取认证方法，支持本地密钥和数据库密钥
-func (s *GitService) getAuthFromInfo(authInfo domain.AuthInfo) (transport.AuthMethod, error) {
-	if authInfo.Type == "ssh" {
-		if authInfo.Source == "database" && authInfo.SSHKeyID > 0 {
-			// 从数据库加载密钥 - 需要在调用方提供私钥内容
-			return nil, fmt.Errorf("database key loading should be handled by caller with GetAuthFromDBKey")
-		}
-		// Source == "local" 或为空，使用文件路径
-		if authInfo.Key != "" {
-			publicKeys, err := ssh.NewPublicKeysFromFile("git", authInfo.Key, authInfo.Secret)
-			if err != nil {
-				return nil, err
-			}
-			helper := NewSSHKeyHelper()
-			publicKeys.HostKeyCallback = helper.GetHostKeyCallback()
-			return publicKeys, nil
-		}
-	} else if authInfo.Type == "http" && authInfo.Key != "" {
-		return &http.BasicAuth{
-			Username: authInfo.Key,
-			Password: authInfo.Secret,
-		}, nil
-	}
-	return nil, nil
-}
-
-// GetAuthFromDBKey 从数据库密钥内容创建认证方法
-func (s *GitService) GetAuthFromDBKey(privateKey, passphrase string) (transport.AuthMethod, error) {
-	helper := NewSSHKeyHelper()
-
-	keyContent, err := helper.ProcessPrivateKey(privateKey, passphrase)
-	if err != nil {
-		return nil, fmt.Errorf("failed to process private key: %v", err)
-	}
-
-	publicKeys, err := ssh.NewPublicKeys("git", []byte(keyContent), passphrase)
-	if err != nil {
-		publicKeys = &ssh.PublicKeys{
-			User: "git",
-		}
-	}
-
-	publicKeys.HostKeyCallback = helper.GetHostKeyCallback()
-	return publicKeys, nil
-}
-
 // TestRemoteConnectionWithDBKey 使用数据库密钥测试远程连接
 func (s *GitService) TestRemoteConnectionWithDBKey(url, privateKey, passphrase string, skipTLS ...bool) error {
-	gitCmdErr := s.testConnectionWithGitCommand(url, privateKey, passphrase)
-	if gitCmdErr == nil {
+	// 优先使用原生 git 命令测试连接（最可靠）
+	if err := s.testConnectionWithGitCommand(url, privateKey, passphrase); err == nil {
 		return nil
 	}
 
-	auth, err := s.GetAuthFromDBKey(privateKey, passphrase)
+	// 回退：通过 SDK backend 使用密钥内容测试
+	helper := NewSSHKeyHelper()
+	keyContent, err := helper.ProcessPrivateKey(privateKey, passphrase)
 	if err != nil {
-		return fmt.Errorf("failed to prepare auth: %w", err)
+		return fmt.Errorf("failed to process private key: %v", err)
 	}
 
-	ep, err := transport.NewEndpoint(url)
-	if err != nil {
-		return fmt.Errorf("invalid URL: %w", err)
-	}
+	auth := gitbackend.NewSSHKeyContentAuth(keyContent, passphrase)
+	auth.InsecureSkipTLS = len(skipTLS) > 0 && skipTLS[0]
 
-	insecure := len(skipTLS) > 0 && skipTLS[0]
-	ep.InsecureSkipTLS = insecure
-
-	storer := memory.NewStorage()
-	r, err := git.Init(storer, nil)
-	if err != nil {
-		return fmt.Errorf("failed to init memory repo: %w", err)
-	}
-
-	remote, err := r.CreateRemote(&config.RemoteConfig{
-		Name: "test",
-		URLs: []string{ep.String()},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create remote: %w", err)
-	}
-
-	_, err = remote.List(&git.ListOptions{
-		Auth:            auth,
-		InsecureSkipTLS: insecure,
-	})
-	if err != nil {
-		return fmt.Errorf("connection failed: %v (git command also failed: %v)", err, gitCmdErr)
-	}
-
-	return nil
+	return s.backend.TestConnection(context.Background(), url, auth)
 }
 
 // testConnectionWithGitCommand 使用原生 git 命令测试连接（更可靠）
@@ -158,69 +64,34 @@ func (s *GitService) testConnectionWithGitCommand(url, privateKey, passphrase st
 
 // TestRemoteConnectionWithLocalKey 使用本地SSH密钥文件测试远程连接
 func (s *GitService) TestRemoteConnectionWithLocalKey(url, keyPath, passphrase string, skipTLS ...bool) error {
-	publicKeys, err := ssh.NewPublicKeysFromFile("git", keyPath, passphrase)
-	if err != nil {
-		return fmt.Errorf("failed to load SSH key from file %s: %v", keyPath, err)
-	}
-	helper := NewSSHKeyHelper()
-	publicKeys.HostKeyCallback = helper.GetHostKeyCallback()
-
-	insecure := len(skipTLS) > 0 && skipTLS[0]
-
-	remote := git.NewRemote(nil, &config.RemoteConfig{
-		Name: "test",
-		URLs: []string{url},
-	})
-	_, err = remote.List(&git.ListOptions{Auth: publicKeys, InsecureSkipTLS: insecure})
-	if err != nil {
-		return fmt.Errorf("connection failed: %v", err)
-	}
-	return nil
+	auth := gitbackend.NewSSHKeyFileAuth(keyPath, passphrase)
+	auth.InsecureSkipTLS = len(skipTLS) > 0 && skipTLS[0]
+	return s.backend.TestConnection(context.Background(), url, auth)
 }
 
 // TestRemoteConnectionWithHTTP 使用HTTP认证测试远程连接
 func (s *GitService) TestRemoteConnectionWithHTTP(url, username, password string, skipTLS ...bool) error {
-	auth := &http.BasicAuth{
-		Username: username,
-		Password: password,
-	}
-
-	insecure := len(skipTLS) > 0 && skipTLS[0]
-
-	remote := git.NewRemote(nil, &config.RemoteConfig{
-		Name: "test",
-		URLs: []string{url},
-	})
-	_, err := remote.List(&git.ListOptions{Auth: auth, InsecureSkipTLS: insecure})
-	if err != nil {
-		return fmt.Errorf("connection failed: %v", err)
-	}
-	return nil
+	auth := gitbackend.NewHTTPBasicAuth(username, password)
+	auth.InsecureSkipTLS = len(skipTLS) > 0 && skipTLS[0]
+	return s.backend.TestConnection(context.Background(), url, auth)
 }
 
-func (s *GitService) detectSSHAuth(urlStr string) transport.AuthMethod {
+// detectSSHAuth auto-detects an SSH key from common paths and returns an SDK
+// gitbackend.AuthConfig. Returns AuthNone for non-SSH URLs or when no key is found.
+func (s *GitService) detectSSHAuth(urlStr string) gitbackend.AuthConfig {
 	if strings.HasPrefix(urlStr, "https://") || strings.HasPrefix(urlStr, "http://") {
-		return nil
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}
 	}
 
 	if !strings.HasPrefix(urlStr, "git@") && !strings.HasPrefix(urlStr, "ssh://") {
-		ep, err := transport.NewEndpoint(urlStr)
-		if err != nil || ep.Protocol != "ssh" {
-			return nil
-		}
-	}
-
-	user := "git"
-	ep, err := transport.NewEndpoint(urlStr)
-	if err == nil && ep.User != "" {
-		user = ep.User
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}
 	}
 
 	if conf.DebugMode {
-		log.Printf("[DEBUG] detectSSHAuth for %s (user: %s)", urlStr, user)
+		log.Printf("[DEBUG] detectSSHAuth for %s", urlStr)
 	}
 
-	// 1. Try common key paths first (if they are unencrypted)
+	// Try common key paths (unencrypted)
 	home, err := os.UserHomeDir()
 	if err == nil {
 		keyPaths := []string{
@@ -231,52 +102,18 @@ func (s *GitService) detectSSHAuth(urlStr string) transport.AuthMethod {
 
 		for _, path := range keyPaths {
 			if _, err := os.Stat(path); err == nil {
-				// Try to load with empty password
-				auth, err := ssh.NewPublicKeysFromFile(user, path, "")
-				if err == nil {
-					helper := NewSSHKeyHelper()
-					auth.HostKeyCallback = helper.GetHostKeyCallback()
-					if conf.DebugMode {
-						log.Printf("[DEBUG] Using SSH Key: %s", path)
-					}
-					return auth
-				} else if conf.DebugMode {
-					log.Printf("[DEBUG] Failed to load key %s (maybe encrypted?): %v", path, err)
+				if conf.DebugMode {
+					log.Printf("[DEBUG] Using SSH Key: %s", path)
 				}
+				return gitbackend.NewSSHKeyFileAuth(path, "")
 			}
 		}
 	}
 
-	// 2. Try SSH Agent
-	if auth, err := ssh.NewSSHAgentAuth(user); err == nil {
-		helper := NewSSHKeyHelper()
-		auth.HostKeyCallback = helper.GetHostKeyCallback()
-		if conf.DebugMode {
-			log.Printf("[DEBUG] Using SSH Agent Auth")
-		}
-		return auth
-	}
-
+	// No explicit key found: return AuthNone so the native git backend falls
+	// back to the SSH agent / system SSH config automatically.
 	if conf.DebugMode {
-		log.Printf("[DEBUG] No SSH auth found")
+		log.Printf("[DEBUG] No SSH key file found, relying on SSH agent/default config")
 	}
-	return nil
-}
-
-func (s *GitService) isHTTPS(urlStr string) bool {
-	return strings.HasPrefix(urlStr, "https://")
-}
-
-func (s *GitService) detectAuth(urlStr string) transport.AuthMethod {
-	if strings.HasPrefix(urlStr, "https://") || strings.HasPrefix(urlStr, "http://") {
-		ep, err := transport.NewEndpoint(urlStr)
-		if err == nil && ep.User != "" {
-			return &http.BasicAuth{
-				Username: ep.User,
-				Password: ep.Password,
-			}
-		}
-		return nil
-	}
-	return s.detectSSHAuth(urlStr)
+	return gitbackend.AuthConfig{Type: gitbackend.AuthNone}
 }

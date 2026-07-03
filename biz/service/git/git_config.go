@@ -2,13 +2,26 @@ package git
 
 import (
 	"context"
-	"os"
-	"path/filepath"
+	"os/exec"
+	"strings"
 
-	"github.com/go-git/go-git/v5/config"
 	"github.com/sirupsen/logrus"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
 )
+
+// globalGitConfig runs `git config --global <key>` and returns the trimmed value.
+func globalGitConfig(key string) string {
+	out, err := exec.Command("git", "config", "--global", key).Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// setGlobalGitConfig runs `git config --global <key> <value>`.
+func setGlobalGitConfig(key, value string) error {
+	return exec.Command("git", "config", "--global", key, value).Run()
+}
 
 // GetGitUser 获取仓库的 git 用户配置
 func (s *GitService) GetGitUser(path string) (string, string, error) {
@@ -31,21 +44,11 @@ func (s *GitService) GetGitUser(path string) (string, string, error) {
 	}
 
 	// 2. 尝试全局配置 (~/.gitconfig)
-	home, err := os.UserHomeDir()
-	if err == nil {
-		globalConfigPath := filepath.Join(home, ".gitconfig")
-		content, err := os.ReadFile(globalConfigPath)
-		if err == nil {
-			cfg := config.NewConfig()
-			if err := cfg.Unmarshal(content); err == nil {
-				if name == "" {
-					name = cfg.User.Name
-				}
-				if email == "" {
-					email = cfg.User.Email
-				}
-			}
-		}
+	if name == "" {
+		name = globalGitConfig("user.name")
+	}
+	if email == "" {
+		email = globalGitConfig("user.email")
 	}
 
 	logger.Debug("Git user retrieved", logrus.Fields{
@@ -60,30 +63,14 @@ func (s *GitService) GetGitUser(path string) (string, string, error) {
 func (s *GitService) GetGlobalGitUser() (string, string, error) {
 	logger.Debug("Getting global git user")
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", "", err
-	}
-
-	globalConfigPath := filepath.Join(home, ".gitconfig")
-	content, err := os.ReadFile(globalConfigPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", "", nil
-		}
-		return "", "", err
-	}
-
-	cfg := config.NewConfig()
-	if err := cfg.Unmarshal(content); err != nil {
-		return "", "", err
-	}
+	name := globalGitConfig("user.name")
+	email := globalGitConfig("user.email")
 
 	logger.Debug("Global git user retrieved", logrus.Fields{
-		"name":  cfg.User.Name,
-		"email": cfg.User.Email,
+		"name":  name,
+		"email": email,
 	})
-	return cfg.User.Name, cfg.User.Email, nil
+	return name, email, nil
 }
 
 // SetGlobalGitUser 设置全局 git 用户配置
@@ -93,37 +80,12 @@ func (s *GitService) SetGlobalGitUser(name, email string) error {
 		"email": email,
 	})
 
-	home, err := os.UserHomeDir()
-	if err != nil {
+	if err := setGlobalGitConfig("user.name", name); err != nil {
+		logger.ErrorWithErr("Failed to set global user.name", err, nil)
 		return err
 	}
-
-	globalConfigPath := filepath.Join(home, ".gitconfig")
-
-	// 读取现有配置
-	cfg := config.NewConfig()
-	content, err := os.ReadFile(globalConfigPath)
-	if err == nil {
-		if err := cfg.Unmarshal(content); err != nil {
-			return err
-		}
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-
-	// 更新用户信息
-	cfg.User.Name = name
-	cfg.User.Email = email
-
-	// 写回配置
-	data, err := cfg.Marshal()
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(globalConfigPath, data, 0644)
-	if err != nil {
-		logger.ErrorWithErr("Failed to write git config", err, logrus.Fields{"path": globalConfigPath})
+	if err := setGlobalGitConfig("user.email", email); err != nil {
+		logger.ErrorWithErr("Failed to set global user.email", err, nil)
 		return err
 	}
 

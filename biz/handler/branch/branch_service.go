@@ -15,6 +15,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/branchrule"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 // List .
@@ -262,7 +263,7 @@ func Push(ctx context.Context, c *app.RequestContext) {
 			} else {
 				errors = append(errors, fmt.Sprintf("%s: no credential configured", remote))
 			}
-		} else if authMethod != nil {
+		} else if authMethod.Type != gitbackend.AuthNone {
 			if err := gitSvc.PushBranchWithAuth(repo.Path, remote, req.GetName(), authMethod); err != nil {
 				errors = append(errors, fmt.Sprintf("%s: %v", remote, err))
 			}
@@ -373,7 +374,7 @@ func Pull(ctx context.Context, c *app.RequestContext) {
 	var pullErr error
 	if isDBKey {
 		pullErr = gitSvc.PullBranchWithDBKey(repo.Path, upstreamRemote, req.GetName(), privateKey, passphrase)
-	} else if authMethod != nil {
+	} else if authMethod.Type != gitbackend.AuthNone {
 		pullErr = gitSvc.PullBranchWithAuth(repo.Path, upstreamRemote, req.GetName(), authMethod)
 	} else {
 		pullErr = gitSvc.PullBranch(repo.Path, upstreamRemote, req.GetName())

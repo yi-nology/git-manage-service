@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 func (s *GitService) generateDiff(from, to, filePath string) string {
@@ -90,14 +88,6 @@ func splitLines(s string) []string {
 		lines = append(lines, scanner.Text())
 	}
 	return lines
-}
-
-func countLines(f *object.File) int {
-	c, err := f.Contents()
-	if err != nil {
-		return 0
-	}
-	return len(splitLines(c))
 }
 
 func isBinaryFile(path string) bool {

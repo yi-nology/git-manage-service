@@ -7,9 +7,6 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 )
 
@@ -69,27 +66,12 @@ func (s *GitService) Commit(path, message, authorName, authorEmail string) error
 }
 
 func (s *GitService) Reset(path string) error {
-	r, err := s.openRepo(path)
+	cmd := exec.Command("git", "-C", path, "reset", "--mixed", "HEAD")
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return err
+		return fmt.Errorf("git reset failed: %v: %s", err, string(output))
 	}
-	w, err := r.Worktree()
-	if err != nil {
-		return err
-	}
-	return w.Reset(&git.ResetOptions{Mode: git.MixedReset})
-}
-
-func (s *GitService) GetLogIterator(path, branch string) (object.CommitIter, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return nil, err
-	}
-	hash, err := r.ResolveRevision(plumbing.Revision(branch))
-	if err != nil {
-		return nil, err
-	}
-	return r.Log(&git.LogOptions{From: *hash})
+	return nil
 }
 
 func (s *GitService) GetLogStats(path, branch string) (string, error) {

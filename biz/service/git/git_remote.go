@@ -3,6 +3,7 @@ package git
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
@@ -61,34 +62,21 @@ func (s *GitService) SetRemotePushURL(path, name, url string) error {
 		"url":  url,
 	})
 
-	r, err := s.openRepo(path)
-	if err != nil {
+	key := fmt.Sprintf("remote.%s.url", name)
+	if err := s.backend.SetConfig(context.Background(), path, key, url); err != nil {
+		logger.ErrorWithErr("Failed to set remote URL", err, logrus.Fields{"name": name})
 		return err
 	}
 
-	cfg, err := r.Config()
-	if err != nil {
-		return err
-	}
-
-	if remote, ok := cfg.Remotes[name]; ok {
-		remote.URLs = []string{url}
-		return r.Storer.SetConfig(cfg)
-	}
-
-	return fmt.Errorf("remote %s not found", name)
+	logger.Info("Remote URL set successfully", logrus.Fields{"name": name})
+	return nil
 }
 
 // GetRepoConfig 获取仓库配置信息
 func (s *GitService) GetRepoConfig(path string) (*domain.GitRepoConfig, error) {
-	r, err := s.openRepo(path)
+	out, _, err := s.backend.RunRaw(context.Background(), path, []string{"config", "--local", "--list"})
 	if err != nil {
-		return nil, err
-	}
-
-	cfg, err := r.Config()
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read repo config: %w", err)
 	}
 
 	repoConfig := &domain.GitRepoConfig{
@@ -96,35 +84,74 @@ func (s *GitService) GetRepoConfig(path string) (*domain.GitRepoConfig, error) {
 		Branches: []domain.GitBranch{},
 	}
 
-	for _, remote := range cfg.Remotes {
-		gitRemote := &domain.GitRemote{
-			Name:       remote.Name,
-			FetchURL:   "",
-			PushURL:    "",
-			FetchSpecs: []string{},
-			PushSpecs:  []string{},
-			IsMirror:   remote.Mirror,
+	remoteMap := make(map[string]*domain.GitRemote)
+	branchMap := make(map[string]*domain.GitBranch)
+
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
 		}
-		if len(remote.URLs) > 0 {
-			gitRemote.FetchURL = remote.URLs[0]
-			gitRemote.PushURL = remote.URLs[0]
+		idx := strings.Index(line, "=")
+		if idx < 0 {
+			continue
 		}
-		gitRemote.FetchSpecs = append(gitRemote.FetchSpecs, remote.URLs...)
-		for _, spec := range remote.Fetch {
-			gitRemote.FetchSpecs = append(gitRemote.FetchSpecs, spec.String())
+		key := line[:idx]
+		val := line[idx+1:]
+
+		parts := strings.Split(key, ".")
+		// remote.<name>.url / remote.<name>.mirror / remote.<name>.fetch / remote.<name>.pushurl
+		if len(parts) >= 3 && parts[0] == "remote" {
+			name := parts[1]
+			prop := strings.Join(parts[2:], ".")
+			r := remoteMap[name]
+			if r == nil {
+				r = &domain.GitRemote{Name: name, FetchSpecs: []string{}, PushSpecs: []string{}}
+				remoteMap[name] = r
+			}
+			switch prop {
+			case "url":
+				if r.FetchURL == "" {
+					r.FetchURL = val
+				}
+				r.PushURL = val
+				r.FetchSpecs = append(r.FetchSpecs, val)
+			case "pushurl":
+				r.PushURL = val
+			case "fetch":
+				r.FetchSpecs = append(r.FetchSpecs, val)
+			case "mirror":
+				if val == "true" {
+					r.IsMirror = true
+				}
+			}
 		}
-		repoConfig.Remotes = append(repoConfig.Remotes, *gitRemote)
+		// branch.<name>.remote / branch.<name>.merge
+		if len(parts) >= 3 && parts[0] == "branch" {
+			name := parts[1]
+			prop := strings.Join(parts[2:], ".")
+			b := branchMap[name]
+			if b == nil {
+				b = &domain.GitBranch{Name: name}
+				branchMap[name] = b
+			}
+			switch prop {
+			case "remote":
+				b.Remote = val
+			case "merge":
+				b.Merge = val
+			}
+		}
 	}
 
-	for _, branch := range cfg.Branches {
-		b := &domain.GitBranch{
-			Name:   branch.Name,
-			Remote: branch.Remote,
-			Merge:  branch.Merge.String(),
-		}
-		if branch.Remote != "" && branch.Merge != "" {
-			shortRef := branch.Merge.Short()
-			b.UpstreamRef = fmt.Sprintf("%s/%s", branch.Remote, shortRef)
+	for _, r := range remoteMap {
+		repoConfig.Remotes = append(repoConfig.Remotes, *r)
+	}
+	for _, b := range branchMap {
+		if b.Remote != "" && b.Merge != "" {
+			shortRef := b.Merge
+			shortRef = strings.TrimPrefix(shortRef, "refs/heads/")
+			b.UpstreamRef = fmt.Sprintf("%s/%s", b.Remote, shortRef)
 		}
 		repoConfig.Branches = append(repoConfig.Branches, *b)
 	}
@@ -162,9 +189,5 @@ func (s *GitService) TestRemoteConnection(url string, skipTLS ...bool) error {
 
 // detectSDKAuth builds a gitbackend.AuthConfig by auto-detecting SSH keys.
 func (s *GitService) detectSDKAuth(urlStr string) gitbackend.AuthConfig {
-	auth := s.detectSSHAuth(urlStr)
-	if auth == nil {
-		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}
-	}
-	return s.ConvertTransportAuth(auth)
+	return s.detectSSHAuth(urlStr)
 }

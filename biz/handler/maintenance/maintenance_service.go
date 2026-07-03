@@ -17,6 +17,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/auth"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 func Health(ctx context.Context, c *app.RequestContext) {
@@ -671,7 +672,7 @@ func pushBranchToRemote(repoID uint, repoPath, remoteName, remoteURL, branch, ha
 	if err != nil {
 	}
 
-	hasAuth := authMethod != nil || isDBKey
+	hasAuth := authMethod.Type != gitbackend.AuthNone || isDBKey
 	pushOpts := []string{"--force"}
 
 	if remoteURL != "" && hasAuth {
@@ -688,9 +689,8 @@ func pushBranchToRemote(repoID uint, repoPath, remoteName, remoteURL, branch, ha
 				}
 			}
 		}
-		if authMethod != nil {
-			sdkAuth := gitSvc.ConvertTransportAuth(authMethod)
-			err := gitSvc.PushWithSDKAuth(repoPath, remoteURL, hash, branch, sdkAuth, pushOpts, nil, skipTLS)
+		if authMethod.Type != gitbackend.AuthNone {
+			err := gitSvc.PushWithSDKAuth(repoPath, remoteURL, hash, branch, authMethod, pushOpts, nil, skipTLS)
 			if err != nil {
 				return err.Error()
 			}

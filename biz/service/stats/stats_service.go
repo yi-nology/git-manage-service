@@ -16,8 +16,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 type StatsStatus string
@@ -88,75 +86,102 @@ func (s *StatsService) SyncRepoStats(repoID uint, path, branch string) {
 
 	log.Printf("[StatsSync] Resuming from %v", lastTime)
 
-	// 2. Get git log iterator
-	cIter, err := s.Git.GetLogIterator(path, branch)
+	// 2. Get git log numstat stream (CLI-based, no go-git dependency)
+	stream, err := s.Git.GetLogStatsStream(path, branch)
 	if err != nil {
-		log.Printf("[StatsSync] Failed to get git log: %v", err)
+		log.Printf("[StatsSync] Failed to get git log stream: %v", err)
 		return
 	}
+	defer stream.Close()
 
 	var batch []*po.CommitStat
 	batchSize := 50
 
-	// 3. Iterate commits
-	err = cIter.ForEach(func(c *object.Commit) error {
-		// Stop if we reach the checkpoint
-		// Note: We need to handle time precision. Git time might have seconds.
-		// If c.Author.When <= lastTime, we might have processed it.
-		// To be safe, we process if c.Author.When > lastTime.
-		// However, due to potential timezone or precision issues, strict > might miss commits if multiple happened at exact same second.
-		// Better approach: process everything >= lastTime, and rely on DB unique index (Upsert) to handle duplicates.
-		if !lastTime.IsZero() && c.Author.When.Before(lastTime) {
-			return nil // Optimization: Stop iteration if order is guaranteed (git log usually is reverse chronological)
-			// Wait, cIter iterates from NEWEST to OLDEST.
-			// So if we encounter a commit OLDER than lastTime, we can stop?
-			// Yes, usually.
-		}
+	// 3. Parse the stream: COMMIT|hash|name|email|timestamp lines interleaved
+	// with numstat "<added>\t<deleted>\t<file>" lines.
+	scanner := bufio.NewScanner(stream)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
 
-		// Calculate stats for this commit
-		stats, err := c.Stats()
-		if err != nil {
-			log.Printf("[StatsSync] Failed to get stats for commit %s: %v", c.Hash.String(), err)
-			return nil // Skip this commit but continue
-		}
+	var curHash, curName, curEmail string
+	var curTime time.Time
+	var curAdd, curDel int
+	commitStarted := false
 
-		additions := 0
-		deletions := 0
-		for _, fs := range stats {
-			additions += fs.Addition
-			deletions += fs.Deletion
+	flushCommit := func() {
+		if !commitStarted {
+			return
 		}
-
+		// Skip commits older than the checkpoint
+		if !lastTime.IsZero() && curTime.Before(lastTime) {
+			return
+		}
 		batch = append(batch, &po.CommitStat{
 			RepoID:      repoID,
-			CommitHash:  c.Hash.String(),
-			AuthorName:  c.Author.Name,
-			AuthorEmail: c.Author.Email,
-			CommitTime:  c.Author.When,
-			Additions:   additions,
-			Deletions:   deletions,
+			CommitHash:  curHash,
+			AuthorName:  curName,
+			AuthorEmail: curEmail,
+			CommitTime:  curTime,
+			Additions:   curAdd,
+			Deletions:   curDel,
 		})
-
-		// Flush batch
 		if len(batch) >= batchSize {
 			if err := commitStatDAO.BatchSave(batch); err != nil {
 				log.Printf("[StatsSync] Failed to save batch: %v", err)
 			}
-			batch = nil // Reset
+			batch = nil
+		}
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" {
+			continue
 		}
 
-		return nil
-	})
+		if strings.HasPrefix(line, "COMMIT|") {
+			// Flush the previous commit
+			flushCommit()
 
-	// Flush remaining
+			parts := strings.SplitN(line, "|", 5)
+			if len(parts) >= 5 {
+				curHash = parts[1]
+				curName = parts[2]
+				curEmail = parts[3]
+				ts, _ := strconv.ParseInt(parts[4], 10, 64)
+				curTime = time.Unix(ts, 0)
+			}
+			curAdd, curDel = 0, 0
+			commitStarted = true
+			continue
+		}
+
+		// numstat line: "<added>\t<deleted>\t<file>"
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+		added, err1 := strconv.Atoi(fields[0])
+		deleted, err2 := strconv.Atoi(fields[1])
+		if err1 != nil || err2 != nil {
+			continue // binary files show "-"
+		}
+		curAdd += added
+		curDel += deleted
+	}
+
+	// Flush the last commit
+	flushCommit()
+
+	// Flush remaining batch
 	if len(batch) > 0 {
 		if err := commitStatDAO.BatchSave(batch); err != nil {
 			log.Printf("[StatsSync] Failed to save final batch: %v", err)
 		}
 	}
 
-	if err != nil {
-		log.Printf("[StatsSync] Error during iteration: %v", err)
+	if err := scanner.Err(); err != nil {
+		log.Printf("[StatsSync] Error during stream scan: %v", err)
 	}
 
 	log.Printf("[StatsSync] Completed sync for repo %d", repoID)

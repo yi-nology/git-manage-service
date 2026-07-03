@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
@@ -14,13 +13,11 @@ func (s *GitService) GetBranchSyncStatus(path, branch, upstream string) (int, in
 }
 
 func (s *GitService) PushBranch(path, remote, branch string, skipTLS ...bool) error {
-	return s.PushBranchWithAuth(path, remote, branch, nil, skipTLS...)
+	return s.PushBranchWithAuth(path, remote, branch, gitbackend.AuthConfig{Type: gitbackend.AuthNone}, skipTLS...)
 }
 
-func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth transport.AuthMethod, skipTLS ...bool) error {
+func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth gitbackend.AuthConfig, skipTLS ...bool) error {
 	insecure := len(skipTLS) > 0 && skipTLS[0]
-
-	sdkAuth := s.ConvertTransportAuth(auth)
 
 	refSpec := fmt.Sprintf("refs/heads/%s:refs/heads/%s", branch, branch)
 
@@ -29,7 +26,7 @@ func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth transp
 		Remote:          remote,
 		RefSpecs:        []string{refSpec},
 		InsecureSkipTLS: insecure,
-		Auth:            sdkAuth,
+		Auth:            auth,
 	})
 	return err
 }
@@ -44,42 +41,35 @@ func (s *GitService) pushBranchCLI(path, remote, branch string) error {
 }
 
 func (s *GitService) PullBranch(path, remote, branch string, skipTLS ...bool) error {
-	return s.PullBranchWithAuth(path, remote, branch, nil, skipTLS...)
+	return s.PullBranchWithAuth(path, remote, branch, gitbackend.AuthConfig{Type: gitbackend.AuthNone}, skipTLS...)
 }
 
-func (s *GitService) PullBranchWithAuth(path, remote, branch string, auth transport.AuthMethod, skipTLS ...bool) error {
+func (s *GitService) PullBranchWithAuth(path, remote, branch string, auth gitbackend.AuthConfig, skipTLS ...bool) error {
 	insecure := len(skipTLS) > 0 && skipTLS[0]
-
-	sdkAuth := s.ConvertTransportAuth(auth)
 
 	_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
 		RepoPath:        path,
 		Remote:          remote,
 		Branches:        []string{branch},
 		InsecureSkipTLS: insecure,
-		Auth:            sdkAuth,
+		Auth:            auth,
 	})
 	return err
 }
 
 func (s *GitService) UpdateBranchFastForward(path, remote, branch, remoteBranch string, skipTLS ...bool) error {
-	return s.UpdateBranchFastForwardWithAuth(path, remote, branch, remoteBranch, nil, skipTLS...)
+	return s.UpdateBranchFastForwardWithAuth(path, remote, branch, remoteBranch, gitbackend.AuthConfig{Type: gitbackend.AuthNone}, skipTLS...)
 }
 
-func (s *GitService) UpdateBranchFastForwardWithAuth(path, remote, branch, remoteBranch string, auth transport.AuthMethod, skipTLS ...bool) error {
+func (s *GitService) UpdateBranchFastForwardWithAuth(path, remote, branch, remoteBranch string, auth gitbackend.AuthConfig, skipTLS ...bool) error {
 	insecure := len(skipTLS) > 0 && skipTLS[0]
-
-	sdkAuth := s.ConvertTransportAuth(auth)
-
-	refSpec := fmt.Sprintf("refs/heads/%s:refs/heads/%s", remoteBranch, branch)
 
 	_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
 		RepoPath:        path,
 		Remote:          remote,
 		InsecureSkipTLS: insecure,
-		Auth:            sdkAuth,
+		Auth:            auth,
 	})
-	_ = refSpec
 	return err
 }
 

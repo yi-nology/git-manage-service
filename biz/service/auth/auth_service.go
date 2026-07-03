@@ -6,14 +6,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	ssh2 "golang.org/x/crypto/ssh"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
-	"github.com/yi-nology/git-manage-service/biz/service/git"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 // AuthService 统一认证解析服务
@@ -33,9 +30,9 @@ func NewAuthService() *AuthService {
 
 // ResolveAuth 统一解析认证信息
 // 支持: local (文件路径), database (数据库密钥), http (用户名密码)
-func (s *AuthService) ResolveAuth(authInfo domain.AuthInfo) (transport.AuthMethod, error) {
+func (s *AuthService) ResolveAuth(authInfo domain.AuthInfo) (gitbackend.AuthConfig, error) {
 	if authInfo.Type == "" || authInfo.Type == "none" {
-		return nil, nil
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}, nil
 	}
 
 	// 处理数据库SSH密钥
@@ -50,18 +47,15 @@ func (s *AuthService) ResolveAuth(authInfo domain.AuthInfo) (transport.AuthMetho
 
 	// 处理HTTP认证
 	if authInfo.Type == "http" && authInfo.Key != "" {
-		return &http.BasicAuth{
-			Username: authInfo.Key,
-			Password: authInfo.Secret,
-		}, nil
+		return gitbackend.NewHTTPBasicAuth(authInfo.Key, authInfo.Secret), nil
 	}
 
-	return nil, nil
+	return gitbackend.AuthConfig{Type: gitbackend.AuthNone}, nil
 }
 
 // ResolveAuthFromParams 从基础参数解析（兼容旧接口）
 // 当 sshKeyID > 0 时使用数据库密钥，否则使用本地文件路径
-func (s *AuthService) ResolveAuthFromParams(authType, authKey, authSecret string, sshKeyID uint) (transport.AuthMethod, error) {
+func (s *AuthService) ResolveAuthFromParams(authType, authKey, authSecret string, sshKeyID uint) (gitbackend.AuthConfig, error) {
 	// 优先使用数据库SSH密钥
 	if authType == "ssh" && sshKeyID > 0 {
 		return s.resolveDBSSHKey(sshKeyID)
@@ -78,38 +72,23 @@ func (s *AuthService) ResolveAuthFromParams(authType, authKey, authSecret string
 }
 
 // resolveDBSSHKey 从数据库加载SSH密钥并创建认证方法
-func (s *AuthService) resolveDBSSHKey(sshKeyID uint) (transport.AuthMethod, error) {
+func (s *AuthService) resolveDBSSHKey(sshKeyID uint) (gitbackend.AuthConfig, error) {
 	// 使用 GetDBSSHKeyContent 获取解密归一化后的私钥
 	privateKey, _, err := s.GetDBSSHKeyContent(sshKeyID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load SSH key from database: %w", err)
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}, fmt.Errorf("failed to load SSH key from database: %w", err)
 	}
 
 	if privateKey == "" {
-		return nil, fmt.Errorf("SSH key %d has no private key content", sshKeyID)
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}, fmt.Errorf("SSH key %d has no private key content", sshKeyID)
 	}
 
-	// 使用私钥内容创建认证
-	publicKeys, err := ssh.NewPublicKeys("git", []byte(privateKey), "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse SSH private key: %w", err)
-	}
-	helper := git.NewSSHKeyHelper()
-	publicKeys.HostKeyCallback = helper.GetHostKeyCallback()
-
-	return publicKeys, nil
+	return gitbackend.NewSSHKeyContentAuth(privateKey, ""), nil
 }
 
 // resolveLocalSSHKey 从本地文件加载SSH密钥
-func (s *AuthService) resolveLocalSSHKey(keyPath, passphrase string) (transport.AuthMethod, error) {
-	publicKeys, err := ssh.NewPublicKeysFromFile("git", keyPath, passphrase)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load SSH key from file %s: %w", keyPath, err)
-	}
-	helper := git.NewSSHKeyHelper()
-	publicKeys.HostKeyCallback = helper.GetHostKeyCallback()
-
-	return publicKeys, nil
+func (s *AuthService) resolveLocalSSHKey(keyPath, passphrase string) (gitbackend.AuthConfig, error) {
+	return gitbackend.NewSSHKeyFileAuth(keyPath, passphrase), nil
 }
 
 // GetDBSSHKeyContent 获取数据库SSH密钥的私钥内容（用于原生git命令）
@@ -196,15 +175,15 @@ func GetAuthInfoForRemote(remoteAuths map[string]domain.AuthInfo, remoteName str
 	}
 }
 
-// ResolveCredential 从凭证 ID 解析认证方法（用于 go-git）
-func (s *AuthService) ResolveCredential(credentialID uint) (transport.AuthMethod, error) {
+// ResolveCredential 从凭证 ID 解析认证方法（用于 SDK backend）
+func (s *AuthService) ResolveCredential(credentialID uint) (gitbackend.AuthConfig, error) {
 	if credentialID == 0 {
-		return nil, nil
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}, nil
 	}
 
 	cred, err := s.credentialDAO.FindByID(credentialID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load credential %d: %w", credentialID, err)
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}, fmt.Errorf("failed to load credential %d: %w", credentialID, err)
 	}
 
 	switch cred.Type {
@@ -215,17 +194,14 @@ func (s *AuthService) ResolveCredential(credentialID uint) (transport.AuthMethod
 		if cred.SSHKeyPath != "" {
 			return s.resolveLocalSSHKey(cred.SSHKeyPath, cred.Secret)
 		}
-		return nil, fmt.Errorf("ssh_key credential %d has no key configured", credentialID)
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}, fmt.Errorf("ssh_key credential %d has no key configured", credentialID)
 	case "http_basic", "http_token":
 		if cred.Username == "" && cred.Secret == "" {
-			return nil, nil
+			return gitbackend.AuthConfig{Type: gitbackend.AuthNone}, nil
 		}
-		return &http.BasicAuth{
-			Username: cred.Username,
-			Password: cred.Secret,
-		}, nil
+		return gitbackend.NewHTTPBasicAuth(cred.Username, cred.Secret), nil
 	default:
-		return nil, fmt.Errorf("unknown credential type: %s", cred.Type)
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}, fmt.Errorf("unknown credential type: %s", cred.Type)
 	}
 }
 
@@ -274,7 +250,7 @@ func (s *AuthService) ResolveCredentialForRemote(
 	remoteAuths map[string]domain.AuthInfo,
 	remoteName string,
 	defaultAuthType, defaultAuthKey, defaultAuthSecret string,
-) (transport.AuthMethod, bool, error) {
+) (gitbackend.AuthConfig, bool, error) {
 	// 1. 尝试新凭证系统 - 远程专属凭证
 	if remoteCredentials != nil {
 		if credID, ok := remoteCredentials[remoteName]; ok && credID > 0 {

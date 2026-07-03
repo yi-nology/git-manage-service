@@ -5,12 +5,8 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"strings"
+	"os/exec"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
@@ -25,20 +21,12 @@ func (w *channelWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (s *GitService) openRepo(path string) (*git.Repository, error) {
-	log.Printf("[DEBUG] Opening repository at: %s", path)
-	r, err := git.PlainOpen(path)
-	if err != nil {
-		log.Printf("[ERROR] Failed to open repository at %s: %v", path, err)
-		return nil, fmt.Errorf("failed to open repository at %s: %v", path, err)
-	}
-	log.Printf("[DEBUG] Repository opened successfully: %s", path)
-	return r, nil
-}
-
 func (s *GitService) IsGitRepo(path string) bool {
-	_, err := git.PlainOpen(path)
-	return err == nil
+	cmd := exec.Command("git", "-C", path, "rev-parse", "--is-inside-work-tree")
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
 }
 
 func (s *GitService) Fetch(path, remote string, progress io.Writer, skipTLS ...bool) error {
@@ -68,15 +56,13 @@ func (s *GitService) FetchWithAuth(path, remoteURL, authType, authKey, authSecre
 	return err
 }
 
-func (s *GitService) FetchWithAuthMethod(path, remoteURL string, auth transport.AuthMethod, progress io.Writer, skipTLS bool, extraArgs ...string) error {
-	sdkAuth := s.ConvertTransportAuth(auth)
-
+func (s *GitService) FetchWithAuthMethod(path, remoteURL string, auth gitbackend.AuthConfig, progress io.Writer, skipTLS bool, extraArgs ...string) error {
 	_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
 		RepoPath:        path,
 		Remote:          remoteURL,
 		Tags:            true,
 		InsecureSkipTLS: skipTLS,
-		Auth:            sdkAuth,
+		Auth:            auth,
 		Progress:        progress,
 	})
 	return err
@@ -105,9 +91,7 @@ func (s *GitService) CloneWithProgress(remoteURL, localPath, authType, authKey, 
 	})
 }
 
-func (s *GitService) CloneWithAuthMethod(remoteURL, localPath string, auth transport.AuthMethod, progressChan chan string, skipTLS ...bool) error {
-	sdkAuth := s.ConvertTransportAuth(auth)
-
+func (s *GitService) CloneWithAuthMethod(remoteURL, localPath string, auth gitbackend.AuthConfig, progressChan chan string, skipTLS ...bool) error {
 	var progress io.Writer
 	if progressChan != nil {
 		progress = &channelWriter{ch: progressChan}
@@ -118,7 +102,7 @@ func (s *GitService) CloneWithAuthMethod(remoteURL, localPath string, auth trans
 	return s.backend.Clone(context.Background(), gitbackend.CloneOptions{
 		URL:             remoteURL,
 		Path:            localPath,
-		Auth:            sdkAuth,
+		Auth:            auth,
 		Progress:        progress,
 		InsecureSkipTLS: insecure,
 	})
@@ -142,46 +126,19 @@ func (s *GitService) GetBranches(path string) ([]string, error) {
 }
 
 func (s *GitService) GetCommits(path, branch, since, until string) (string, error) {
-	r, err := s.openRepo(path)
+	log.Printf("[DEBUG] GetCommits path=%s branch=%s since=%s until=%s", path, branch, since, until)
+
+	args := []string{"-C", path, "log", "--pretty=format:%H|%aN|%aE|%ad|%s", "--date=format:%Y-%m-%d %H:%M:%S %z"}
+	if branch != "" {
+		args = append(args, branch)
+	}
+
+	cmd := exec.Command("git", args...)
+	output, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("git log failed: %v", err)
 	}
-
-	if branch == "" {
-		head, err := r.Head()
-		if err != nil {
-			return "", fmt.Errorf("failed to resolve HEAD: %w", err)
-		}
-		branch = head.Hash().String()
-	}
-
-	commit, err := s.resolveCommit(r, branch)
-	if err != nil {
-		return "", err
-	}
-
-	cIter, err := r.Log(&git.LogOptions{From: commit.Hash})
-	if err != nil {
-		return "", err
-	}
-
-	var sb strings.Builder
-	forEachErr := cIter.ForEach(func(c *object.Commit) error {
-		line := fmt.Sprintf("%s|%s|%s|%s|%s\n",
-			c.Hash.String(),
-			c.Author.Name,
-			c.Author.Email,
-			c.Author.When.Format("2006-01-02 15:04:05 -0700"),
-			strings.TrimSpace(strings.Split(c.Message, "\n")[0]),
-		)
-		sb.WriteString(line)
-		return nil
-	})
-	if forEachErr != nil {
-		return "", forEachErr
-	}
-
-	return sb.String(), nil
+	return string(output), nil
 }
 
 func (s *GitService) GetRepoFiles(path, branch string) ([]string, error) {
@@ -196,57 +153,6 @@ func (s *GitService) GetRepoFiles(path, branch string) ([]string, error) {
 		}
 	}
 	return files, nil
-}
-
-func (s *GitService) BlameFile(path, branch, file string) (*git.BlameResult, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return nil, err
-	}
-
-	commit, err := s.resolveCommit(r, branch)
-	if err != nil {
-		return nil, err
-	}
-
-	return git.Blame(commit, file)
-}
-
-func (s *GitService) GetCommit(path, hashStr string) (*object.Commit, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return nil, err
-	}
-	return r.CommitObject(plumbing.NewHash(hashStr))
-}
-
-func (s *GitService) resolveCommit(r *git.Repository, rev string) (*object.Commit, error) {
-	hash, err := r.ResolveRevision(plumbing.Revision(rev))
-	if err != nil {
-		if !strings.HasPrefix(rev, "refs/") {
-			h, err2 := r.ResolveRevision(plumbing.Revision("refs/heads/" + rev))
-			if err2 == nil {
-				hash = h
-				err = nil
-			}
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	return r.CommitObject(*hash)
-}
-
-func (s *GitService) resolveCommitPair(r *git.Repository, base, target string) (*object.Commit, *object.Commit, error) {
-	cBase, err := s.resolveCommit(r, base)
-	if err != nil {
-		return nil, nil, err
-	}
-	cTarget, err := s.resolveCommit(r, target)
-	if err != nil {
-		return nil, nil, err
-	}
-	return cBase, cTarget, nil
 }
 
 func (s *GitService) ResolveRevision(path, rev string) (string, error) {
