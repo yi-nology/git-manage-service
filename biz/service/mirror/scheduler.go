@@ -69,24 +69,6 @@ func (s *Scheduler) Stop() {
 	log.Println("[MirrorScheduler] stopped")
 }
 
-func (s *Scheduler) OnPushEvent(repoID uint) {
-	mirrors, err := s.mirrorDAO.FindBySyncOnPush()
-	if err != nil {
-		return
-	}
-
-	for i := range mirrors {
-		m := &mirrors[i]
-		if m.RepoID == repoID {
-			s.queue.Push(queue.SyncRequest{
-				MirrorID:    m.ID,
-				TriggerType: po.TriggerTypePushEvent,
-				RequestedAt: time.Now(),
-			})
-		}
-	}
-}
-
 func (s *Scheduler) Reload() {
 	for id, entryID := range s.cronMap {
 		s.cron.Remove(entryID)

@@ -36,12 +36,6 @@ func (d *MirrorDAO) FindByRepoID(repoID uint) ([]po.Mirror, error) {
 	return mirrors, err
 }
 
-func (d *MirrorDAO) FindByMirrorType(mirrorType string) ([]po.Mirror, error) {
-	var mirrors []po.Mirror
-	err := DB.Preload("Repo").Where("mirror_type = ?", mirrorType).Find(&mirrors).Error
-	return mirrors, err
-}
-
 func (d *MirrorDAO) FindEnabled() ([]po.Mirror, error) {
 	var mirrors []po.Mirror
 	err := DB.Preload("Repo").Preload("Credential").Where("enabled = ?", true).Find(&mirrors).Error
@@ -97,12 +91,6 @@ func (d *MirrorDAO) IncrementRetryCount(id uint) error {
 
 func (d *MirrorDAO) ResetRetryCount(id uint) error {
 	return DB.Model(&po.Mirror{}).Where("id = ?", id).Update("retry_count", 0).Error
-}
-
-func (d *MirrorDAO) CountByRepoID(repoID uint) (int64, error) {
-	var count int64
-	err := DB.Model(&po.Mirror{}).Where("repo_id = ?", repoID).Count(&count).Error
-	return count, err
 }
 
 func (d *MirrorDAO) CleanupOldLogs(retentionDays int) error {
