@@ -1,9 +1,12 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 type SearchCommitsOptions struct {
@@ -54,24 +57,19 @@ func (s *GitService) PullWithResolve(repoPath, remote, branch string, fetchOnly 
 	}
 
 	if fetchOnly {
-		args := []string{"fetch", remote}
-		if branch != "" {
-			args = append(args, branch)
-		}
-		out, err := runGitCmd(repoPath, args...)
+		_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
+			RepoPath: repoPath,
+			Remote:   remote,
+			Branches: []string{branch},
+		})
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", strings.TrimSpace(out), err)
+			return nil, err
 		}
 		return map[string]interface{}{"fetched": true}, nil
 	}
 
-	args := []string{"pull", remote}
-	if branch != "" {
-		args = append(args, branch)
-	}
-	out, err := runGitCmd(repoPath, args...)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", strings.TrimSpace(out), err)
+	if err := s.backend.Pull(context.Background(), repoPath, remote, branch, gitbackend.AuthConfig{Type: gitbackend.AuthNone}); err != nil {
+		return nil, err
 	}
 	return map[string]interface{}{"pulled": true}, nil
 }
