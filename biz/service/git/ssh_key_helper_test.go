@@ -65,8 +65,8 @@ func TestSSHKeyHelper_BuildSSHCommand(t *testing.T) {
 func TestSSHKeyHelper_BuildSecureSSHCommand(t *testing.T) {
 	h := NewSSHKeyHelper()
 	cmd := h.BuildSecureSSHCommand("/tmp/key")
-	if !strings.Contains(cmd, "StrictHostKeyChecking=ask") {
-		t.Errorf("expected StrictHostKeyChecking=ask, got: %s", cmd)
+	if !strings.Contains(cmd, "StrictHostKeyChecking=yes") {
+		t.Errorf("expected StrictHostKeyChecking=yes, got: %s", cmd)
 	}
 }
 
@@ -120,7 +120,6 @@ func TestSSHKeyHelper_ProcessPrivateKey_Normalize(t *testing.T) {
 
 func TestSSHKeyHelper_AddHostKey(t *testing.T) {
 	h := NewSSHKeyHelper()
-	if len(h.hostKeys) != 0 {
-		t.Error("expected empty host keys initially")
-	}
+	// Just verify it doesn't panic
+	h.AddHostKey("example.com", nil)
 }

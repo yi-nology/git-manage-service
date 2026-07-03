@@ -14,7 +14,6 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
-	ssh2 "golang.org/x/crypto/ssh"
 
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	conf "github.com/yi-nology/git-manage-service/pkg/configs"
@@ -66,37 +65,21 @@ func (s *GitService) getAuthFromInfo(authInfo domain.AuthInfo) (transport.AuthMe
 
 // GetAuthFromDBKey 从数据库密钥内容创建认证方法
 func (s *GitService) GetAuthFromDBKey(privateKey, passphrase string) (transport.AuthMethod, error) {
-	keyContent := strings.ReplaceAll(privateKey, "\r\n", "\n")
-	keyContent = strings.ReplaceAll(keyContent, "\r", "")
-	keyContent = strings.TrimSpace(keyContent)
-	if !strings.HasSuffix(keyContent, "\n") {
-		keyContent += "\n"
-	}
+	helper := NewSSHKeyHelper()
 
-	var signer ssh2.Signer
-	var err error
-
-	if passphrase != "" {
-		signer, err = ssh2.ParsePrivateKeyWithPassphrase([]byte(keyContent), []byte(passphrase))
-	} else {
-		signer, err = ssh2.ParsePrivateKey([]byte(keyContent))
-	}
-
+	keyContent, err := helper.ProcessPrivateKey(privateKey, passphrase)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %v", err)
+		return nil, fmt.Errorf("failed to process private key: %v", err)
 	}
 
 	publicKeys, err := ssh.NewPublicKeys("git", []byte(keyContent), passphrase)
 	if err != nil {
 		publicKeys = &ssh.PublicKeys{
-			User:   "git",
-			Signer: signer,
+			User: "git",
 		}
 	}
 
-	helper := NewSSHKeyHelper()
 	publicKeys.HostKeyCallback = helper.GetHostKeyCallback()
-
 	return publicKeys, nil
 }
 

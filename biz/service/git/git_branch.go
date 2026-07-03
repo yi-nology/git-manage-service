@@ -3,89 +3,41 @@ package git
 import (
 	"context"
 	"fmt"
-	"strings"
+	"time"
 
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 )
 
 // ListBranchesWithInfo returns detailed information for all branches
 func (s *GitService) ListBranchesWithInfo(path string) ([]domain.BranchInfo, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return nil, err
-	}
-
-	iter, err := r.References()
-	if err != nil {
-		return nil, err
-	}
-
-	headRef, err := r.Head()
-	var headHash plumbing.Hash
-	if err == nil {
-		headHash = headRef.Hash()
-	}
-
-	cfg, err := r.Config()
+	details, err := s.backend.ListBranches(context.Background(), path)
 	if err != nil {
 		return nil, err
 	}
 
 	var branches []domain.BranchInfo
-
-	err = iter.ForEach(func(ref *plumbing.Reference) error {
-		isBranch := ref.Name().IsBranch()
-		isRemote := ref.Name().IsRemote()
-
-		if !isBranch && !isRemote {
-			return nil
-		}
-
-		name := ref.Name().Short()
-		hash := ref.Hash()
-
+	for _, d := range details {
 		b := domain.BranchInfo{
-			Name: name,
-			Hash: hash.String(),
+			Name:        d.Name,
+			Hash:        d.Hash,
+			IsCurrent:   d.IsCurrent,
+			Author:      d.Author,
+			AuthorEmail: d.Email,
+			Message:     d.Message,
+			Upstream:    d.Upstream,
 		}
-
-		if isBranch {
-			b.Type = "local"
-		} else if isRemote {
+		if d.IsRemote {
 			b.Type = "remote"
 		} else {
-			return nil
+			b.Type = "local"
 		}
-
-		if hash == headHash && ref.Name().IsBranch() {
-			b.IsCurrent = true
-		}
-
-		commit, commitErr := r.CommitObject(hash)
-		if commitErr == nil {
-			b.Author = commit.Author.Name
-			b.AuthorEmail = commit.Author.Email
-			b.Date = commit.Author.When
-			b.Message = strings.TrimSpace(strings.Split(commit.Message, "\n")[0])
-		}
-
-		if ref.Name().IsBranch() {
-			if branchCfg, ok := cfg.Branches[name]; ok {
-				if branchCfg.Remote != "" && branchCfg.Merge != "" {
-					shortMerge := branchCfg.Merge.Short()
-					b.Upstream = fmt.Sprintf("%s/%s", branchCfg.Remote, shortMerge)
-				}
+		if d.Date != "" {
+			if t, err := time.Parse(time.RFC3339, d.Date); err == nil {
+				b.Date = t
 			}
 		}
-
 		branches = append(branches, b)
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
-
 	return branches, nil
 }
 

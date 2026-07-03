@@ -10,26 +10,7 @@ import (
 )
 
 func (s *GitService) GetBranchSyncStatus(path, branch, upstream string) (int, int, error) {
-	if upstream == "" {
-		return 0, 0, nil
-	}
-
-	baseHash, err := s.backend.MergeBase(context.Background(), path, branch, upstream)
-	if err != nil {
-		return 0, 0, nil
-	}
-
-	commitsAhead, err := s.backend.GetCommitsBetween(context.Background(), path, baseHash, branch)
-	if err != nil {
-		return 0, 0, nil
-	}
-
-	commitsBehind, err := s.backend.GetCommitsBetween(context.Background(), path, baseHash, upstream)
-	if err != nil {
-		return 0, 0, nil
-	}
-
-	return len(commitsAhead), len(commitsBehind), nil
+	return s.backend.GetBranchSyncInfo(context.Background(), path, branch, upstream)
 }
 
 func (s *GitService) PushBranch(path, remote, branch string, skipTLS ...bool) error {
@@ -104,12 +85,7 @@ func (s *GitService) UpdateBranchFastForwardWithAuth(path, remote, branch, remot
 
 func (s *GitService) FetchAll(path string, skipTLS ...bool) error {
 	insecure := len(skipTLS) > 0 && skipTLS[0]
-
-	_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
-		RepoPath:        path,
-		Remote:          "origin",
-		Tags:            true,
-		InsecureSkipTLS: insecure,
-	})
-	return err
+	auth := gitbackend.AuthConfig{Type: gitbackend.AuthNone}
+	_ = insecure // TODO: pass insecure to auth config
+	return s.backend.FetchAll(context.Background(), path, auth)
 }

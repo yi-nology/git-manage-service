@@ -4,51 +4,20 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
 	"github.com/sirupsen/logrus"
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 // GetRemotes 获取所有远程仓库名称
 func (s *GitService) GetRemotes(path string) ([]string, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return nil, err
-	}
-
-	remotes, err := r.Remotes()
-	if err != nil {
-		return nil, err
-	}
-
-	var names []string
-	for _, remote := range remotes {
-		names = append(names, remote.Config().Name)
-	}
-
-	logger.Debug("Remotes retrieved", logrus.Fields{"path": path, "count": len(names)})
-	return names, nil
+	return s.backend.GetRemotes(context.Background(), path)
 }
 
 // GetRemoteURL 获取远程仓库 URL
 func (s *GitService) GetRemoteURL(path, remoteName string) (string, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return "", err
-	}
-
-	remote, err := r.Remote(remoteName)
-	if err != nil {
-		return "", err
-	}
-
-	urls := remote.Config().URLs
-	if len(urls) > 0 {
-		return urls[0], nil
-	}
-	return "", fmt.Errorf("no URL for remote %s", remoteName)
+	return s.backend.GetRemoteURL(context.Background(), path, remoteName)
 }
 
 // AddRemote 添加远程仓库
@@ -182,26 +151,20 @@ func (s *GitService) ListRemoteBranches(path, remoteName string) ([]string, erro
 // TestRemoteConnection 测试远程连接
 func (s *GitService) TestRemoteConnection(url string, skipTLS ...bool) error {
 	logger.Info("Testing remote connection", logrus.Fields{"url": url})
-
-	remote := git.NewRemote(nil, &config.RemoteConfig{
-		Name: "anonymous",
-		URLs: []string{url},
-	})
-
-	auth := s.detectSSHAuth(url)
-
-	insecure := len(skipTLS) > 0 && skipTLS[0]
-
-	_, err := remote.List(&git.ListOptions{
-		Auth:            auth,
-		InsecureSkipTLS: insecure,
-	})
-
+	err := s.backend.TestConnection(context.Background(), url, s.detectSDKAuth(url))
 	if err != nil {
 		logger.ErrorWithErr("Remote connection test failed", err, logrus.Fields{"url": url})
 		return err
 	}
-
 	logger.Info("Remote connection test successful", logrus.Fields{"url": url})
 	return nil
+}
+
+// detectSDKAuth builds a gitbackend.AuthConfig by auto-detecting SSH keys.
+func (s *GitService) detectSDKAuth(urlStr string) gitbackend.AuthConfig {
+	auth := s.detectSSHAuth(urlStr)
+	if auth == nil {
+		return gitbackend.AuthConfig{Type: gitbackend.AuthNone}
+	}
+	return s.ConvertTransportAuth(auth)
 }

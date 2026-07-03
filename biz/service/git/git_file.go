@@ -12,7 +12,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-git/go-git/v5/plumbing/filemode"
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // TreeEntry 目录树条目
@@ -45,77 +44,23 @@ type FileCommit struct {
 
 // GetTree 获取目录树
 func (s *GitService) GetTree(repoPath, ref, dirPath string, recursive bool) ([]TreeEntry, error) {
-	// 使用 SDK 获取文件内容来验证 ref 有效
-	_, err := s.backend.GetFileAtRevision(context.Background(), repoPath, ".", ref)
+	sdkEntries, err := s.backend.GetTree(context.Background(), repoPath, ref, dirPath, recursive)
 	if err != nil {
-		// 如果获取失败，尝试使用 go-git
-		r, rErr := s.openRepo(repoPath)
-		if rErr != nil {
-			return nil, rErr
-		}
-
-		commit, cErr := s.resolveCommit(r, ref)
-		if cErr != nil {
-			return nil, cErr
-		}
-
-		tree, tErr := commit.Tree()
-		if tErr != nil {
-			return nil, tErr
-		}
-
-		dirPath = strings.TrimSpace(dirPath)
-		if dirPath == "." || dirPath == "" {
-			dirPath = ""
-		}
-
-		if dirPath != "" && dirPath != "/" {
-			dirPath = strings.TrimPrefix(dirPath, "/")
-			tree, tErr = tree.Tree(dirPath)
-			if tErr != nil {
-				return nil, tErr
-			}
-		}
-
-		var entries []TreeEntry
-		if recursive {
-			_ = tree.Files().ForEach(func(f *object.File) error {
-				entries = append(entries, TreeEntry{
-					Name: filepath.Base(f.Name),
-					Path: f.Name,
-					Type: "file",
-					Size: f.Size,
-					Mode: f.Mode.String(),
-					Hash: f.Hash.String(),
-				})
-				return nil
-			})
-		} else {
-			for _, entry := range tree.Entries {
-				entryType := "file"
-				if entry.Mode == filemode.Dir {
-					entryType = "dir"
-				}
-
-				path := entry.Name
-				if dirPath != "" {
-					path = filepath.Join(dirPath, entry.Name)
-				}
-
-				entries = append(entries, TreeEntry{
-					Name: entry.Name,
-					Path: path,
-					Type: entryType,
-					Mode: entry.Mode.String(),
-					Hash: entry.Hash.String(),
-				})
-			}
-		}
-
-		return entries, nil
+		return nil, err
 	}
 
-	return nil, nil
+	var entries []TreeEntry
+	for _, e := range sdkEntries {
+		entries = append(entries, TreeEntry{
+			Name: e.Name,
+			Path: e.Path,
+			Type: string(e.Type),
+			Mode: e.Mode,
+			Hash: e.Hash,
+			Size: e.Size,
+		})
+	}
+	return entries, nil
 }
 
 func (s *GitService) GetWorktree(repoPath, dirPath string) ([]TreeEntry, error) {
@@ -173,29 +118,18 @@ func (s *GitService) GetWorktree(repoPath, dirPath string) ([]TreeEntry, error) 
 }
 
 func (s *GitService) GetBlob(repoPath, ref, filePath string) (*BlobContent, error) {
-	// 使用 SDK 获取文件内容
-	content, err := s.backend.GetFileAtRevision(context.Background(), repoPath, filePath, ref)
+	sdkBlob, err := s.backend.GetBlob(context.Background(), repoPath, ref, filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	isBinary := !utf8.Valid(content) || containsNullByte(content)
-
-	result := &BlobContent{
-		Size:     int64(len(content)),
-		IsBinary: isBinary,
+	return &BlobContent{
+		Content:  sdkBlob.Content,
+		Encoding: string(sdkBlob.Encoding),
+		Size:     sdkBlob.Size,
+		IsBinary: sdkBlob.IsBinary,
 		MimeType: getMimeType(filePath),
-	}
-
-	if isBinary {
-		result.Content = base64.StdEncoding.EncodeToString(content)
-		result.Encoding = "base64"
-	} else {
-		result.Content = string(content)
-		result.Encoding = "utf-8"
-	}
-
-	return result, nil
+	}, nil
 }
 
 func (s *GitService) GetWorktreeBlob(repoPath, filePath string) (*BlobContent, error) {

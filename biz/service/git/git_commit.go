@@ -24,11 +24,11 @@ func (s *GitService) GetStatus(path string) (string, error) {
 	}
 
 	result := ""
-	for path, fileStatus := range status.Staged {
-		result += fmt.Sprintf("%c%c %s\n", fileStatus.Staging, fileStatus.Worktree, path)
+	for _, fileStatus := range status.Staged {
+		result += fmt.Sprintf("%c%c %s\n", rune(fileStatus.Staging), rune(fileStatus.Worktree), fileStatus.Path)
 	}
-	for path, fileStatus := range status.Unstaged {
-		result += fmt.Sprintf("%c%c %s\n", fileStatus.Staging, fileStatus.Worktree, path)
+	for _, fileStatus := range status.Unstaged {
+		result += fmt.Sprintf("%c%c %s\n", rune(fileStatus.Staging), rune(fileStatus.Worktree), fileStatus.Path)
 	}
 	for _, path := range status.Untracked {
 		result += fmt.Sprintf("?? %s\n", path)

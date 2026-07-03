@@ -125,16 +125,12 @@ func (s *GitService) CloneWithAuthMethod(remoteURL, localPath string, auth trans
 }
 
 func (s *GitService) GetCommitHash(path, remote, branch string) (string, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return "", err
-	}
-	refName := plumbing.ReferenceName(fmt.Sprintf("refs/remotes/%s/%s", remote, branch))
-	ref, err := r.Reference(refName, true)
+	refName := fmt.Sprintf("refs/remotes/%s/%s", remote, branch)
+	hash, err := s.backend.RevParse(context.Background(), path, refName)
 	if err != nil {
 		return "", fmt.Errorf("remote branch %s/%s not found: %v", remote, branch, err)
 	}
-	return ref.Hash().String(), nil
+	return hash, nil
 }
 
 func (s *GitService) IsAncestor(path, ancestor, descendant string) (bool, error) {
@@ -142,25 +138,7 @@ func (s *GitService) IsAncestor(path, ancestor, descendant string) (bool, error)
 }
 
 func (s *GitService) GetBranches(path string) ([]string, error) {
-	r, err := s.openRepo(path)
-	if err != nil {
-		return nil, err
-	}
-	iter, err := r.References()
-	if err != nil {
-		return nil, err
-	}
-	var branches []string
-	err = iter.ForEach(func(ref *plumbing.Reference) error {
-		if ref.Name().IsBranch() || ref.Name().IsRemote() {
-			branches = append(branches, ref.Name().Short())
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return branches, nil
+	return s.backend.ListLocalBranches(context.Background(), path)
 }
 
 func (s *GitService) GetCommits(path, branch, since, until string) (string, error) {
@@ -207,25 +185,16 @@ func (s *GitService) GetCommits(path, branch, since, until string) (string, erro
 }
 
 func (s *GitService) GetRepoFiles(path, branch string) ([]string, error) {
-	r, err := s.openRepo(path)
+	entries, err := s.backend.GetTree(context.Background(), path, branch, "", true)
 	if err != nil {
 		return nil, err
 	}
-
-	commit, err := s.resolveCommit(r, branch)
-	if err != nil {
-		return nil, err
-	}
-	tree, err := commit.Tree()
-	if err != nil {
-		return nil, err
-	}
-
 	var files []string
-	_ = tree.Files().ForEach(func(f *object.File) error {
-		files = append(files, f.Name)
-		return nil
-	})
+	for _, e := range entries {
+		if e.Type == "file" {
+			files = append(files, e.Path)
+		}
+	}
 	return files, nil
 }
 
