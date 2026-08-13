@@ -14,7 +14,6 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/notification"
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
-	"github.com/yi-nology/git-manage-service/biz/service/ws"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
 	"github.com/yi-nology/git-platform-sdk/provider"
@@ -407,14 +406,9 @@ func sendReviewNotification(task *po.ReviewTask, result *AggregatedResult, repoK
 }
 
 func broadcastReviewStatus(task *po.ReviewTask, repoKey, status string) {
-	ws.DefaultHub.Broadcast("review", "status_update", map[string]interface{}{
-		"task_id":    task.ID,
-		"mr_iid":     task.MRIID,
-		"status":     status,
-		"risk_level": task.RiskLevel,
-		"repo_key":   repoKey,
-		"updated_at": time.Now(),
-	})
+	// WebSocket push was removed (the ws server was never started, so this was a
+	// no-op). Call sites are retained as status-change hooks for a future
+	// real-time implementation.
 }
 
 func CheckMerge(ctx context.Context, repoKey, mrIID, commitSHA string) (*api.MergeCheckDTO, error) {
