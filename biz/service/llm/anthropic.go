@@ -53,23 +53,6 @@ func (p *Anthropic) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, 
 	return p.doRequest(ctx, body)
 }
 
-func (p *Anthropic) Review(ctx context.Context, req *ReviewRequest) (*ReviewResponse, error) {
-	prompt := buildReviewPrompt(req)
-	body := anthropicRequest{
-		Model:     p.model,
-		MaxTokens: p.maxTokens,
-		System:    systemPrompt,
-		Messages: []anthropicMessage{
-			{Role: "user", Content: prompt},
-		},
-	}
-	resp, err := p.doRequest(ctx, body)
-	if err != nil {
-		return nil, err
-	}
-	return parseLLMResponse(resp.Content)
-}
-
 type anthropicRequest struct {
 	Model     string             `json:"model"`
 	MaxTokens int                `json:"max_tokens"`

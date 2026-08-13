@@ -46,18 +46,6 @@ func (p *Gemini) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, err
 	return p.doGenerate(ctx, contents, systemInstruction, maxTokens)
 }
 
-func (p *Gemini) Review(ctx context.Context, req *ReviewRequest) (*ReviewResponse, error) {
-	prompt := buildReviewPrompt(req)
-	contents := []geminiContent{
-		{Role: "user", Parts: []geminiPart{{Text: prompt}}},
-	}
-	resp, err := p.doGenerate(ctx, contents, systemPrompt, p.maxTokens)
-	if err != nil {
-		return nil, err
-	}
-	return parseLLMResponse(resp.Content)
-}
-
 type geminiRequest struct {
 	Contents          []geminiContent   `json:"contents"`
 	SystemInstruction *geminiSystemInst `json:"systemInstruction,omitempty"`

@@ -50,6 +50,5 @@ type ChatResponse struct {
 
 type Provider interface {
 	Name() string
-	Review(ctx context.Context, req *ReviewRequest) (*ReviewResponse, error)
 	Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, error)
 }
