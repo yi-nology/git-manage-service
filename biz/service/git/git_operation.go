@@ -47,32 +47,6 @@ func (s *GitService) Fetch(path, remote string, progress io.Writer, skipTLS ...b
 	return err
 }
 
-func (s *GitService) FetchWithAuth(path, remoteURL, authType, authKey, authSecret string, progress io.Writer, skipTLS bool, extraArgs ...string) error {
-	auth := s.buildSDKAuth(authType, authKey, authSecret)
-
-	_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
-		RepoPath:        path,
-		Remote:          remoteURL,
-		Tags:            true,
-		InsecureSkipTLS: skipTLS,
-		Auth:            auth,
-		Progress:        progress,
-	})
-	return err
-}
-
-func (s *GitService) FetchWithAuthMethod(path, remoteURL string, auth gitbackend.AuthConfig, progress io.Writer, skipTLS bool, extraArgs ...string) error {
-	_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
-		RepoPath:        path,
-		Remote:          remoteURL,
-		Tags:            true,
-		InsecureSkipTLS: skipTLS,
-		Auth:            auth,
-		Progress:        progress,
-	})
-	return err
-}
-
 func (s *GitService) Clone(remoteURL, localPath, authType, authKey, authSecret string, skipTLS ...bool) error {
 	return s.CloneWithProgress(remoteURL, localPath, authType, authKey, authSecret, nil, skipTLS...)
 }
@@ -144,20 +118,6 @@ func (s *GitService) GetCommits(path, branch, since, until string) (string, erro
 		return "", fmt.Errorf("git log failed: %v", err)
 	}
 	return string(output), nil
-}
-
-func (s *GitService) GetRepoFiles(path, branch string) ([]string, error) {
-	entries, err := s.backend.GetTree(context.Background(), path, branch, "", true)
-	if err != nil {
-		return nil, err
-	}
-	var files []string
-	for _, e := range entries {
-		if e.Type == "file" {
-			files = append(files, e.Path)
-		}
-	}
-	return files, nil
 }
 
 func (s *GitService) ResolveRevision(path, rev string) (string, error) {

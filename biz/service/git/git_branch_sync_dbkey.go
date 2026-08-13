@@ -48,15 +48,6 @@ func (s *GitService) PullBranchWithDBKey(path, remote, branch, privateKey, passp
 	return nil
 }
 
-func (s *GitService) FetchAllWithDBKey(path, privateKey, passphrase string) error {
-	auth, err := s.dbKeyAuth(privateKey, passphrase)
-	if err != nil {
-		return err
-	}
-
-	return s.backend.FetchAll(context.Background(), path, auth)
-}
-
 func (s *GitService) FetchBranchWithDBKey(path, remote, branch, privateKey, passphrase string) error {
 	auth, err := s.dbKeyAuth(privateKey, passphrase)
 	if err != nil {

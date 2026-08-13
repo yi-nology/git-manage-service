@@ -39,16 +39,6 @@ func (s *GitService) Push(path, targetRemote, sourceHash, targetBranch string, o
 	return err
 }
 
-func (s *GitService) PushWithAuth(path, targetRemoteURL, sourceHash, targetBranch, authType, authKey, authSecret string, options []string, progress io.Writer, skipTLS ...bool) error {
-	auth := s.buildSDKAuth(authType, authKey, authSecret)
-
-	return s.PushWithSDKAuth(path, targetRemoteURL, sourceHash, targetBranch, auth, options, progress, skipTLS...)
-}
-
-func (s *GitService) PushWithAuthMethod(path, targetRemoteURL, sourceHash, targetBranch string, auth gitbackend.AuthConfig, options []string, progress io.Writer, skipTLS ...bool) error {
-	return s.PushWithSDKAuth(path, targetRemoteURL, sourceHash, targetBranch, auth, options, progress, skipTLS...)
-}
-
 func (s *GitService) PushWithSDKAuth(path, targetRemoteURL, sourceHash, targetBranch string, auth gitbackend.AuthConfig, options []string, progress io.Writer, skipTLS ...bool) error {
 	force, mirror, _ := parsePushOptions(options)
 	insecure := len(skipTLS) > 0 && skipTLS[0]

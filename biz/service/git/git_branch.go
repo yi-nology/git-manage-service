@@ -59,17 +59,17 @@ func (s *GitService) RenameBranch(path, oldName, newName string) error {
 	return s.backend.RenameBranch(context.Background(), path, oldName, newName)
 }
 
+func (s *GitService) SetBranchDescription(path, branch, desc string) error {
+	_, err := s.RunCommand(path, "config", fmt.Sprintf("branch.%s.description", branch), desc)
+	return err
+}
+
 func (s *GitService) GetBranchDescription(path, branch string) (string, error) {
 	out, err := s.RunCommand(path, "config", fmt.Sprintf("branch.%s.description", branch))
 	if err != nil {
 		return "", nil
 	}
 	return out, nil
-}
-
-func (s *GitService) SetBranchDescription(path, branch, desc string) error {
-	_, err := s.RunCommand(path, "config", fmt.Sprintf("branch.%s.description", branch), desc)
-	return err
 }
 
 // GetBranchMetrics returns simple metrics: commit count

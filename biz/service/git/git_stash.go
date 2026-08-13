@@ -43,8 +43,8 @@ func (s *GitService) StashList(path string) ([]StashEntry, error) {
 // StashSave 保存当前更改到 stash
 func (s *GitService) StashSave(path, message string, includeUntracked bool) error {
 	logger.Info("Saving stash", logrus.Fields{
-		"path":             path,
-		"message":          message,
+		"path":              path,
+		"message":           message,
 		"include_untracked": includeUntracked,
 	})
 

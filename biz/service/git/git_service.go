@@ -27,10 +27,6 @@ func NewGitService() *GitService {
 	return &GitService{backend: backend}
 }
 
-func (s *GitService) Backend() gitbackend.GitBackend {
-	return s.backend
-}
-
 // RunCommand executes a raw git command.
 // Deprecated: Ideally use go-git methods. However, kept for operations not fully supported by go-git (e.g. Merge logic, Config branch description).
 func (s *GitService) RunCommand(dir string, args ...string) (string, error) {

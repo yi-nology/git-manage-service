@@ -74,10 +74,6 @@ func (s *GitService) Reset(path string) error {
 	return nil
 }
 
-func (s *GitService) GetLogStats(path, branch string) (string, error) {
-	return s.RunCommand(path, "log", "--numstat", "--no-merges", "--pretty=format:COMMIT|%H|%aN|%aE|%at", branch)
-}
-
 func (s *GitService) GetLogStatsStream(path, branch string) (io.ReadCloser, error) {
 	args := []string{"log", "--numstat", "--no-merges", "--pretty=format:COMMIT|%H|%aN|%aE|%at"}
 	if branch != "" {

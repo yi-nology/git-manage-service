@@ -162,10 +162,10 @@ func parseSubmoduleStatus(out string) map[string]submoduleStatus {
 // SubmoduleAdd 添加 submodule
 func (s *GitService) SubmoduleAdd(path, url, subPath, branch string) error {
 	logger.Info("Adding submodule", logrus.Fields{
-		"path":    path,
-		"url":     url,
+		"path":     path,
+		"url":      url,
 		"sub_path": subPath,
-		"branch":  branch,
+		"branch":   branch,
 	})
 
 	args := []string{"submodule", "add"}
@@ -207,7 +207,7 @@ func (s *GitService) SubmoduleInit(path, subPath string) error {
 func (s *GitService) SubmoduleUpdate(path, subPath string, init, recursive, remote bool) error {
 	logger.Info("Updating submodule", logrus.Fields{
 		"path":      path,
-		"sub_path":   subPath,
+		"sub_path":  subPath,
 		"init":      init,
 		"recursive": recursive,
 		"remote":    remote,
@@ -241,7 +241,7 @@ func (s *GitService) SubmoduleUpdate(path, subPath string, init, recursive, remo
 func (s *GitService) SubmoduleSync(path, subPath string, recursive bool) error {
 	logger.Info("Syncing submodule", logrus.Fields{
 		"path":      path,
-		"sub_path":   subPath,
+		"sub_path":  subPath,
 		"recursive": recursive,
 	})
 
@@ -266,9 +266,9 @@ func (s *GitService) SubmoduleSync(path, subPath string, recursive bool) error {
 // SubmoduleRemove 移除 submodule
 func (s *GitService) SubmoduleRemove(path, subPath string, force bool) error {
 	logger.Info("Removing submodule", logrus.Fields{
-		"path":    path,
+		"path":     path,
 		"sub_path": subPath,
-		"force":   force,
+		"force":    force,
 	})
 
 	// git submodule deinit

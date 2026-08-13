@@ -3,8 +3,6 @@ package git
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -75,13 +73,6 @@ func (s *GitService) CherryPick(path, commitHash string, noCommit bool) (string,
 	return newHash, nil, nil
 }
 
-// CherryPickAbort 中止cherry-pick
-func (s *GitService) CherryPickAbort(path string) error {
-	// SDK 没有 CherryPickAbort，使用 RunCommand
-	_, err := s.RunCommand(path, "cherry-pick", "--abort")
-	return err
-}
-
 // Rebase 执行rebase操作
 func (s *GitService) Rebase(path, upstream, onto string) (bool, []string, error) {
 	if onto != "" {
@@ -125,25 +116,6 @@ func (s *GitService) RebaseContinue(path string) (bool, []string, error) {
 		return false, nil, err
 	}
 	return true, nil, nil
-}
-
-// RebaseSkip 跳过当前commit
-func (s *GitService) RebaseSkip(path string) error {
-	_, err := s.RunCommand(path, "rebase", "--skip")
-	return err
-}
-
-// IsRebaseInProgress 检查是否有进行中的rebase
-func (s *GitService) IsRebaseInProgress(path string) bool {
-	// 检查 .git/rebase-merge 或 .git/rebase-apply 目录
-	gitDir := filepath.Join(path, ".git")
-	if _, err := os.Stat(filepath.Join(gitDir, "rebase-merge")); err == nil {
-		return true
-	}
-	if _, err := os.Stat(filepath.Join(gitDir, "rebase-apply")); err == nil {
-		return true
-	}
-	return false
 }
 
 // getConflictFiles 获取冲突文件列表

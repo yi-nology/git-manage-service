@@ -24,9 +24,9 @@ func (s *GitService) GetRemoteURL(path, remoteName string) (string, error) {
 // AddRemote 添加远程仓库
 func (s *GitService) AddRemote(path, name, url string, isMirror bool) error {
 	logger.Info("Adding remote", logrus.Fields{
-		"path":     path,
-		"name":     name,
-		"url":      url,
+		"path":      path,
+		"name":      name,
+		"url":       url,
 		"is_mirror": isMirror,
 	})
 
