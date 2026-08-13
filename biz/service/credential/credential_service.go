@@ -1,6 +1,7 @@
 package credential
 
 import (
+	"strings"
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
@@ -401,10 +402,11 @@ func (s *CredentialService) toCredentialDTO(cred *po.Credential, sshKeyMap map[u
 		}
 	}
 	if dto.SshKeyPath != "" {
-		parts := splitPath(dto.SshKeyPath)
-		if len(parts) > 0 {
-			dto.SshKeyPath = ".../" + parts[len(parts)-1]
+		base := dto.SshKeyPath
+		if i := strings.LastIndexAny(base, "/\\"); i >= 0 {
+			base = base[i+1:]
 		}
+		dto.SshKeyPath = ".../" + base
 	}
 	return dto
 }
@@ -430,46 +432,6 @@ func formatTime(t *time.Time) string {
 		return ""
 	}
 	return t.Format(time.RFC3339)
-}
-
-func splitPath(p string) []string {
-	var parts []string
-	for _, s := range []string{"/", "\\"} {
-		if len(p) > 0 {
-			for _, part := range splitByDelimiter(p, s) {
-				if part != "" {
-					parts = append(parts, part)
-				}
-			}
-			if len(parts) > 0 {
-				return parts
-			}
-		}
-	}
-	return []string{p}
-}
-
-func splitByDelimiter(s, delim string) []string {
-	var result []string
-	for {
-		i := indexString(s, delim)
-		if i < 0 {
-			result = append(result, s)
-			break
-		}
-		result = append(result, s[:i])
-		s = s[i+len(delim):]
-	}
-	return result
-}
-
-func indexString(s, sub string) int {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return i
-		}
-	}
-	return -1
 }
 
 type sshKeyInfo struct {
