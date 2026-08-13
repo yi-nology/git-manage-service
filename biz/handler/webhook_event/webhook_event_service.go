@@ -3,9 +3,12 @@ package webhook_event
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/webhookevent"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )
@@ -51,4 +54,128 @@ func Retry(ctx context.Context, c *app.RequestContext) {
 	}
 	c.Set("audit_target", fmt.Sprintf("webhook_event:%d", req.EventID))
 	pkgresponse.Success(c, map[string]string{"message": "Event retried"})
+}
+
+// webhookRuleRequest is the create/update payload for a webhook rule.
+type webhookRuleRequest struct {
+	Name             string                 `json:"name"`
+	ProviderConfigID uint                   `json:"provider_config_id"`
+	EventTypePattern string                 `json:"event_type_pattern"`
+	RepoPattern      string                 `json:"repo_pattern"`
+	Action           string                 `json:"action"`
+	ActionConfig     map[string]interface{} `json:"action_config"`
+	Enabled          bool                   `json:"enabled"`
+}
+
+func (r *webhookRuleRequest) toPO() *po.WebhookRule {
+	return &po.WebhookRule{
+		Name:             r.Name,
+		ProviderConfigID: r.ProviderConfigID,
+		EventTypePattern: r.EventTypePattern,
+		RepoPattern:      r.RepoPattern,
+		Action:           r.Action,
+		ActionConfig:     r.ActionConfig,
+		Enabled:          r.Enabled,
+	}
+}
+
+// webhookRuleDTO is the JSON response shape (snake_case, including the gorm
+// primary key) so the rule API matches the rest of the snake_case contract.
+type webhookRuleDTO struct {
+	ID               uint                   `json:"id"`
+	Name             string                 `json:"name"`
+	ProviderConfigID uint                   `json:"provider_config_id"`
+	EventTypePattern string                 `json:"event_type_pattern"`
+	RepoPattern      string                 `json:"repo_pattern"`
+	Action           string                 `json:"action"`
+	ActionConfig     map[string]interface{} `json:"action_config"`
+	Enabled          bool                   `json:"enabled"`
+	CreatedAt        string                 `json:"created_at"`
+	UpdatedAt        string                 `json:"updated_at"`
+}
+
+func toRuleDTO(r *po.WebhookRule) webhookRuleDTO {
+	return webhookRuleDTO{
+		ID:               r.ID,
+		Name:             r.Name,
+		ProviderConfigID: r.ProviderConfigID,
+		EventTypePattern: r.EventTypePattern,
+		RepoPattern:      r.RepoPattern,
+		Action:           r.Action,
+		ActionConfig:     r.ActionConfig,
+		Enabled:          r.Enabled,
+		CreatedAt:        r.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:        r.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
+
+// ListRules lists all webhook rules.
+func ListRules(ctx context.Context, c *app.RequestContext) {
+	rules, err := db.NewWebhookRuleDAO().FindAll()
+	if err != nil {
+		pkgresponse.InternalServerError(c, "Failed to list webhook rules: "+err.Error())
+		return
+	}
+	dtos := make([]webhookRuleDTO, 0, len(rules))
+	for i := range rules {
+		dtos = append(dtos, toRuleDTO(&rules[i]))
+	}
+	pkgresponse.Success(c, map[string]interface{}{"items": dtos})
+}
+
+// CreateRule creates a webhook rule.
+func CreateRule(ctx context.Context, c *app.RequestContext) {
+	var req webhookRuleRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+	if req.Name == "" || req.Action == "" {
+		pkgresponse.BadRequest(c, "name and action are required")
+		return
+	}
+	rule := req.toPO()
+	if err := db.NewWebhookRuleDAO().Create(rule); err != nil {
+		pkgresponse.InternalServerError(c, "Failed to create webhook rule: "+err.Error())
+		return
+	}
+	c.Set("audit_target", "webhook_rule:"+rule.Name)
+	pkgresponse.Success(c, toRuleDTO(rule))
+}
+
+// UpdateRule updates a webhook rule by id.
+func UpdateRule(ctx context.Context, c *app.RequestContext) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		pkgresponse.BadRequest(c, "invalid id")
+		return
+	}
+	var req webhookRuleRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		pkgresponse.BadRequest(c, err.Error())
+		return
+	}
+	rule := req.toPO()
+	rule.ID = uint(id)
+	if err := db.NewWebhookRuleDAO().Save(rule); err != nil {
+		pkgresponse.InternalServerError(c, "Failed to update webhook rule: "+err.Error())
+		return
+	}
+	c.Set("audit_target", fmt.Sprintf("webhook_rule:%d", id))
+	pkgresponse.Success(c, toRuleDTO(rule))
+}
+
+// DeleteRule deletes a webhook rule by id.
+func DeleteRule(ctx context.Context, c *app.RequestContext) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		pkgresponse.BadRequest(c, "invalid id")
+		return
+	}
+	if err := db.NewWebhookRuleDAO().Delete(uint(id)); err != nil {
+		pkgresponse.InternalServerError(c, "Failed to delete webhook rule: "+err.Error())
+		return
+	}
+	c.Set("audit_target", fmt.Sprintf("webhook_rule:%d", id))
+	pkgresponse.Success(c, map[string]string{"message": "Rule deleted"})
 }

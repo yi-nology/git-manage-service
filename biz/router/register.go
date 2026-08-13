@@ -70,6 +70,7 @@ func GeneratedRegister(h *server.Hertz) {
 
 	ai.Register(h)
 	webhook_event.Register(h)
+	webhook_event.RegisterRules(h)
 	provider.Register(h)
 	cr.Register(h)
 
