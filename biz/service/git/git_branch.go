@@ -42,6 +42,12 @@ func (s *GitService) ListBranchesWithInfo(path string) ([]domain.BranchInfo, err
 }
 
 func (s *GitService) CreateBranch(path, name, base string) error {
+	// The SDK gitbackend passes the ref straight to `git branch <name> <ref>`,
+	// which fails with "not a valid object name: ''" when base is empty. Restore
+	// the historical go-git behavior of defaulting to HEAD when no base is given.
+	if base == "" {
+		base = "HEAD"
+	}
 	return s.backend.CreateBranch(context.Background(), path, name, base)
 }
 

@@ -1618,19 +1618,19 @@ type RepoDTO struct {
 	Key                 string               `protobuf:"bytes,2,opt,name=key,proto3" form:"key" json:"key,omitempty" query:"key"`
 	Name                string               `protobuf:"bytes,3,opt,name=name,proto3" form:"name" json:"name,omitempty" query:"name"`
 	Path                string               `protobuf:"bytes,4,opt,name=path,proto3" form:"path" json:"path,omitempty" query:"path"`
-	RemoteUrl           string               `protobuf:"bytes,5,opt,name=remoteUrl,proto3" form:"remoteUrl" json:"remoteUrl,omitempty" query:"remoteUrl"`
-	AuthType            string               `protobuf:"bytes,6,opt,name=authType,proto3" form:"authType" json:"authType,omitempty" query:"authType"`
-	AuthKey             string               `protobuf:"bytes,7,opt,name=authKey,proto3" form:"authKey" json:"authKey,omitempty" query:"authKey"`
-	AuthSecret          string               `protobuf:"bytes,8,opt,name=authSecret,proto3" form:"authSecret" json:"authSecret,omitempty" query:"authSecret"`
-	RemoteAuths         map[string]*AuthInfo `protobuf:"bytes,9,rep,name=remoteAuths,proto3" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3" form:"remoteAuths" json:"remoteAuths,omitempty" query:"remoteAuths"`
-	DefaultCredentialId uint64               `protobuf:"varint,10,opt,name=defaultCredentialId,proto3" form:"defaultCredentialId" json:"defaultCredentialId,omitempty" query:"defaultCredentialId"`
-	RemoteCredentials   map[string]uint64    `protobuf:"bytes,11,rep,name=remoteCredentials,proto3" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3" form:"remoteCredentials" json:"remoteCredentials,omitempty" query:"remoteCredentials"`
-	ProviderConfigId    uint64               `protobuf:"varint,12,opt,name=providerConfigId,proto3" form:"providerConfigId" json:"providerConfigId,omitempty" query:"providerConfigId"`
-	PlatformRepoId      string               `protobuf:"bytes,13,opt,name=platformRepoId,proto3" form:"platformRepoId" json:"platformRepoId,omitempty" query:"platformRepoId"`
-	PlatformOwner       string               `protobuf:"bytes,14,opt,name=platformOwner,proto3" form:"platformOwner" json:"platformOwner,omitempty" query:"platformOwner"`
-	PlatformRepo        string               `protobuf:"bytes,15,opt,name=platformRepo,proto3" form:"platformRepo" json:"platformRepo,omitempty" query:"platformRepo"`
-	CreatedAt           string               `protobuf:"bytes,16,opt,name=createdAt,proto3" form:"createdAt" json:"createdAt,omitempty" query:"createdAt"`
-	UpdatedAt           string               `protobuf:"bytes,17,opt,name=updatedAt,proto3" form:"updatedAt" json:"updatedAt,omitempty" query:"updatedAt"`
+	RemoteUrl           string               `protobuf:"bytes,5,opt,name=remoteUrl,proto3" form:"remote_url" json:"remote_url,omitempty" query:"remote_url"`
+	AuthType            string               `protobuf:"bytes,6,opt,name=authType,proto3" form:"auth_type" json:"auth_type,omitempty" query:"auth_type"`
+	AuthKey             string               `protobuf:"bytes,7,opt,name=authKey,proto3" form:"auth_key" json:"auth_key,omitempty" query:"auth_key"`
+	AuthSecret          string               `protobuf:"bytes,8,opt,name=authSecret,proto3" form:"auth_secret" json:"auth_secret,omitempty" query:"auth_secret"`
+	RemoteAuths         map[string]*AuthInfo `protobuf:"bytes,9,rep,name=remoteAuths,proto3" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3" form:"remote_auths" json:"remote_auths,omitempty" query:"remote_auths"`
+	DefaultCredentialId uint64               `protobuf:"varint,10,opt,name=defaultCredentialId,proto3" form:"default_credential_id" json:"default_credential_id,omitempty" query:"default_credential_id"`
+	RemoteCredentials   map[string]uint64    `protobuf:"bytes,11,rep,name=remoteCredentials,proto3" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3" form:"remote_credentials" json:"remote_credentials,omitempty" query:"remote_credentials"`
+	ProviderConfigId    uint64               `protobuf:"varint,12,opt,name=providerConfigId,proto3" form:"provider_config_id" json:"provider_config_id,omitempty" query:"provider_config_id"`
+	PlatformRepoId      string               `protobuf:"bytes,13,opt,name=platformRepoId,proto3" form:"platform_repo_id" json:"platform_repo_id,omitempty" query:"platform_repo_id"`
+	PlatformOwner       string               `protobuf:"bytes,14,opt,name=platformOwner,proto3" form:"platform_owner" json:"platform_owner,omitempty" query:"platform_owner"`
+	PlatformRepo        string               `protobuf:"bytes,15,opt,name=platformRepo,proto3" form:"platform_repo" json:"platform_repo,omitempty" query:"platform_repo"`
+	CreatedAt           string               `protobuf:"bytes,16,opt,name=createdAt,proto3" form:"created_at" json:"created_at,omitempty" query:"created_at"`
+	UpdatedAt           string               `protobuf:"bytes,17,opt,name=updatedAt,proto3" form:"updated_at" json:"updated_at,omitempty" query:"updated_at"`
 }
 
 func (x *RepoDTO) Reset() {

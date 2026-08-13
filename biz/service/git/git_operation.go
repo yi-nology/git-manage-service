@@ -22,6 +22,11 @@ func (w *channelWriter) Write(p []byte) (n int, err error) {
 }
 
 func (s *GitService) IsGitRepo(path string) bool {
+	// An empty path would make `git -C "" ...` resolve to the process working
+	// directory, falsely treating it (e.g. the server's own repo) as the target.
+	if path == "" {
+		return false
+	}
 	cmd := exec.Command("git", "-C", path, "rev-parse", "--is-inside-work-tree")
 	if err := cmd.Run(); err != nil {
 		return false

@@ -66,6 +66,10 @@ func (s *CredentialService) List(req *credential.ListCredentialsRequest) ([]*cre
 }
 
 func (s *CredentialService) Create(req *credential.CreateCredentialRequest) (*credential.CredentialInfo, error) {
+	if err := validateCredential(req.Name, req.Type, req.SshKeyId, req.SshKeyPath); err != nil {
+		return nil, err
+	}
+
 	if req.SshKeyId > 0 {
 		if _, err := s.sshDAO.FindByID(uint(req.SshKeyId)); err != nil {
 			return nil, err

@@ -180,7 +180,11 @@ func Update(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	if req.Path != repo.Path {
+	// Partial update: only validate/apply a new path when one is provided.
+	// Treating an empty path as "no change" avoids accidentally pointing the
+	// repo at the process working directory and overwriting fields the caller
+	// did not send.
+	if req.Path != "" && req.Path != repo.Path {
 		gitSvc := git.NewGitService()
 		if !gitSvc.IsGitRepo(req.Path) {
 			response.BadRequest(c, "path is not a valid git repository")
@@ -188,9 +192,14 @@ func Update(ctx context.Context, c *app.RequestContext) {
 		}
 	}
 
+	repoPath := repo.Path
+	if req.Path != "" {
+		repoPath = req.Path
+	}
+
 	if len(req.Remotes) > 0 {
 		gitSvc := git.NewGitService()
-		existingConfig, err := gitSvc.GetRepoConfig(req.Path)
+		existingConfig, err := gitSvc.GetRepoConfig(repoPath)
 		if err == nil {
 			for _, existing := range existingConfig.Remotes {
 				found := false
@@ -201,30 +210,49 @@ func Update(ctx context.Context, c *app.RequestContext) {
 					}
 				}
 				if !found {
-					gitSvc.RemoveRemote(req.Path, existing.Name)
+					gitSvc.RemoveRemote(repoPath, existing.Name)
 				}
 			}
 
 			for _, r := range req.Remotes {
-				gitSvc.RemoveRemote(req.Path, r.Name)
-				if err := gitSvc.AddRemote(req.Path, r.Name, r.FetchURL, r.IsMirror); err != nil {
+				gitSvc.RemoveRemote(repoPath, r.Name)
+				if err := gitSvc.AddRemote(repoPath, r.Name, r.FetchURL, r.IsMirror); err != nil {
 				}
 				if r.PushURL != "" && r.PushURL != r.FetchURL {
-					gitSvc.SetRemotePushURL(req.Path, r.Name, r.PushURL)
+					gitSvc.SetRemotePushURL(repoPath, r.Name, r.PushURL)
 				}
 			}
 		}
 	}
 
-	repo.Name = req.Name
-	repo.Path = req.Path
-	repo.RemoteURL = req.RemoteURL
-	repo.AuthType = req.AuthType
-	repo.AuthKey = req.AuthKey
-	repo.AuthSecret = req.AuthSecret
-	repo.RemoteAuths = req.RemoteAuths
-	repo.DefaultCredentialID = req.DefaultCredentialID
-	repo.RemoteCredentials = req.RemoteCredentials
+	// Apply only the fields that were actually provided.
+	if req.Name != "" {
+		repo.Name = req.Name
+	}
+	if req.Path != "" {
+		repo.Path = req.Path
+	}
+	if req.RemoteURL != "" {
+		repo.RemoteURL = req.RemoteURL
+	}
+	if req.AuthType != "" {
+		repo.AuthType = req.AuthType
+	}
+	if req.AuthKey != "" {
+		repo.AuthKey = req.AuthKey
+	}
+	if req.AuthSecret != "" {
+		repo.AuthSecret = req.AuthSecret
+	}
+	if req.RemoteAuths != nil {
+		repo.RemoteAuths = req.RemoteAuths
+	}
+	if req.DefaultCredentialID != 0 {
+		repo.DefaultCredentialID = req.DefaultCredentialID
+	}
+	if req.RemoteCredentials != nil {
+		repo.RemoteCredentials = req.RemoteCredentials
+	}
 
 	if err := repoDAO.Save(repo); err != nil {
 		response.InternalServerError(c, err.Error())

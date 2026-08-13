@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	workspaceModel "github.com/yi-nology/git-manage-service/biz/model/workspace"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 func (s *GitService) GetWorkspaceStatus(repoPath string) (*workspaceModel.GetWorkspaceStatusResp, error) {
@@ -77,23 +78,95 @@ func (s *GitService) GetWorkspaceStatus(repoPath string) (*workspaceModel.GetWor
 }
 
 func (s *GitService) GetWorkspaceDiff(repoPath, file string, stagedOnly bool) (*api.WorkspaceDiff, error) {
-	// 使用 SDK 获取 diff
-	diff, err := s.backend.Diff(context.Background(), repoPath, gitbackend.DiffOptions{})
+	// Compute the diff of uncommitted changes against HEAD (or just the staged
+	// subset). The previous implementation stuffed the entire `git diff` output
+	// into a single file entry and never populated per-file counts, so
+	// totalAdditions was always 0 and "no changes" still reported one file.
+	// Use --numstat for accurate per-file addition/deletion counts.
+	rangeArgs := []string{}
+	if stagedOnly {
+		rangeArgs = append(rangeArgs, "--cached")
+	} else {
+		rangeArgs = append(rangeArgs, "HEAD")
+	}
+	if file != "" {
+		rangeArgs = append(rangeArgs, "--", file)
+	}
+
+	numstatOut, err := s.RunCommand(repoPath, append([]string{"diff", "--numstat"}, rangeArgs...)...)
 	if err != nil {
-		return nil, fmt.Errorf("diff: %w", err)
+		// No HEAD yet (empty repo) or other git error: treat as no diff.
+		return &api.WorkspaceDiff{Files: []api.WorkspaceDiffFile{}}, nil
 	}
 
-	result := &api.WorkspaceDiff{}
-	result.Files = []api.WorkspaceDiffFile{}
+	patches := s.workspaceDiffPatches(repoPath, rangeArgs)
 
-	// 解析 diff 内容
-	df := &api.WorkspaceDiffFile{
-		File: file,
-		Diff: diff,
+	result := &api.WorkspaceDiff{Files: []api.WorkspaceDiffFile{}}
+	for _, line := range strings.Split(numstatOut, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "\t", 3)
+		if len(parts) < 3 {
+			continue
+		}
+		df := api.WorkspaceDiffFile{File: parts[2]}
+		if parts[0] == "-" || parts[1] == "-" {
+			df.IsBinary = true
+		} else {
+			df.Additions, _ = strconv.Atoi(parts[0])
+			df.Deletions, _ = strconv.Atoi(parts[1])
+		}
+		df.Diff = patches[df.File]
+		result.TotalAdditions += df.Additions
+		result.TotalDeletions += df.Deletions
+		result.Files = append(result.Files, df)
 	}
-	result.Files = append(result.Files, *df)
 
 	return result, nil
+}
+
+// workspaceDiffPatches returns the raw diff split into per-file patches keyed
+// by file path. rangeArgs are the diff range/path arguments (without the
+// leading "diff" subcommand and without "--numstat").
+func (s *GitService) workspaceDiffPatches(repoPath string, rangeArgs []string) map[string]string {
+	patches := make(map[string]string)
+	out, err := s.RunCommand(repoPath, append([]string{"diff"}, rangeArgs...)...)
+	if err != nil {
+		return patches
+	}
+
+	var curFile string
+	var cur strings.Builder
+	flush := func() {
+		if curFile != "" {
+			patches[curFile] = cur.String()
+		}
+		cur.Reset()
+		curFile = ""
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "diff --git a/") {
+			flush()
+			curFile = extractDiffPath(line)
+		}
+		if curFile != "" {
+			cur.WriteString(line)
+			cur.WriteString("\n")
+		}
+	}
+	flush()
+	return patches
+}
+
+// extractDiffPath parses the file path from a "diff --git a/<p> b/<p>" header.
+func extractDiffPath(header string) string {
+	rest := strings.TrimPrefix(header, "diff --git a/")
+	if idx := strings.Index(rest, " b/"); idx >= 0 {
+		return rest[idx+3:]
+	}
+	return rest
 }
 
 func (s *GitService) StageFiles(repoPath string, files []string, stageAll bool) error {

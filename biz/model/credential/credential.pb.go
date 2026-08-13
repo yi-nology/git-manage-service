@@ -33,22 +33,22 @@ type CredentialInfo struct {
 	Name         string `protobuf:"bytes,2,opt,name=name,proto3" form:"name" json:"name,omitempty" query:"name"`
 	Type         string `protobuf:"bytes,3,opt,name=type,proto3" form:"type" json:"type,omitempty" query:"type"`
 	Description  string `protobuf:"bytes,4,opt,name=description,proto3" form:"description" json:"description,omitempty" query:"description"`
-	SshKeyId     uint64 `protobuf:"varint,5,opt,name=ssh_key_id,json=sshKeyId,proto3" form:"ssh_key_id" json:"sshKeyId,omitempty" query:"ssh_key_id"`
-	SshKeyPath   string `protobuf:"bytes,6,opt,name=ssh_key_path,json=sshKeyPath,proto3" form:"ssh_key_path" json:"sshKeyPath,omitempty" query:"ssh_key_path"`
-	SshKeyName   string `protobuf:"bytes,7,opt,name=ssh_key_name,json=sshKeyName,proto3" form:"ssh_key_name" json:"sshKeyName,omitempty" query:"ssh_key_name"`
-	SshKeyType   string `protobuf:"bytes,8,opt,name=ssh_key_type,json=sshKeyType,proto3" form:"ssh_key_type" json:"sshKeyType,omitempty" query:"ssh_key_type"`
+	SshKeyId     uint64 `protobuf:"varint,5,opt,name=ssh_key_id,json=sshKeyId,proto3" form:"ssh_key_id" json:"ssh_key_id,omitempty" query:"ssh_key_id"`
+	SshKeyPath   string `protobuf:"bytes,6,opt,name=ssh_key_path,json=sshKeyPath,proto3" form:"ssh_key_path" json:"ssh_key_path,omitempty" query:"ssh_key_path"`
+	SshKeyName   string `protobuf:"bytes,7,opt,name=ssh_key_name,json=sshKeyName,proto3" form:"ssh_key_name" json:"ssh_key_name,omitempty" query:"ssh_key_name"`
+	SshKeyType   string `protobuf:"bytes,8,opt,name=ssh_key_type,json=sshKeyType,proto3" form:"ssh_key_type" json:"ssh_key_type,omitempty" query:"ssh_key_type"`
 	Username     string `protobuf:"bytes,9,opt,name=username,proto3" form:"username" json:"username,omitempty" query:"username"`
-	HasSecret    bool   `protobuf:"varint,10,opt,name=has_secret,json=hasSecret,proto3" form:"has_secret" json:"hasSecret,omitempty" query:"has_secret"`
-	UrlPattern   string `protobuf:"bytes,11,opt,name=url_pattern,json=urlPattern,proto3" form:"url_pattern" json:"urlPattern,omitempty" query:"url_pattern"`
+	HasSecret    bool   `protobuf:"varint,10,opt,name=has_secret,json=hasSecret,proto3" form:"has_secret" json:"has_secret,omitempty" query:"has_secret"`
+	UrlPattern   string `protobuf:"bytes,11,opt,name=url_pattern,json=urlPattern,proto3" form:"url_pattern" json:"url_pattern,omitempty" query:"url_pattern"`
 	Status       string `protobuf:"bytes,12,opt,name=status,proto3" form:"status" json:"status,omitempty" query:"status"`
-	LastUsedAt   string `protobuf:"bytes,13,opt,name=last_used_at,json=lastUsedAt,proto3" form:"last_used_at" json:"lastUsedAt,omitempty" query:"last_used_at"`
-	LastTestedAt string `protobuf:"bytes,14,opt,name=last_tested_at,json=lastTestedAt,proto3" form:"last_tested_at" json:"lastTestedAt,omitempty" query:"last_tested_at"`
-	LastTestOk   bool   `protobuf:"varint,15,opt,name=last_test_ok,json=lastTestOk,proto3" form:"last_test_ok" json:"lastTestOk,omitempty" query:"last_test_ok"`
-	LastError    string `protobuf:"bytes,16,opt,name=last_error,json=lastError,proto3" form:"last_error" json:"lastError,omitempty" query:"last_error"`
-	RotatedAt    string `protobuf:"bytes,17,opt,name=rotated_at,json=rotatedAt,proto3" form:"rotated_at" json:"rotatedAt,omitempty" query:"rotated_at"`
-	ExpiresAt    string `protobuf:"bytes,18,opt,name=expires_at,json=expiresAt,proto3" form:"expires_at" json:"expiresAt,omitempty" query:"expires_at"`
-	CreatedAt    string `protobuf:"bytes,19,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"createdAt,omitempty" query:"created_at"`
-	UpdatedAt    string `protobuf:"bytes,20,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updatedAt,omitempty" query:"updated_at"`
+	LastUsedAt   string `protobuf:"bytes,13,opt,name=last_used_at,json=lastUsedAt,proto3" form:"last_used_at" json:"last_used_at,omitempty" query:"last_used_at"`
+	LastTestedAt string `protobuf:"bytes,14,opt,name=last_tested_at,json=lastTestedAt,proto3" form:"last_tested_at" json:"last_tested_at,omitempty" query:"last_tested_at"`
+	LastTestOk   bool   `protobuf:"varint,15,opt,name=last_test_ok,json=lastTestOk,proto3" form:"last_test_ok" json:"last_test_ok,omitempty" query:"last_test_ok"`
+	LastError    string `protobuf:"bytes,16,opt,name=last_error,json=lastError,proto3" form:"last_error" json:"last_error,omitempty" query:"last_error"`
+	RotatedAt    string `protobuf:"bytes,17,opt,name=rotated_at,json=rotatedAt,proto3" form:"rotated_at" json:"rotated_at,omitempty" query:"rotated_at"`
+	ExpiresAt    string `protobuf:"bytes,18,opt,name=expires_at,json=expiresAt,proto3" form:"expires_at" json:"expires_at,omitempty" query:"expires_at"`
+	CreatedAt    string `protobuf:"bytes,19,opt,name=created_at,json=createdAt,proto3" form:"created_at" json:"created_at,omitempty" query:"created_at"`
+	UpdatedAt    string `protobuf:"bytes,20,opt,name=updated_at,json=updatedAt,proto3" form:"updated_at" json:"updated_at,omitempty" query:"updated_at"`
 }
 
 func (x *CredentialInfo) Reset() {

@@ -28,14 +28,21 @@ func (h *SSHKeyHelper) CreateTempKeyFile(keyContent string) (string, error) {
 	return h.inner.CreateTempKeyFile(keyContent)
 }
 
-// BuildSSHCommand builds a GIT_SSH_COMMAND value.
+// BuildSSHCommand builds a GIT_SSH_COMMAND value with host key checking
+// disabled. Suitable for CI/server environments where known_hosts cannot be
+// populated.
+//
+// Note: git-platform-sdk v0.35+ made secure checking the default, so the SDK's
+// BuildSSHCommand is now secure. This wrapper preserves the historical
+// insecure behavior this codebase relied on by delegating to BuildSSHCommandInsecure.
 func (h *SSHKeyHelper) BuildSSHCommand(keyPath string) string {
-	return h.inner.BuildSSHCommand(keyPath)
+	return h.inner.BuildSSHCommandInsecure(keyPath)
 }
 
-// BuildSecureSSHCommand builds a GIT_SSH_COMMAND with host key verification.
+// BuildSecureSSHCommand builds a GIT_SSH_COMMAND with strict host key
+// verification enabled.
 func (h *SSHKeyHelper) BuildSecureSSHCommand(keyPath string) string {
-	return h.inner.BuildSecureSSHCommand(keyPath)
+	return h.inner.BuildSSHCommand(keyPath)
 }
 
 // CleanupTempFile removes a temporary file.
