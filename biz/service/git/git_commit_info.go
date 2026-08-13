@@ -2,6 +2,7 @@ package git
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
@@ -38,7 +39,7 @@ func (s *GitService) GetCommitInfo(repoPath, hashStr string) (*CommitInfo, error
 
 // GetRecentCommits 获取最近的提交历史
 func (s *GitService) GetRecentCommits(repoPath string, limit int) ([]string, error) {
-	commits, err := s.backend.GetCommitsBetween(context.Background(), repoPath, "HEAD~"+string(rune(limit+'0')), "HEAD")
+	commits, err := s.backend.GetCommitsBetween(context.Background(), repoPath, fmt.Sprintf("HEAD~%d", limit), "HEAD")
 	if err != nil {
 		return nil, err
 	}

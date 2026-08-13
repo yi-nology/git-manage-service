@@ -27,11 +27,20 @@ const (
 )
 
 type StatsCacheItem struct {
+	mu        sync.RWMutex
 	Status    StatsStatus
 	Data      *api.StatsResponse
 	Error     error
 	CreatedAt time.Time
 	Progress  string // e.g. "Processed 100 commits..."
+}
+
+// snapshot returns a consistent copy of the cache item's readable fields.
+// Fields are mutated by updateCache under mu, so readers must hold the RLock.
+func (it *StatsCacheItem) snapshot() (*api.StatsResponse, StatsStatus, error, string, time.Time) {
+	it.mu.RLock()
+	defer it.mu.RUnlock()
+	return it.Data, it.Status, it.Error, it.Progress, it.CreatedAt
 }
 
 type StatsService struct {
@@ -232,9 +241,10 @@ func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsRe
 	// 1. Check cache
 	if val, ok := s.cache.Load(key); ok {
 		item := val.(*StatsCacheItem)
+		data, status, err, progress, created := item.snapshot()
 		// Simple TTL: 1 hour
-		if time.Since(item.CreatedAt) < time.Hour {
-			return item.Data, item.Status, item.Error, item.Progress
+		if time.Since(created) < time.Hour {
+			return data, status, err, progress
 		}
 	}
 
@@ -249,10 +259,8 @@ func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsRe
 
 	if loaded {
 		item := actual.(*StatsCacheItem)
-		if time.Since(item.CreatedAt) < time.Hour {
-			return item.Data, item.Status, item.Error, item.Progress
-		}
-		return item.Data, item.Status, item.Error, item.Progress
+		data, status, err, progress, _ := item.snapshot()
+		return data, status, err, progress
 	}
 
 	// 3. Start async calculation
@@ -278,16 +286,9 @@ func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsRe
 func (s *StatsService) updateCache(key string, update func(*StatsCacheItem)) {
 	if val, ok := s.cache.Load(key); ok {
 		item := val.(*StatsCacheItem)
+		item.mu.Lock()
+		defer item.mu.Unlock()
 		update(item)
-		// No need to Store back since we modified the pointer, but sync.Map might need it if we replaced the struct.
-		// Since we are modifying fields of the struct pointer, it is visible to other goroutines reading the same pointer.
-		// However, to be safe from race conditions on the struct fields themselves if they were not atomic,
-		// we should be careful. But here it's simple string/status updates.
-		// Ideally we should use a mutex inside StatsCacheItem or replace the item in the map.
-		// For progress reporting, replacing the item in map is safer if we treat it as immutable, but slower.
-		// Let's assume for now the pointer approach is "good enough" for status updates or we can re-store.
-		// Actually, let's create a new item to be thread-safe for readers? No, that breaks the "LoadOrStore" logic if we want to share progress.
-		// We should probably add a Mutex to StatsCacheItem.
 	}
 }
 

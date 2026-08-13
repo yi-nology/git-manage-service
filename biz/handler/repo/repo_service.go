@@ -152,12 +152,7 @@ func Create(ctx context.Context, c *app.RequestContext) {
 		response.InternalServerError(c, err.Error())
 		return
 	}
-	go func() {
-		head, err := gitSvc.GetHeadBranch(repo.Path)
-		if err == nil && head != "" {
-			stats.StatsSvc.SyncRepoStats(repo.ID, repo.Path, head)
-		}
-	}()
+	stats.StatsSvc.SyncRepoHeadStatsAsync(repo.ID, repo.Path)
 
 	response.Success(c, toProtoRepo(repo))
 }
@@ -519,12 +514,7 @@ func BatchCreate(ctx context.Context, c *app.RequestContext) {
 			continue
 		}
 
-		go func(r po.Repo) {
-			head, err := gitSvc.GetHeadBranch(r.Path)
-			if err == nil && head != "" {
-				stats.StatsSvc.SyncRepoStats(r.ID, r.Path, head)
-			}
-		}(repo)
+		stats.StatsSvc.SyncRepoHeadStatsAsync(repo.ID, repo.Path)
 
 		success = append(success, api.NewRepoDTO(repo))
 	}
