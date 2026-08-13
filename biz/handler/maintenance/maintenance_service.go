@@ -88,6 +88,39 @@ func markMaintenanceFailed(dao *db.MaintenanceDAO, taskID, paramsJSON, errMsg st
 	dao.Update(rec)
 }
 
+// runMaintenanceTask is the shared lifecycle for async maintenance ops: it
+// creates the maintenance record (with task id + params), marks it running,
+// runs op in a goroutine, and records success/failure. Returns an error only
+// if the record could not be created. The record is persisted BEFORE the
+// goroutine starts so the task id is visible to the failure path (this also
+// fixes a prior race in GC, which set TaskID after launching the goroutine).
+func runMaintenanceTask(repo *po.Repo, taskID, kind, paramsJSON string, op func(svc *git.MaintenanceService) error) error {
+	git.GlobalTaskManager.AddTask(taskID)
+
+	record, err := git.CreateMaintenanceRecord(repo.ID, kind, repo.Path)
+	if err != nil {
+		return err
+	}
+	record.TaskID = taskID
+	if paramsJSON != "" {
+		record.ParamsJSON = paramsJSON
+	}
+	dao := db.NewMaintenanceDAO()
+	dao.Update(record)
+	dao.UpdateStatus(taskID, "running", "", "")
+
+	go func() {
+		svc := git.NewMaintenanceService()
+		if err := op(svc); err != nil {
+			markMaintenanceFailed(dao, taskID, paramsJSON, err.Error())
+			return
+		}
+		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
+	}()
+
+	return nil
+}
+
 func Slim(ctx context.Context, c *app.RequestContext) {
 	var req maintenance.SlimRequest
 	if err := c.BindAndValidate(&req); err != nil {
@@ -107,33 +140,18 @@ func Slim(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	taskID := uuid.New().String()
-	git.GlobalTaskManager.AddTask(taskID)
-
 	paramsJSON, _ := json.Marshal(map[string]interface{}{
 		"paths":        paths,
 		"addGitignore": req.GetAddGitignore(),
 	})
-
-	record, err := git.CreateMaintenanceRecord(repo.ID, "slim", repo.Path)
-	if err != nil {
+	addGitignore := req.GetAddGitignore()
+	taskID := uuid.New().String()
+	if err := runMaintenanceTask(repo, taskID, "slim", string(paramsJSON), func(svc *git.MaintenanceService) error {
+		return svc.SlimHistory(repo.Path, paths, addGitignore, taskID)
+	}); err != nil {
 		response.InternalError(c, err)
 		return
 	}
-	dao := db.NewMaintenanceDAO()
-	record.TaskID = taskID
-	record.ParamsJSON = string(paramsJSON)
-	dao.Update(record)
-	dao.UpdateStatus(taskID, "running", "", "")
-
-	go func() {
-		svc := git.NewMaintenanceService()
-		if err := svc.SlimHistory(repo.Path, paths, req.GetAddGitignore(), taskID); err != nil {
-			markMaintenanceFailed(dao, taskID, string(paramsJSON), err.Error())
-			return
-		}
-		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
-	}()
 
 	response.Success(c, &maintenance.MaintenanceTaskResponse{TaskId: &taskID})
 }
@@ -152,27 +170,12 @@ func GC(ctx context.Context, c *app.RequestContext) {
 	}
 
 	taskID := uuid.New().String()
-	git.GlobalTaskManager.AddTask(taskID)
-
-	record, err := git.CreateMaintenanceRecord(repo.ID, "gc", repo.Path)
-	if err != nil {
+	if err := runMaintenanceTask(repo, taskID, "gc", "", func(svc *git.MaintenanceService) error {
+		return svc.GarbageCollect(repo.Path, taskID)
+	}); err != nil {
 		response.InternalError(c, err)
 		return
 	}
-	db.NewMaintenanceDAO().UpdateStatus(taskID, "running", "", "")
-
-	go func() {
-		svc := git.NewMaintenanceService()
-		if err := svc.GarbageCollect(repo.Path, taskID); err != nil {
-			markMaintenanceFailed(db.NewMaintenanceDAO(), taskID, "", err.Error())
-			return
-		}
-		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
-	}()
-
-	dao := db.NewMaintenanceDAO()
-	record.TaskID = taskID
-	dao.Update(record)
 
 	response.Success(c, &maintenance.MaintenanceTaskResponse{TaskId: &taskID})
 }
@@ -449,36 +452,18 @@ func SlimByPrefix(ctx context.Context, c *app.RequestContext) {
 		forcePush = *body.ForcePush
 	}
 
-	taskID := uuid.New().String()
-	git.GlobalTaskManager.AddTask(taskID)
-
 	paramsJSON, _ := json.Marshal(map[string]interface{}{
 		"prefixes":     body.Prefixes,
 		"addGitignore": addGitignore,
 		"forcePush":    forcePush,
 	})
-
-	record, err := git.CreateMaintenanceRecord(repo.ID, "slim_prefix", repo.Path)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	dao := db.NewMaintenanceDAO()
-	record.TaskID = taskID
-	record.ParamsJSON = string(paramsJSON)
-	dao.Update(record)
-	dao.UpdateStatus(taskID, "running", "", "")
-
+	taskID := uuid.New().String()
 	repoID := repo.ID
 	repoPath := repo.Path
-
-	go func() {
-		svc := git.NewMaintenanceService()
+	if err := runMaintenanceTask(repo, taskID, "slim_prefix", string(paramsJSON), func(svc *git.MaintenanceService) error {
 		if err := svc.SlimHistoryByPrefix(repoPath, body.Prefixes, addGitignore, taskID); err != nil {
-			markMaintenanceFailed(dao, taskID, string(paramsJSON), err.Error())
-			return
+			return err
 		}
-
 		if forcePush {
 			git.GlobalTaskManager.AppendLog(taskID, "开始强制推送到远端...")
 			results := doForcePushAllRemotes(repoID, repoPath, taskID)
@@ -490,9 +475,11 @@ func SlimByPrefix(ctx context.Context, c *app.RequestContext) {
 				}
 			}
 		}
-
-		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
-	}()
+		return nil
+	}); err != nil {
+		response.InternalError(c, err)
+		return
+	}
 
 	response.Success(c, &maintenance.MaintenanceTaskResponse{TaskId: &taskID})
 }
