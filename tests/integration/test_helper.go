@@ -78,8 +78,6 @@ func SetupSuite(t *testing.T) *APITestSuite {
 		&po.Repo{},
 		&po.Credential{},
 		&po.SSHKey{},
-		&po.SyncTask{},
-		&po.SyncRun{},
 		&po.AuditLog{},
 		&po.SystemConfig{},
 		&po.CommitStat{},

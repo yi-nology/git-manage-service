@@ -23,8 +23,6 @@ func SetupTestDB(t *testing.T) {
 	err = DB.AutoMigrate(
 		&po.SchemaMigration{},
 		&po.Repo{},
-		&po.SyncTask{},
-		&po.SyncRun{},
 		&po.AuditLog{},
 		&po.SystemConfig{},
 		&po.CommitStat{},

@@ -83,10 +83,10 @@ func TriggerSyncByToken(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// 通过token查找任务
-	dao := db.NewSyncTaskDAO()
-	task, err := dao.FindByWebhookToken(token)
-	if err != nil {
+	// 通过 token 查找任务（git-sync-service 是任务的真正来源）
+	svc := syncv2.GetService()
+	task, err := svc.FindTaskByWebhookToken(ctx, token)
+	if err != nil || task == nil {
 		response.NotFound(c, "task not found for this token")
 		return
 	}
@@ -95,7 +95,6 @@ func TriggerSyncByToken(ctx context.Context, c *app.RequestContext) {
 	runID := uuid.New().String()
 
 	// 异步执行同步任务
-	svc := syncv2.GetService()
 	go func() {
 		_ = svc.RunTask(context.Background(), task.Key)
 	}()

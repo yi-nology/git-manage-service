@@ -17,6 +17,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/auth"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/biz/service/stats"
+	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
@@ -279,10 +280,14 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	count, _ := db.NewSyncTaskDAO().CountByRepoKey(repo.Key)
-	if count > 0 {
-		response.BadRequest(c, "cannot delete repo used in sync tasks")
-		return
+	// git-sync-service is the source of truth for sync tasks (the local
+	// sync_tasks table is an abandoned orphan that's never populated). Only
+	// enforce the guard when the sync service is initialized to avoid nil calls.
+	if syncSvc := syncv2.GetService(); syncSvc.GetCore() != nil {
+		if tasks, _ := syncSvc.ListTasks(ctx, repo.Key); len(tasks) > 0 {
+			response.BadRequest(c, "cannot delete repo used in sync tasks")
+			return
+		}
 	}
 
 	if err := repoDAO.DeleteWithBindings(repo); err != nil {

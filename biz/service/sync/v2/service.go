@@ -112,6 +112,27 @@ func (s *SyncServiceV2) GetTask(ctx context.Context, key string) (*gitsyncmodel.
 	return s.core.GetTask(ctx, key)
 }
 
+// FindTaskByWebhookToken finds a sync task by its auto-generated webhook trigger
+// token. git-sync-service mints a unique WebhookToken per task but exposes no
+// direct lookup, so this scans the task list. Returns (nil, nil) when nothing
+// matches; returns an error only when the service is uninitialized or the list
+// call fails.
+func (s *SyncServiceV2) FindTaskByWebhookToken(ctx context.Context, token string) (*gitsyncmodel.SyncTask, error) {
+	if s.core == nil {
+		return nil, fmt.Errorf("sync service not initialized")
+	}
+	tasks, _, err := s.core.ListTasks(ctx, "", 0, 1000)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range tasks {
+		if t.WebhookToken == token {
+			return t, nil
+		}
+	}
+	return nil, nil
+}
+
 // CreateTask 创建任务
 func (s *SyncServiceV2) CreateTask(ctx context.Context, req *gitsyncmodel.CreateTaskRequest) (*gitsyncmodel.SyncTask, error) {
 	return s.core.CreateTask(ctx, req)
