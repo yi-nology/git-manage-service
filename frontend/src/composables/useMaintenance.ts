@@ -14,14 +14,14 @@ import {
 } from '@/api/modules/maintenance'
 import type { RepoHealthReport, LargeFileEntry, MaintenanceRecordDTO, MaintenanceRecordListResponse, MaintenanceAIAnalysisResponse, FileAIRecommendation, PrefixSlimPreview } from '@/api/modules/maintenance'
 
-export function useMaintenance(repoKey: string) {
+export function useMaintenance(repo_key: string) {
   const healthLoading = ref(false)
   const healthReport = ref<RepoHealthReport | null>(null)
   const selectedFiles = ref<LargeFileEntry[]>([])
   const gcLoading = ref(false)
   const gitignoreLoading = ref(false)
-  const taskId = ref('')
-  const taskStatus = ref('')
+  const task_id = ref('')
+  const task_status = ref('')
   const taskError = ref('')
   const taskLogs = ref<string[]>([])
   const aiLoading = ref(false)
@@ -43,7 +43,7 @@ export function useMaintenance(repoKey: string) {
   })
 
   async function analyzeWithAI() {
-    if (!healthReport.value || healthReport.value.largeFiles.length === 0) {
+    if (!healthReport.value || healthReport.value.large_files.length === 0) {
       ElMessage.warning('请先体检并确保有大文件')
       return
     }
@@ -51,9 +51,9 @@ export function useMaintenance(repoKey: string) {
     aiResult.value = null
     aiRecommendationMap.value = new Map()
     try {
-      const paths = healthReport.value.largeFiles.map(f => f.path)
+      const paths = healthReport.value.large_files.map(f => f.path)
       const thresholdBytes = thresholdKB.value * 1024
-      const res = await analyzeMaintenanceAI(repoKey, paths, thresholdBytes) as any as MaintenanceAIAnalysisResponse
+      const res = await analyzeMaintenanceAI(repo_key, paths, thresholdBytes) as any as MaintenanceAIAnalysisResponse
       aiResult.value = res
       const map = new Map<string, FileAIRecommendation>()
       for (const r of res.recommendations || []) {
@@ -74,7 +74,7 @@ export function useMaintenance(repoKey: string) {
         .filter(r => r.recommendation === 'safe_to_delete')
         .map(r => r.path)
     )
-    const matched = healthReport.value?.largeFiles.filter(f => safePaths.has(f.path)) || []
+    const matched = healthReport.value?.large_files.filter(f => safePaths.has(f.path)) || []
     selectedFiles.value = matched
     ElMessage.success(`已采纳 ${matched.length} 个安全删除建议`)
   }
@@ -88,11 +88,11 @@ export function useMaintenance(repoKey: string) {
 
   async function loadHealth() {
     healthLoading.value = true
-    taskId.value = ''
-    taskStatus.value = ''
+    task_id.value = ''
+    task_status.value = ''
     try {
       const thresholdBytes = thresholdKB.value * 1024
-      healthReport.value = await getRepoHealth(repoKey, thresholdBytes, excludePatterns.value) as any
+      healthReport.value = await getRepoHealth(repo_key, thresholdBytes, excludePatterns.value) as any
     } catch (e: any) {
       ElMessage.error('体检失败: ' + (e.message || '未知错误'))
     } finally {
@@ -108,7 +108,7 @@ export function useMaintenance(repoKey: string) {
     const paths = selectedFiles.value.map(f => f.path)
     gitignoreLoading.value = true
     try {
-      await addGitignoreApi(repoKey, paths)
+      await addGitignoreApi(repo_key, paths)
       ElMessage.success(`已将 ${paths.length} 个文件添加到 .gitignore`)
     } catch (e: any) {
       ElMessage.error('添加失败: ' + (e.message || '未知错误'))
@@ -119,20 +119,20 @@ export function useMaintenance(repoKey: string) {
 
   async function handleSlimConfirm() {
     const paths = selectedFiles.value.map(f => f.path)
-    const totalSize = selectedFiles.value.reduce((sum, f) => sum + f.sizeBytes, 0)
+    const total_size = selectedFiles.value.reduce((sum, f) => sum + f.size_bytes, 0)
 
     try {
       await ElMessageBox.confirm(
-        `即将从历史中删除 ${paths.length} 个文件 (${formatFileSize(totalSize)})，此操作会重写 git 历史，不可恢复！`,
+        `即将从历史中删除 ${paths.length} 个文件 (${formatFileSize(total_size)})，此操作会重写 git 历史，不可恢复！`,
         '确认瘦身',
         { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' }
       )
     } catch { return }
 
     try {
-      const res = await slimRepo(repoKey, paths, true) as any
-      taskId.value = res.taskId
-      taskStatus.value = 'running'
+      const res = await slimRepo(repo_key, paths, true) as any
+      task_id.value = res.task_id
+      task_status.value = 'running'
       taskLogs.value = []
       taskError.value = ''
       startPolling()
@@ -148,9 +148,9 @@ export function useMaintenance(repoKey: string) {
     } catch { gcLoading.value = false; return }
 
     try {
-      const res = await gcRepo(repoKey) as any
-      taskId.value = res.taskId
-      taskStatus.value = 'running'
+      const res = await gcRepo(repo_key) as any
+      task_id.value = res.task_id
+      task_status.value = 'running'
       taskLogs.value = []
       taskError.value = ''
       startPolling()
@@ -165,8 +165,8 @@ export function useMaintenance(repoKey: string) {
     if (pollTimer) clearInterval(pollTimer)
     pollTimer = setInterval(async () => {
       try {
-        const task = await getTaskStatus(taskId.value) as any
-        taskStatus.value = task.status
+        const task = await getTaskStatus(task_id.value) as any
+        task_status.value = task.status
         taskLogs.value = task.progress || []
         taskError.value = task.error || ''
         if (task.status === 'success' || task.status === 'failed') {
@@ -189,7 +189,7 @@ export function useMaintenance(repoKey: string) {
     if (page !== undefined) recordsPage.value = page
     recordsLoading.value = true
     try {
-      const res = await getMaintenanceRecords(repoKey, recordsPage.value, recordsPageSize.value) as any as MaintenanceRecordListResponse
+      const res = await getMaintenanceRecords(repo_key, recordsPage.value, recordsPageSize.value) as any as MaintenanceRecordListResponse
       records.value = res.records || []
       recordsTotal.value = res.total || 0
     } catch {
@@ -226,7 +226,7 @@ export function useMaintenance(repoKey: string) {
     prefixPreviewLoading.value = true
     prefixPreview.value = null
     try {
-      prefixPreview.value = await previewPrefixSlim(repoKey, prefixTags.value) as any as PrefixSlimPreview
+      prefixPreview.value = await previewPrefixSlim(repo_key, prefixTags.value) as any as PrefixSlimPreview
     } catch (e: any) {
       ElMessage.error('预览失败: ' + (e.message || '未知错误'))
     } finally {
@@ -240,21 +240,21 @@ export function useMaintenance(repoKey: string) {
       return
     }
 
-    const totalSize = prefixPreview.value ? formatFileSize(prefixPreview.value.totalBytes) : '未知'
-    const count = prefixPreview.value ? prefixPreview.value.totalCount : 0
+    const total_size = prefixPreview.value ? formatFileSize(prefixPreview.value.total_bytes) : '未知'
+    const count = prefixPreview.value ? prefixPreview.value.total_count : 0
 
     try {
       await ElMessageBox.confirm(
-        `即将删除所有匹配前缀 [${prefixTags.value.join(', ')}] 的文件（共 ${count} 个，${totalSize}），此操作会重写 git 历史，不可恢复！${prefixSlimForcePush.value ? '\n\n瘦身完成后将强制推送到所有绑定的远端。' : ''}`,
+        `即将删除所有匹配前缀 [${prefixTags.value.join(', ')}] 的文件（共 ${count} 个，${total_size}），此操作会重写 git 历史，不可恢复！${prefixSlimForcePush.value ? '\n\n瘦身完成后将强制推送到所有绑定的远端。' : ''}`,
         '确认前缀瘦身',
         { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' }
       )
     } catch { return }
 
     try {
-      const res = await slimByPrefix(repoKey, prefixTags.value, true, prefixSlimForcePush.value) as any
-      taskId.value = res.taskId
-      taskStatus.value = 'running'
+      const res = await slimByPrefix(repo_key, prefixTags.value, true, prefixSlimForcePush.value) as any
+      task_id.value = res.task_id
+      task_status.value = 'running'
       taskLogs.value = []
       taskError.value = ''
       startPolling()
@@ -273,9 +273,9 @@ export function useMaintenance(repoKey: string) {
     } catch { return }
 
     try {
-      const res = await forcePushRemotes(repoKey) as any
-      taskId.value = res.taskId
-      taskStatus.value = 'running'
+      const res = await forcePushRemotes(repo_key) as any
+      task_id.value = res.task_id
+      task_status.value = 'running'
       taskLogs.value = []
       taskError.value = ''
       startPolling()
@@ -290,8 +290,8 @@ export function useMaintenance(repoKey: string) {
     selectedFiles,
     gcLoading,
     gitignoreLoading,
-    taskId,
-    taskStatus,
+    task_id,
+    task_status,
     taskError,
     taskLogs,
     aiLoading,

@@ -1,6 +1,6 @@
 <template>
   <div class="edit-repo-page">
-    <PageHeader title="编辑仓库" :showBack="true" :back-route="`/local-repos/${repoKey}`" />
+    <PageHeader title="编辑仓库" :showBack="true" :back-route="`/local-repos/${repo_key}`" />
 
     <FormCard v-if="!pageLoading">
       <div class="form-field">
@@ -93,13 +93,13 @@
 
       <BindingDialog
         v-model:visible="showBindingDialog"
-        :repo-key="repoKey"
+        :repo-key="repo_key"
         :providers="availableProviders"
         @created="loadBindings"
       />
 
       <template #footer>
-        <ActionPill variant="outline" @click="router.push(`/local-repos/${repoKey}`)">取消</ActionPill>
+        <ActionPill variant="outline" @click="router.push(`/local-repos/${repo_key}`)">取消</ActionPill>
         <ActionPill variant="primary" :icon="Check" :disabled="editSaving" @click="handleSaveEdit">
           {{ editSaving ? '保存中...' : '保存' }}
         </ActionPill>
@@ -135,7 +135,7 @@ const providerStore = useProviderStore()
 
 const router = useRouter()
 const route = useRoute()
-const repoKey = route.params.repoKey as string
+const repo_key = route.params.repo_key as string
 
 const pageLoading = ref(false)
 const editSaving = ref(false)
@@ -212,9 +212,9 @@ async function testEditRemote(index: number) {
   if (!row || !row.fetch_url) { ElMessage.warning('请输入 Fetch URL'); return }
   row._testing = true
   try {
-    const credentialId = editRemoteCredentials.value[row.name] || editDefaultCredentialId.value
-    if (credentialId) {
-      const result = await testCredential(credentialId, row.fetch_url)
+    const credential_id = editRemoteCredentials.value[row.name] || editDefaultCredentialId.value
+    if (credential_id) {
+      const result = await testCredential(credential_id, row.fetch_url)
       if (result.success) ElMessage.success(`${row.name || 'Remote'} 连接成功`)
       else ElMessage.error('连接失败: ' + (result.message || '未知错误'))
     } else {
@@ -247,16 +247,16 @@ async function handleSaveEdit() {
     const remotes: GitRemote[] = editRemotes.value.filter(r => r.name && r.fetch_url).map(r => ({ name: r.name, fetch_url: r.fetch_url, push_url: r.push_url || r.fetch_url, is_mirror: r.is_mirror }))
     const rc: Record<string, number> = {}
     for (const [k, v] of Object.entries(editRemoteCredentials.value)) { if (v) rc[k] = v }
-    await updateRepo({ key: repoKey, name: editForm.value.name, path: editForm.value.path, remote_url: editForm.value.remote_url || undefined, remotes, default_credential_id: editDefaultCredentialId.value, remote_credentials: Object.keys(rc).length > 0 ? rc : undefined })
+    await updateRepo({ key: repo_key, name: editForm.value.name, path: editForm.value.path, remote_url: editForm.value.remote_url || undefined, remotes, default_credential_id: editDefaultCredentialId.value, remote_credentials: Object.keys(rc).length > 0 ? rc : undefined })
     ElMessage.success('保存成功')
-    router.push(`/local-repos/${repoKey}`)
+    router.push(`/local-repos/${repo_key}`)
   } finally {
     editSaving.value = false
   }
 }
 
 async function loadBindings() {
-  try { bindings.value = (await listBindings({ repo_key: repoKey })) || [] } catch { bindings.value = [] }
+  try { bindings.value = (await listBindings({ repo_key: repo_key })) || [] } catch { bindings.value = [] }
 }
 
 async function handleDeleteBinding(id: number) {
@@ -288,7 +288,7 @@ async function openBindingDialogWithProviders() {
 onMounted(async () => {
   pageLoading.value = true
   try {
-    const repo: RepoDTO = await getRepoDetail(repoKey)
+    const repo: RepoDTO = await getRepoDetail(repo_key)
     editForm.value = { name: repo.name, path: repo.path, remote_url: repo.remote_url || '' }
     editDefaultCredentialId.value = repo.default_credential_id
     editRemoteCredentials.value = { ...(repo.remote_credentials || {}) }
@@ -314,7 +314,7 @@ onMounted(async () => {
     loadBindings()
   } catch (e: any) {
     ElMessage.error('加载仓库失败: ' + (e?.message || ''))
-    router.push(`/local-repos/${repoKey}`)
+    router.push(`/local-repos/${repo_key}`)
   } finally {
     pageLoading.value = false
   }

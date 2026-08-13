@@ -5,8 +5,8 @@ export function getRepoList() {
   return request.get<unknown, RepoDTO[]>('/repo/list')
 }
 
-export function getRepoDetail(repoKey: string) {
-  return request.get<unknown, RepoDTO>('/repo/detail', { params: { key: repoKey } })
+export function getRepoDetail(repo_key: string) {
+  return request.get<unknown, RepoDTO>('/repo/detail', { params: { key: repo_key } })
 }
 
 export function createRepo(data: RegisterRepoReq) {
@@ -25,17 +25,17 @@ export function cloneRepo(data: CloneRepoReq) {
   return request.post<unknown, { task_id: string }>('/repo/clone', data)
 }
 
-export function fetchRepo(repoKey: string) {
-  return request.post('/repo/fetch', { repo_key: repoKey })
+export function fetchRepo(repo_key: string) {
+  return request.post('/repo/fetch', { repo_key: repo_key })
 }
 
 export function scanRepo(path: string) {
   return request.post<unknown, ScanResult>('/repo/scan', { path })
 }
 
-export function getCloneTask(taskId: string) {
+export function getCloneTask(task_id: string) {
   return request.get<unknown, { status: string; progress: string[]; error: string }>('/repo/task', {
-    params: { task_id: taskId },
+    params: { task_id: task_id },
   })
 }
 

@@ -5,7 +5,7 @@ import request from '@/api/request'
 export interface AIChatMessage {
   role: 'user' | 'assistant'
   content: string
-  applyContent?: string
+  apply_content?: string
 }
 
 export function useAIChat(getContent: () => string) {
@@ -86,7 +86,7 @@ export function useAIChat(getContent: () => string) {
         aiMessages.value.push({ role: 'assistant', content: '已生成修改，请查看并确认。' })
       } else {
         const msg: AIChatMessage = { role: 'assistant', content: res?.result || '无结果' }
-        if (res?.apply_content) msg.applyContent = res.apply_content
+        if (res?.apply_content) msg.apply_content = res.apply_content
         aiMessages.value.push(msg)
       }
     } catch (e: any) {

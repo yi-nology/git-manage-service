@@ -18,9 +18,9 @@ export function getSyncStats() {
   return request.get<unknown, SyncStats>(`${V2_PREFIX}/sync/stats`)
 }
 
-export function getSyncTasks(repoKey?: string) {
+export function getSyncTasks(repo_key?: string) {
   return request.get<unknown, SyncTask[]>(`${V2_PREFIX}/sync/tasks`, {
-    params: repoKey ? { repo_key: repoKey } : {},
+    params: repo_key ? { repo_key: repo_key } : {},
   })
 }
 
@@ -40,8 +40,8 @@ export function deleteSyncTask(key: string) {
   return request.delete(`${V2_PREFIX}/sync/task`, { data: { key } })
 }
 
-export function runSyncTask(taskKey: string) {
-  return request.post(`${V2_PREFIX}/sync/task/run`, { key: taskKey })
+export function runSyncTask(task_key: string) {
+  return request.post(`${V2_PREFIX}/sync/task/run`, { key: task_key })
 }
 
 export function batchRunTasks(taskKeys: string[]) {
@@ -52,10 +52,10 @@ export function previewSync(data: PreviewSyncRequest) {
   return request.post<unknown, PreviewSyncResponse>(`${V2_PREFIX}/sync/preview`, data)
 }
 
-export function getSyncHistory(taskKey?: string, limit?: number) {
+export function getSyncHistory(task_key?: string, limit?: number) {
   return request.get<unknown, SyncRun[]>(`${V2_PREFIX}/sync/history`, {
     params: {
-      ...(taskKey ? { task_key: taskKey } : {}),
+      ...(task_key ? { task_key: task_key } : {}),
       ...(limit ? { limit } : {}),
     },
   })
@@ -65,9 +65,9 @@ export function deleteSyncHistory(id: number) {
   return request.delete(`${V2_PREFIX}/sync/history`, { data: { id } })
 }
 
-export function getWebhookRules(repoKey?: string) {
+export function getWebhookRules(repo_key?: string) {
   return request.get<unknown, WebhookRule[]>(`${V2_PREFIX}/sync/webhook/rules`, {
-    params: repoKey ? { repo_key: repoKey } : {},
+    params: repo_key ? { repo_key: repo_key } : {},
   })
 }
 
@@ -87,10 +87,10 @@ export function deleteWebhookRule(id: number) {
   return request.delete(`${V2_PREFIX}/sync/webhook/rule`, { data: { id } })
 }
 
-export function getWebhookEvents(repoKey?: string, limit?: number) {
+export function getWebhookEvents(repo_key?: string, limit?: number) {
   return request.get<unknown, WebhookEvent[]>(`${V2_PREFIX}/sync/webhook/events`, {
     params: {
-      ...(repoKey ? { repo_key: repoKey } : {}),
+      ...(repo_key ? { repo_key: repo_key } : {}),
       ...(limit ? { limit } : {}),
     },
   })
@@ -109,24 +109,24 @@ export function updateSyncConfig(items: SyncConfigItem[]) {
 }
 
 export const syncV2Api = {
-  getStats: getSyncStats,
-  listTasks: getSyncTasks,
-  getTask: getSyncTask,
-  createTask: createSyncTask,
-  updateTask: updateSyncTask,
-  deleteTask: deleteSyncTask,
-  runTask: runSyncTask,
+  get_stats: getSyncStats,
+  list_tasks: getSyncTasks,
+  get_task: getSyncTask,
+  create_task: createSyncTask,
+  update_task: updateSyncTask,
+  delete_task: deleteSyncTask,
+  run_task: runSyncTask,
   batchRunTasks,
   previewSync,
-  listHistory: getSyncHistory,
-  deleteHistory: deleteSyncHistory,
-  listRules: getWebhookRules,
-  getRule: getWebhookRule,
-  createRule: createWebhookRule,
-  updateRule: updateWebhookRule,
-  deleteRule: deleteWebhookRule,
-  listEvents: getWebhookEvents,
-  retryEvent: retryWebhookEvent,
-  getConfig: getSyncConfig,
-  updateConfig: updateSyncConfig,
+  list_history: getSyncHistory,
+  delete_history: deleteSyncHistory,
+  list_rules: getWebhookRules,
+  get_rule: getWebhookRule,
+  create_rule: createWebhookRule,
+  update_rule: updateWebhookRule,
+  delete_rule: deleteWebhookRule,
+  list_events: getWebhookEvents,
+  retry_event: retryWebhookEvent,
+  get_config: getSyncConfig,
+  update_config: updateSyncConfig,
 }

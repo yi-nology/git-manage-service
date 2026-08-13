@@ -88,8 +88,8 @@ watch(
       message: issue.message,
       startLineNumber: issue.line,
       startColumn: issue.column || 1,
-      endLineNumber: issue.endLine || issue.line,
-      endColumn: issue.endColumn || (issue.column || 1) + 10,
+      endLineNumber: issue.end_line || issue.line,
+      endColumn: issue.end_column || (issue.column || 1) + 10,
     }))
 
     monaco.editor.setModelMarkers(model, 'rpmspec', markers)

@@ -36,13 +36,13 @@
     </el-empty>
 
     <div v-if="mirrors.length > 0" class="mirror-grid">
-      <div v-for="mirror in mirrors" :key="mirror.id" class="mirror-card" :class="`type-${mirror.mirrorType}`">
+      <div v-for="mirror in mirrors" :key="mirror.id" class="mirror-card" :class="`type-${mirror.mirror_type}`">
         <div class="card-header">
           <div class="card-title">
-            <el-tag :type="mirror.mirrorType === 'pull' ? 'primary' : 'warning'" size="large">
-              <el-icon v-if="mirror.mirrorType === 'pull'"><Download /></el-icon>
+            <el-tag :type="mirror.mirror_type === 'pull' ? 'primary' : 'warning'" size="large">
+              <el-icon v-if="mirror.mirror_type === 'pull'"><Download /></el-icon>
               <el-icon v-else><Upload /></el-icon>
-              {{ mirror.mirrorType.toUpperCase() }}
+              {{ mirror.mirror_type.toUpperCase() }}
             </el-tag>
             <el-tag :type="getStatusType(mirror.status)" size="small">
               {{ getStatusLabel(mirror.status) }}
@@ -56,42 +56,42 @@
         <div class="card-body">
           <div class="info-row">
             <span class="info-label">远程 URL</span>
-            <span class="info-value mono">{{ mirror.remoteUrl }}</span>
+            <span class="info-value mono">{{ mirror.remote_url }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Remote 名称</span>
-            <span class="info-value">{{ mirror.remoteName }}</span>
+            <span class="info-value">{{ mirror.remote_name }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">分支过滤</span>
-            <span class="info-value">{{ mirror.branchFilter || '全部分支' }}</span>
+            <span class="info-value">{{ mirror.branch_filter || '全部分支' }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">同步间隔</span>
-            <span class="info-value">{{ mirror.cronExpr || `${mirror.syncInterval}s` }}</span>
+            <span class="info-value">{{ mirror.cron_expr || `${mirror.sync_interval}s` }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Git 选项</span>
             <div class="git-options">
-              <el-tag v-if="mirror.gitForce" size="small" type="danger" effect="plain">--force</el-tag>
-              <el-tag v-if="mirror.gitPrune" size="small" effect="plain">--prune</el-tag>
-              <el-tag v-if="mirror.gitTags" size="small" effect="plain">--tags</el-tag>
-              <el-tag v-if="!mirror.gitForce && !mirror.gitPrune && !mirror.gitTags" size="small" type="info">无</el-tag>
+              <el-tag v-if="mirror.git_force" size="small" type="danger" effect="plain">--force</el-tag>
+              <el-tag v-if="mirror.git_prune" size="small" effect="plain">--prune</el-tag>
+              <el-tag v-if="mirror.git_tags" size="small" effect="plain">--tags</el-tag>
+              <el-tag v-if="!mirror.git_force && !mirror.git_prune && !mirror.git_tags" size="small" type="info">无</el-tag>
             </div>
           </div>
            <div class="info-row">
              <span class="info-label">上次同步</span>
-             <span class="info-value">{{ mirror.lastSyncAt ? formatTime(mirror.lastSyncAt) : '从未' }}</span>
+             <span class="info-value">{{ mirror.last_sync_at ? formatTime(mirror.last_sync_at) : '从未' }}</span>
            </div>
            <div class="info-row">
              <span class="info-label">下次同步</span>
              <span class="info-value" :class="{ 'syncing': syncingId === mirror.id }">
-               {{ syncingId === mirror.id ? '同步中...' : (mirror.nextSyncAt ? formatTime(mirror.nextSyncAt) : '-') }}
+               {{ syncingId === mirror.id ? '同步中...' : (mirror.next_sync_at ? formatTime(mirror.next_sync_at) : '-') }}
              </span>
            </div>
-          <div v-if="mirror.lastError" class="info-row error-row">
+          <div v-if="mirror.last_error" class="info-row error-row">
             <span class="info-label">错误</span>
-            <span class="info-value">{{ mirror.lastError }}</span>
+            <span class="info-value">{{ mirror.last_error }}</span>
           </div>
         </div>
 
@@ -130,13 +130,13 @@
           <div class="form-tip">从当前仓库远程列表中选择，或手动填写下方</div>
         </el-form-item>
         <el-form-item label="远程 URL" required>
-          <el-input v-model="form.remoteUrl" placeholder="https://github.com/user/repo.git" />
+          <el-input v-model="form.remote_url" placeholder="https://github.com/user/repo.git" />
         </el-form-item>
         <el-form-item label="Remote 名称">
-          <el-input v-model="form.remoteName" placeholder="origin" />
+          <el-input v-model="form.remote_name" placeholder="origin" />
         </el-form-item>
         <el-form-item label="凭据">
-          <el-select v-model="form.credentialId" clearable placeholder="选择凭据（可选）" style="width: 100%">
+          <el-select v-model="form.credential_id" clearable placeholder="选择凭据（可选）" style="width: 100%">
             <el-option v-for="c in credentials" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
@@ -157,36 +157,36 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="同步间隔">
-              <el-input-number v-model="form.syncInterval" :min="30" :step="30" style="width: 100%" />
+              <el-input-number v-model="form.sync_interval" :min="30" :step="30" style="width: 100%" />
               <span style="margin-left: 8px">秒</span>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="Cron 表达式">
-              <el-input v-model="form.cronExpr" placeholder="0 */5 * * *" />
+              <el-input v-model="form.cron_expr" placeholder="0 */5 * * *" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="触发设置">
-          <el-checkbox v-model="form.syncOnPush">Push 事件自动触发同步</el-checkbox>
+          <el-checkbox v-model="form.sync_on_push">Push 事件自动触发同步</el-checkbox>
         </el-form-item>
         <el-divider content-position="left">Git 选项</el-divider>
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item>
-              <el-checkbox v-model="form.gitForce">
+              <el-checkbox v-model="form.git_force">
                 <span class="checkbox-label">强制推送 <span class="warning-text">⚠️</span></span>
               </el-checkbox>
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item>
-              <el-checkbox v-model="form.gitPrune">清理已删除分支</el-checkbox>
+              <el-checkbox v-model="form.git_prune">清理已删除分支</el-checkbox>
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item>
-              <el-checkbox v-model="form.gitTags">同步标签</el-checkbox>
+              <el-checkbox v-model="form.git_tags">同步标签</el-checkbox>
             </el-form-item>
           </el-col>
         </el-row>
@@ -214,8 +214,8 @@
       <el-table v-if="syncLogs.length > 0" :data="syncLogs" v-loading="logLoading" stripe max-height="500">
         <el-table-column label="触发类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="getTriggerType(row.triggerType)" size="small">
-              {{ getTriggerLabel(row.triggerType) }}
+            <el-tag :type="getTriggerType(row.trigger_type)" size="small">
+              {{ getTriggerLabel(row.trigger_type) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -227,14 +227,14 @@
           </template>
         </el-table-column>
         <el-table-column label="耗时" width="90">
-          <template #default="{ row }">{{ row.durationMs ? `${(row.durationMs / 1000).toFixed(1)}s` : '-' }}</template>
+          <template #default="{ row }">{{ row.duration_ms ? `${(row.duration_ms / 1000).toFixed(1)}s` : '-' }}</template>
         </el-table-column>
-        <el-table-column label="分支" prop="branchesSynced" width="70" align="center" />
-        <el-table-column label="提交" prop="commitsPushed" width="70" align="center" />
+        <el-table-column label="分支" prop="branches_synced" width="70" align="center" />
+        <el-table-column label="提交" prop="commits_pushed" width="70" align="center" />
         <el-table-column label="开始时间" width="170">
-          <template #default="{ row }">{{ row.startedAt ? formatTime(row.startedAt) : '-' }}</template>
+          <template #default="{ row }">{{ row.started_at ? formatTime(row.started_at) : '-' }}</template>
         </el-table-column>
-        <el-table-column label="错误" prop="errorMessage" min-width="200" show-overflow-tooltip />
+        <el-table-column label="错误" prop="error_message" min-width="200" show-overflow-tooltip />
         <el-table-column label="操作" width="80" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" link @click="showLogDetail(row)">详情</el-button>
@@ -249,18 +249,18 @@
           <el-descriptions-item label="状态">
             <el-tag :type="currentLog.status === 'success' ? 'success' : 'danger'">{{ currentLog.status }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="触发类型">{{ getTriggerLabel(currentLog.triggerType) }}</el-descriptions-item>
-          <el-descriptions-item label="耗时">{{ currentLog.durationMs ? `${(currentLog.durationMs / 1000).toFixed(2)}s` : '-' }}</el-descriptions-item>
+          <el-descriptions-item label="触发类型">{{ getTriggerLabel(currentLog.trigger_type) }}</el-descriptions-item>
+          <el-descriptions-item label="耗时">{{ currentLog.duration_ms ? `${(currentLog.duration_ms / 1000).toFixed(2)}s` : '-' }}</el-descriptions-item>
           <el-descriptions-item label="分支 / 提交">
-            {{ currentLog.branchesSynced || 0 }} / {{ currentLog.commitsPushed || 0 }}
+            {{ currentLog.branches_synced || 0 }} / {{ currentLog.commits_pushed || 0 }}
           </el-descriptions-item>
-          <el-descriptions-item label="错误" :span="2" v-if="currentLog.errorMessage">
-            <span class="error-text">{{ currentLog.errorMessage }}</span>
+          <el-descriptions-item label="错误" :span="2" v-if="currentLog.error_message">
+            <span class="error-text">{{ currentLog.error_message }}</span>
           </el-descriptions-item>
         </el-descriptions>
-        <div v-if="currentLog.detailLog" class="log-section">
+        <div v-if="currentLog.detail_log" class="log-section">
           <div class="log-section-title">执行日志</div>
-          <pre class="log-content">{{ currentLog.detailLog }}</pre>
+          <pre class="log-content">{{ currentLog.detail_log }}</pre>
         </div>
       </div>
     </el-dialog>
@@ -306,16 +306,16 @@ const logDetailVisible = ref(false)
 const currentLog = ref<MirrorSyncLogDTO | null>(null)
 
 const form = ref({
-  remoteUrl: '',
-  remoteName: 'origin',
-  credentialId: null as number | null,
-  branchFilter: '',
-  syncInterval: 600,
-  cronExpr: '',
-  syncOnPush: false,
-  gitForce: false,
-  gitPrune: true,
-  gitTags: true,
+  remote_url: '',
+  remote_name: 'origin',
+  credential_id: null as number | null,
+  branch_filter: '',
+  sync_interval: 600,
+  cron_expr: '',
+  sync_on_push: false,
+  git_force: false,
+  git_prune: true,
+  git_tags: true,
   enabled: true,
 })
 
@@ -390,13 +390,13 @@ async function loadRepoRemoteInfo() {
 
 function onRemoteChange(remote: { name: string; url: string }) {
   if (remote) {
-    form.value.remoteUrl = remote.url
-    form.value.remoteName = remote.name
+    form.value.remote_url = remote.url
+    form.value.remote_name = remote.name
   }
 }
 
 function onBranchesChange(branches: string[]) {
-  form.value.branchFilter = branches.join(', ')
+  form.value.branch_filter = branches.join(', ')
 }
 
 async function showCreateDialog(type: 'pull' | 'push' = 'pull') {
@@ -405,54 +405,54 @@ async function showCreateDialog(type: 'pull' | 'push' = 'pull') {
   selectedRemote.value = null
   selectedBranches.value = []
   form.value = {
-    remoteUrl: '',
-    remoteName: 'origin',
-    credentialId: null,
-    branchFilter: '',
-    syncInterval: 600,
-    cronExpr: '',
-    syncOnPush: false,
-    gitForce: false,
-    gitPrune: true,
-    gitTags: true,
+    remote_url: '',
+    remote_name: 'origin',
+    credential_id: null,
+    branch_filter: '',
+    sync_interval: 600,
+    cron_expr: '',
+    sync_on_push: false,
+    git_force: false,
+    git_prune: true,
+    git_tags: true,
     enabled: true,
   }
   await loadRepoRemoteInfo()
   if (repoRemotes.value.length > 0 && type === 'pull') {
     selectedRemote.value = repoRemotes.value[0]
-    form.value.remoteUrl = repoRemotes.value[0].url
-    form.value.remoteName = repoRemotes.value[0].name
+    form.value.remote_url = repoRemotes.value[0].url
+    form.value.remote_name = repoRemotes.value[0].name
   }
   dialogVisible.value = true
 }
 
 async function editMirror(mirror: MirrorDTO) {
   editingMirror.value = mirror
-  createType.value = mirror.mirrorType
+  createType.value = mirror.mirror_type
   await loadRepoRemoteInfo()
-  selectedBranches.value = mirror.branchFilter
-    ? mirror.branchFilter.split(',').map((b: string) => b.trim()).filter(Boolean)
+  selectedBranches.value = mirror.branch_filter
+    ? mirror.branch_filter.split(',').map((b: string) => b.trim()).filter(Boolean)
     : []
-  const matchedRemote = repoRemotes.value.find((r: any) => r.name === mirror.remoteName)
+  const matchedRemote = repoRemotes.value.find((r: any) => r.name === mirror.remote_name)
   selectedRemote.value = matchedRemote || null
   form.value = {
-    remoteUrl: mirror.remoteUrl,
-    remoteName: mirror.remoteName,
-    credentialId: mirror.credentialId,
-    branchFilter: mirror.branchFilter,
-    syncInterval: mirror.syncInterval,
-    cronExpr: mirror.cronExpr,
-    syncOnPush: mirror.syncOnPush,
-    gitForce: mirror.gitForce,
-    gitPrune: mirror.gitPrune,
-    gitTags: mirror.gitTags,
+    remote_url: mirror.remote_url,
+    remote_name: mirror.remote_name,
+    credential_id: mirror.credential_id,
+    branch_filter: mirror.branch_filter,
+    sync_interval: mirror.sync_interval,
+    cron_expr: mirror.cron_expr,
+    sync_on_push: mirror.sync_on_push,
+    git_force: mirror.git_force,
+    git_prune: mirror.git_prune,
+    git_tags: mirror.git_tags,
     enabled: mirror.enabled,
   }
   dialogVisible.value = true
 }
 
 async function submitForm() {
-  if (!form.value.remoteUrl) {
+  if (!form.value.remote_url) {
     ElMessage.warning('请输入远程 URL')
     return
   }
@@ -464,8 +464,8 @@ async function submitForm() {
       ElMessage.success('更新成功')
     } else {
       const data: CreateMirrorReq = {
-        repoId: currentRepoId.value,
-        mirrorType: createType.value,
+        repo_id: currentRepoId.value,
+        mirror_type: createType.value,
         ...form.value,
       }
       await mirrorApi.createMirror(data)

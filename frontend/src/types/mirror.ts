@@ -1,80 +1,80 @@
 export interface MirrorDTO {
   id: number
-  repoId: number
-  repoName: string
-  repoKey: string
-  mirrorType: 'pull' | 'push'
-  remoteUrl: string
-  remoteName: string
-  credentialId: number | null
-  credentialName?: string
-  branchFilter: string
-  syncInterval: number
-  cronExpr: string
-  syncOnPush: boolean
-  gitForce: boolean
-  gitPrune: boolean
-  gitTags: boolean
+  repo_id: number
+  repo_name: string
+  repo_key: string
+  mirror_type: 'pull' | 'push'
+  remote_url: string
+  remote_name: string
+  credential_id: number | null
+  credential_name?: string
+  branch_filter: string
+  sync_interval: number
+  cron_expr: string
+  sync_on_push: boolean
+  git_force: boolean
+  git_prune: boolean
+  git_tags: boolean
   enabled: boolean
   status: 'active' | 'syncing' | 'failed' | 'paused'
-  lastSyncAt: string | null
-  lastError: string
-  retryCount: number
-  nextSyncAt: string | null
-  webhookToken: string
-  createdAt: string
-  updatedAt: string
+  last_sync_at: string | null
+  last_error: string
+  retry_count: number
+  next_sync_at: string | null
+  webhook_token: string
+  created_at: string
+  updated_at: string
 }
 
 export interface CreateMirrorReq {
-  repoId: number
-  mirrorType: 'pull' | 'push'
-  remoteUrl: string
-  remoteName?: string
-  credentialId?: number | null
-  branchFilter?: string
-  syncInterval?: number
-  cronExpr?: string
-  syncOnPush?: boolean
-  gitForce?: boolean
-  gitPrune?: boolean
-  gitTags?: boolean
+  repo_id: number
+  mirror_type: 'pull' | 'push'
+  remote_url: string
+  remote_name?: string
+  credential_id?: number | null
+  branch_filter?: string
+  sync_interval?: number
+  cron_expr?: string
+  sync_on_push?: boolean
+  git_force?: boolean
+  git_prune?: boolean
+  git_tags?: boolean
   enabled?: boolean
 }
 
 export interface UpdateMirrorReq {
-  remoteUrl?: string
-  remoteName?: string
-  credentialId?: number | null
-  branchFilter?: string
-  syncInterval?: number
-  cronExpr?: string
-  syncOnPush?: boolean
-  gitForce?: boolean
-  gitPrune?: boolean
-  gitTags?: boolean
+  remote_url?: string
+  remote_name?: string
+  credential_id?: number | null
+  branch_filter?: string
+  sync_interval?: number
+  cron_expr?: string
+  sync_on_push?: boolean
+  git_force?: boolean
+  git_prune?: boolean
+  git_tags?: boolean
   enabled?: boolean
 }
 
 export interface MirrorSyncLogDTO {
   id: number
-  mirrorId: number
-  triggerType: 'manual' | 'cron' | 'webhook' | 'push_event'
+  mirror_id: number
+  trigger_type: 'manual' | 'cron' | 'webhook' | 'push_event'
   status: 'pending' | 'running' | 'success' | 'failed'
-  startedAt: string | null
-  finishedAt: string | null
-  durationMs: number
-  branchesSynced: number
-  commitsPushed: number
-  errorMessage: string
-  detailLog?: string
-  createdAt: string
+  started_at: string | null
+  finished_at: string | null
+  duration_ms: number
+  branches_synced: number
+  commits_pushed: number
+  error_message: string
+  detail_log?: string
+  created_at: string
 }
 
 export interface AnalyzeRemoteResponse {
   reachable: boolean
   branches: string[]
-  defaultBranch: string
+  default_branch: string
   protocol: string
 }
 

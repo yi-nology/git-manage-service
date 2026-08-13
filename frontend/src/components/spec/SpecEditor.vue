@@ -3,9 +3,9 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <h3>Spec 编辑器</h3>
-        <span v-if="currentFile" class="current-file">
-          {{ currentFile }}
-          <el-tag v-if="isDirty" type="warning" size="small">未保存</el-tag>
+        <span v-if="current_file" class="current-file">
+          {{ current_file }}
+          <el-tag v-if="is_dirty" type="warning" size="small">未保存</el-tag>
         </span>
       </div>
       <div class="toolbar-right">
@@ -35,7 +35,7 @@
         </el-button>
         <el-button
           size="small"
-          :disabled="!isDirty || hasErrors()"
+          :disabled="!is_dirty || hasErrors()"
           :loading="savingInProgress"
           @click="saveCurrentFile"
           class="tb-outline-btn"
@@ -45,7 +45,7 @@
         <el-button
           size="small"
           type="primary"
-          :disabled="!isDirty"
+          :disabled="!is_dirty"
           @click="showCommitDialog = true"
         >
           <el-icon><Promotion /></el-icon> Commit
@@ -109,8 +109,8 @@
         <div class="problems-panel">
           <div class="problems-header">
             <span>问题 ({{ lintIssues.length }})</span>
-            <el-tag v-if="errorCount > 0" type="danger" size="small">{{ errorCount }} 错误</el-tag>
-            <el-tag v-if="warningCount > 0" type="warning" size="small">{{ warningCount }} 警告</el-tag>
+            <el-tag v-if="error_count > 0" type="danger" size="small">{{ error_count }} 错误</el-tag>
+            <el-tag v-if="warning_count > 0" type="warning" size="small">{{ warning_count }} 警告</el-tag>
           </div>
           <el-scrollbar>
             <div v-if="lintIssues.length === 0" class="no-problems">
@@ -135,8 +135,8 @@
                 <div class="problem-meta">
                   <span>Line {{ issue.line }}</span>
                 </div>
-                <div v-if="issue.quickFix && issue.source === 'ai'" class="problem-fix">
-                  <span class="fix-hint">{{ issue.quickFix }}</span>
+                <div v-if="issue.quick_fix && issue.source === 'ai'" class="problem-fix">
+                  <span class="fix-hint">{{ issue.quick_fix }}</span>
                   <el-button
                     size="small"
                     type="primary"
@@ -236,10 +236,10 @@ const props = defineProps<Props>()
 
 const filterText = ref('')
 const fileTree = ref<SpecFileNode[]>([])
-const currentFile = ref('')
+const current_file = ref('')
 const content = ref('')
-const originalContent = ref('')
-const isDirty = ref(false)
+const original_content = ref('')
+const is_dirty = ref(false)
 const lintIssues = ref<LintIssue[]>([])
 const loading = ref(false)
 const savingInProgress = ref(false)
@@ -247,8 +247,8 @@ const committing = ref(false)
 const treeRef = ref()
 const monacoContainer = ref<HTMLElement>()
 let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
-const errorCount = computed(() => lintIssues.value.filter(i => i.severity === 'error').length)
-const warningCount = computed(() => lintIssues.value.filter(i => i.severity === 'warning').length)
+const error_count = computed(() => lintIssues.value.filter(i => i.severity === 'error').length)
+const warning_count = computed(() => lintIssues.value.filter(i => i.severity === 'warning').length)
 let lintDebounceTimer: ReturnType<typeof setTimeout> | null = null
 const lintMode = ref<'rule_only' | 'rule_and_ai' | 'ai_only'>('rule_only')
 const fixingIndex = ref<number | null>(null)
@@ -264,10 +264,10 @@ watch(showAIPanel, () => {
 defineExpose({
   refresh: loadFileTree,
   clearEditor: () => {
-    currentFile.value = ''
+    current_file.value = ''
     content.value = ''
-    originalContent.value = ''
-    isDirty.value = false
+    original_content.value = ''
+    is_dirty.value = false
     lintIssues.value = []
     if (editorInstance) editorInstance.setValue('')
   }
@@ -299,17 +299,17 @@ async function loadFileTree() {
 }
 
 async function loadFile(path: string) {
-  if (isDirty.value) {
+  if (is_dirty.value) {
     const ok = await ElMessageBox.confirm('当前文件未保存，是否继续？', '提示', { type: 'warning' }).catch(() => false)
     if (!ok) return
   }
   try {
     loading.value = true
     const { content: fc } = await getSpecContent(path, props.repoKey)
-    currentFile.value = path
+    current_file.value = path
     content.value = fc
-    originalContent.value = fc
-    isDirty.value = false
+    original_content.value = fc
+    is_dirty.value = false
     lintIssues.value = []
     if (editorInstance) editorInstance.setValue(fc)
   } catch (e: any) {
@@ -339,7 +339,7 @@ function initMonaco() {
   })
   editorInstance.onDidChangeModelContent(() => {
     content.value = editorInstance?.getValue() || ''
-    isDirty.value = content.value !== originalContent.value
+    is_dirty.value = content.value !== original_content.value
     if (lintDebounceTimer) clearTimeout(lintDebounceTimer)
     lintDebounceTimer = setTimeout(() => { if (content.value) doLint('rule_only') }, 500)
   })
@@ -349,7 +349,7 @@ async function doLint(mode: string) {
   if (!content.value) return
   try {
     const result = await lintSpec(content.value, undefined, mode as any)
-    lintIssues.value = (result.issues || []).map(i => ({ ...i, ruleName: i.ruleId || '', source: i.source || 'rule' }))
+    lintIssues.value = (result.issues || []).map(i => ({ ...i, rule_name: i.rule_id || '', source: i.source || 'rule' }))
     updateMonacoMarkers()
   } catch { ElMessage.error('Linting 失败') }
 }
@@ -361,7 +361,7 @@ function updateMonacoMarkers() {
   monaco.editor.setModelMarkers(model, 'rpmspec', lintIssues.value.map(i => ({
     severity: i.severity === 'error' ? monaco.MarkerSeverity.Error : i.severity === 'warning' ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Info,
     message: i.message, startLineNumber: i.line, startColumn: i.column || 1,
-    endLineNumber: i.endLine || i.line, endColumn: i.endColumn || (i.column || 1) + 10,
+    endLineNumber: i.end_line || i.line, endColumn: i.end_column || (i.column || 1) + 10,
   })))
 }
 
@@ -371,16 +371,16 @@ function handleLintWithMode(mode: 'rule_only' | 'rule_and_ai' | 'ai_only') {
   doLint(mode)
 }
 
-function hasErrors() { return errorCount.value > 0 }
+function hasErrors() { return error_count.value > 0 }
 
 async function saveCurrentFile() {
-  if (!currentFile.value) return
-  if (errorCount.value > 0) { ElMessage.warning(`发现 ${errorCount.value} 个错误，请先修复`); return }
+  if (!current_file.value) return
+  if (error_count.value > 0) { ElMessage.warning(`发现 ${error_count.value} 个错误，请先修复`); return }
   try {
     savingInProgress.value = true
-    await saveSpecContent(currentFile.value, { content: content.value, message: `chore(spec): update ${currentFile.value}` }, props.repoKey)
-    originalContent.value = content.value
-    isDirty.value = false
+    await saveSpecContent(current_file.value, { content: content.value, message: `chore(spec): update ${current_file.value}` }, props.repoKey)
+    original_content.value = content.value
+    is_dirty.value = false
     ElMessage.success('保存成功')
   } catch { ElMessage.error('保存失败') }
   finally { savingInProgress.value = false }
@@ -389,7 +389,7 @@ async function saveCurrentFile() {
 const showCommitDialog = ref(false)
 const commitMsg = ref('')
 const diffPreview = computed(() => {
-  const orig = originalContent.value.split('\n'), cur = content.value.split('\n')
+  const orig = original_content.value.split('\n'), cur = content.value.split('\n')
   const d: string[] = []
   for (let i = 0; i < Math.max(orig.length, cur.length); i++) {
     if ((orig[i]||'') !== (cur[i]||'')) {
@@ -403,12 +403,12 @@ const addedLines = computed(() => (diffPreview.value.match(/^\+/gm) || []).lengt
 const removedLines = computed(() => (diffPreview.value.match(/^-/gm) || []).length)
 
 async function handleCommit() {
-  if (!commitMsg.value.trim() || !currentFile.value) return
+  if (!commitMsg.value.trim() || !current_file.value) return
   try {
     committing.value = true
-    await commitSpec(currentFile.value, { message: commitMsg.value, content: content.value }, props.repoKey)
-    originalContent.value = content.value
-    isDirty.value = false
+    await commitSpec(current_file.value, { message: commitMsg.value, content: content.value }, props.repoKey)
+    original_content.value = content.value
+    is_dirty.value = false
     showCommitDialog.value = false
     commitMsg.value = ''
     ElMessage.success('提交成功')
@@ -428,14 +428,14 @@ async function handleAIFix(issue: LintIssue, idx: number) {
 
 function applyAIContent(c: string) {
   content.value = c
-  isDirty.value = c !== originalContent.value
+  is_dirty.value = c !== original_content.value
   if (editorInstance) editorInstance.setValue(c)
   ElMessage.success('AI 内容已应用到编辑器')
 }
 
 function applyFormatResult(c: string) {
   content.value = c
-  isDirty.value = c !== originalContent.value
+  is_dirty.value = c !== original_content.value
   if (editorInstance) editorInstance.setValue(c)
 }
 
@@ -456,7 +456,7 @@ async function handleInitSpec() {
   try {
     initInProgress.value = true
     const fn = initForm.value.filename.endsWith('.spec') ? initForm.value.filename : `${initForm.value.filename}.spec`
-    const res = await createSpecFile({ repo_key: props.repoKey, path: '.', name: fn, content: generateSpecTemplate(initForm.value) })
+    const res = await createSpecFile({ repo_key: props.repoKey, path: '.', name: fn, content: generate_spec_template(initForm.value) })
     ElMessage.success('Spec 文件创建成功')
     showInitDialog.value = false
     await loadFileTree()
@@ -466,7 +466,7 @@ async function handleInitSpec() {
   finally { initInProgress.value = false }
 }
 
-function generateSpecTemplate(f: typeof initForm.value): string {
+function generate_spec_template(f: typeof initForm.value): string {
   return `Name:           ${f.name}
 Version:        ${f.version}
 Release:        ${f.release}%{?dist}

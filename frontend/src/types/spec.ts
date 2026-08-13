@@ -10,23 +10,23 @@ export interface SpecFileNode {
 export interface LintIssue {
   line: number
   column?: number
-  endLine?: number
-  endColumn?: number
+  end_line?: number
+  end_column?: number
   message: string
   severity: 'error' | 'warning' | 'info'
-  ruleId: string
-  ruleName?: string
+  rule_id: string
+  rule_name?: string
   source?: 'rule' | 'ai'
-  quickFix?: string
+  quick_fix?: string
 }
 
 export interface LintResult {
   file?: string
   issues: LintIssue[]
   stats: {
-    errorCount: number
-    warningCount: number
-    infoCount: number
+    error_count: number
+    warning_count: number
+    info_count: number
   }
 }
 
@@ -61,28 +61,28 @@ export interface CommitResponse {
 }
 
 export interface EditorState {
-  currentFile: string | null
+  current_file: string | null
   content: string
-  originalContent: string
-  isDirty: boolean
-  cursorPosition: { line: number; column: number } | null
+  original_content: string
+  is_dirty: boolean
+  cursor_position: { line: number; column: number } | null
 }
 
 export interface FormatOptions {
   curlify?: boolean
-  removeClean?: boolean
-  removeBuildRoot?: boolean
-  removeGroup?: boolean
-  licenseSpdx?: boolean
-  sortDeps?: boolean
-  tabToSpaces?: boolean
-  indentSize?: number
-  preambleOrder?: boolean
-  alignValues?: boolean
-  pathMacros?: boolean
-  utilMacros?: boolean
-  commonCleanup?: boolean
-  conditionalTrim?: boolean
+  remove_clean?: boolean
+  remove_build_root?: boolean
+  remove_group?: boolean
+  license_spdx?: boolean
+  sort_deps?: boolean
+  tab_to_spaces?: boolean
+  indent_size?: number
+  preamble_order?: boolean
+  align_values?: boolean
+  path_macros?: boolean
+  util_macros?: boolean
+  common_cleanup?: boolean
+  conditional_trim?: boolean
 }
 
 export interface FormatChange {

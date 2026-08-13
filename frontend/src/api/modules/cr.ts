@@ -35,24 +35,24 @@ export function listCRs(params: ListCRsReq) {
   return request.get<unknown, { items: CRDTO[]; total: number }>('/cr/list', { params })
 }
 
-export function getCR(repoKey: string, crNumber: number) {
-  return request.get<unknown, CRDTO>('/cr/detail', { params: { repo_key: repoKey, cr_number: crNumber } })
+export function getCR(repo_key: string, crNumber: number) {
+  return request.get<unknown, CRDTO>('/cr/detail', { params: { repo_key: repo_key, cr_number: crNumber } })
 }
 
-export function syncCRs(repoKey: string, state?: string) {
-  return request.post<unknown, { synced_count: number }>('/cr/sync', { repo_key: repoKey, state })
+export function syncCRs(repo_key: string, state?: string) {
+  return request.post<unknown, { synced_count: number }>('/cr/sync', { repo_key: repo_key, state })
 }
 
-export function mergeCR(repoKey: string, crNumber: number, mergeCommitMessage?: string, squash?: boolean, removeSourceBranch?: boolean) {
-  return request.post<unknown, CRDTO>('/cr/merge', { repo_key: repoKey, cr_number: crNumber, merge_commit_message: mergeCommitMessage, squash, remove_source_branch: removeSourceBranch })
+export function mergeCR(repo_key: string, crNumber: number, mergeCommitMessage?: string, squash?: boolean, removeSourceBranch?: boolean) {
+  return request.post<unknown, CRDTO>('/cr/merge', { repo_key: repo_key, cr_number: crNumber, merge_commit_message: mergeCommitMessage, squash, remove_source_branch: removeSourceBranch })
 }
 
-export function closeCR(repoKey: string, crNumber: number) {
-  return request.post<unknown, CRDTO>('/cr/close', { repo_key: repoKey, cr_number: crNumber })
+export function closeCR(repo_key: string, crNumber: number) {
+  return request.post<unknown, CRDTO>('/cr/close', { repo_key: repo_key, cr_number: crNumber })
 }
 
-export function detectCR(repoKey: string) {
-  return request.get<unknown, { provider_config_id: number; platform_owner: string; platform_repo: string }>('/cr/detect', { params: { repo_key: repoKey } })
+export function detectCR(repo_key: string) {
+  return request.get<unknown, { provider_config_id: number; platform_owner: string; platform_repo: string }>('/cr/detect', { params: { repo_key: repo_key } })
 }
 
 export function createCR(data: { repo_key: string; title: string; description?: string; source_branch: string; target_branch: string; labels?: string[]; remove_source_branch?: boolean }) {
@@ -67,10 +67,10 @@ export function createRemoteCR(data: { provider_id: number; owner: string; repo:
   return request.post<unknown, CRDTO>('/cr/remote/create', data)
 }
 
-export function mergeRemoteCR(providerId: number, owner: string, repo: string, crNumber: number, mergeCommitMessage?: string, squash?: boolean, removeSourceBranch?: boolean) {
-  return request.post<unknown, CRDTO>('/cr/remote/merge', { provider_id: providerId, owner, repo, cr_number: crNumber, merge_commit_message: mergeCommitMessage, squash, remove_source_branch: removeSourceBranch })
+export function mergeRemoteCR(provider_id: number, owner: string, repo: string, crNumber: number, mergeCommitMessage?: string, squash?: boolean, removeSourceBranch?: boolean) {
+  return request.post<unknown, CRDTO>('/cr/remote/merge', { provider_id: provider_id, owner, repo, cr_number: crNumber, merge_commit_message: mergeCommitMessage, squash, remove_source_branch: removeSourceBranch })
 }
 
-export function closeRemoteCR(providerId: number, owner: string, repo: string, crNumber: number) {
-  return request.post<unknown, CRDTO>('/cr/remote/close', { provider_id: providerId, owner, repo, cr_number: crNumber })
+export function closeRemoteCR(provider_id: number, owner: string, repo: string, crNumber: number) {
+  return request.post<unknown, CRDTO>('/cr/remote/close', { provider_id: provider_id, owner, repo, cr_number: crNumber })
 }

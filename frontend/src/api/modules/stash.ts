@@ -11,48 +11,48 @@ export interface StashEntry {
 }
 
 // 列出stash
-export function listStash(repoKey: string) {
+export function listStash(repo_key: string) {
   return request.get<unknown, { stashes: StashEntry[] }>('/stash/list', {
-    params: { repo_key: repoKey }
+    params: { repo_key: repo_key }
   })
 }
 
 // 保存stash
-export function saveStash(repoKey: string, message?: string, includeUntracked?: boolean) {
+export function saveStash(repo_key: string, message?: string, includeUntracked?: boolean) {
   return request.post('/stash/save', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     message,
     include_untracked: includeUntracked
   })
 }
 
 // 应用stash
-export function applyStash(repoKey: string, index: number) {
+export function applyStash(repo_key: string, index: number) {
   return request.post('/stash/apply', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     index
   })
 }
 
 // 弹出stash
-export function popStash(repoKey: string, index: number) {
+export function popStash(repo_key: string, index: number) {
   return request.post('/stash/pop', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     index
   })
 }
 
 // 删除stash
-export function dropStash(repoKey: string, index: number) {
+export function dropStash(repo_key: string, index: number) {
   return request.post('/stash/drop', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     index
   })
 }
 
 // 清空stash
-export function clearStash(repoKey: string) {
+export function clearStash(repo_key: string) {
   return request.post('/stash/clear', {
-    repo_key: repoKey
+    repo_key: repo_key
   })
 }

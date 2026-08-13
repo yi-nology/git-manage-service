@@ -4,10 +4,10 @@ import type { SpecFileNode, LintIssue, LintRule } from '@/types/spec'
 
 export const useSpecStore = defineStore('spec', () => {
   const fileTree = ref<SpecFileNode[]>([])
-  const currentFile = ref<string | null>(null)
+  const current_file = ref<string | null>(null)
   const content = ref('')
-  const originalContent = ref('')
-  const isDirty = ref(false)
+  const original_content = ref('')
+  const is_dirty = ref(false)
   const lintIssues = ref<LintIssue[]>([])
   const rules = ref<LintRule[]>([])
   const loading = ref(false)
@@ -18,22 +18,22 @@ export const useSpecStore = defineStore('spec', () => {
   }
 
   function setCurrentFile(path: string | null) {
-    currentFile.value = path
+    current_file.value = path
   }
 
   function setContent(newContent: string) {
     content.value = newContent
-    isDirty.value = newContent !== originalContent.value
+    is_dirty.value = newContent !== original_content.value
   }
 
   function setOriginalContent(original: string) {
-    originalContent.value = original
-    isDirty.value = content.value !== original
+    original_content.value = original
+    is_dirty.value = content.value !== original
   }
 
   function resetContent() {
-    content.value = originalContent.value
-    isDirty.value = false
+    content.value = original_content.value
+    is_dirty.value = false
   }
 
   function setLintIssues(issues: LintIssue[]) {
@@ -48,7 +48,7 @@ export const useSpecStore = defineStore('spec', () => {
     rules.value = newRules
   }
 
-  function updateRule(id: string, data: Partial<LintRule>) {
+  function update_rule(id: string, data: Partial<LintRule>) {
     const index = rules.value.findIndex((r) => r.id === id)
     if (index !== -1 && rules.value[index]) {
       const rule = rules.value[index]
@@ -70,10 +70,10 @@ export const useSpecStore = defineStore('spec', () => {
 
   return {
     fileTree,
-    currentFile,
+    current_file,
     content,
-    originalContent,
-    isDirty,
+    original_content,
+    is_dirty,
     lintIssues,
     rules,
     loading,
@@ -86,7 +86,7 @@ export const useSpecStore = defineStore('spec', () => {
     setLintIssues,
     clearLintIssues,
     setRules,
-    updateRule,
+    update_rule,
     setLoading,
     setEditorReady,
     getEnabledRuleIds,

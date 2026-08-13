@@ -9,12 +9,12 @@
           <StatusBadge variant="success" text="已激活" />
         </div>
         <div class="active-body">
-          <div class="avatar" :style="{ background: avatarColor(activeIdentity.canonicalName) }">
-            {{ avatarText(activeIdentity.canonicalName) }}
+          <div class="avatar" :style="{ background: avatarColor(activeIdentity.canonical_name) }">
+            {{ avatarText(activeIdentity.canonical_name) }}
           </div>
           <div class="active-info">
-            <div class="active-name">{{ activeIdentity.canonicalName }}</div>
-            <div class="active-email">{{ activeIdentity.canonicalEmail }}</div>
+            <div class="active-name">{{ activeIdentity.canonical_name }}</div>
+            <div class="active-email">{{ activeIdentity.canonical_email }}</div>
           </div>
         </div>
         <div v-if="activeIdentity.aliases.length > 0" class="active-aliases">
@@ -48,12 +48,12 @@
       <DataTable v-else :columns="identityColumns" :data="identities" row-key="id">
         <template #cell-name="{ row }">
           <div class="cell-identity">
-            <div class="cell-avatar" :style="{ background: avatarColor(row.canonicalName) }">
-              {{ avatarText(row.canonicalName) }}
+            <div class="cell-avatar" :style="{ background: avatarColor(row.canonical_name) }">
+              {{ avatarText(row.canonical_name) }}
             </div>
             <div class="cell-info">
-              <div class="cell-name">{{ row.canonicalName }}</div>
-              <div class="cell-email">{{ row.canonicalEmail }}</div>
+              <div class="cell-name">{{ row.canonical_name }}</div>
+              <div class="cell-email">{{ row.canonical_email }}</div>
             </div>
           </div>
         </template>
@@ -61,15 +61,15 @@
           <span class="cell-aliases-count">{{ row.aliases.length }} 个别名</span>
         </template>
         <template #cell-status="{ row }">
-          <StatusBadge v-if="row.isDefault" variant="success" text="已激活" :show-dot="false" />
+          <StatusBadge v-if="row.is_default" variant="success" text="已激活" :show-dot="false" />
           <StatusBadge v-else variant="default" text="未激活" :show-dot="false" />
         </template>
         <template #row-actions="{ row }">
-          <button v-if="!row.isDefault" class="act-btn act-btn--green" :disabled="activatingId === row.id" @click="handleActivate(row.id)">
+          <button v-if="!row.is_default" class="act-btn act-btn--green" :disabled="activatingId === row.id" @click="handleActivate(row.id)">
             {{ activatingId === row.id ? '激活中...' : '激活' }}
           </button>
           <button class="act-btn act-btn--primary" @click="openEditDialog(row)" aria-label="编辑身份">编辑</button>
-          <button v-if="!row.isDefault" class="act-btn act-btn--danger" @click="handleDelete(row)" aria-label="删除身份">删除</button>
+          <button v-if="!row.is_default" class="act-btn act-btn--danger" @click="handleDelete(row)" aria-label="删除身份">删除</button>
         </template>
       </DataTable>
 
@@ -82,7 +82,7 @@
         <div v-if="aiSuggestion.suggestions.length > 0" class="ai-suggest-list">
           <div v-for="(s, i) in aiSuggestion.suggestions" :key="i" class="ai-suggest-item">
             <div class="ai-suggest-info">
-              <span class="ai-suggest-arrow">{{ s.identityName }} ← <strong>{{ s.aliasName }}</strong> &lt;{{ s.aliasEmail }}&gt;</span>
+              <span class="ai-suggest-arrow">{{ s.identity_name }} ← <strong>{{ s.alias_name }}</strong> &lt;{{ s.alias_email }}&gt;</span>
               <el-tag :type="s.confidence === 'high' ? 'success' : s.confidence === 'medium' ? 'warning' : 'info'" size="small">{{ s.confidence }}</el-tag>
             </div>
             <div class="ai-suggest-reason">{{ s.reason }}</div>
@@ -101,7 +101,7 @@
         <div v-if="aiMerge.merges.length > 0" class="ai-suggest-list">
           <div v-for="(m, i) in aiMerge.merges" :key="i" class="ai-suggest-item">
             <div class="ai-suggest-info">
-              <span class="ai-suggest-arrow">保留 <strong>{{ m.keepName }}</strong> ← 合并 {{ m.mergeNames }}</span>
+              <span class="ai-suggest-arrow">保留 <strong>{{ m.keep_name }}</strong> ← 合并 {{ m.merge_names }}</span>
             </div>
             <div class="ai-suggest-reason">{{ m.reason }}</div>
             <el-button size="small" type="primary" @click="executeMerge(m)">执行合并</el-button>
@@ -118,11 +118,11 @@
 
     <el-dialog v-model="showDialog" :title="editingId ? '编辑身份' : '新建身份'" width="520px" destroy-on-close>
       <el-form ref="formRef" :model="dialogForm" :rules="formRules" label-width="100px" @submit.prevent="handleSaveDialog">
-        <el-form-item label="主名" prop="canonicalName">
-          <el-input v-model="dialogForm.canonicalName" placeholder="如 John Doe" />
+        <el-form-item label="主名" prop="canonical_name">
+          <el-input v-model="dialogForm.canonical_name" placeholder="如 John Doe" />
         </el-form-item>
-        <el-form-item label="主邮箱" prop="canonicalEmail">
-          <el-input v-model="dialogForm.canonicalEmail" placeholder="如 john@example.com" />
+        <el-form-item label="主邮箱" prop="canonical_email">
+          <el-input v-model="dialogForm.canonical_email" placeholder="如 john@example.com" />
         </el-form-item>
         <el-form-item label="别名">
           <div class="alias-list">
@@ -160,7 +160,7 @@ import type { AuthorIdentityDTO, AliasEntry, AliasSuggestion, MergeCandidate } f
 const { identities, loading: loadingState, loadIdentities, handleCreate, handleUpdate, handleDelete: doDelete, handleActivate: doActivate } = useAuthorIdentity()
 const { aiLoading, aiSuggestion, aiMerge, smartSuggest, suggestMerges } = useAuthorAI('')
 
-const activeIdentity = computed(() => identities.value.find(i => i.isDefault) || null)
+const activeIdentity = computed(() => identities.value.find(i => i.is_default) || null)
 const activatingId = ref<number | null>(null)
 
 const identityColumns = [
@@ -184,20 +184,20 @@ const showDialog = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
-const dialogForm = ref<{ canonicalName: string; canonicalEmail: string; aliases: AliasEntry[] }>({
-  canonicalName: '',
-  canonicalEmail: '',
+const dialogForm = ref<{ canonical_name: string; canonical_email: string; aliases: AliasEntry[] }>({
+  canonical_name: '',
+  canonical_email: '',
   aliases: [],
 })
 
 const emailRe = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 const formRules: FormRules = {
-  canonicalName: [
+  canonical_name: [
     { required: true, message: '名称不能为空', trigger: 'blur' },
     { max: 100, message: '名称不能超过100个字符', trigger: 'blur' },
   ],
-  canonicalEmail: [
+  canonical_email: [
     { required: true, message: '邮箱不能为空', trigger: 'blur' },
     { pattern: emailRe, message: '邮箱格式不正确', trigger: 'blur' },
   ],
@@ -205,15 +205,15 @@ const formRules: FormRules = {
 
 function openCreateDialog() {
   editingId.value = null
-  dialogForm.value = { canonicalName: '', canonicalEmail: '', aliases: [] }
+  dialogForm.value = { canonical_name: '', canonical_email: '', aliases: [] }
   showDialog.value = true
 }
 
 function openEditDialog(item: AuthorIdentityDTO) {
   editingId.value = item.id
   dialogForm.value = {
-    canonicalName: item.canonicalName,
-    canonicalEmail: item.canonicalEmail,
+    canonical_name: item.canonical_name,
+    canonical_email: item.canonical_email,
     aliases: item.aliases.map(a => ({ ...a })),
   }
   showDialog.value = true
@@ -251,7 +251,7 @@ async function handleSaveDialog() {
 async function handleDelete(item: AuthorIdentityDTO) {
   try {
     await ElMessageBox.confirm(
-      `确认删除身份「${item.canonicalName}」？关联的仓库将恢复使用全局默认。`,
+      `确认删除身份「${item.canonical_name}」？关联的仓库将恢复使用全局默认。`,
       '删除身份',
       { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' }
     )
@@ -292,15 +292,15 @@ async function doSuggestMerges() {
 }
 
 async function adoptSuggestion(s: AliasSuggestion) {
-  const identity = identities.value.find(i => i.id === s.identityId)
+  const identity = identities.value.find(i => i.id === s.identity_id)
   if (!identity) {
     ElMessage.error('找不到目标身份')
     return
   }
-  const newAliases = [...identity.aliases, { name: s.aliasName, email: s.aliasEmail }]
+  const newAliases = [...identity.aliases, { name: s.alias_name, email: s.alias_email }]
   await handleUpdate(identity.id, {
-    canonicalName: identity.canonicalName,
-    canonicalEmail: identity.canonicalEmail,
+    canonical_name: identity.canonical_name,
+    canonical_email: identity.canonical_email,
     aliases: newAliases,
   })
   aiSuggestion.value = null
@@ -309,25 +309,25 @@ async function adoptSuggestion(s: AliasSuggestion) {
 async function executeMerge(m: MergeCandidate) {
   try {
     await ElMessageBox.confirm(
-      `将 "${m.mergeNames}" 的所有别名合并到 "${m.keepName}"，并删除被合并的身份？`,
+      `将 "${m.merge_names}" 的所有别名合并到 "${m.keep_name}"，并删除被合并的身份？`,
       '确认合并',
       { confirmButtonText: '确认合并', cancelButtonText: '取消', type: 'warning' }
     )
   } catch { return }
-  const keepIdentity = identities.value.find(i => i.id === m.keepId)
+  const keepIdentity = identities.value.find(i => i.id === m.keep_id)
   if (!keepIdentity) return
   const mergeAliases: AliasEntry[] = []
-  for (const mid of m.mergeIds) {
+  for (const mid of m.merge_ids) {
     const mi = identities.value.find(i => i.id === mid)
     if (mi) {
-      mergeAliases.push({ name: mi.canonicalName, email: mi.canonicalEmail })
+      mergeAliases.push({ name: mi.canonical_name, email: mi.canonical_email })
       mergeAliases.push(...mi.aliases)
       await doDelete(mid)
     }
   }
   await handleUpdate(keepIdentity.id, {
-    canonicalName: keepIdentity.canonicalName,
-    canonicalEmail: keepIdentity.canonicalEmail,
+    canonical_name: keepIdentity.canonical_name,
+    canonical_email: keepIdentity.canonical_email,
     aliases: [...keepIdentity.aliases, ...mergeAliases],
   })
   aiMerge.value = null

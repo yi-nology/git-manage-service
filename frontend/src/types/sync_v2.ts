@@ -4,38 +4,38 @@ export interface SyncTask {
   id: number
   key: string
   name: string
-  sourceRepoKey: string
-  sourceBranch: string
-  targetRepoKey: string
-  targetBranch: string
-  syncMode: 'single' | 'bidirectional'
+  source_repo_key: string
+  source_branch: string
+  target_repo_key: string
+  target_branch: string
+  sync_mode: 'single' | 'bidirectional'
   cron: string
   enabled: boolean
-  gitTags: boolean
-  gitForce: boolean
-  gitPrune: boolean
-  gitNoVerify: boolean
-  pushOptions: string
-  lastRunAt?: string
-  lastStatus?: 'success' | 'failed' | 'running'
-  createdAt: string
-  updatedAt: string
+  git_tags: boolean
+  git_force: boolean
+  git_prune: boolean
+  git_no_verify: boolean
+  push_options: string
+  last_run_at?: string
+  last_status?: 'success' | 'failed' | 'running'
+  created_at: string
+  updated_at: string
 }
 
 export interface CreateTaskRequest {
   name: string
-  sourceRepoKey: string
-  sourceBranch: string
-  targetRepoKey: string
-  targetBranch: string
-  syncMode: 'single' | 'bidirectional'
+  source_repo_key: string
+  source_branch: string
+  target_repo_key: string
+  target_branch: string
+  sync_mode: 'single' | 'bidirectional'
   cron?: string
   enabled?: boolean
-  gitTags?: boolean
-  gitForce?: boolean
-  gitPrune?: boolean
-  gitNoVerify?: boolean
-  pushOptions?: string
+  git_tags?: boolean
+  git_force?: boolean
+  git_prune?: boolean
+  git_no_verify?: boolean
+  push_options?: string
 }
 
 export interface UpdateTaskRequest extends Partial<CreateTaskRequest> {
@@ -46,42 +46,42 @@ export interface UpdateTaskRequest extends Partial<CreateTaskRequest> {
 
 export interface SyncRun {
   id: number
-  taskKey: string
-  triggerSource: 'manual' | 'cron' | 'webhook'
+  task_key: string
+  trigger_source: 'manual' | 'cron' | 'webhook'
   status: 'running' | 'success' | 'failed' | 'conflict'
-  startTime: string
-  endTime?: string
+  start_time: string
+  end_time?: string
   details?: string
-  errorMessage?: string
-  createdAt: string
+  error_message?: string
+  created_at: string
 }
 
 // ==================== Stats Types ====================
 
 export interface SyncStats {
-  totalTasks: number
-  enabledTasks: number
-  todayRuns: number
-  failedRuns: number
-  runningTasks: number
+  total_tasks: number
+  enabled_tasks: number
+  today_runs: number
+  failed_runs: number
+  running_tasks: number
 }
 
 // ==================== Preview Types ====================
 
 export interface PreviewSyncRequest {
-  sourceRepoKey: string
-  sourceBranch: string
-  targetRepoKey: string
-  targetBranch: string
-  gitForce?: boolean
+  source_repo_key: string
+  source_branch: string
+  target_repo_key: string
+  target_branch: string
+  git_force?: boolean
 }
 
 export interface PreviewSyncResponse {
-  canSync: boolean
-  sourceExists: boolean
-  targetExists: boolean
-  isFastForward: boolean
-  commitsCount: number
+  can_sync: boolean
+  source_exists: boolean
+  target_exists: boolean
+  is_fast_forward: boolean
+  commits_count: number
   message: string
   changes?: string[]
 }
@@ -91,26 +91,26 @@ export interface PreviewSyncResponse {
 export interface WebhookRule {
   id: number
   name: string
-  repoKey: string
-  eventType: string
-  branchPattern: string
+  repo_key: string
+  event_type: string
+  branch_pattern: string
   action: 'sync' | 'notify'
-  syncTaskKeys: string
-  minInterval: number
+  sync_task_keys: string
+  min_interval: number
   enabled: boolean
   description?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export interface CreateRuleRequest {
   name: string
-  repoKey: string
-  eventType: string
-  branchPattern: string
+  repo_key: string
+  event_type: string
+  branch_pattern: string
   action: 'sync' | 'notify'
-  syncTaskKeys?: string
-  minInterval?: number
+  sync_task_keys?: string
+  min_interval?: number
   enabled?: boolean
   description?: string
 }
@@ -123,14 +123,14 @@ export interface UpdateRuleRequest extends Partial<CreateRuleRequest> {
 
 export interface WebhookEvent {
   id: number
-  ruleId?: number
-  repoKey: string
-  eventType: string
+  rule_id?: number
+  repo_key: string
+  event_type: string
   payload?: string
   status: 'pending' | 'processing' | 'success' | 'failed'
-  triggeredAt: string
-  executedAt?: string
-  errorMessage?: string
+  triggered_at: string
+  executed_at?: string
+  error_message?: string
 }
 
 // ==================== Config Types ====================

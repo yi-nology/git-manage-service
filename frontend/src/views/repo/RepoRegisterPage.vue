@@ -30,7 +30,7 @@
 
       <div class="form-field">
         <label class="field-label">远程 URL (可选)</label>
-        <input v-model="singleForm.remoteUrl" placeholder="git@github.com:user/my-project.git" class="field-input" />
+        <input v-model="singleForm.remote_url" placeholder="git@github.com:user/my-project.git" class="field-input" />
       </div>
 
       <div class="form-field" v-if="singleRepoInfo">
@@ -50,7 +50,7 @@
       <div class="form-field">
         <label class="field-label">认证凭证 (可选)</label>
         <CredentialSelector
-          v-model="singleForm.credentialId"
+          v-model="singleForm.credential_id"
           placeholder="选择认证凭证（可选）"
           style="width: 100%; max-width: 400px"
         />
@@ -97,8 +97,8 @@ const registering = ref(false)
 const singleForm = reactive({
   name: '',
   path: '',
-  remoteUrl: '',
-  credentialId: undefined as number | undefined,
+  remote_url: '',
+  credential_id: undefined as number | undefined,
 })
 const singleRepoInfo = ref<ScannedRepo | null>(null)
 
@@ -164,7 +164,7 @@ async function handleRegisterSingle() {
     await createRepo({
       name,
       path: singleForm.path,
-      default_credential_id: singleForm.credentialId,
+      default_credential_id: singleForm.credential_id,
     })
     showSuccess(`仓库 "${name}" 注册成功`)
     router.push('/local-repos')

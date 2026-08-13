@@ -1,9 +1,9 @@
 import request from '../request'
 import type { SyncTaskDTO, CreateSyncTaskReq, UpdateSyncTaskReq, ExecuteSyncReq, SyncRunDTO, PreviewSyncReq, PreviewSyncResponse } from '@/types/sync'
 
-export function getSyncTasks(repoKey?: string) {
+export function getSyncTasks(repo_key?: string) {
   return request.get<unknown, SyncTaskDTO[]>('/sync/tasks', {
-    params: repoKey ? { repo_key: repoKey } : {},
+    params: repo_key ? { repo_key: repo_key } : {},
   })
 }
 
@@ -23,17 +23,17 @@ export function deleteSyncTask(key: string) {
   return request.post('/sync/task/delete', { key })
 }
 
-export function runSyncTask(taskKey: string) {
-  return request.post('/sync/run', { task_key: taskKey })
+export function runSyncTask(task_key: string) {
+  return request.post('/sync/run', { task_key: task_key })
 }
 
 export function executeSyncOnce(data: ExecuteSyncReq) {
   return request.post<unknown, { task_key: string }>('/sync/execute', data)
 }
 
-export function getSyncHistory(repoKey?: string) {
+export function getSyncHistory(repo_key?: string) {
   return request.get<unknown, SyncRunDTO[]>('/sync/history', {
-    params: repoKey ? { repo_key: repoKey } : {},
+    params: repo_key ? { repo_key: repo_key } : {},
   })
 }
 
@@ -50,9 +50,9 @@ export function batchSync(taskKeys: string[]) {
 }
 
 // 分析仓库以获取同步建议
-export function analyzeRepoForSync(repoPath: string, repoKey: string) {
+export function analyzeRepoForSync(repoPath: string, repo_key: string) {
   return request.post<unknown, { message: string }>('/sync/analyze-repo', {
     repoPath,
-    repoKey
+    repo_key
   })
 }

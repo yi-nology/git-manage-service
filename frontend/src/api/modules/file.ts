@@ -28,22 +28,22 @@ export interface FileCommit {
 }
 
 // 获取目录树
-export function getFileTree(repoKey: string, params: { ref?: string; path?: string; recursive?: boolean }) {
+export function getFileTree(repo_key: string, params: { ref?: string; path?: string; recursive?: boolean }) {
   return request.get<unknown, { entries: TreeEntry[]; current_ref: string; current_path: string }>('/file/tree', {
-    params: { repo_key: repoKey, ...params }
+    params: { repo_key: repo_key, ...params }
   })
 }
 
 // 获取文件内容
-export function getFileBlob(repoKey: string, params: { ref?: string; path: string }) {
+export function getFileBlob(repo_key: string, params: { ref?: string; path: string }) {
   return request.get<unknown, BlobContent>('/file/blob', {
-    params: { repo_key: repoKey, ...params }
+    params: { repo_key: repo_key, ...params }
   })
 }
 
 // 获取文件历史
-export function getFileHistory(repoKey: string, params: { ref?: string; path: string; limit?: number }) {
+export function getFileHistory(repo_key: string, params: { ref?: string; path: string; limit?: number }) {
   return request.get<unknown, FileCommit[]>('/file/history', {
-    params: { repo_key: repoKey, ...params }
+    params: { repo_key: repo_key, ...params }
   })
 }

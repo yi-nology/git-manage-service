@@ -78,22 +78,22 @@
         </div>
       </div>
       <div class="diff-file-list">
-        <div v-for="(file, fIdx) in displayFiles" :key="fIdx" class="diff-file-card" :class="{ 'has-findings': fileFindings(file.filePath).length > 0 }">
+        <div v-for="(file, fIdx) in displayFiles" :key="fIdx" class="diff-file-card" :class="{ 'has-findings': fileFindings(file.file_path).length > 0 }">
           <div class="diff-file-header" @click="toggleFile(fIdx)">
             <div class="file-header-left">
               <svg class="file-collapse-icon" :class="{ collapsed: !isFileExpanded(fIdx) }" width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M4 2L8 6L4 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
-              <span class="file-icon">{{ fileIcon(file.filePath) }}</span>
-              <span class="file-path-text">{{ file.filePath }}</span>
+              <span class="file-icon">{{ fileIcon(file.file_path) }}</span>
+              <span class="file-path-text">{{ file.file_path }}</span>
             </div>
             <div class="file-header-right">
               <span class="file-stat add" v-if="fileAddCount(file) > 0">+{{ fileAddCount(file) }}</span>
               <span class="file-stat del" v-if="fileDelCount(file) > 0">-{{ fileDelCount(file) }}</span>
-              <span class="file-finding-badge" v-if="fileFindings(file.filePath).length > 0">
-                {{ fileFindings(file.filePath).length }} 个问题
+              <span class="file-finding-badge" v-if="fileFindings(file.file_path).length > 0">
+                {{ fileFindings(file.file_path).length }} 个问题
               </span>
-              <button v-if="fileFindings(file.filePath).length > 0" class="toggle-diff-btn" @click.stop="toggleFullDiff(fIdx)">
+              <button v-if="fileFindings(file.file_path).length > 0" class="toggle-diff-btn" @click.stop="toggleFullDiff(fIdx)">
                 {{ showFullDiff(fIdx) ? '仅看问题' : '完整 Diff' }}
               </button>
             </div>
@@ -146,8 +146,8 @@
                 </template>
               </tbody>
             </table>
-            <div class="file-level-findings" v-if="fileLevelFindings(file.filePath).length > 0">
-              <div v-for="(f, fiIdx) in fileLevelFindings(file.filePath)" :key="'fl-'+fIdx+'-'+fiIdx" class="gh-comment gh-file-level" :class="'gh-' + f.severity">
+            <div class="file-level-findings" v-if="fileLevelFindings(file.file_path).length > 0">
+              <div v-for="(f, fiIdx) in fileLevelFindings(file.file_path)" :key="'fl-'+fIdx+'-'+fiIdx" class="gh-comment gh-file-level" :class="'gh-' + f.severity">
                 <div class="gh-comment-header">
                   <span class="gh-avatar">{{ f.source === 'llm' ? 'AI' : 'RE' }}</span>
                   <span class="gh-comment-meta">
@@ -269,7 +269,7 @@ interface DiffLine {
 }
 
 interface DiffFile {
-  filePath: string
+  file_path: string
   lines: DiffLine[]
 }
 
@@ -277,7 +277,7 @@ const parsedDiffFiles = computed<DiffFile[]>(() => {
   if (!currentTask.value.raw_diff) return []
   const text = currentTask.value.raw_diff
   const files: DiffFile[] = []
-  let currentFile: DiffFile | null = null
+  let current_file: DiffFile | null = null
   let oldNum = 0
   let newNum = 0
   let currentPath = ''
@@ -286,29 +286,29 @@ const parsedDiffFiles = computed<DiffFile[]>(() => {
     if (line.startsWith('diff --git')) {
       const m = line.match(/diff --git a\/(.+?) b\/(.+)/)
       if (m) currentPath = m[2] || ''
-      if (currentFile) files.push(currentFile)
-      currentFile = { filePath: currentPath, lines: [] }
+      if (current_file) files.push(current_file)
+      current_file = { file_path: currentPath, lines: [] }
       oldNum = 0
       newNum = 0
       continue
     }
-    if (!currentFile) continue
+    if (!current_file) continue
     if (line.startsWith('@@')) {
       const m = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
       if (m) { oldNum = parseInt(m[1] || '0'); newNum = parseInt(m[2] || '0') }
-      currentFile.lines.push({ type: 'hunk', content: line, oldNum: '', newNum: '' })
+      current_file.lines.push({ type: 'hunk', content: line, oldNum: '', newNum: '' })
     } else if (line.startsWith('+')) {
-      currentFile.lines.push({ type: 'add', content: line.slice(1), oldNum: '', newNum: newNum++ })
+      current_file.lines.push({ type: 'add', content: line.slice(1), oldNum: '', newNum: newNum++ })
     } else if (line.startsWith('-')) {
-      currentFile.lines.push({ type: 'del', content: line.slice(1), oldNum: oldNum++, newNum: '' })
+      current_file.lines.push({ type: 'del', content: line.slice(1), oldNum: oldNum++, newNum: '' })
     } else if (line.startsWith(' ') || line === '') {
       const content = line.startsWith(' ') ? line.slice(1) : ''
-      currentFile.lines.push({ type: 'ctx', content, oldNum: oldNum++, newNum: newNum++ })
+      current_file.lines.push({ type: 'ctx', content, oldNum: oldNum++, newNum: newNum++ })
     } else if (line.startsWith('---') || line.startsWith('+++') || line.startsWith('index') || line.startsWith('new file') || line.startsWith('deleted file') || line.startsWith('rename')) {
       continue
     }
   }
-  if (currentFile) files.push(currentFile)
+  if (current_file) files.push(current_file)
   return files
 })
 
@@ -321,12 +321,12 @@ function pathMatches(findingPath: string, diffPath: string): boolean {
   return false
 }
 
-function fileFindings(filePath: string): ReviewFindingDTO[] {
-  return findings.value.filter(f => f.file_path && pathMatches(f.file_path, filePath))
+function fileFindings(file_path: string): ReviewFindingDTO[] {
+  return findings.value.filter(f => f.file_path && pathMatches(f.file_path, file_path))
 }
 
-function fileLevelFindings(filePath: string): ReviewFindingDTO[] {
-  return findings.value.filter(f => f.file_path && pathMatches(f.file_path, filePath) && (!f.new_line || f.new_line === 0))
+function fileLevelFindings(file_path: string): ReviewFindingDTO[] {
+  return findings.value.filter(f => f.file_path && pathMatches(f.file_path, file_path) && (!f.new_line || f.new_line === 0))
 }
 
 function globalFindings(): ReviewFindingDTO[] {
@@ -341,7 +341,7 @@ function fmapGet(fmap: Map<number, ReviewFindingDTO[]>, lineNum: number | string
 }
 
 function buildFindingLineMap(file: DiffFile): Map<number, ReviewFindingDTO[]> {
-  const ff = fileFindings(file.filePath).filter(f => f.new_line && f.new_line > 0)
+  const ff = fileFindings(file.file_path).filter(f => f.new_line && f.new_line > 0)
   if (ff.length === 0) return new Map()
 
   const codeLines: { idx: number; newNum: number; content: string; type: string }[] = []
@@ -442,7 +442,7 @@ function toggleFile(idx: number) {
 function isFileExpanded(idx: number): boolean {
   if (expandedFiles.value[idx] !== undefined) return expandedFiles.value[idx]
   const files = parsedDiffFiles.value
-  if (idx < files.length && fileFindings(files[idx]!.filePath).length > 0) return true
+  if (idx < files.length && fileFindings(files[idx]!.file_path).length > 0) return true
   return false
 }
 
@@ -508,8 +508,8 @@ function showMoreFiles() {
 const displayFiles = computed(() => {
   const all = parsedDiffFiles.value
   if (all.length <= visibleFileLimit.value) return all
-  const withFindings = all.filter(f => fileFindings(f.filePath).length > 0)
-  const without = all.filter(f => fileFindings(f.filePath).length === 0)
+  const withFindings = all.filter(f => fileFindings(f.file_path).length > 0)
+  const without = all.filter(f => fileFindings(f.file_path).length === 0)
   const shown = [...withFindings, ...without].slice(0, visibleFileLimit.value)
   return shown
 })

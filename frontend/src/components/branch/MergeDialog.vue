@@ -162,9 +162,9 @@ async function batchAIResolve() {
     try {
       const detail = await getConflictDetail(props.repoKey, file)
       if (!detail) continue
-      const result = await aiResolveConflict(props.repoKey, file, detail.oursContent, detail.theirsContent, detail.baseContent)
+      const result = await aiResolveConflict(props.repoKey, file, detail.ours_content, detail.theirs_content, detail.base_content)
       if (result) {
-        await markConflictResolved(props.repoKey, file, result.resolvedContent, true)
+        await markConflictResolved(props.repoKey, file, result.resolved_content, true)
         resolved++
       }
     } catch {}

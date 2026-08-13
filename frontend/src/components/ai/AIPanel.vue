@@ -115,7 +115,7 @@ export interface AIRef {
   type: string
   id: string
   label: string
-  filePath?: string
+  file_path?: string
   url?: string
 }
 
@@ -123,9 +123,9 @@ export interface AIRef {
    role: 'user' | 'assistant'
    content: string
    references?: AIRef[]
-   applyContent?: string
+   apply_content?: string
    feedback?: string
-   invocationId?: number
+   invocation_id?: number
  }
 
 export interface QuickAction {
@@ -219,14 +219,14 @@ const handleQuickAction = (action: QuickAction) => {
    emit('send', userMessage)
  }
 
-const addResponse = (content: string, references?: AIRef[], applyContent?: string, invocationId?: number) => {
+const addResponse = (content: string, references?: AIRef[], apply_content?: string, invocation_id?: number) => {
    internalLoading.value = false
    messages.value.push({
      role: 'assistant',
      content,
      references,
-     applyContent,
-     invocationId,
+     apply_content,
+     invocation_id,
    })
    scrollToBottom()
  }
@@ -243,7 +243,7 @@ const addResponse = (content: string, references?: AIRef[], applyContent?: strin
  }
 
 const sendFeedback = async (msg: AIMessage, feedback: string) => {
-  if (!msg.invocationId) {
+  if (!msg.invocation_id) {
     ElMessage.warning('该 AI 结果暂不支持反馈')
     return
   }
@@ -251,7 +251,7 @@ const sendFeedback = async (msg: AIMessage, feedback: string) => {
     return
   }
   try {
-    await aiApi.submitFeedback({ invocationId: msg.invocationId, feedback })
+    await aiApi.submit_feedback({ invocation_id: msg.invocation_id, feedback })
     msg.feedback = feedback
     ElMessage.success('反馈已提交')
   } catch (e) {

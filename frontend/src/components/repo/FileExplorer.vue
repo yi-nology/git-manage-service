@@ -21,7 +21,7 @@
         <span v-if="wsStatus.behind" class="fe-behind">
           <el-icon><Bottom /></el-icon>{{ wsStatus.behind }}
         </span>
-        <el-tag v-if="!wsStatus.isClean" size="small" type="warning">有变更</el-tag>
+        <el-tag v-if="!wsStatus.is_clean" size="small" type="warning">有变更</el-tag>
         <el-tag v-else size="small" type="success">干净</el-tag>
       </template>
 
@@ -239,8 +239,8 @@ async function doCommit() {
       repo_key: props.repoKey,
       stage_all: true,
       message: commitMsg.value,
-      author_name: activeAuthor.value?.canonicalName || undefined,
-      author_email: activeAuthor.value?.canonicalEmail || undefined,
+      author_name: activeAuthor.value?.canonical_name || undefined,
+      author_email: activeAuthor.value?.canonical_email || undefined,
       push: pushAfterCommit.value,
     })
     ElMessage.success(pushAfterCommit.value ? '提交并推送成功' : '提交成功')
@@ -280,8 +280,8 @@ async function loadAuthors() {
   try {
     authors.value = await listIdentities()
     const config = await getRepoAuthorConfig(props.repoKey)
-    if (config.identityId) {
-      selectedAuthor.value = config.identityId
+    if (config.identity_id) {
+      selectedAuthor.value = config.identity_id
     }
   } catch { /* ignore */ }
 }

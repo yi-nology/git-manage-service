@@ -10,7 +10,7 @@
         </div>
         <el-button type="primary" :icon="Refresh" :loading="healthLoading" @click="loadHealth">开始体检</el-button>
         <el-button :icon="Delete" @click="handleGC" :loading="gcLoading" :disabled="!healthReport">垃圾回收</el-button>
-        <el-button type="warning" @click="handleForcePush" :disabled="!!taskId && taskStatus === 'running'">强制推送远端</el-button>
+        <el-button type="warning" @click="handleForcePush" :disabled="!!task_id && task_status === 'running'">强制推送远端</el-button>
       </div>
     </div>
 
@@ -39,8 +39,8 @@
 
       <template v-if="prefixPreview && !prefixPreviewLoading">
         <div class="prefix-summary">
-          <span>匹配 <strong>{{ prefixPreview.totalCount }}</strong> 个文件，总计 <strong>{{ prefixPreview.totalSize }}</strong></span>
-          <el-button type="danger" @click="handlePrefixSlimConfirm" :disabled="prefixPreview.totalCount === 0">执行前缀瘦身</el-button>
+          <span>匹配 <strong>{{ prefixPreview.total_count }}</strong> 个文件，总计 <strong>{{ prefixPreview.total_size }}</strong></span>
+          <el-button type="danger" @click="handlePrefixSlimConfirm" :disabled="prefixPreview.total_count === 0">执行前缀瘦身</el-button>
         </div>
         <el-table :data="prefixPreview.files.slice(0, 100)" style="width: 100%" size="small" max-height="300" empty-text="未找到匹配文件">
           <el-table-column prop="path" label="文件路径" min-width="260">
@@ -52,9 +52,9 @@
               <el-tag :type="row.exists ? 'success' : 'info'" size="small">{{ row.exists ? '存在' : '已删除' }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="commitCount" label="涉及提交" width="80" />
+          <el-table-column prop="commit_count" label="涉及提交" width="80" />
         </el-table>
-        <div v-if="prefixPreview.totalCount > 100" class="prefix-more-hint">仅显示前 100 个文件（共 {{ prefixPreview.totalCount }} 个）</div>
+        <div v-if="prefixPreview.total_count > 100" class="prefix-more-hint">仅显示前 100 个文件（共 {{ prefixPreview.total_count }} 个）</div>
       </template>
     </div>
 
@@ -91,59 +91,59 @@
       </div>
 
       <div class="slim-stats">
-        <div class="stat-card"><span class="stat-value">{{ healthReport.gitDirSize }}</span><span class="stat-label">.git 目录</span></div>
-        <div class="stat-card"><span class="stat-value">{{ healthReport.commitCount }}</span><span class="stat-label">提交数</span></div>
-        <div class="stat-card"><span class="stat-value">{{ healthReport.looseObjects }}</span><span class="stat-label">松散对象</span></div>
-        <div class="stat-card"><span class="stat-value">{{ healthReport.packFiles }}</span><span class="stat-label">Pack 文件</span></div>
-        <div class="stat-card"><span class="stat-value">{{ healthReport.branchCount }}</span><span class="stat-label">分支</span></div>
-        <div class="stat-card"><span class="stat-value">{{ healthReport.tagCount }}</span><span class="stat-label">标签</span></div>
+        <div class="stat-card"><span class="stat-value">{{ healthReport.git_dir_size }}</span><span class="stat-label">.git 目录</span></div>
+        <div class="stat-card"><span class="stat-value">{{ healthReport.commit_count }}</span><span class="stat-label">提交数</span></div>
+        <div class="stat-card"><span class="stat-value">{{ healthReport.loose_objects }}</span><span class="stat-label">松散对象</span></div>
+        <div class="stat-card"><span class="stat-value">{{ healthReport.pack_files }}</span><span class="stat-label">Pack 文件</span></div>
+        <div class="stat-card"><span class="stat-value">{{ healthReport.branch_count }}</span><span class="stat-label">分支</span></div>
+        <div class="stat-card"><span class="stat-value">{{ healthReport.tag_count }}</span><span class="stat-label">标签</span></div>
       </div>
 
-      <div v-if="healthReport.gitDirBreakdown" class="slim-breakdown">
+      <div v-if="healthReport.git_dir_breakdown" class="slim-breakdown">
         <SectionTitle title=".git 空间明细" />
         <div class="breakdown-grid">
           <div class="breakdown-item">
-            <div class="breakdown-bar" :style="{ width: barWidth(healthReport.gitDirBreakdown.packDirSizeBytes) }">
-              <span class="breakdown-inner-text" v-if="healthReport.gitDirBreakdown.packDirSizeBytes > 0">{{ healthReport.gitDirBreakdown.packDirSize }}</span>
+            <div class="breakdown-bar" :style="{ width: barWidth(healthReport.git_dir_breakdown.pack_dir_size_bytes) }">
+              <span class="breakdown-inner-text" v-if="healthReport.git_dir_breakdown.pack_dir_size_bytes > 0">{{ healthReport.git_dir_breakdown.pack_dir_size }}</span>
             </div>
             <div class="breakdown-info">
               <span class="breakdown-label">Pack 文件</span>
-              <span class="breakdown-size">{{ healthReport.gitDirBreakdown.packDirSize }}</span>
+              <span class="breakdown-size">{{ healthReport.git_dir_breakdown.pack_dir_size }}</span>
             </div>
           </div>
           <div class="breakdown-item">
-            <div class="breakdown-bar loose" :style="{ width: barWidth(healthReport.gitDirBreakdown.looseObjSizeBytes) }">
-              <span class="breakdown-inner-text" v-if="healthReport.gitDirBreakdown.looseObjSizeBytes > 0">{{ healthReport.gitDirBreakdown.looseObjSize }}</span>
+            <div class="breakdown-bar loose" :style="{ width: barWidth(healthReport.git_dir_breakdown.loose_obj_size_bytes) }">
+              <span class="breakdown-inner-text" v-if="healthReport.git_dir_breakdown.loose_obj_size_bytes > 0">{{ healthReport.git_dir_breakdown.loose_obj_size }}</span>
             </div>
             <div class="breakdown-info">
               <span class="breakdown-label">松散对象</span>
-              <span class="breakdown-size">{{ healthReport.gitDirBreakdown.looseObjSize }}</span>
+              <span class="breakdown-size">{{ healthReport.git_dir_breakdown.loose_obj_size }}</span>
             </div>
           </div>
           <div class="breakdown-item">
-            <div class="breakdown-bar reflog" :style="{ width: barWidth(healthReport.gitDirBreakdown.reflogSizeBytes) }">
-              <span class="breakdown-inner-text" v-if="healthReport.gitDirBreakdown.reflogSizeBytes > 0">{{ healthReport.gitDirBreakdown.reflogSize }}</span>
+            <div class="breakdown-bar reflog" :style="{ width: barWidth(healthReport.git_dir_breakdown.reflog_size_bytes) }">
+              <span class="breakdown-inner-text" v-if="healthReport.git_dir_breakdown.reflog_size_bytes > 0">{{ healthReport.git_dir_breakdown.reflog_size }}</span>
             </div>
             <div class="breakdown-info">
               <span class="breakdown-label">Reflog 日志</span>
-              <span class="breakdown-size">{{ healthReport.gitDirBreakdown.reflogSize }}</span>
+              <span class="breakdown-size">{{ healthReport.git_dir_breakdown.reflog_size }}</span>
             </div>
           </div>
           <div class="breakdown-item">
-            <div class="breakdown-bar other" :style="{ width: barWidth(healthReport.gitDirBreakdown.otherSizeBytes) }">
-              <span class="breakdown-inner-text" v-if="healthReport.gitDirBreakdown.otherSizeBytes > 0">{{ healthReport.gitDirBreakdown.otherSize }}</span>
+            <div class="breakdown-bar other" :style="{ width: barWidth(healthReport.git_dir_breakdown.other_size_bytes) }">
+              <span class="breakdown-inner-text" v-if="healthReport.git_dir_breakdown.other_size_bytes > 0">{{ healthReport.git_dir_breakdown.other_size }}</span>
             </div>
             <div class="breakdown-info">
               <span class="breakdown-label">其他 (hooks/info/etc)</span>
-              <span class="breakdown-size">{{ healthReport.gitDirBreakdown.otherSize }}</span>
+              <span class="breakdown-size">{{ healthReport.git_dir_breakdown.other_size }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div v-if="healthReport.stashEntries && healthReport.stashEntries.length > 0" class="slim-stash">
+      <div v-if="healthReport.stash_entries && healthReport.stash_entries.length > 0" class="slim-stash">
         <SectionTitle title="Stash 条目" />
-        <el-table :data="healthReport.stashEntries" style="width: 100%" size="small">
+        <el-table :data="healthReport.stash_entries" style="width: 100%" size="small">
           <el-table-column prop="index" label="#" width="50" />
           <el-table-column prop="message" label="消息" min-width="300" />
           <el-table-column prop="size" label="大小" width="120" />
@@ -153,8 +153,8 @@
       <div class="slim-files-header">
         <SectionTitle title="历史大文件" />
         <div class="slim-files-actions">
-          <span class="slim-files-hint">阈值 &gt; {{ healthReport.thresholdHuman }}，来源：历史 / Stash / Reflog</span>
-          <el-button type="warning" :loading="aiLoading" @click="analyzeWithAI" :disabled="healthReport.largeFiles.length === 0">AI 分析</el-button>
+          <span class="slim-files-hint">阈值 &gt; {{ healthReport.threshold_human }}，来源：历史 / Stash / Reflog</span>
+          <el-button type="warning" :loading="aiLoading" @click="analyzeWithAI" :disabled="healthReport.large_files.length === 0">AI 分析</el-button>
         </div>
       </div>
 
@@ -162,12 +162,12 @@
         <div class="ai-summary">
           <el-icon :size="16" style="margin-right:4px"><svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z" fill="currentColor"/><path d="M464 336a48 48 0 1 0 96 0 48 48 0 1 0-96 0zm72 112h-48c-4.4 0-8 3.6-8 8v272c0 4.4 3.6 8 8 8h48c4.4 0 8-3.6 8-8V456c0-4.4-3.6-8-8-8z" fill="currentColor"/></svg></el-icon>
           <span>{{ aiResult.summary }}</span>
-          <el-tag v-if="aiResult.totalSaveBytes > 0" type="success" size="small" class="ai-savings">预计可释放 {{ aiResult.totalSavings }}</el-tag>
+          <el-tag v-if="aiResult.total_save_bytes > 0" type="success" size="small" class="ai-savings">预计可释放 {{ aiResult.total_savings }}</el-tag>
         </div>
         <el-button size="small" type="success" @click="acceptAIRecommendations">采纳推荐</el-button>
       </div>
 
-      <el-table :data="healthReport.largeFiles" style="width: 100%" @selection-change="handleSelection" empty-text="未发现大于阈值的大文件">
+      <el-table :data="healthReport.large_files" style="width: 100%" @selection-change="handleSelection" empty-text="未发现大于阈值的大文件">
         <el-table-column type="selection" width="50" />
         <el-table-column prop="path" label="文件路径" min-width="260">
           <template #default="{ row }"><span class="mono">{{ row.path }}</span></template>
@@ -199,21 +199,21 @@
             </template>
           </template>
         </el-table-column>
-        <el-table-column v-if="aiRecommendationMap.size === 0" prop="commitCount" label="涉及提交" width="80" />
+        <el-table-column v-if="aiRecommendationMap.size === 0" prop="commit_count" label="涉及提交" width="80" />
       </el-table>
 
       <div v-if="selectedFiles.length > 0" class="slim-bottom-bar">
-        <span>已选 {{ selectedFiles.length }} 个文件，预计可清理 {{ formatFileSize(selectedFiles.reduce((s, f) => s + f.sizeBytes, 0)) }}</span>
+        <span>已选 {{ selectedFiles.length }} 个文件，预计可清理 {{ formatFileSize(selectedFiles.reduce((s, f) => s + f.size_bytes, 0)) }}</span>
         <div class="slim-bottom-actions">
           <el-button @click="handleAddGitignore" :loading="gitignoreLoading">加入 .gitignore</el-button>
           <el-button type="danger" @click="handleSlimConfirm">从历史中删除</el-button>
         </div>
       </div>
 
-      <div v-if="taskId" class="slim-task-progress">
+      <div v-if="task_id" class="slim-task-progress">
         <SectionTitle title="任务进度" />
-        <el-alert v-if="taskStatus === 'failed'" :title="taskError" type="error" show-icon :closable="false" />
-        <el-alert v-else-if="taskStatus === 'success'" title="操作完成" type="success" show-icon :closable="false" />
+        <el-alert v-if="task_status === 'failed'" :title="taskError" type="error" show-icon :closable="false" />
+        <el-alert v-else-if="task_status === 'success'" title="操作完成" type="success" show-icon :closable="false" />
         <template v-else>
           <el-progress :percentage="100" :indeterminate="true" />
           <div class="slim-logs">
@@ -241,11 +241,11 @@
         </el-table-column>
         <el-table-column label="清理效果" min-width="160">
           <template #default="{ row }">
-            <template v-if="row.snapshotBefore && row.snapshotAfter">
-              <span class="mono">{{ row.snapshotBefore.gitDirSize }}</span>
+            <template v-if="row.snapshot_before && row.snapshot_after">
+              <span class="mono">{{ row.snapshot_before.git_dir_size }}</span>
               <span class="arrow">&rarr;</span>
-              <span class="mono" :class="{ 'text-success': row.savedBytes > 0 }">{{ row.snapshotAfter.gitDirSize }}</span>
-              <el-tag v-if="row.savedBytes > 0" type="success" size="small" class="ml-4">-{{ formatFileSize(row.savedBytes) }} ({{ row.savedPercent.toFixed(1) }}%)</el-tag>
+              <span class="mono" :class="{ 'text-success': row.saved_bytes > 0 }">{{ row.snapshot_after.git_dir_size }}</span>
+              <el-tag v-if="row.saved_bytes > 0" type="success" size="small" class="ml-4">-{{ formatFileSize(row.saved_bytes) }} ({{ row.saved_percent.toFixed(1) }}%)</el-tag>
             </template>
             <span v-else class="text-muted">-</span>
           </template>
@@ -253,12 +253,12 @@
         <el-table-column prop="duration" label="耗时" width="80">
           <template #default="{ row }">{{ row.duration || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="时间" width="160">
-          <template #default="{ row }">{{ row.createdAt }}</template>
+        <el-table-column prop="created_at" label="时间" width="160">
+          <template #default="{ row }">{{ row.created_at }}</template>
         </el-table-column>
-        <el-table-column prop="errorMessage" label="错误" min-width="120" show-overflow-tooltip>
+        <el-table-column prop="error_message" label="错误" min-width="120" show-overflow-tooltip>
           <template #default="{ row }">
-            <span v-if="row.errorMessage" class="text-danger">{{ row.errorMessage }}</span>
+            <span v-if="row.error_message" class="text-danger">{{ row.error_message }}</span>
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
@@ -291,8 +291,8 @@ const {
   selectedFiles,
   gcLoading,
   gitignoreLoading,
-  taskId,
-  taskStatus,
+  task_id,
+  task_status,
   taskError,
   taskLogs,
   aiLoading,
@@ -404,8 +404,8 @@ function addPreset(p: string) {
 }
 
 function barWidth(bytes: number) {
-  if (!healthReport.value || healthReport.value.gitDirSizeBytes <= 0) return '0%'
-  const pct = (bytes / healthReport.value.gitDirSizeBytes) * 100
+  if (!healthReport.value || healthReport.value.git_dir_size_bytes <= 0) return '0%'
+  const pct = (bytes / healthReport.value.git_dir_size_bytes) * 100
   return Math.max(pct, 0).toFixed(1) + '%'
 }
 

@@ -22,7 +22,7 @@
           <el-icon :size="24"><List /></el-icon>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ stats.totalTasks }}</div>
+          <div class="stat-value">{{ stats.total_tasks }}</div>
           <div class="stat-label">总任务数</div>
         </div>
       </div>
@@ -31,7 +31,7 @@
           <el-icon :size="24"><VideoPlay /></el-icon>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ stats.runningTasks }}</div>
+          <div class="stat-value">{{ stats.running_tasks }}</div>
           <div class="stat-label">运行中</div>
         </div>
       </div>
@@ -40,7 +40,7 @@
           <el-icon :size="24"><CircleCheck /></el-icon>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ stats.todayRuns }}</div>
+          <div class="stat-value">{{ stats.today_runs }}</div>
           <div class="stat-label">今日执行</div>
         </div>
       </div>
@@ -49,7 +49,7 @@
           <el-icon :size="24"><WarningFilled /></el-icon>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ stats.failedRuns }}</div>
+          <div class="stat-value">{{ stats.failed_runs }}</div>
           <div class="stat-label">执行失败</div>
         </div>
       </div>
@@ -100,21 +100,21 @@
             <div class="sync-config-cell">
               <div class="repo-badge source">
                 <el-icon><Bottom /></el-icon>
-                {{ row.sourceRepoKey }}:{{ row.sourceBranch }}
+                {{ row.source_repo_key }}:{{ row.source_branch }}
               </div>
               <el-icon class="arrow-icon"><Right /></el-icon>
               <div class="repo-badge target">
                 <el-icon><Top /></el-icon>
-                {{ row.targetRepoKey }}:{{ row.targetBranch }}
+                {{ row.target_repo_key }}:{{ row.target_branch }}
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="syncMode" label="同步模式" width="100">
+        <el-table-column prop="sync_mode" label="同步模式" width="100">
           <template #default="{ row }">
             <el-tag type="primary" size="small">
-              {{ row.syncMode === 'single' ? '单向' : '双向' }}
+              {{ row.sync_mode === 'single' ? '单向' : '双向' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -131,9 +131,9 @@
 
         <el-table-column label="上次执行" width="180">
           <template #default="{ row }">
-            <div v-if="row.lastRunAt" class="last-run-cell">
-              <span :class="['status-dot', row.lastStatus]"></span>
-              <span class="run-time">{{ formatTime(row.lastRunAt) }}</span>
+            <div v-if="row.last_run_at" class="last-run-cell">
+              <span :class="['status-dot', row.last_status]"></span>
+              <span class="run-time">{{ formatTime(row.last_run_at) }}</span>
             </div>
             <span v-else class="no-run">未执行</span>
           </template>
@@ -141,7 +141,7 @@
 
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="runTask(row)" :loading="runningKeys.has(row.key)">
+            <el-button size="small" type="primary" @click="run_task(row)" :loading="runningKeys.has(row.key)">
               <el-icon><VideoPlay /></el-icon>
               运行
             </el-button>
@@ -149,7 +149,7 @@
               <el-icon><Edit /></el-icon>
               编辑
             </el-button>
-            <el-button size="small" type="danger" @click="deleteTask(row)">
+            <el-button size="small" type="danger" @click="delete_task(row)">
               <el-icon><Delete /></el-icon>
             </el-button>
           </template>
@@ -171,20 +171,20 @@
         <el-form-item label="任务名称" prop="name">
           <el-input v-model="taskForm.name" placeholder="输入任务名称" />
         </el-form-item>
-        <el-form-item label="源仓库" prop="sourceRepoKey">
-          <el-input v-model="taskForm.sourceRepoKey" placeholder="源仓库标识" />
+        <el-form-item label="源仓库" prop="source_repo_key">
+          <el-input v-model="taskForm.source_repo_key" placeholder="源仓库标识" />
         </el-form-item>
-        <el-form-item label="源分支" prop="sourceBranch">
-          <el-input v-model="taskForm.sourceBranch" placeholder="如: main, develop" />
+        <el-form-item label="源分支" prop="source_branch">
+          <el-input v-model="taskForm.source_branch" placeholder="如: main, develop" />
         </el-form-item>
-        <el-form-item label="目标仓库" prop="targetRepoKey">
-          <el-input v-model="taskForm.targetRepoKey" placeholder="目标仓库标识" />
+        <el-form-item label="目标仓库" prop="target_repo_key">
+          <el-input v-model="taskForm.target_repo_key" placeholder="目标仓库标识" />
         </el-form-item>
-        <el-form-item label="目标分支" prop="targetBranch">
-          <el-input v-model="taskForm.targetBranch" placeholder="如: master, main" />
+        <el-form-item label="目标分支" prop="target_branch">
+          <el-input v-model="taskForm.target_branch" placeholder="如: master, main" />
         </el-form-item>
-        <el-form-item label="同步模式" prop="syncMode">
-          <el-radio-group v-model="taskForm.syncMode">
+        <el-form-item label="同步模式" prop="sync_mode">
+          <el-radio-group v-model="taskForm.sync_mode">
             <el-radio value="single">单向同步</el-radio>
             <el-radio value="bidirectional">双向同步</el-radio>
           </el-radio-group>
@@ -194,9 +194,9 @@
           <div class="form-tip">留空则仅支持手动触发</div>
         </el-form-item>
         <el-form-item label="同步选项">
-          <el-checkbox v-model="taskForm.gitTags">同步标签</el-checkbox>
-          <el-checkbox v-model="taskForm.gitForce">强制推送</el-checkbox>
-          <el-checkbox v-model="taskForm.gitPrune">清理远程已删除分支</el-checkbox>
+          <el-checkbox v-model="taskForm.git_tags">同步标签</el-checkbox>
+          <el-checkbox v-model="taskForm.git_force">强制推送</el-checkbox>
+          <el-checkbox v-model="taskForm.git_prune">清理远程已删除分支</el-checkbox>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -224,11 +224,11 @@ const runningKeys = ref<Set<string>>(new Set())
 const formRef = ref()
 
 const stats = reactive<SyncStats>({
-  totalTasks: 0,
-  enabledTasks: 0,
-  todayRuns: 0,
-  failedRuns: 0,
-  runningTasks: 0,
+  total_tasks: 0,
+  enabled_tasks: 0,
+  today_runs: 0,
+  failed_runs: 0,
+  running_tasks: 0,
 })
 
 const tasks = ref<SyncTask[]>([])
@@ -246,26 +246,26 @@ const filteredTasks = computed(() => {
 
 const taskForm = reactive<Partial<SyncTask>>({
   name: '',
-  sourceRepoKey: '',
-  sourceBranch: '',
-  targetRepoKey: '',
-  targetBranch: '',
-  syncMode: 'single',
+  source_repo_key: '',
+  source_branch: '',
+  target_repo_key: '',
+  target_branch: '',
+  sync_mode: 'single',
   cron: '',
   enabled: true,
-  gitTags: false,
-  gitForce: false,
-  gitPrune: false,
-  gitNoVerify: false,
-  pushOptions: '',
+  git_tags: false,
+  git_force: false,
+  git_prune: false,
+  git_no_verify: false,
+  push_options: '',
 })
 
 const formRules = {
   name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
-  sourceRepoKey: [{ required: true, message: '请输入源仓库标识', trigger: 'blur' }],
-  sourceBranch: [{ required: true, message: '请输入源分支', trigger: 'blur' }],
-  targetRepoKey: [{ required: true, message: '请输入目标仓库标识', trigger: 'blur' }],
-  targetBranch: [{ required: true, message: '请输入目标分支', trigger: 'blur' }],
+  source_repo_key: [{ required: true, message: '请输入源仓库标识', trigger: 'blur' }],
+  source_branch: [{ required: true, message: '请输入源分支', trigger: 'blur' }],
+  target_repo_key: [{ required: true, message: '请输入目标仓库标识', trigger: 'blur' }],
+  target_branch: [{ required: true, message: '请输入目标分支', trigger: 'blur' }],
 }
 
 function formatTime(timeStr: string) {
@@ -281,7 +281,7 @@ function formatTime(timeStr: string) {
 
 async function loadStats() {
   try {
-    const data = await syncV2Api.getStats()
+    const data = await syncV2Api.get_stats()
     Object.assign(stats, data)
   } catch (e) {
     console.error('加载统计数据失败', e)
@@ -291,7 +291,7 @@ async function loadStats() {
 async function loadTasks() {
   loading.value = true
   try {
-    const data = await syncV2Api.listTasks()
+    const data = await syncV2Api.list_tasks()
     tasks.value = data || []
   } catch (e) {
     ElMessage.error('加载任务列表失败')
@@ -304,18 +304,18 @@ function openCreateModal() {
   isEditMode.value = false
   Object.assign(taskForm, {
     name: '',
-    sourceRepoKey: '',
-    sourceBranch: '',
-    targetRepoKey: '',
-    targetBranch: '',
-    syncMode: 'single',
+    source_repo_key: '',
+    source_branch: '',
+    target_repo_key: '',
+    target_branch: '',
+    sync_mode: 'single',
     cron: '',
     enabled: true,
-    gitTags: false,
-    gitForce: false,
-    gitPrune: false,
-    gitNoVerify: false,
-    pushOptions: '',
+    git_tags: false,
+    git_force: false,
+    git_prune: false,
+    git_no_verify: false,
+    push_options: '',
     key: undefined,
   })
   modalVisible.value = true
@@ -341,10 +341,10 @@ async function submitTask() {
   submitting.value = true
   try {
     if (isEditMode.value) {
-      await syncV2Api.updateTask(taskForm as SyncTask)
+      await syncV2Api.update_task(taskForm as SyncTask)
       ElMessage.success('任务更新成功')
     } else {
-      await syncV2Api.createTask(taskForm as SyncTask)
+      await syncV2Api.create_task(taskForm as SyncTask)
       ElMessage.success('任务创建成功')
     }
     modalVisible.value = false
@@ -357,10 +357,10 @@ async function submitTask() {
   }
 }
 
-async function runTask(row: SyncTask) {
+async function run_task(row: SyncTask) {
   runningKeys.value.add(row.key)
   try {
-    await syncV2Api.runTask(row.key)
+    await syncV2Api.run_task(row.key)
     ElMessage.success('任务已触发执行')
   } catch (e) {
     ElMessage.error('任务触发失败')
@@ -369,12 +369,12 @@ async function runTask(row: SyncTask) {
   }
 }
 
-async function deleteTask(row: SyncTask) {
+async function delete_task(row: SyncTask) {
   try {
     await ElMessageBox.confirm(`确定要删除任务「${row.name}」吗？`, '确认删除', {
       type: 'warning',
     })
-    await syncV2Api.deleteTask(row.key)
+    await syncV2Api.delete_task(row.key)
     ElMessage.success('删除成功')
     loadTasks()
     loadStats()

@@ -13,7 +13,7 @@
             <el-option label="Local" value="local" />
             <el-option v-for="r in remoteNames" :key="r" :label="r" :value="r" />
           </el-select>
-          <el-input v-model="quickForm.sourceBranch" placeholder="分支" style="width: 120px" />
+          <el-input v-model="quickForm.source_branch" placeholder="分支" style="width: 120px" />
         </div>
       </div>
       <div class="qp-arrow">
@@ -25,13 +25,13 @@
           <el-select v-model="quickForm.targetRemote" style="width: 120px">
             <el-option v-for="r in remoteNames" :key="r" :label="r" :value="r" />
           </el-select>
-          <el-input v-model="quickForm.targetBranch" placeholder="分支" style="width: 120px" />
+          <el-input v-model="quickForm.target_branch" placeholder="分支" style="width: 120px" />
         </div>
       </div>
       <div class="qp-options">
-        <el-checkbox v-model="quickForm.gitTags">--tags</el-checkbox>
-        <el-checkbox v-model="quickForm.gitForce">--force</el-checkbox>
-        <el-checkbox v-model="quickForm.gitPrune">--prune</el-checkbox>
+        <el-checkbox v-model="quickForm.git_tags">--tags</el-checkbox>
+        <el-checkbox v-model="quickForm.git_force">--force</el-checkbox>
+        <el-checkbox v-model="quickForm.git_prune">--prune</el-checkbox>
       </div>
       <div class="qp-actions">
         <ActionPill variant="outline" @click="handlePreview" :disabled="previewing">预览</ActionPill>
@@ -76,12 +76,12 @@ const previewing = ref(false)
 const previewResult = ref<PreviewSyncResponse | null>(null)
 const quickForm = ref({
   sourceRemote: 'local',
-  sourceBranch: 'main',
+  source_branch: 'main',
   targetRemote: '',
-  targetBranch: 'main',
-  gitTags: false,
-  gitForce: false,
-  gitPrune: false,
+  target_branch: 'main',
+  git_tags: false,
+  git_force: false,
+  git_prune: false,
 })
 
 watch(() => props.remoteNames, (names) => {
@@ -102,12 +102,12 @@ async function handlePreview() {
     previewResult.value = await previewSync({
       repo_key: props.repoKey,
       source_remote: quickForm.value.sourceRemote,
-      source_branch: quickForm.value.sourceBranch,
+      source_branch: quickForm.value.source_branch,
       target_remote: quickForm.value.targetRemote,
-      target_branch: quickForm.value.targetBranch,
-      git_tags: quickForm.value.gitTags,
-      git_force: quickForm.value.gitForce,
-      git_prune: quickForm.value.gitPrune,
+      target_branch: quickForm.value.target_branch,
+      git_tags: quickForm.value.git_tags,
+      git_force: quickForm.value.git_force,
+      git_prune: quickForm.value.git_prune,
     })
   } catch (e: any) {
     ElMessage.error(e.message || '预览失败')
@@ -117,7 +117,7 @@ async function handlePreview() {
 }
 
 async function handleQuickSync() {
-  if (quickForm.value.gitForce) {
+  if (quickForm.value.git_force) {
     try {
       await ElMessageBox.confirm('--force 会覆盖远端提交，确定继续？', '危险操作', { type: 'warning' })
     } catch {
@@ -131,12 +131,12 @@ async function handleQuickSync() {
       source_repo_key: props.repoKey,
       target_repo_key: props.repoKey,
       source_remote: quickForm.value.sourceRemote,
-      source_branch: quickForm.value.sourceBranch,
+      source_branch: quickForm.value.source_branch,
       target_remote: quickForm.value.targetRemote,
-      target_branch: quickForm.value.targetBranch,
-      git_tags: quickForm.value.gitTags,
-      git_force: quickForm.value.gitForce,
-      git_prune: quickForm.value.gitPrune,
+      target_branch: quickForm.value.target_branch,
+      git_tags: quickForm.value.git_tags,
+      git_force: quickForm.value.git_force,
+      git_prune: quickForm.value.git_prune,
       enabled: false,
     }) as any
     if (result?.task_key) {

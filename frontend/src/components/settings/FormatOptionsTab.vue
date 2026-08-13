@@ -17,14 +17,14 @@
             <span>路径宏替换</span>
             <span class="option-desc">将硬编码路径替换为 RPM 宏</span>
           </div>
-          <el-switch v-model="formatOptions.pathMacros" />
+          <el-switch v-model="formatOptions.path_macros" />
         </div>
         <div class="option-item">
           <div class="option-label">
             <span>工具宏替换</span>
             <span class="option-desc">使用标准构建工具宏</span>
           </div>
-          <el-switch v-model="formatOptions.utilMacros" />
+          <el-switch v-model="formatOptions.util_macros" />
         </div>
       </div>
     </div>
@@ -34,23 +34,23 @@
       <div class="option-grid">
         <div class="option-item">
           <div class="option-label"><span>移除 %clean 段</span></div>
-          <el-switch v-model="formatOptions.removeClean" />
+          <el-switch v-model="formatOptions.remove_clean" />
         </div>
         <div class="option-item">
           <div class="option-label"><span>移除 BuildRoot</span></div>
-          <el-switch v-model="formatOptions.removeBuildRoot" />
+          <el-switch v-model="formatOptions.remove_build_root" />
         </div>
         <div class="option-item">
           <div class="option-label"><span>移除 Group 标签</span></div>
-          <el-switch v-model="formatOptions.removeGroup" />
+          <el-switch v-model="formatOptions.remove_group" />
         </div>
         <div class="option-item">
           <div class="option-label"><span>通用清理</span></div>
-          <el-switch v-model="formatOptions.commonCleanup" />
+          <el-switch v-model="formatOptions.common_cleanup" />
         </div>
         <div class="option-item">
           <div class="option-label"><span>条件语句修剪</span></div>
-          <el-switch v-model="formatOptions.conditionalTrim" />
+          <el-switch v-model="formatOptions.conditional_trim" />
         </div>
       </div>
     </div>
@@ -60,23 +60,23 @@
       <div class="option-grid">
         <div class="option-item">
           <div class="option-label"><span>Tab 转空格</span></div>
-          <el-switch v-model="formatOptions.tabToSpaces" />
+          <el-switch v-model="formatOptions.tab_to_spaces" />
         </div>
         <div class="option-item">
           <div class="option-label"><span>缩进大小</span></div>
-          <el-input-number v-model="formatOptions.indentSize" :min="2" :max="8" :step="1" />
+          <el-input-number v-model="formatOptions.indent_size" :min="2" :max="8" :step="1" />
         </div>
         <div class="option-item">
           <div class="option-label"><span>排序前言标签</span></div>
-          <el-switch v-model="formatOptions.preambleOrder" />
+          <el-switch v-model="formatOptions.preamble_order" />
         </div>
         <div class="option-item">
           <div class="option-label"><span>对齐标签值</span></div>
-          <el-switch v-model="formatOptions.alignValues" />
+          <el-switch v-model="formatOptions.align_values" />
         </div>
         <div class="option-item">
           <div class="option-label"><span>排序依赖</span></div>
-          <el-switch v-model="formatOptions.sortDeps" />
+          <el-switch v-model="formatOptions.sort_deps" />
         </div>
       </div>
     </div>
@@ -89,7 +89,7 @@
             <span>License 转 SPDX</span>
             <span class="option-desc">将 License 字段转换为 SPDX 标识符</span>
           </div>
-          <el-switch v-model="formatOptions.licenseSpdx" />
+          <el-switch v-model="formatOptions.license_spdx" />
         </div>
       </div>
     </div>
@@ -110,19 +110,19 @@ const saving = ref(false)
 
 const formatOptions = reactive({
   curlify: true,
-  removeClean: true,
-  removeBuildRoot: true,
-  removeGroup: false,
-  licenseSpdx: true,
-  sortDeps: true,
-  tabToSpaces: true,
-  indentSize: 4,
-  preambleOrder: true,
-  alignValues: true,
-  pathMacros: true,
-  utilMacros: true,
-  commonCleanup: true,
-  conditionalTrim: true,
+  remove_clean: true,
+  remove_build_root: true,
+  remove_group: false,
+  license_spdx: true,
+  sort_deps: true,
+  tab_to_spaces: true,
+  indent_size: 4,
+  preamble_order: true,
+  align_values: true,
+  path_macros: true,
+  util_macros: true,
+  common_cleanup: true,
+  conditional_trim: true,
 })
 
 async function loadFormatOptions() {

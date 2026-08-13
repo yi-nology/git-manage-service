@@ -14,7 +14,7 @@
               <el-icon><Check /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ stats.totalTasks }}</div>
+              <div class="stat-value">{{ stats.total_tasks }}</div>
               <div class="stat-label">总任务数</div>
             </div>
           </div>
@@ -27,7 +27,7 @@
               <el-icon><VideoPlay /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ stats.runningTasks }}</div>
+              <div class="stat-value">{{ stats.running_tasks }}</div>
               <div class="stat-label">运行中</div>
             </div>
           </div>
@@ -96,10 +96,10 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column prop="repoName" label="仓库" width="140" />
-      <el-table-column prop="syncMode" label="同步模式" width="120">
+      <el-table-column prop="repo_name" label="仓库" width="140" />
+      <el-table-column prop="sync_mode" label="同步模式" width="120">
         <template #default="{ row }">
-          <el-tag type="info" size="small">{{ row.syncMode === 'all-branch' ? '全分支' : '单分支' }}</el-tag>
+          <el-tag type="info" size="small">{{ row.sync_mode === 'all-branch' ? '全分支' : '单分支' }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="source" label="源 → 目标" min-width="200">
@@ -130,10 +130,10 @@
       </el-table-column>
       <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" type="success" :icon="VideoPlay" circle @click="runTask(row)" />
+          <el-button size="small" type="success" :icon="VideoPlay" circle @click="run_task(row)" />
           <el-button size="small" :icon="Clock" circle @click="viewHistory(row)" />
           <el-button size="small" :icon="Edit" circle @click="editTask(row)" />
-          <el-button size="small" type="danger" :icon="Delete" circle @click="deleteTask(row)" />
+          <el-button size="small" type="danger" :icon="Delete" circle @click="delete_task(row)" />
         </template>
       </el-table-column>
     </el-table>
@@ -141,7 +141,7 @@
     <div class="pagination-container">
       <el-pagination
         v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
+        v-model:page-size="pagination.page_size"
         :total="pagination.total"
         layout="total, sizes, prev, pager, next, jumper"
         :page-sizes="[10, 20, 50, 100]"
@@ -161,8 +161,8 @@ const router = useRouter()
 
 const loading = ref(false)
 const stats = reactive({
-  totalTasks: 0,
-  runningTasks: 0,
+  total_tasks: 0,
+  running_tasks: 0,
   todaySyncs: 0,
   failedTasks: 0,
 })
@@ -171,12 +171,12 @@ const tasks = ref([
   {
     id: 1,
     name: '主分支同步',
-    repoName: 'git-manage-service',
-    syncMode: 'single',
+    repo_name: 'git-manage-service',
+    sync_mode: 'single',
     sourceRemote: 'origin',
     targetRemote: 'mirror',
-    sourceBranch: 'main',
-    targetBranch: 'main',
+    source_branch: 'main',
+    target_branch: 'main',
     enabled: true,
     cron: '0 * * * *',
     lastSync: '2024-05-16 14:30:00',
@@ -185,8 +185,8 @@ const tasks = ref([
   {
     id: 2,
     name: '全分支镜像同步',
-    repoName: 'frontend',
-    syncMode: 'all-branch',
+    repo_name: 'frontend',
+    sync_mode: 'all-branch',
     sourceRemote: 'origin',
     targetRemote: 'backup',
     enabled: true,
@@ -197,12 +197,12 @@ const tasks = ref([
   {
     id: 3,
     name: '开发分支同步',
-    repoName: 'backend',
-    syncMode: 'single',
+    repo_name: 'backend',
+    sync_mode: 'single',
     sourceRemote: 'origin',
     targetRemote: 'dev',
-    sourceBranch: 'develop',
-    targetBranch: 'develop',
+    source_branch: 'develop',
+    target_branch: 'develop',
     enabled: false,
     cron: '',
     lastSync: '2024-05-15 10:00:00',
@@ -224,13 +224,13 @@ const filters = reactive({
 
 const pagination = reactive({
   page: 1,
-  pageSize: 20,
+  page_size: 20,
   total: 3,
 })
 
 onMounted(() => {
-  stats.totalTasks = 3
-  stats.runningTasks = 1
+  stats.total_tasks = 3
+  stats.running_tasks = 1
   stats.todaySyncs = 12
   stats.failedTasks = 1
 })
@@ -241,7 +241,7 @@ function resetFilters() {
   filters.repo = ''
 }
 
-function runTask(row: any) {
+function run_task(row: any) {
   console.log('Run task:', row)
 }
 
@@ -253,7 +253,7 @@ function editTask(row: any) {
   console.log('Edit task:', row)
 }
 
-function deleteTask(row: any) {
+function delete_task(row: any) {
   console.log('Delete task:', row)
 }
 

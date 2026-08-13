@@ -21,84 +21,84 @@
           <span class="fmt-opt-name">删除 %clean 段</span>
           <span class="fmt-opt-desc">现代 RPM 不再需要 %clean section</span>
         </div>
-        <el-switch v-model="formatOpts.removeClean" />
+        <el-switch v-model="formatOpts.remove_clean" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">删除 BuildRoot</span>
           <span class="fmt-opt-desc">现代 RPM 已废弃 BuildRoot 字段</span>
         </div>
-        <el-switch v-model="formatOpts.removeBuildRoot" />
+        <el-switch v-model="formatOpts.remove_build_root" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">删除 Group 字段</span>
           <span class="fmt-opt-desc">现代 RPM 不再使用 Group 分类</span>
         </div>
-        <el-switch v-model="formatOpts.removeGroup" />
+        <el-switch v-model="formatOpts.remove_group" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">License SPDX 修正</span>
           <span class="fmt-opt-desc">将非标准 License 名修正为 SPDX 标识符</span>
         </div>
-        <el-switch v-model="formatOpts.licenseSpdx" />
+        <el-switch v-model="formatOpts.license_spdx" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">依赖排序去重</span>
           <span class="fmt-opt-desc">BuildRequires/Requires 按字母排序并去重</span>
         </div>
-        <el-switch v-model="formatOpts.sortDeps" />
+        <el-switch v-model="formatOpts.sort_deps" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">Tab 转空格</span>
           <span class="fmt-opt-desc">所有 Tab 替换为空格</span>
         </div>
-        <el-switch v-model="formatOpts.tabToSpaces" />
+        <el-switch v-model="formatOpts.tab_to_spaces" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">Preamble 标签排序</span>
           <span class="fmt-opt-desc">按 RPM 规范顺序重排 Name/Version/BuildRequires 等</span>
         </div>
-        <el-switch v-model="formatOpts.preambleOrder" />
+        <el-switch v-model="formatOpts.preamble_order" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">标签值对齐</span>
           <span class="fmt-opt-desc">统一冒号后缩进，提升可读性</span>
         </div>
-        <el-switch v-model="formatOpts.alignValues" />
+        <el-switch v-model="formatOpts.align_values" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">路径宏替换</span>
           <span class="fmt-opt-desc">硬编码路径 → RPM 宏 (如 /usr/bin → %{_bindir})</span>
         </div>
-        <el-switch v-model="formatOpts.pathMacros" />
+        <el-switch v-model="formatOpts.path_macros" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">工具宏展开</span>
           <span class="fmt-opt-desc">%{__make} → make, %{__rm} → rm 等</span>
         </div>
-        <el-switch v-model="formatOpts.utilMacros" />
+        <el-switch v-model="formatOpts.util_macros" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">通用清理</span>
           <span class="fmt-opt-desc">$RPM_BUILD_ROOT → %{buildroot}, egrep → grep -E</span>
         </div>
-        <el-switch v-model="formatOpts.commonCleanup" />
+        <el-switch v-model="formatOpts.common_cleanup" />
       </div>
       <div class="fmt-opt-row">
         <div class="fmt-opt-label">
           <span class="fmt-opt-name">条件块空行压缩</span>
           <span class="fmt-opt-desc">移除 %if/%else/%endif 后的多余空行</span>
         </div>
-        <el-switch v-model="formatOpts.conditionalTrim" />
+        <el-switch v-model="formatOpts.conditional_trim" />
       </div>
     </div>
     <template #footer>
@@ -192,19 +192,19 @@ const formatAddedLines = computed(() => formatChanges.value.filter(c => c.after)
 const formatRemovedLines = computed(() => formatChanges.value.filter(c => c.before).length)
 const formatOpts = ref({
   curlify: true,
-  removeClean: true,
-  removeBuildRoot: true,
-  removeGroup: false,
-  licenseSpdx: true,
-  sortDeps: true,
-  tabToSpaces: true,
-  indentSize: 4,
-  preambleOrder: true,
-  alignValues: true,
-  pathMacros: true,
-  utilMacros: true,
-  commonCleanup: true,
-  conditionalTrim: true,
+  remove_clean: true,
+  remove_build_root: true,
+  remove_group: false,
+  license_spdx: true,
+  sort_deps: true,
+  tab_to_spaces: true,
+  indent_size: 4,
+  preamble_order: true,
+  align_values: true,
+  path_macros: true,
+  util_macros: true,
+  common_cleanup: true,
+  conditional_trim: true,
 })
 
 async function handleFormat() {

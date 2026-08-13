@@ -2,9 +2,9 @@ export interface AIRef {
   type: string
   id: string
   label: string
-  filePath?: string
-  startLine?: number
-  endLine?: number
+  file_path?: string
+  start_line?: number
+  end_line?: number
   url?: string
 }
 
@@ -18,45 +18,45 @@ export interface AIAction {
  export interface AIAdviceResponse {
  	summary: string
  	confidence?: string
- 	riskLevel?: string
+ 	risk_level?: string
  	references?: AIRef[]
  	suggestions?: string[]
  	actions?: AIAction[]
  	raw?: string
- 	invocationId?: number
+ 	invocation_id?: number
  }
 
  export interface AIDraftResponse {
  	summary: string
- 	changeType?: string
- 	riskLevel?: string
+ 	change_type?: string
+ 	risk_level?: string
  	references?: AIRef[]
- 	applyContent?: string
+ 	apply_content?: string
  	patch?: string
  	actions?: AIAction[]
  	raw?: string
- 	invocationId?: number
+ 	invocation_id?: number
  }
 
  export interface AIDiagnosisResponse {
- 	rootCause: string
+ 	root_cause: string
  	evidence?: string[]
- 	recommendedActions?: string[]
- 	canAutoFix?: boolean
- 	riskLevel?: string
+ 	recommended_actions?: string[]
+ 	can_auto_fix?: boolean
+ 	risk_level?: string
  	references?: AIRef[]
- 	fixDraft?: string
+ 	fix_draft?: string
  	raw?: string
- 	invocationId?: number
+ 	invocation_id?: number
  }
 
  export interface AIReviewFinding {
  	severity: string
  	category: string
  	message: string
- 	filePath?: string
- 	startLine?: number
- 	endLine?: number
+ 	file_path?: string
+ 	start_line?: number
+ 	end_line?: number
  	suggestion?: string
  	confidence?: string
  }
@@ -64,17 +64,17 @@ export interface AIAction {
  export interface AIReviewResponse {
   	summary: string
   	blocking?: AIReviewFinding[]
-  	highRisk?: AIReviewFinding[]
+  	high_risk?: AIReviewFinding[]
   	optional?: AIReviewFinding[]
-  	riskLevel?: string
-  	shouldMerge?: boolean
-  	mergeNotes?: string
+  	risk_level?: string
+  	should_merge?: boolean
+  	merge_notes?: string
   	raw?: string
-  	invocationId?: number
+  	invocation_id?: number
   }
 
  export interface AIFeedbackRequest {
- 	invocationId: number
+ 	invocation_id: number
  	feedback: string
  }
 

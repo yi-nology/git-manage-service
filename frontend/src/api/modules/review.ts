@@ -79,8 +79,8 @@ export function listReviewTasks(params: {
   }>('/reviews/tasks', { params })
 }
 
-export function listReviewFindings(taskId: number, params?: { severity?: string; source?: string }) {
-  return request.get<unknown, ReviewFindingDTO[]>(`/reviews/tasks/${taskId}/findings`, { params })
+export function listReviewFindings(task_id: number, params?: { severity?: string; source?: string }) {
+  return request.get<unknown, ReviewFindingDTO[]>(`/reviews/tasks/${task_id}/findings`, { params })
 }
 
 export function retryReviewTask(id: number, data?: { owner?: string; repo?: string }) {
@@ -91,12 +91,12 @@ export function checkMerge(params: { repo_key: string; mr_iid: string; commit_sh
   return request.get<unknown, MergeCheckDTO>('/merge-checks', { params })
 }
 
-export function getReviewConfig(repoKey: string) {
-  return request.get<unknown, { config_yaml: string }>(`/reviews/config/${repoKey}`)
+export function getReviewConfig(repo_key: string) {
+  return request.get<unknown, { config_yaml: string }>(`/reviews/config/${repo_key}`)
 }
 
-export function updateReviewConfig(repoKey: string, configYaml: string) {
-  return request.put<unknown, { config_yaml: string }>(`/reviews/config/${repoKey}`, { config_yaml: configYaml })
+export function updateReviewConfig(repo_key: string, configYaml: string) {
+  return request.put<unknown, { config_yaml: string }>(`/reviews/config/${repo_key}`, { config_yaml: configYaml })
 }
 
 export interface ReviewRepoConfigDTO {
@@ -123,12 +123,12 @@ export interface LinkedRepoDTO {
   name: string
 }
 
-export function getRemoteRepoConfig(providerId: number, owner: string, repo: string) {
-  return request.get<unknown, ReviewRepoConfigDTO>(`/review/remote-config/${providerId}/${owner}/${repo}`)
+export function getRemoteRepoConfig(provider_id: number, owner: string, repo: string) {
+  return request.get<unknown, ReviewRepoConfigDTO>(`/review/remote-config/${provider_id}/${owner}/${repo}`)
 }
 
-export function updateRemoteRepoConfig(providerId: number, owner: string, repo: string, data: Partial<ReviewRepoConfigDTO>) {
-  return request.put<unknown, ReviewRepoConfigDTO>(`/review/remote-config/${providerId}/${owner}/${repo}`, data)
+export function updateRemoteRepoConfig(provider_id: number, owner: string, repo: string, data: Partial<ReviewRepoConfigDTO>) {
+  return request.put<unknown, ReviewRepoConfigDTO>(`/review/remote-config/${provider_id}/${owner}/${repo}`, data)
 }
 
 export function createReviewTaskByProvider(data: {
@@ -195,8 +195,8 @@ export interface RAGStatsResult {
   available: boolean
 }
 
-export function indexRepoRAG(repoKey: string) {
-  return request.post<unknown, RAGIndexResult>(`/reviews/rag/index/${repoKey}`)
+export function indexRepoRAG(repo_key: string) {
+  return request.post<unknown, RAGIndexResult>(`/reviews/rag/index/${repo_key}`)
 }
 
 export function getRAGStats() {

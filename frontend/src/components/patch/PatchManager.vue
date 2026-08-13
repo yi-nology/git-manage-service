@@ -110,7 +110,7 @@
 
     <el-dialog v-model="showViewDialog" title="Patch 内容" width="800px" destroy-on-close>
       <el-input
-        v-model="patchContent"
+        v-model="patch_content"
         type="textarea"
         :rows="20"
         readonly
@@ -204,7 +204,7 @@ const seriesStats = ref<any>(null)
 const showGenerateDialog = ref(false)
 
 const showViewDialog = ref(false)
-const patchContent = ref('')
+const patch_content = ref('')
 
 const showApplyDialog = ref(false)
 const applyForm = ref({
@@ -256,7 +256,7 @@ function openGenerateDialog() {
 async function viewPatch(patch: PatchInfoDTO) {
   try {
     const result = await getPatchContent(patch.path)
-    patchContent.value = result.content
+    patch_content.value = result.content
     showViewDialog.value = true
   } catch (e: any) {
     showError('读取失败', e)
@@ -319,7 +319,7 @@ async function handleDelete(patch: PatchInfoDTO) {
 }
 
 function copyContent() {
-  navigator.clipboard.writeText(patchContent.value)
+  navigator.clipboard.writeText(patch_content.value)
   showSuccess('已复制到剪贴板')
 }
 

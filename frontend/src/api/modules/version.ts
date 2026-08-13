@@ -15,14 +15,14 @@ export interface NextVersionInfo {
   next_patch: string
 }
 
-export function getVersionList(repoKey: string) {
-  return request.get<unknown, VersionTag[]>('/version/list', { params: { repo_key: repoKey } })
+export function getVersionList(repo_key: string) {
+  return request.get<unknown, VersionTag[]>('/version/list', { params: { repo_key: repo_key } })
 }
 
-export function getCurrentVersion(repoKey: string) {
-  return request.get<unknown, string>('/version/current', { params: { repo_key: repoKey } })
+export function getCurrentVersion(repo_key: string) {
+  return request.get<unknown, string>('/version/current', { params: { repo_key: repo_key } })
 }
 
-export function getNextVersion(repoKey: string) {
-  return request.get<unknown, NextVersionInfo>('/version/next', { params: { repo_key: repoKey } })
+export function getNextVersion(repo_key: string) {
+  return request.get<unknown, NextVersionInfo>('/version/next', { params: { repo_key: repo_key } })
 }

@@ -205,16 +205,16 @@ export async function retry<T>(
   maxAttempts: number = 3,
   delay: number = 1000
 ): Promise<T> {
-  let lastError: Error
+  let last_error: Error
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await func()
     } catch (error) {
-      lastError = error as Error
+      last_error = error as Error
       if (attempt < maxAttempts) {
         await sleep(delay * attempt)
       }
     }
   }
-  throw lastError!
+  throw last_error!
 }

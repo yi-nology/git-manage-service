@@ -20,13 +20,13 @@
           </el-form-item>
 
           <el-form-item label="选择仓库" required>
-            <el-select v-model="form.repoKey" placeholder="选择仓库" style="width: 100%">
+            <el-select v-model="form.repo_key" placeholder="选择仓库" style="width: 100%">
               <el-option v-for="repo in repos" :key="repo.key" :label="repo.name" :value="repo.key" />
             </el-select>
           </el-form-item>
 
           <el-form-item label="同步模式" required>
-            <el-radio-group v-model="form.syncMode">
+            <el-radio-group v-model="form.sync_mode">
               <el-radio value="single">单分支同步</el-radio>
               <el-radio value="all-branch">全分支同步</el-radio>
             </el-radio-group>
@@ -62,17 +62,17 @@
             </el-col>
           </el-row>
 
-          <el-row :gutter="20" v-if="form.syncMode === 'single'">
+          <el-row :gutter="20" v-if="form.sync_mode === 'single'">
             <el-col :span="12">
               <el-form-item label="源分支" required>
-                <el-select v-model="form.sourceBranch" filterable placeholder="选择源分支" style="width: 100%">
+                <el-select v-model="form.source_branch" filterable placeholder="选择源分支" style="width: 100%">
                   <el-option v-for="b in branches" :key="b" :label="b" :value="b" />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="目标分支" required>
-                <el-select v-model="form.targetBranch" filterable placeholder="选择目标分支" style="width: 100%">
+                <el-select v-model="form.target_branch" filterable placeholder="选择目标分支" style="width: 100%">
                   <el-option v-for="b in branches" :key="b" :label="b" :value="b" />
                 </el-select>
               </el-form-item>
@@ -101,22 +101,22 @@
       <div v-if="currentStep === 2" class="step-content">
         <el-form :model="form" label-width="160px" label-position="left">
           <el-form-item label="同步所有标签">
-            <el-switch v-model="form.gitTags" />
+            <el-switch v-model="form.git_tags" />
             <div class="form-tip">同步时包含所有 Git 标签</div>
           </el-form-item>
 
           <el-form-item label="强制推送">
-            <el-switch v-model="form.gitForce" />
+            <el-switch v-model="form.git_force" />
             <div class="form-tip">使用 --force 参数强制覆盖远端分支</div>
           </el-form-item>
 
           <el-form-item label="清理分支">
-            <el-switch v-model="form.gitPrune" />
+            <el-switch v-model="form.git_prune" />
             <div class="form-tip">同步后删除本地不存在的远端分支</div>
           </el-form-item>
 
           <el-form-item label="跳过验证">
-            <el-switch v-model="form.gitNoVerify" />
+            <el-switch v-model="form.git_no_verify" />
             <div class="form-tip">跳过 pre-push 和 pre-receive 钩子验证</div>
           </el-form-item>
 
@@ -125,7 +125,7 @@
           </el-form-item>
 
           <el-form-item label="重试次数">
-            <el-input-number v-model="form.retryCount" :min="0" :max="5" style="width: 200px" />
+            <el-input-number v-model="form.retry_count" :min="0" :max="5" style="width: 200px" />
           </el-form-item>
 
           <el-form-item label="通知设置">
@@ -167,22 +167,22 @@ const branches = ref(['main', 'master', 'develop', 'feature/*'])
 
 const form = reactive({
   name: '',
-  repoKey: '',
-  syncMode: 'single',
+  repo_key: '',
+  sync_mode: 'single',
   description: '',
   enabled: true,
   sourceRemote: 'origin',
   targetRemote: '',
-  sourceBranch: '',
-  targetBranch: '',
+  source_branch: '',
+  target_branch: '',
   triggerMode: 'manual',
   cron: '',
-  gitTags: false,
-  gitForce: false,
-  gitPrune: false,
-  gitNoVerify: false,
+  git_tags: false,
+  git_force: false,
+  git_prune: false,
+  git_no_verify: false,
   timeout: 300,
-  retryCount: 2,
+  retry_count: 2,
   notifications: ['sync_failed', 'sync_timeout'],
 })
 

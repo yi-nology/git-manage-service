@@ -81,10 +81,10 @@
     </DataTable>
 
     <PaginationBar
-      v-if="totalCount > 0"
-      :total="totalCount"
+      v-if="total_count > 0"
+      :total="total_count"
       v-model:currentPage="currentPage"
-      :page-size="pageSize"
+      :page-size="page_size"
     />
   </div>
 </template>
@@ -512,9 +512,9 @@ const columns: TableColumn[] = [
 
 const loading = ref(false)
 const logs = ref<AuditLogDTO[]>([])
-const totalCount = ref(0)
+const total_count = ref(0)
 const currentPage = ref(1)
-const pageSize = 20
+const page_size = 20
 
 const filterAction = ref('')
 const filterTarget = ref('')
@@ -554,7 +554,7 @@ async function loadLogs() {
   try {
     const params: Record<string, unknown> = {
       page: currentPage.value,
-      page_size: pageSize,
+      page_size: page_size,
       action: filterAction.value || undefined,
       target: filterTarget.value || undefined,
     }
@@ -564,10 +564,10 @@ async function loadLogs() {
     }
     const res = await getAuditLogs(params)
     logs.value = res.items || []
-    totalCount.value = res.total || 0
+    total_count.value = res.total || 0
   } catch {
     logs.value = []
-    totalCount.value = 0
+    total_count.value = 0
   } finally {
     loading.value = false
   }

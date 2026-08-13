@@ -44,12 +44,12 @@ export function updateBranchRules(data: BranchRuleSetDTO) {
   return request.put<unknown, BranchRuleSetDTO>('/settings/branch-rules', data)
 }
 
-export function getRemoteRepoBranchRules(providerId: number, owner: string, repo: string) {
-  return request.get<unknown, RemoteRepoBranchRulesDTO>(`/branch-rules/remote-config/${providerId}/${owner}/${repo}`)
+export function getRemoteRepoBranchRules(provider_id: number, owner: string, repo: string) {
+  return request.get<unknown, RemoteRepoBranchRulesDTO>(`/branch-rules/remote-config/${provider_id}/${owner}/${repo}`)
 }
 
-export function updateRemoteRepoBranchRules(providerId: number, owner: string, repo: string, data: Partial<RemoteRepoBranchRulesDTO>) {
-  return request.put<unknown, RemoteRepoBranchRulesDTO>(`/branch-rules/remote-config/${providerId}/${owner}/${repo}`, data)
+export function updateRemoteRepoBranchRules(provider_id: number, owner: string, repo: string, data: Partial<RemoteRepoBranchRulesDTO>) {
+  return request.put<unknown, RemoteRepoBranchRulesDTO>(`/branch-rules/remote-config/${provider_id}/${owner}/${repo}`, data)
 }
 
 export function validateBranchName(params: { repo_key: string; branch_name: string; base_ref?: string; skip_rules?: boolean }) {

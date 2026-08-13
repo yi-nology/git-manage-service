@@ -1,8 +1,8 @@
 <template>
   <div class="review-page-wrapper">
     <PageHeader
-      :title="`代码审查 · ${repoName}`"
-      :back-route="`/local-repos/${repoKey}`"
+      :title="`代码审查 · ${repo_name}`"
+      :back-route="`/local-repos/${repo_key}`"
       :show-back="true"
     >
       <template #actions>
@@ -13,7 +13,7 @@
     </PageHeader>
 
     <div class="review-layout">
-      <RepoSidebar :repo-key="repoKey" active-key="review" />
+      <RepoSidebar :repo-key="repo_key" active-key="review" />
       <div class="review-content">
         <StatsRow :stats="statsData" />
 
@@ -101,8 +101,8 @@ import { listReviewTasks, createReviewTask, type ReviewTaskDTO } from '@/api/mod
 
 const route = useRoute()
 const router = useRouter()
-const repoKey = route.params.repoKey as string
-const repoName = ref(repoKey)
+const repo_key = route.params.repo_key as string
+const repo_name = ref(repo_key)
 
 const loading = ref(false)
 const tasks = ref<ReviewTaskDTO[]>([])
@@ -195,17 +195,17 @@ function timeAgo(dateStr: string) {
   return `${days} 天前`
 }
 
-function goDetail(taskId: number) {
-  router.push(`/local-repos/${repoKey}/review/tasks/${taskId}`)
+function goDetail(task_id: number) {
+  router.push(`/local-repos/${repo_key}/review/tasks/${task_id}`)
 }
 
 async function loadData() {
   loading.value = true
   try {
-    const res = await listReviewTasks({ repo_key: repoKey, page: 1, page_size: 10 })
+    const res = await listReviewTasks({ repo_key: repo_key, page: 1, page_size: 10 })
     tasks.value = res?.tasks || []
     if (tasks.value.length > 0 && tasks.value[0]?.repo_name) {
-      repoName.value = tasks.value[0].repo_name
+      repo_name.value = tasks.value[0].repo_name
     }
   } catch (e) {
     console.error(e)
@@ -222,7 +222,7 @@ async function handleTrigger() {
   triggering.value = true
   try {
     await createReviewTask({
-      repo_key: repoKey,
+      repo_key: repo_key,
       mr_iid: triggerForm.value.mr_iid,
       commit_sha: triggerForm.value.commit_sha || undefined,
       trigger_type: 'manual',

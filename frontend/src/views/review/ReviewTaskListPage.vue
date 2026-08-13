@@ -1,9 +1,9 @@
 <template>
   <div class="review-page-wrapper">
     <PageHeader
-      :title="`${repoName} — 审查任务`"
+      :title="`${repo_name} — 审查任务`"
       :show-back="true"
-      :back-route="`/local-repos/${repoKey}/review`"
+      :back-route="`/local-repos/${repo_key}/review`"
     >
       <template #actions>
         <ActionPill variant="primary" :icon="Plus" @click="showTriggerDialog = true">
@@ -13,10 +13,10 @@
     </PageHeader>
 
     <div class="review-layout">
-      <RepoSidebar :repo-key="repoKey" active-key="review" />
+      <RepoSidebar :repo-key="repo_key" active-key="review" />
       <div class="review-content">
         <div class="breadcrumb">
-          <router-link :to="`/local-repos/${repoKey}/review`">总览</router-link>
+          <router-link :to="`/local-repos/${repo_key}/review`">总览</router-link>
           <span class="sep">/</span>
           <span class="current">审查任务</span>
         </div>
@@ -33,7 +33,7 @@
           <PaginationBar
             :total="total"
             :current-page="page"
-            :page-size="pageSize"
+            :page-size="page_size"
             @update:currentPage="handlePageChange"
           />
         </div>
@@ -112,13 +112,13 @@ import { listReviewTasks, createReviewTask, type ReviewTaskDTO } from '@/api/mod
 
 const route = useRoute()
 const router = useRouter()
-const repoKey = route.params.repoKey as string
-const repoName = ref(repoKey)
+const repo_key = route.params.repo_key as string
+const repo_name = ref(repo_key)
 
 const loading = ref(false)
 const tasks = ref<ReviewTaskDTO[]>([])
 const page = ref(1)
-const pageSize = ref(20)
+const page_size = ref(20)
 const total = ref(0)
 const filters = ref({ status: '' })
 const showTriggerDialog = ref(false)
@@ -163,22 +163,22 @@ function handlePageChange(p: number) {
   loadData()
 }
 
-function goDetail(taskId: number) {
-  router.push(`/local-repos/${repoKey}/review/tasks/${taskId}`)
+function goDetail(task_id: number) {
+  router.push(`/local-repos/${repo_key}/review/tasks/${task_id}`)
 }
 
 async function loadData() {
   loading.value = true
   try {
     const res = await listReviewTasks({
-      repo_key: repoKey,
+      repo_key: repo_key,
       status: filters.value.status || undefined,
       page: page.value,
-      page_size: pageSize.value,
+      page_size: page_size.value,
     })
     tasks.value = res?.tasks || []
     total.value = res?.pagination?.total || 0
-    if (tasks.value.length > 0 && tasks.value[0]?.repo_name) repoName.value = tasks.value[0].repo_name
+    if (tasks.value.length > 0 && tasks.value[0]?.repo_name) repo_name.value = tasks.value[0].repo_name
   } catch (e) { console.error(e) } finally { loading.value = false }
 }
 
@@ -186,7 +186,7 @@ async function handleTrigger() {
   if (!triggerForm.value.mr_iid) { ElMessage.warning('请输入 MR 编号'); return }
   triggering.value = true
   try {
-    await createReviewTask({ repo_key: repoKey, mr_iid: triggerForm.value.mr_iid, commit_sha: triggerForm.value.commit_sha || undefined, trigger_type: 'manual' })
+    await createReviewTask({ repo_key: repo_key, mr_iid: triggerForm.value.mr_iid, commit_sha: triggerForm.value.commit_sha || undefined, trigger_type: 'manual' })
     ElMessage.success('审查任务已创建')
     showTriggerDialog.value = false
     triggerForm.value = { mr_iid: '', commit_sha: '' }

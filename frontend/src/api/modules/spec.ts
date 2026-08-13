@@ -11,22 +11,22 @@ import type {
   FormatResult,
 } from '@/types/spec'
 
-export function getSpecTree(repoKey?: string) {
-  const key = repoKey || 'test-repo' // 临时使用默认仓库进行测试
+export function getSpecTree(repo_key?: string) {
+  const key = repo_key || 'test-repo' // 临时使用默认仓库进行测试
   return request.get<unknown, SpecFileNode[]>('/spec/tree', {
     params: { repo_key: key },
   })
 }
 
-export function getSpecContent(path: string, repoKey?: string) {
-  const key = repoKey || 'test-repo'
+export function getSpecContent(path: string, repo_key?: string) {
+  const key = repo_key || 'test-repo'
   return request.get<unknown, { content: string }>('/spec/content', {
     params: { path, repo_key: key },
   })
 }
 
-export function saveSpecContent(path: string, data: SaveRequest, repoKey?: string) {
-  const key = repoKey || 'test-repo'
+export function saveSpecContent(path: string, data: SaveRequest, repo_key?: string) {
+  const key = repo_key || 'test-repo'
   return request.put<unknown, { message: string }>(
     `/spec/content/${encodeURIComponent(path)}`,
     { ...data, repo_key: key }
@@ -58,8 +58,8 @@ export function createLintRule(data: LintRule) {
   return request.post<unknown, LintRule>('/spec/rules', data)
 }
 
-export function commitSpec(path: string, data: CommitRequest, repoKey?: string) {
-  const key = repoKey || 'test-repo'
+export function commitSpec(path: string, data: CommitRequest, repo_key?: string) {
+  const key = repo_key || 'test-repo'
   return request.post<unknown, CommitResponse>(
     `/spec/commit/${encodeURIComponent(path)}`,
     { ...data, repo_key: key }
@@ -78,9 +78,9 @@ export function createSpecFile(data: CreateSpecFileRequest) {
 }
 
 // 删除spec文件
-export function deleteSpecFile(repoKey: string, path: string, commitMessage?: string) {
+export function deleteSpecFile(repo_key: string, path: string, commitMessage?: string) {
   return request.post<unknown, { message: string }>('/spec/delete', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     path,
     commit_message: commitMessage
   })

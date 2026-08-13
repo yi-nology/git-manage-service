@@ -27,8 +27,8 @@ export function setPrimaryBinding(id: number) {
   return request.post<unknown, RepoProviderBindingDTO>(`/bindings/${id}/set-primary`)
 }
 
-export function autoDetectBindings(repoKey: string) {
-  return request.post<unknown, AutoDetectResp>('/bindings/auto-detect', { repo_key: repoKey })
+export function autoDetectBindings(repo_key: string) {
+  return request.post<unknown, AutoDetectResp>('/bindings/auto-detect', { repo_key: repo_key })
 }
 
 export function registerBindingWebhook(id: number) {

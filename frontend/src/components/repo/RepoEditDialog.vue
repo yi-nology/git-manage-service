@@ -288,9 +288,9 @@ async function testEditRemote(index: number) {
   }
   row._testing = true
   try {
-    const credentialId = editRemoteCredentials.value?.[row.name]
-    if (credentialId) {
-      const result = await testCredential(credentialId, row.fetch_url)
+    const credential_id = editRemoteCredentials.value?.[row.name]
+    if (credential_id) {
+      const result = await testCredential(credential_id, row.fetch_url)
       if (result.success) {
         ElMessage.success(`${row.name || 'Remote'} 连接成功`)
       } else {

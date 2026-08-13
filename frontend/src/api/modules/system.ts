@@ -39,12 +39,12 @@ export function testConnection(url: string, authType?: string, authKey?: string,
   })
 }
 
-export function getRepoStatus(repoKey: string) {
-  return request.get('/system/repo/status', { params: { repo_key: repoKey } })
+export function getRepoStatus(repo_key: string) {
+  return request.get('/system/repo/status', { params: { repo_key: repo_key } })
 }
 
-export function getRepoGitConfig(repoKey: string) {
-  return request.get('/system/repo/git-config', { params: { repo_key: repoKey } })
+export function getRepoGitConfig(repo_key: string) {
+  return request.get('/system/repo/git-config', { params: { repo_key: repo_key } })
 }
 
 export function submitChanges(data: { repo_key: string; message: string; push: boolean; author_name?: string; author_email?: string }) {

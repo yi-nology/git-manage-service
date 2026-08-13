@@ -14,7 +14,7 @@ import {
 } from '@/api/modules/workspace'
 import { ElMessage } from 'element-plus'
 
-export function useWorkspace(repoKey: string) {
+export function useWorkspace(repo_key: string) {
   const loading = ref(false)
   const status = ref<WorkspaceStatus | null>(null)
   const diff = ref<WorkspaceDiff | null>(null)
@@ -25,7 +25,7 @@ export function useWorkspace(repoKey: string) {
   async function loadStatus() {
     loading.value = true
     try {
-      status.value = await getWorkspaceStatus(repoKey)
+      status.value = await getWorkspaceStatus(repo_key)
     } catch {
       status.value = null
     } finally {
@@ -35,7 +35,7 @@ export function useWorkspace(repoKey: string) {
 
   async function loadDiff(file?: string, stagedOnly = false) {
     try {
-      diff.value = await getWorkspaceDiff(repoKey, { file, stagedOnly })
+      diff.value = await getWorkspaceDiff(repo_key, { file, stagedOnly })
     } catch {
       diff.value = null
     }
@@ -43,7 +43,7 @@ export function useWorkspace(repoKey: string) {
 
   async function handleStageAll() {
     try {
-      await stageFiles(repoKey, [], true)
+      await stageFiles(repo_key, [], true)
       await loadStatus()
       if (selectedFile.value) await loadDiff(selectedFile.value)
       ElMessage.success('全部文件已暂存')
@@ -54,7 +54,7 @@ export function useWorkspace(repoKey: string) {
 
   async function handleStageFile(file: string) {
     try {
-      await stageFiles(repoKey, [file])
+      await stageFiles(repo_key, [file])
       await loadStatus()
       if (selectedFile.value) await loadDiff(selectedFile.value)
     } catch (e: any) {
@@ -64,7 +64,7 @@ export function useWorkspace(repoKey: string) {
 
   async function handleUnstageFile(file: string) {
     try {
-      await unstageFiles(repoKey, [file])
+      await unstageFiles(repo_key, [file])
       await loadStatus()
       if (selectedFile.value) await loadDiff(selectedFile.value)
     } catch (e: any) {
@@ -74,7 +74,7 @@ export function useWorkspace(repoKey: string) {
 
   async function handleUnstageAll() {
     try {
-      await unstageFiles(repoKey, [], true)
+      await unstageFiles(repo_key, [], true)
       await loadStatus()
       if (selectedFile.value) await loadDiff(selectedFile.value)
       ElMessage.success('已取消全部暂存')
@@ -83,7 +83,7 @@ export function useWorkspace(repoKey: string) {
     }
   }
 
-  async function handleCommit(message: string, authorName: string, authorEmail: string, push: boolean, pushRemote: string) {
+  async function handleCommit(message: string, author_name: string, author_email: string, push: boolean, pushRemote: string) {
     if (!message) {
       ElMessage.warning('请输入提交信息')
       return null
@@ -91,11 +91,11 @@ export function useWorkspace(repoKey: string) {
     committing.value = true
     try {
       const result = await commitChanges({
-        repo_key: repoKey,
+        repo_key: repo_key,
         stage_all: true,
         message,
-        author_name: authorName || undefined,
-        author_email: authorEmail || undefined,
+        author_name: author_name || undefined,
+        author_email: author_email || undefined,
         push,
         push_remote: pushRemote || undefined,
       })
@@ -115,7 +115,7 @@ export function useWorkspace(repoKey: string) {
   async function handlePull(remote = '', branch = '') {
     pulling.value = true
     try {
-      const result = await pullWithResolve(repoKey, remote, branch)
+      const result = await pullWithResolve(repo_key, remote, branch)
       if (result.status === 'conflicts') {
         ElMessage.warning(`拉取完成，检测到 ${result.conflicts.length} 个冲突`)
       } else if (result.status === 'success') {
@@ -135,16 +135,16 @@ export function useWorkspace(repoKey: string) {
 
   async function handleGetConflictDetail(file: string) {
     try {
-      return await getConflictDetail(repoKey, file)
+      return await getConflictDetail(repo_key, file)
     } catch (e: any) {
       ElMessage.error(e?.message || '获取冲突详情失败')
       return null
     }
   }
 
-  async function handleResolveConflict(file: string, resolvedContent: string, stage = true) {
+  async function handleResolveConflict(file: string, resolved_content: string, stage = true) {
     try {
-      await markConflictResolved(repoKey, file, resolvedContent, stage)
+      await markConflictResolved(repo_key, file, resolved_content, stage)
       ElMessage.success('冲突已解决')
       await loadStatus()
     } catch (e: any) {
@@ -152,9 +152,9 @@ export function useWorkspace(repoKey: string) {
     }
   }
 
-  async function handleAIResolve(file: string, oursContent: string, theirsContent: string, baseContent: string, hint = '') {
+  async function handleAIResolve(file: string, ours_content: string, theirs_content: string, base_content: string, hint = '') {
     try {
-      return await aiResolveConflict(repoKey, file, oursContent, theirsContent, baseContent, hint)
+      return await aiResolveConflict(repo_key, file, ours_content, theirs_content, base_content, hint)
     } catch (e: any) {
       ElMessage.error(e?.message || 'AI 解决冲突失败')
       return null

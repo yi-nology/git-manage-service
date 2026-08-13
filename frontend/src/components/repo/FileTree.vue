@@ -186,7 +186,7 @@
         </div>
       </template>
 
-      <el-empty v-if="wsStatus?.isClean" description="工作区干净" :image-size="60" />
+      <el-empty v-if="wsStatus?.is_clean" description="工作区干净" :image-size="60" />
     </div>
   </div>
 </template>

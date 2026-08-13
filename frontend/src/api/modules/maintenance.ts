@@ -3,50 +3,50 @@ import request from '../request'
 export interface LargeFileEntry {
   path: string
   size: string
-  sizeBytes: number
+  size_bytes: number
   exists: boolean
-  commitCount: number
+  commit_count: number
   source: string
 }
 
 export interface GitDirBreakdown {
-  packDirSize: string
-  packDirSizeBytes: number
-  looseObjSize: string
-  looseObjSizeBytes: number
-  reflogSize: string
-  reflogSizeBytes: number
-  stashCount: number
-  otherSize: string
-  otherSizeBytes: number
+  pack_dir_size: string
+  pack_dir_size_bytes: number
+  loose_obj_size: string
+  loose_obj_size_bytes: number
+  reflog_size: string
+  reflog_size_bytes: number
+  stash_count: number
+  other_size: string
+  other_size_bytes: number
 }
 
 export interface StashEntry {
   index: number
   message: string
   size: string
-  sizeBytes: number
+  size_bytes: number
 }
 
 export interface RepoHealthReport {
-  gitDirSize: string
-  gitDirSizeBytes: number
-  looseObjects: number
-  packFiles: number
-  inPackObjects: number
-  commitCount: number
-  branchCount: number
-  tagCount: number
-  gitDirBreakdown: GitDirBreakdown | null
-  stashEntries: StashEntry[]
-  largeFiles: LargeFileEntry[]
+  git_dir_size: string
+  git_dir_size_bytes: number
+  loose_objects: number
+  pack_files: number
+  in_pack_objects: number
+  commit_count: number
+  branch_count: number
+  tag_count: number
+  git_dir_breakdown: GitDirBreakdown | null
+  stash_entries: StashEntry[]
+  large_files: LargeFileEntry[]
   threshold: number
-  thresholdHuman: string
+  threshold_human: string
   excludes: string[]
 }
 
 export interface MaintenanceTaskResponse {
-  taskId: string
+  task_id: string
 }
 
 export interface TaskProgress {
@@ -54,49 +54,49 @@ export interface TaskProgress {
   status: 'queued' | 'running' | 'success' | 'failed'
   progress: string[]
   error: string
-  startTime: string
-  endTime: string
+  start_time: string
+  end_time: string
 }
 
 export interface MaintenanceSnapshot {
-  gitDirSize: string
-  gitDirSizeBytes: number
-  looseObjects: number
-  packFiles: number
-  inPackObjects: number
-  commitCount: number
-  branchCount: number
-  tagCount: number
+  git_dir_size: string
+  git_dir_size_bytes: number
+  loose_objects: number
+  pack_files: number
+  in_pack_objects: number
+  commit_count: number
+  branch_count: number
+  tag_count: number
 }
 
 export interface MaintenanceRecordDTO {
   id: number
   type: string
   status: string
-  triggerBy: string
-  paramsJson: string
-  snapshotBefore: MaintenanceSnapshot | null
-  snapshotAfter: MaintenanceSnapshot | null
-  errorMessage: string
-  startedAt: string | null
-  finishedAt: string | null
-  createdAt: string
+  trigger_by: string
+  params_json: string
+  snapshot_before: MaintenanceSnapshot | null
+  snapshot_after: MaintenanceSnapshot | null
+  error_message: string
+  started_at: string | null
+  finished_at: string | null
+  created_at: string
   duration: string
-  savedBytes: number
-  savedPercent: number
+  saved_bytes: number
+  saved_percent: number
 }
 
 export interface MaintenanceRecordListResponse {
   records: MaintenanceRecordDTO[]
   total: number
   page: number
-  pageSize: number
+  page_size: number
 }
 
 export interface FileAIRecommendation {
   path: string
   size: string
-  sizeBytes: number
+  size_bytes: number
   recommendation: 'safe_to_delete' | 'caution' | 'keep'
   category: string
   reason: string
@@ -105,12 +105,12 @@ export interface FileAIRecommendation {
 
 export interface MaintenanceAIAnalysisResponse {
   summary: string
-  totalSavings: string
-  totalSaveBytes: number
+  total_savings: string
+  total_save_bytes: number
   recommendations: FileAIRecommendation[]
 }
 
-export function getRepoHealth(repoKey: string, threshold?: number, excludes?: string[]) {
+export function getRepoHealth(repo_key: string, threshold?: number, excludes?: string[]) {
   const params: Record<string, string> = {}
   if (threshold && threshold > 0) {
     params.threshold = String(threshold)
@@ -118,52 +118,52 @@ export function getRepoHealth(repoKey: string, threshold?: number, excludes?: st
   if (excludes && excludes.length > 0) {
     params.exclude = excludes.join(',')
   }
-  return request.get<MaintenanceTaskResponse & RepoHealthReport>(`/repo/${repoKey}/maintenance/health`, { params })
+  return request.get<MaintenanceTaskResponse & RepoHealthReport>(`/repo/${repo_key}/maintenance/health`, { params })
 }
 
-export function slimRepo(repoKey: string, paths: string[], addGitignore = true) {
-  return request.post<MaintenanceTaskResponse>(`/repo/${repoKey}/maintenance/slim`, { paths, addGitignore })
+export function slimRepo(repo_key: string, paths: string[], addGitignore = true) {
+  return request.post<MaintenanceTaskResponse>(`/repo/${repo_key}/maintenance/slim`, { paths, addGitignore })
 }
 
-export function gcRepo(repoKey: string) {
-  return request.post<MaintenanceTaskResponse>(`/repo/${repoKey}/maintenance/gc`)
+export function gcRepo(repo_key: string) {
+  return request.post<MaintenanceTaskResponse>(`/repo/${repo_key}/maintenance/gc`)
 }
 
-export function addGitignore(repoKey: string, paths: string[]) {
-  return request.post<MaintenanceTaskResponse>(`/repo/${repoKey}/maintenance/gitignore`, { paths })
+export function addGitignore(repo_key: string, paths: string[]) {
+  return request.post<MaintenanceTaskResponse>(`/repo/${repo_key}/maintenance/gitignore`, { paths })
 }
 
-export function getTaskStatus(taskId: string) {
-  return request.get<TaskProgress>('/repo/task', { params: { task_id: taskId } })
+export function getTaskStatus(task_id: string) {
+  return request.get<TaskProgress>('/repo/task', { params: { task_id: task_id } })
 }
 
-export function getMaintenanceRecords(repoKey: string, page = 1, pageSize = 10) {
-  return request.get<MaintenanceRecordListResponse>(`/repo/${repoKey}/maintenance/records`, {
-    params: { page, page_size: pageSize }
+export function getMaintenanceRecords(repo_key: string, page = 1, page_size = 10) {
+  return request.get<MaintenanceRecordListResponse>(`/repo/${repo_key}/maintenance/records`, {
+    params: { page, page_size: page_size }
   })
 }
 
-export function getMaintenanceRecord(repoKey: string, id: number) {
-  return request.get<MaintenanceRecordDTO>(`/repo/${repoKey}/maintenance/records/${id}`)
+export function getMaintenanceRecord(repo_key: string, id: number) {
+  return request.get<MaintenanceRecordDTO>(`/repo/${repo_key}/maintenance/records/${id}`)
 }
 
 export interface PrefixFileEntry {
   path: string
   size: string
-  sizeBytes: number
+  size_bytes: number
   exists: boolean
-  commitCount: number
+  commit_count: number
 }
 
 export interface PrefixSlimPreview {
   files: PrefixFileEntry[]
-  totalCount: number
-  totalSize: string
-  totalBytes: number
+  total_count: number
+  total_size: string
+  total_bytes: number
 }
 
 export interface ForcePushResult {
-  remoteName: string
+  remote_name: string
   platform: string
   branches: number
   success: boolean
@@ -172,28 +172,28 @@ export interface ForcePushResult {
 
 export interface ForcePushResponse {
   results: ForcePushResult[]
-  taskId: string
+  task_id: string
 }
 
-export function analyzeMaintenanceAI(repoKey: string, filePaths: string[], threshold?: number) {
-  return request.post<MaintenanceAIAnalysisResponse>(`/repo/${repoKey}/maintenance/ai-analyze`, {
+export function analyzeMaintenanceAI(repo_key: string, filePaths: string[], threshold?: number) {
+  return request.post<MaintenanceAIAnalysisResponse>(`/repo/${repo_key}/maintenance/ai-analyze`, {
     file_paths: filePaths,
     threshold: threshold || undefined
   }, { timeout: 180000 })
 }
 
-export function previewPrefixSlim(repoKey: string, prefixes: string[]) {
-  return request.post<PrefixSlimPreview>(`/repo/${repoKey}/maintenance/slim-prefix/preview`, { prefixes })
+export function previewPrefixSlim(repo_key: string, prefixes: string[]) {
+  return request.post<PrefixSlimPreview>(`/repo/${repo_key}/maintenance/slim-prefix/preview`, { prefixes })
 }
 
-export function slimByPrefix(repoKey: string, prefixes: string[], addGitignore = true, forcePush = false) {
-  return request.post<MaintenanceTaskResponse>(`/repo/${repoKey}/maintenance/slim-prefix`, {
+export function slimByPrefix(repo_key: string, prefixes: string[], addGitignore = true, forcePush = false) {
+  return request.post<MaintenanceTaskResponse>(`/repo/${repo_key}/maintenance/slim-prefix`, {
     prefixes,
     addGitignore,
     forcePush
   })
 }
 
-export function forcePushRemotes(repoKey: string) {
-  return request.post<ForcePushResponse>(`/repo/${repoKey}/maintenance/force-push`)
+export function forcePushRemotes(repo_key: string) {
+  return request.post<ForcePushResponse>(`/repo/${repo_key}/maintenance/force-push`)
 }

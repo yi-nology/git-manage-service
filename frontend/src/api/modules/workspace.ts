@@ -3,10 +3,10 @@ import request from '../request'
 export interface WorkspaceFileStatus {
   path: string
   status: string
-  oldPath?: string
+  old_path?: string
   additions: number
   deletions: number
-  isBinary: boolean
+  is_binary: boolean
 }
 
 export interface WorkspaceStatus {
@@ -15,9 +15,9 @@ export interface WorkspaceStatus {
   unstaged: WorkspaceFileStatus[]
   untracked: WorkspaceFileStatus[]
   conflicted: WorkspaceFileStatus[]
-  isClean: boolean
-  isMerging: boolean
-  isRebasing: boolean
+  is_clean: boolean
+  is_merging: boolean
+  is_rebasing: boolean
   ahead: number
   behind: number
 }
@@ -27,65 +27,65 @@ export interface WorkspaceDiffFile {
   diff: string
   additions: number
   deletions: number
-  isBinary: boolean
+  is_binary: boolean
 }
 
 export interface WorkspaceDiff {
   files: WorkspaceDiffFile[]
-  totalAdditions: number
-  totalDeletions: number
+  total_additions: number
+  total_deletions: number
 }
 
 export interface CommitResult {
-  commitHash: string
+  commit_hash: string
   pushed: boolean
 }
 
 export interface PullResult {
   status: string
   conflicts: string[]
-  fetchLog: string
-  behindPulled: boolean
+  fetch_log: string
+  behind_pulled: boolean
 }
 
 export interface ConflictDetail {
   path: string
-  oursContent: string
-  theirsContent: string
-  baseContent: string
-  conflictMarker: string
+  ours_content: string
+  theirs_content: string
+  base_content: string
+  conflict_marker: string
 }
 
 export interface AIResolvedFile {
-  filePath: string
-  resolvedContent: string
+  file_path: string
+  resolved_content: string
   explanation: string
   confidence: number
 }
 
-export function getWorkspaceStatus(repoKey: string) {
+export function getWorkspaceStatus(repo_key: string) {
   return request.get<unknown, WorkspaceStatus>('/workspace/status', {
-    params: { repo_key: repoKey }
+    params: { repo_key: repo_key }
   })
 }
 
-export function getWorkspaceDiff(repoKey: string, params: { file?: string; stagedOnly?: boolean } = {}) {
+export function getWorkspaceDiff(repo_key: string, params: { file?: string; stagedOnly?: boolean } = {}) {
   return request.get<unknown, WorkspaceDiff>('/workspace/diff', {
-    params: { repo_key: repoKey, ...params }
+    params: { repo_key: repo_key, ...params }
   })
 }
 
-export function stageFiles(repoKey: string, files: string[], stageAll = false) {
+export function stageFiles(repo_key: string, files: string[], stageAll = false) {
   return request.post('/workspace/stage', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     files,
     stage_all: stageAll
   })
 }
 
-export function unstageFiles(repoKey: string, files: string[], unstageAll = false) {
+export function unstageFiles(repo_key: string, files: string[], unstageAll = false) {
   return request.post('/workspace/unstage', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     files,
     unstage_all: unstageAll
   })
@@ -104,64 +104,64 @@ export function commitChanges(data: {
   return request.post<unknown, CommitResult>('/workspace/commit', data)
 }
 
-export function pullWithResolve(repoKey: string, remote = '', branch = '', fetchOnly = false) {
+export function pullWithResolve(repo_key: string, remote = '', branch = '', fetchOnly = false) {
   return request.post<unknown, PullResult>('/workspace/pull', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     remote,
     branch,
     fetch_only: fetchOnly
   })
 }
 
-export function getConflictDetail(repoKey: string, file: string) {
+export function getConflictDetail(repo_key: string, file: string) {
   return request.get<unknown, ConflictDetail>('/workspace/conflict-detail', {
-    params: { repo_key: repoKey, file }
+    params: { repo_key: repo_key, file }
   })
 }
 
-export function markConflictResolved(repoKey: string, file: string, resolvedContent: string, stage = true) {
+export function markConflictResolved(repo_key: string, file: string, resolved_content: string, stage = true) {
   return request.post('/workspace/resolve', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     file,
-    resolved_content: resolvedContent,
+    resolved_content: resolved_content,
     stage
   })
 }
 
-export function aiResolveConflict(repoKey: string, file: string, oursContent: string, theirsContent: string, baseContent: string, hint = '') {
+export function aiResolveConflict(repo_key: string, file: string, ours_content: string, theirs_content: string, base_content: string, hint = '') {
   return request.post<unknown, AIResolvedFile>('/workspace/ai-resolve', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     file,
-    ours_content: oursContent,
-    theirs_content: theirsContent,
-    base_content: baseContent,
+    ours_content: ours_content,
+    theirs_content: theirs_content,
+    base_content: base_content,
     hint
   })
 }
 
-export function pushCurrent(repoKey: string, remote = '') {
+export function pushCurrent(repo_key: string, remote = '') {
   return request.post('/workspace/push', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     remote,
   })
 }
 
-export function removeTracking(repoKey: string, files: string[]) {
+export function removeTracking(repo_key: string, files: string[]) {
   return request.post('/workspace/untrack', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     files,
   })
 }
 
-export function addToGitignore(repoKey: string, patterns: string[]) {
+export function addToGitignore(repo_key: string, patterns: string[]) {
   return request.post('/workspace/gitignore', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     patterns,
   })
 }
 
-export function generateCommitMessage(repoKey: string) {
+export function generateCommitMessage(repo_key: string) {
   return request.post<unknown, { message: string }>('/workspace/generate-commit-msg', {
-    repo_key: repoKey,
+    repo_key: repo_key,
   })
 }

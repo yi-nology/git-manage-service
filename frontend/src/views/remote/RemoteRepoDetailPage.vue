@@ -50,8 +50,8 @@
     </div>
 
     <div v-show="activeTab === 'cr'" class="tab-content">
-      <CRReviewDetail v-if="reviewTask" :task="reviewTask" :repo-owner="repoOwner" :repo-name="repoName" @close="reviewTask = null" @retried="reviewTask = $event" />
-      <CRTab v-else :active="activeTab === 'cr'" :provider-id="providerId" :repo-owner="repoOwner" :repo-name="repoName" @show-review="reviewTask = $event" />
+      <CRReviewDetail v-if="reviewTask" :task="reviewTask" :repo-owner="repoOwner" :repo-name="repo_name" @close="reviewTask = null" @retried="reviewTask = $event" />
+      <CRTab v-else :active="activeTab === 'cr'" :provider-id="provider_id" :repo-owner="repoOwner" :repo-name="repo_name" @show-review="reviewTask = $event" />
     </div>
 
     <div v-show="activeTab === 'codereview'" class="tab-content">
@@ -199,7 +199,7 @@
     </div>
 
     <div v-show="activeTab === 'branchrules'" class="tab-content">
-      <BranchRulesTab :active="activeTab === 'branchrules'" :provider-id="providerId" :repo-owner="repoOwner" :repo-name="repoName" />
+      <BranchRulesTab :active="activeTab === 'branchrules'" :provider-id="provider_id" :repo-owner="repoOwner" :repo-name="repo_name" />
     </div>
 
     <div v-show="activeTab === 'webhooks'" class="tab-content">
@@ -209,9 +209,9 @@
     <div v-show="activeTab === 'branches'" class="tab-content">
       <RemoteBranchesTab
         :active="activeTab === 'branches'"
-        :provider-id="providerId"
+        :provider-id="provider_id"
         :repo-owner="repoOwner"
-        :repo-name="repoName"
+        :repo-name="repo_name"
         :linked-repo-key="linkedRepoKey"
         :default-branch="repoData?.default_branch || ''"
       />
@@ -250,10 +250,10 @@ const providerStore = useProviderStore()
 
 const route = useRoute()
 const router = useRouter()
-const providerId = Number(route.params.providerId)
+const provider_id = Number(route.params.provider_id)
 const repoOwner = route.params.repoOwner as string
-const repoName = route.params.repoName as string
-const repoFullName = computed(() => `${repoOwner}/${repoName}`)
+const repo_name = route.params.repo_name as string
+const repoFullName = computed(() => `${repoOwner}/${repo_name}`)
 
 const providerPlatform = ref('')
 const linkedRepoKey = ref<string | null>(null)
@@ -302,20 +302,20 @@ async function loadInitial() {
   const [, , bindings] = await Promise.all([
     providerStore.fetchProviders(),
     getRepoList().catch(() => []),
-    listBindings({ provider_config_id: providerId }).catch(() => []),
+    listBindings({ provider_config_id: provider_id }).catch(() => []),
   ])
-  const prov = providerStore.getProviderById(providerId)
+  const prov = providerStore.getProviderById(provider_id)
   if (prov) providerPlatform.value = prov.platform
 
   const linked = (bindings || []).find((b: any) =>
     b.platform_owner === repoOwner &&
-    b.platform_repo === repoName &&
+    b.platform_repo === repo_name &&
     b.status === 'active'
   )
   if (linked) linkedRepoKey.value = linked.repo_key
 
-  const remoteRepos = await listProviderRepos(providerId, { page: 1, per_page: 100 }).catch(() => [])
-  const found = (remoteRepos || []).find((r: any) => r.full_name === repoFullName.value)
+  const remote_repos = await listProviderRepos(provider_id, { page: 1, per_page: 100 }).catch(() => [])
+  const found = (remote_repos || []).find((r: any) => r.full_name === repoFullName.value)
   if (found) repoData.value = found
 }
 
@@ -323,9 +323,9 @@ function handleClone() {
   const url = repoData.value?.ssh_url || repoData.value?.clone_url
   if (url) {
     const query: Record<string, string> = { url }
-    if (providerId) query.provider_config_id = String(providerId)
+    if (provider_id) query.provider_config_id = String(provider_id)
     if (repoOwner) query.platform_owner = repoOwner
-    if (repoName) query.platform_repo = repoName
+    if (repo_name) query.platform_repo = repo_name
     router.push({ path: '/local-repos/clone', query })
   }
 }
@@ -334,7 +334,7 @@ async function loadReviewConfig() {
   crCfgLoading.value = true
   try {
     const [res, provs, promptRes] = await Promise.all([
-      getRemoteRepoConfig(providerId, repoOwner, repoName),
+      getRemoteRepoConfig(provider_id, repoOwner, repo_name),
       listLLMProviders().catch(() => []),
       getPromptStructure().catch(() => null),
     ])
@@ -353,7 +353,7 @@ async function loadReviewConfig() {
 async function saveReviewConfig() {
   crCfgSaving.value = true
   try {
-    const res = await updateRemoteRepoConfig(providerId, repoOwner, repoName, {
+    const res = await updateRemoteRepoConfig(provider_id, repoOwner, repo_name, {
       enabled: reviewCfg.value.enabled,
       block_on_high: reviewCfg.value.block_on_high,
       auto_review_on_mr: reviewCfg.value.auto_review_on_mr,

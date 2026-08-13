@@ -1,7 +1,7 @@
  <template>
    <div class="review-page-wrapper">
      <div class="header-bar">
-       <PageHeader :showBack="true" :backRoute="`/local-repos/${repoKey}/review/tasks`">
+       <PageHeader :showBack="true" :backRoute="`/local-repos/${repo_key}/review/tasks`">
          <template #actions>
            <ActionPill variant="ai" :icon="MagicStick" :disabled="aiLoading" @click="showAIPanel = !showAIPanel">
              AI 审查助手
@@ -17,17 +17,17 @@
       <LoadingState v-if="loading && !task" />
       <div class="detail-content" v-else>
         <div class="breadcrumb">
-          <router-link :to="`/local-repos/${repoKey}/review`">总览</router-link>
+          <router-link :to="`/local-repos/${repo_key}/review`">总览</router-link>
           <span class="sep">/</span>
-          <router-link :to="`/local-repos/${repoKey}/review/tasks`">任务</router-link>
+          <router-link :to="`/local-repos/${repo_key}/review/tasks`">任务</router-link>
           <span class="sep">/</span>
-          <span class="current">审查任务 #{{ taskId }}</span>
+          <span class="current">审查任务 #{{ task_id }}</span>
         </div>
 
         <div class="title-row">
           <div>
-            <div class="repo-label">{{ task?.repo_name || repoKey }} · MR #{{ task?.mr_iid }}</div>
-            <h2>审查任务 #{{ taskId }}</h2>
+            <div class="repo-label">{{ task?.repo_name || repo_key }} · MR #{{ task?.mr_iid }}</div>
+            <h2>审查任务 #{{ task_id }}</h2>
           </div>
         </div>
 
@@ -153,8 +153,8 @@
  import type { QuickAction } from '@/types/ai'
 
 const route = useRoute()
-const repoKey = route.params.repoKey as string
-const taskId = Number(route.params.taskId)
+const repo_key = route.params.repo_key as string
+const task_id = Number(route.params.task_id)
 
  const loading = ref(false)
  const retrying = ref(false)
@@ -209,7 +209,7 @@ type StatusVariant = 'success' | 'danger' | 'warning' | 'info' | 'running' | 'de
 async function loadData() {
   loading.value = true
   try {
-    const [t, f] = await Promise.all([getReviewTask(taskId), listReviewFindings(taskId)])
+    const [t, f] = await Promise.all([getReviewTask(task_id), listReviewFindings(task_id)])
     task.value = t
     findings.value = f || []
   } catch (e) { console.error(e) } finally { loading.value = false }
@@ -218,39 +218,39 @@ async function loadData() {
  async function handleRetry() {
    retrying.value = true
    try {
-     await retryReviewTask(taskId)
+     await retryReviewTask(task_id)
      ElMessage.success('审查任务已重新开始')
      loadData()
    } catch (e) { console.error(e) } finally { retrying.value = false }
  }
 
-function formatReviewFindings(title: string, items: Array<{ message: string; filePath?: string; startLine?: number; suggestion?: string }> = []) {
+function formatReviewFindings(title: string, items: Array<{ message: string; file_path?: string; start_line?: number; suggestion?: string }> = []) {
   if (items.length === 0) return ''
   return [
     title,
     ...items.map((item, index) => {
-      const location = item.filePath ? ` (${item.filePath}${item.startLine ? `:${item.startLine}` : ''})` : ''
+      const location = item.file_path ? ` (${item.file_path}${item.start_line ? `:${item.start_line}` : ''})` : ''
       const suggestion = item.suggestion ? `\n   建议：${item.suggestion}` : ''
       return `${index + 1}. ${item.message}${location}${suggestion}`
     }),
   ].join('\n')
 }
 
-function formatReviewAIResponse(response: Awaited<ReturnType<typeof aiApi.codeReview>>) {
+function formatReviewAIResponse(response: Awaited<ReturnType<typeof aiApi.code_review>>) {
   const sections = [response.summary]
-  if (response.riskLevel) {
-    sections.push(``, `风险等级：${response.riskLevel}`)
+  if (response.risk_level) {
+    sections.push(``, `风险等级：${response.risk_level}`)
   }
   const blocking = formatReviewFindings('阻断问题：', response.blocking || [])
-  const high = formatReviewFindings('高风险问题：', response.highRisk || [])
+  const high = formatReviewFindings('高风险问题：', response.high_risk || [])
   const optional = formatReviewFindings('可选改进：', response.optional || [])
   for (const section of [blocking, high, optional]) {
     if (section) {
       sections.push('', section)
     }
   }
-  if (response.mergeNotes) {
-    sections.push('', `合并前说明：${response.mergeNotes}`)
+  if (response.merge_notes) {
+    sections.push('', `合并前说明：${response.merge_notes}`)
   }
   return sections.join('\n')
 }
@@ -258,22 +258,22 @@ function formatReviewAIResponse(response: Awaited<ReturnType<typeof aiApi.codeRe
  async function handleAIReview(message: string) {
    aiLoading.value = true
    try {
-      const response = await aiApi.reviewSummary({
-        repoKey,
-        taskId: String(taskId),
-        taskStatus: task.value?.status || 'unknown',
+      const response = await aiApi.review_summary({
+        repo_key,
+        task_id: String(task_id),
+        task_status: task.value?.status || 'unknown',
        findings: findings.value.map(f => ({
          severity: f.severity,
-         filePath: f.file_path || 'unknown',
+         file_path: f.file_path || 'unknown',
          title: f.title,
          message: f.message,
-         ruleId: f.rule_id || f.id.toString(),
+         rule_id: f.rule_id || f.id.toString(),
        })),
-       changedFiles: [...new Set(findings.value.map(f => f.file_path).filter(Boolean))] as string[],
-       userInstruction: message,
+       changed_files: [...new Set(findings.value.map(f => f.file_path).filter(Boolean))] as string[],
+       user_instruction: message,
      })
 
-     const contextInfo = `> 📝 **分析对象：** 审查任务 #${taskId} (${task.value?.status || 'unknown'})`
+     const contextInfo = `> 📝 **分析对象：** 审查任务 #${task_id} (${task.value?.status || 'unknown'})`
      aiPanelRef.value?.addResponse(contextInfo + '\n\n' + formatReviewAIResponse(response))
    } catch (e) {
      aiPanelRef.value?.addResponse('AI 审查分析失败，请稍后重试。')

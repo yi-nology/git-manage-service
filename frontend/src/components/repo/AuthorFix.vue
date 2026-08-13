@@ -7,7 +7,7 @@
           <div class="config-label">仓库作者身份</div>
           <div class="config-value">
             <template v-if="repoConfig?.identity">
-              {{ repoConfig.identity.canonicalName }} ({{ repoConfig.identity.canonicalEmail }})
+              {{ repoConfig.identity.canonical_name }} ({{ repoConfig.identity.canonical_email }})
               — {{ repoConfig.source === 'repo' ? '仓库覆盖' : '使用全局默认' }}
             </template>
             <template v-else>未配置</template>
@@ -18,7 +18,7 @@
         <template v-if="allIdentities.length > 0">
           <el-select v-model="selectedIdentityId" placeholder="选择身份" size="small" style="width: 200px" :disabled="configSaving" @change="handleConfigChange">
             <el-option label="使用全局默认" :value="(null as any)" />
-            <el-option v-for="id in allIdentities" :key="id.id" :label="`${id.canonicalName} (${id.canonicalEmail})`" :value="id.id" />
+            <el-option v-for="id in allIdentities" :key="id.id" :label="`${id.canonical_name} (${id.canonical_email})`" :value="id.id" />
           </el-select>
         </template>
         <router-link v-else to="/settings/author">
@@ -34,35 +34,35 @@
           <el-tag v-if="scanResult.length > 0" type="warning" size="small">{{ scanResult.length }} 条待修复</el-tag>
         </div>
         <div class="scan-actions">
-          <el-button v-if="scanResult.length > 0" type="danger" size="small" @click="handleFixAll" :disabled="!!taskId">一键修复全部</el-button>
+          <el-button v-if="scanResult.length > 0" type="danger" size="small" @click="handleFixAll" :disabled="!!task_id">一键修复全部</el-button>
           <el-button type="primary" size="small" :loading="scanLoading" @click="doScan">扫描仓库</el-button>
         </div>
       </div>
 
       <div v-if="hasScanned && !scanLoading" class="scan-summary">
-        扫描了 {{ totalCommits }} 个提交，发现 <strong>{{ scanResult.length }}</strong> 个作者不匹配
+        扫描了 {{ total_commits }} 个提交，发现 <strong>{{ scanResult.length }}</strong> 个作者不匹配
       </div>
 
       <div v-if="scanResult.length > 0" class="scan-table">
         <el-table :data="scanResult" @selection-change="handleSelection" border size="small" max-height="400">
           <el-table-column type="selection" width="45" />
           <el-table-column label="Hash" width="80">
-            <template #default="{ row }"><span class="mono">{{ row.shortHash }}</span></template>
+            <template #default="{ row }"><span class="mono">{{ row.short_hash }}</span></template>
           </el-table-column>
           <el-table-column prop="message" label="提交信息" min-width="200" show-overflow-tooltip />
-          <el-table-column prop="authorName" label="当前作者" width="120" />
+          <el-table-column prop="author_name" label="当前作者" width="120" />
           <el-table-column label="当前邮箱" width="200">
-            <template #default="{ row }"><span class="mono">{{ row.authorEmail }}</span></template>
+            <template #default="{ row }"><span class="mono">{{ row.author_email }}</span></template>
           </el-table-column>
           <el-table-column label="匹配方式" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.matchType === 'exact' ? 'success' : 'warning'" size="small">
-                {{ row.matchType === 'exact' ? '名称+邮箱' : '仅邮箱' }}
+              <el-tag :type="row.match_type === 'exact' ? 'success' : 'warning'" size="small">
+                {{ row.match_type === 'exact' ? '名称+邮箱' : '仅邮箱' }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column label="目标" width="200">
-            <template #default="{ row }"><span class="mono">{{ row.targetName }} &lt;{{ row.targetEmail }}&gt;</span></template>
+            <template #default="{ row }"><span class="mono">{{ row.target_name }} &lt;{{ row.target_email }}&gt;</span></template>
           </el-table-column>
           <el-table-column label="日期" width="110">
             <template #default="{ row }">{{ row.date?.substring(0, 10) }}</template>
@@ -90,13 +90,13 @@
       </div>
     </div>
 
-    <div v-if="taskId" class="progress-card">
+    <div v-if="task_id" class="progress-card">
       <div class="progress-header">
         <SectionTitle title="任务进度" />
-        <el-button v-if="taskStatus === 'success' || taskStatus === 'failed'" text size="small" @click="dismissTask" aria-label="关闭">关闭</el-button>
+        <el-button v-if="task_status === 'success' || task_status === 'failed'" text size="small" @click="dismissTask" aria-label="关闭">关闭</el-button>
       </div>
-      <el-alert v-if="taskStatus === 'failed'" :title="taskError" type="error" show-icon :closable="false" />
-      <el-alert v-else-if="taskStatus === 'success'" title="修复完成" type="success" show-icon :closable="false" />
+      <el-alert v-if="task_status === 'failed'" :title="taskError" type="error" show-icon :closable="false" />
+      <el-alert v-else-if="task_status === 'success'" title="修复完成" type="success" show-icon :closable="false" />
       <template v-else>
         <el-progress :percentage="0" :indeterminate="true" />
         <div class="task-logs" aria-live="polite">
@@ -123,8 +123,8 @@
       <div v-if="aiRisk" class="ai-card">
         <div class="ai-card-title">
           风险评估
-          <el-tag :type="aiRisk.riskLevel === 'low' ? 'success' : aiRisk.riskLevel === 'medium' ? 'warning' : 'danger'" size="small">
-            {{ aiRisk.riskLevel === 'low' ? '低风险' : aiRisk.riskLevel === 'medium' ? '中等风险' : '高风险' }}
+          <el-tag :type="aiRisk.risk_level === 'low' ? 'success' : aiRisk.risk_level === 'medium' ? 'warning' : 'danger'" size="small">
+            {{ aiRisk.risk_level === 'low' ? '低风险' : aiRisk.risk_level === 'medium' ? '中等风险' : '高风险' }}
           </el-tag>
         </div>
         <div class="ai-card-content">
@@ -177,8 +177,8 @@ const props = withDefaults(defineProps<{
 
 const { identities: allIdentities, loadIdentities } = useAuthorIdentity()
 const {
-  repoConfig, configLoading, scanResult, scanLoading, totalCommits, selectedCommits,
-  taskId, taskStatus, taskLogs, taskError,
+  repoConfig, configLoading, scanResult, scanLoading, total_commits, selectedCommits,
+  task_id, task_status, taskLogs, taskError,
   loadRepoConfig, setConfig, scan, fixAll, fixSelected, handleSelection,
 } = useAuthorFix(props.repoKey)
 
@@ -226,7 +226,7 @@ async function handleFixSelected() {
 
 function dismissTask() {
   dismissed.value = true
-  taskId.value = ''
+  task_id.value = ''
 }
 
 const showAIPanel = ref(false)
@@ -239,7 +239,7 @@ const {
 } = useAuthorAI(props.repoKey)
 
 async function doAnalyzeScan() {
-  await analyzeScan({ commits: scanResult.value, totalCommits: totalCommits.value, matchCount: scanResult.value.length })
+  await analyzeScan({ commits: scanResult.value, total_commits: total_commits.value, match_count: scanResult.value.length })
 }
 
 async function doAssessRisk() {
@@ -264,8 +264,8 @@ function formatAI(text: string) {
 
 onMounted(async () => {
   await Promise.all([loadIdentities(), loadRepoConfig()])
-  if (repoConfig.value?.identityId) {
-    selectedIdentityId.value = repoConfig.value.identityId
+  if (repoConfig.value?.identity_id) {
+    selectedIdentityId.value = repoConfig.value.identity_id
   }
 })
 </script>

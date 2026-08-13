@@ -3,14 +3,14 @@
     <PageHeader
       title="Patch 管理"
       :show-back="true"
-      :back-route="`/local-repos/${repoKey}`"
+      :back-route="`/local-repos/${repo_key}`"
     >
       <template #title-suffix>
-        <span v-if="repoName" class="repo-tag">{{ repoName }}</span>
+        <span v-if="repo_name" class="repo-tag">{{ repo_name }}</span>
       </template>
     </PageHeader>
 
-    <PatchManager :repo-key="repoKey" />
+    <PatchManager :repo-key="repo_key" />
   </div>
 </template>
 
@@ -22,13 +22,13 @@ import PatchManager from '@/components/patch/PatchManager.vue'
 import { getRepoDetail } from '@/api/modules/repo'
 
 const route = useRoute()
-const repoKey = route.params.repoKey as string
-const repoName = ref('')
+const repo_key = route.params.repo_key as string
+const repo_name = ref('')
 
 onMounted(async () => {
   try {
-    const repo = await getRepoDetail(repoKey)
-    repoName.value = repo.name
+    const repo = await getRepoDetail(repo_key)
+    repo_name.value = repo.name
   } catch (e) {
     console.error('Failed to load repo info:', e)
   }

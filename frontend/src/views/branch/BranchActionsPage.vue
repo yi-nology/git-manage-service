@@ -1,6 +1,6 @@
 <template>
   <div class="branch-actions-page">
-    <PageHeader :title="repoName || '仓库'" show-back :back-route="branchBackRoute">
+    <PageHeader :title="repo_name || '仓库'" show-back :back-route="branchBackRoute">
       <template #title-suffix>
         <span v-if="currentVersion" class="version-tag">{{ currentVersion }}</span>
       </template>
@@ -92,14 +92,14 @@
           </template>
           <div class="form-field">
             <label class="field-label">源分支</label>
-            <select v-model="mrForm.sourceBranch" class="field-input">
+            <select v-model="mrForm.source_branch" class="field-input">
               <option value="" disabled>选择源分支</option>
               <option v-for="b in branches" :key="b.name" :value="b.name">{{ b.name }}</option>
             </select>
           </div>
           <div class="form-field">
             <label class="field-label">目标分支</label>
-            <select v-model="mrForm.targetBranch" class="field-input">
+            <select v-model="mrForm.target_branch" class="field-input">
               <option value="" disabled>选择目标分支</option>
               <option v-for="b in branches" :key="b.name" :value="b.name">{{ b.name }}</option>
             </select>
@@ -198,11 +198,11 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 import ActionPill from '@/components/common/ActionPill.vue'
 
 const route = useRoute()
-const repoKey = route.params.repoKey as string
+const repo_key = route.params.repo_key as string
 
-const branchBackRoute = computed(() => `/local-repos/${repoKey}/branches`)
+const branchBackRoute = computed(() => `/local-repos/${repo_key}/branches`)
 
-const repoName = ref('')
+const repo_name = ref('')
 const currentVersion = ref('')
 const branches = ref<BranchInfo[]>([])
 const loading = ref(false)
@@ -216,7 +216,7 @@ const commenting = ref(false)
 const createForm = ref({ baseRef: '', name: '' })
 const deleteForm = ref({ branch: '', remote: false })
 const mergeForm = ref({ source: '', target: '', message: '', no_ff: true, squash: false, push: true })
-const mrForm = ref({ sourceBranch: '', targetBranch: '', title: '', description: '', removeSourceBranch: false, squash: false })
+const mrForm = ref({ source_branch: '', target_branch: '', title: '', description: '', removeSourceBranch: false, squash: false })
 const commentForm = ref({ branch: '', content: '' })
 
 const createErrors = ref<{ field: string; message: string }[]>([])
@@ -233,7 +233,7 @@ function handleBranchNameInput() {
     createValidating.value = true
     try {
       const res = await validateBranchName({
-        repo_key: repoKey,
+        repo_key: repo_key,
         branch_name: createForm.value.name,
         base_ref: createForm.value.baseRef || undefined,
       })
@@ -258,20 +258,20 @@ async function loadData() {
   loading.value = true
   try {
     const [repo, version, branchRes] = await Promise.all([
-      getRepoDetail(repoKey).catch(() => null),
-      getCurrentVersion(repoKey).catch(() => ''),
-      getBranchList(repoKey, { page: 1, page_size: 200 }),
+      getRepoDetail(repo_key).catch(() => null),
+      getCurrentVersion(repo_key).catch(() => ''),
+      getBranchList(repo_key, { page: 1, page_size: 200 }),
     ])
-    repoName.value = repo?.name || ''
+    repo_name.value = repo?.name || ''
     currentVersion.value = version || ''
     branches.value = branchRes?.list || []
 
     if (branches.value.length > 0) {
       const main = branches.value.find(b => b.name === 'main' || b.name === 'master')
-      const defaultBranch = main?.name || branches.value[0]!.name
-      createForm.value.baseRef = defaultBranch
-      mergeForm.value.target = defaultBranch
-      mrForm.value.targetBranch = defaultBranch
+      const default_branch = main?.name || branches.value[0]!.name
+      createForm.value.baseRef = default_branch
+      mergeForm.value.target = default_branch
+      mrForm.value.target_branch = default_branch
     }
   } finally {
     loading.value = false
@@ -283,7 +283,7 @@ async function handleCreateBranch() {
   if (!createForm.value.name) { ElMessage.warning('请输入新分支名称'); return }
   creating.value = true
   try {
-    await createBranch({ repo_key: repoKey, name: createForm.value.name, base_ref: createForm.value.baseRef })
+    await createBranch({ repo_key: repo_key, name: createForm.value.name, base_ref: createForm.value.baseRef })
     ElMessage.success(`分支 ${createForm.value.name} 创建成功`)
     createForm.value.name = ''
     loadData()
@@ -303,9 +303,9 @@ async function handleDeleteBranch() {
 
   deleting.value = true
   try {
-    await deleteBranch(repoKey, branch)
+    await deleteBranch(repo_key, branch)
     if (deleteForm.value.remote) {
-      try { await pushBranch(repoKey, branch, ['origin']) } catch {}
+      try { await pushBranch(repo_key, branch, ['origin']) } catch {}
     }
     ElMessage.success(`分支 ${branch} 已删除`)
     deleteForm.value.branch = ''
@@ -329,7 +329,7 @@ async function handleMerge() {
   merging.value = true
   try {
     await mergeBranch({
-      repo_key: repoKey,
+      repo_key: repo_key,
       source: mergeForm.value.source,
       target: mergeForm.value.target,
       message: mergeForm.value.message || undefined,
@@ -339,7 +339,7 @@ async function handleMerge() {
     ElMessage.success('合并成功')
     if (mergeForm.value.push) {
       try {
-        await pushBranch(repoKey, mergeForm.value.target, ['origin'])
+        await pushBranch(repo_key, mergeForm.value.target, ['origin'])
         ElMessage.success('已推送到远程')
       } catch (e: any) {
         showGitError(e, '推送')
@@ -354,18 +354,18 @@ async function handleMerge() {
 }
 
 async function handleCreateMR() {
-  if (!mrForm.value.sourceBranch) { ElMessage.warning('请选择源分支'); return }
-  if (!mrForm.value.targetBranch) { ElMessage.warning('请选择目标分支'); return }
+  if (!mrForm.value.source_branch) { ElMessage.warning('请选择源分支'); return }
+  if (!mrForm.value.target_branch) { ElMessage.warning('请选择目标分支'); return }
   if (!mrForm.value.title) { ElMessage.warning('请输入 MR 标题'); return }
 
   mrCreating.value = true
   try {
     await createCR({
-      repo_key: repoKey,
+      repo_key: repo_key,
       title: mrForm.value.title,
       description: mrForm.value.description || undefined,
-      source_branch: mrForm.value.sourceBranch,
-      target_branch: mrForm.value.targetBranch,
+      source_branch: mrForm.value.source_branch,
+      target_branch: mrForm.value.target_branch,
       remove_source_branch: mrForm.value.removeSourceBranch,
     })
     ElMessage.success('MR 已创建')

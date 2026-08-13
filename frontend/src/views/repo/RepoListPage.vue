@@ -126,7 +126,7 @@ async function loadPlatformBadges() {
 
 const searchText = ref('')
 const currentPage = ref(1)
-const pageSize = ref(10)
+const page_size = ref(10)
 
 onMounted(async () => {
   await repoStore.fetchRepoList()
@@ -150,8 +150,8 @@ const filteredRepos = computed(() => {
 })
 
 const paginatedData = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
+  const start = (currentPage.value - 1) * page_size.value
+  const end = start + page_size.value
   return filteredRepos.value.slice(start, end)
 })
 

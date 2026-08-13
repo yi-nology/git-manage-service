@@ -12,8 +12,8 @@ export function savePatch(data: SavePatchReq) {
 }
 
 // 列出所有 patch
-export function listPatches(repoKey: string) {
-  return request.get<unknown, PatchInfoDTO[]>('/patch/list', { params: { repo_key: repoKey } })
+export function listPatches(repo_key: string) {
+  return request.get<unknown, PatchInfoDTO[]>('/patch/list', { params: { repo_key: repo_key } })
 }
 
 // 获取 patch 内容
@@ -32,11 +32,11 @@ export function applyPatch(data: ApplyPatchReq) {
 }
 
 // 检查 patch
-export function checkPatch(repoKey: string, patchPath: string) {
-  return request.post<unknown, PatchStatsDTO>('/patch/check', { repo_key: repoKey, patch_path: patchPath })
+export function checkPatch(repo_key: string, patchPath: string) {
+  return request.post<unknown, PatchStatsDTO>('/patch/check', { repo_key: repo_key, patch_path: patchPath })
 }
 
 // 删除 patch
-export function deletePatch(repoKey: string, patchPath: string) {
-  return request.post<unknown, { message: string }>('/patch/delete', { repo_key: repoKey, patch_path: patchPath })
+export function deletePatch(repo_key: string, patchPath: string) {
+  return request.post<unknown, { message: string }>('/patch/delete', { repo_key: repo_key, patch_path: patchPath })
 }

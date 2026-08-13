@@ -73,7 +73,7 @@
           </el-select>
         </el-col>
         <el-col :span="4">
-          <el-select v-model="filters.eventType" placeholder="事件类型" clearable style="width: 100%">
+          <el-select v-model="filters.event_type" placeholder="事件类型" clearable style="width: 100%">
             <el-option label="全部" value="" />
             <el-option label="Push" value="push" />
             <el-option label="Create" value="create" />
@@ -103,9 +103,9 @@
           <el-tag size="small" type="info">{{ row.provider }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="eventType" label="事件类型" width="120">
+      <el-table-column prop="event_type" label="事件类型" width="120">
         <template #default="{ row }">
-          <el-tag size="small">{{ row.eventType }}</el-tag>
+          <el-tag size="small">{{ row.event_type }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="repo" label="仓库" min-width="180" />
@@ -132,7 +132,7 @@
     <div class="pagination-container">
       <el-pagination
         v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
+        v-model:page-size="pagination.page_size"
         :total="pagination.total"
         layout="total, sizes, prev, pager, next, jumper"
         :page-sizes="[20, 50, 100]"
@@ -161,7 +161,7 @@ const events = ref([
     id: 1,
     timestamp: '2024-05-16 14:30:00',
     provider: 'github',
-    eventType: 'push',
+    event_type: 'push',
     repo: 'git-manage-service',
     branch: 'main',
     status: 'success',
@@ -172,7 +172,7 @@ const events = ref([
     id: 2,
     timestamp: '2024-05-16 13:45:00',
     provider: 'gitlab',
-    eventType: 'push',
+    event_type: 'push',
     repo: 'frontend',
     branch: 'develop',
     status: 'success',
@@ -183,7 +183,7 @@ const events = ref([
     id: 3,
     timestamp: '2024-05-16 12:00:00',
     provider: 'github',
-    eventType: 'tag',
+    event_type: 'tag',
     repo: 'backend',
     branch: '-',
     status: 'failed',
@@ -194,13 +194,13 @@ const events = ref([
 
 const filters = reactive({
   provider: '',
-  eventType: '',
+  event_type: '',
   status: '',
 })
 
 const pagination = reactive({
   page: 1,
-  pageSize: 20,
+  page_size: 20,
   total: 3,
 })
 
@@ -213,7 +213,7 @@ onMounted(() => {
 
 function resetFilters() {
   filters.provider = ''
-  filters.eventType = ''
+  filters.event_type = ''
   filters.status = ''
 }
 

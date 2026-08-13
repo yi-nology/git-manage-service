@@ -1,14 +1,14 @@
 <template>
   <div class="fe-main">
-    <template v-if="selectedFile && (diffText || diffFile?.isBinary)">
+    <template v-if="selectedFile && (diffText || diffFile?.is_binary)">
       <div class="fe-diff-header">
         <span class="fe-diff-filename">{{ selectedFile }}</span>
-        <div v-if="diffFile && !diffFile.isBinary" class="fe-diff-stats">
+        <div v-if="diffFile && !diffFile.is_binary" class="fe-diff-stats">
           <span class="fe-additions">+{{ diffFile.additions }}</span>
           <span class="fe-deletions">-{{ diffFile.deletions }}</span>
         </div>
       </div>
-      <div v-if="diffFile?.isBinary" class="fe-binary-notice">
+      <div v-if="diffFile?.is_binary" class="fe-binary-notice">
         <el-icon><Warning /></el-icon> 二进制文件，无法显示差异
       </div>
       <div v-else class="fe-diff-body">

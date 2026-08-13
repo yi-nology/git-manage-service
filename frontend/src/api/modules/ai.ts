@@ -7,101 +7,101 @@ import type {
 } from '../../types/ai'
 
  export interface SyncFailureRequest {
-   repoKey: string
+   repo_key: string
    logs: string
    stderr: string
-   currentBranch: string
-   trackingBranch: string
-   recentActions: string[]
-   userInstruction?: string
+   current_branch: string
+   tracking_branch: string
+   recent_actions: string[]
+   user_instruction?: string
  }
 
  export interface RepoSummaryRequest {
-   repoKey: string
+   repo_key: string
    status: Record<string, unknown>
    issues: string[]
-   pendingChanges: number
-   userInstruction?: string
+   pending_changes: number
+   user_instruction?: string
  }
 
  export interface CommitMessageRequest {
-   repoKey: string
+   repo_key: string
    diff: string
    style?: 'simple' | 'conventional' | 'detailed'
-   userInstruction?: string
+   user_instruction?: string
  }
 
  export interface CodeReviewRequest {
-   repoKey: string
+   repo_key: string
    diff: string
-   changedFiles: string[]
-   existingFindings: string[]
+   changed_files: string[]
+   existing_findings: string[]
    language: string
-   userInstruction?: string
+   user_instruction?: string
  }
 
 export interface ReviewReplyRequest {
-  repoKey: string
-  reviewSummary: string
-  reviewerComments: string[]
+  repo_key: string
+  review_summary: string
+  reviewer_comments: string[]
   tone?: 'professional' | 'friendly' | 'concise'
 }
 
 export interface ReviewFindingInput {
   severity: string
-  filePath: string
+  file_path: string
   title: string
   message: string
-  ruleId?: string
+  rule_id?: string
 }
 
 export interface ReviewSummaryRequest {
-  repoKey: string
-  taskId: string
-  taskStatus: string
+  repo_key: string
+  task_id: string
+  task_status: string
   findings: ReviewFindingInput[]
-  changedFiles: string[]
-  riskLevel?: string
-  userInstruction?: string
+  changed_files: string[]
+  risk_level?: string
+  user_instruction?: string
 }
 
 export interface ConflictResolveRequest {
-  repoKey: string
-  conflictDiff: string
-  oursBranch: string
-  theirsBranch: string
+  repo_key: string
+  conflict_diff: string
+  ours_branch: string
+  theirs_branch: string
 }
 
 export interface BranchRuleRequest {
-  repoKey: string
-  existingBranches: string[]
-  repoType?: string
+  repo_key: string
+  existing_branches: string[]
+  repo_type?: string
 }
 
 export interface SpecTemplateRequest {
-  repoKey: string
-  packageName: string
-  specType: string
-  existingSpecContent?: string
+  repo_key: string
+  package_name: string
+  spec_type: string
+  existing_spec_content?: string
 }
 
 export interface SpecRewriteRequest {
-  repoKey: string
-  specContent: string
-  sectionName: string
+  repo_key: string
+  spec_content: string
+  section_name: string
   instruction: string
 }
 
 export interface ProviderBindingRequest {
-  remoteRepos: string[]
-  localRepos: string[]
-  existingBindings: Record<string, string>
+  remote_repos: string[]
+  local_repos: string[]
+  existing_bindings: Record<string, string>
 }
 
 export interface PatchAnalysisRequest {
-  patchContent: string
-  targetBranch: string
-  fileList: string[]
+  patch_content: string
+  target_branch: string
+  file_list: string[]
 }
 
 export interface AuditSummaryRequest {
@@ -113,65 +113,65 @@ export interface AuditSummaryRequest {
 export interface StatsInsightRequest {
   stats: Record<string, unknown>
   trends: Record<string, number[]>
-  authorActivity: Record<string, number>
+  author_activity: Record<string, number>
 }
 
 export interface WebhookFailureRequest {
   payload: string
   response: string
-  statusCode: number
-  eventType: string
+  status_code: number
+  event_type: string
 }
 
  export const aiApi = {
-   diagnoseSyncFailure: async (data: SyncFailureRequest) =>
+   diagnose_sync_failure: async (data: SyncFailureRequest) =>
       await request.post<any, AIDiagnosisResponse>('/ai/sync/failure', data),
 
-    generateRepoSummary: async (data: RepoSummaryRequest) =>
+    generate_repo_summary: async (data: RepoSummaryRequest) =>
       await request.post<any, AIAdviceResponse>('/ai/repo/summary', data),
 
     generateCommitMessage: async (data: CommitMessageRequest) =>
       await request.post<any, AIDraftResponse>('/ai/commit/message', data),
 
-    codeReview: async (data: CodeReviewRequest) =>
+    code_review: async (data: CodeReviewRequest) =>
       await request.post<any, AIReviewResponse>('/ai/review', data),
 
-    reviewReplyDraft: async (data: ReviewReplyRequest) =>
+    review_reply_draft: async (data: ReviewReplyRequest) =>
        await request.post<any, AIDraftResponse>('/ai/review/reply', data),
 
-     reviewSummary: async (data: ReviewSummaryRequest) =>
+     review_summary: async (data: ReviewSummaryRequest) =>
        await request.post<any, AIReviewResponse>('/ai/review/summary', data),
 
-     resolveConflict: async (data: ConflictResolveRequest) =>
+     resolve_conflict: async (data: ConflictResolveRequest) =>
       await request.post<any, AIDraftResponse>('/ai/conflict/resolve', data),
 
-    explainConflict: async (data: ConflictResolveRequest) =>
+    explain_conflict: async (data: ConflictResolveRequest) =>
       await request.post<any, AIAdviceResponse>('/ai/conflict/explain', data),
 
-    generateBranchRule: async (data: BranchRuleRequest) =>
+    generate_branch_rule: async (data: BranchRuleRequest) =>
       await request.post<any, AIDraftResponse>('/ai/branch/rule', data),
 
-    generateSpecTemplate: async (data: SpecTemplateRequest) =>
+    generate_spec_template: async (data: SpecTemplateRequest) =>
       await request.post<any, AIDraftResponse>('/ai/spec/template', data),
 
-    rewriteSpecSection: async (data: SpecRewriteRequest) =>
+    rewrite_spec_section: async (data: SpecRewriteRequest) =>
       await request.post<any, AIDraftResponse>('/ai/spec/rewrite', data),
 
-    recommendProviderBinding: async (data: ProviderBindingRequest) =>
+    recommend_provider_binding: async (data: ProviderBindingRequest) =>
       await request.post<any, AIAdviceResponse>('/ai/provider/binding', data),
 
-    analyzePatchRisk: async (data: PatchAnalysisRequest) =>
+    analyze_patch_risk: async (data: PatchAnalysisRequest) =>
       await request.post<any, AIDiagnosisResponse>('/ai/patch/analyze', data),
 
-    summarizeAuditLogs: async (data: AuditSummaryRequest) =>
+    summarize_audit_logs: async (data: AuditSummaryRequest) =>
       await request.post<any, AIAdviceResponse>('/ai/audit/summary', data),
 
-    analyzeStatsInsight: async (data: StatsInsightRequest) =>
+    analyze_stats_insight: async (data: StatsInsightRequest) =>
       await request.post<any, AIAdviceResponse>('/ai/stats/insight', data),
 
-     analyzeWebhookFailure: async (data: WebhookFailureRequest) =>
+     analyze_webhook_failure: async (data: WebhookFailureRequest) =>
        await request.post<any, AIDiagnosisResponse>('/ai/webhook/failure', data),
 
-     submitFeedback: async (data: { invocationId: number; feedback: string }) =>
+     submit_feedback: async (data: { invocation_id: number; feedback: string }) =>
        await request.post<any, { success: boolean }>('/ai/feedback', data),
   }

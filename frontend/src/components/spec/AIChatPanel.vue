@@ -60,8 +60,8 @@
         </div>
         <div class="ai-message-body">
           <div class="ai-message-content" v-html="renderMarkdown(msg.content)"></div>
-          <div v-if="msg.role === 'assistant' && msg.applyContent" class="ai-message-actions">
-            <el-button size="small" type="primary" @click="$emit('apply-content', msg.applyContent)">
+          <div v-if="msg.role === 'assistant' && msg.apply_content" class="ai-message-actions">
+            <el-button size="small" type="primary" @click="$emit('apply-content', msg.apply_content)">
               应用到编辑器
             </el-button>
           </div>

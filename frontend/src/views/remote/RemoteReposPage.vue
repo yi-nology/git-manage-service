@@ -105,8 +105,8 @@ const router = useRouter()
 const loading = ref(false)
 const providers = computed(() => providerStore.providers)
 const activeProviderId = ref<number | null>(null)
-const remoteRepos = ref<RemoteRepo[]>([])
-const localRepos = ref<RepoDTO[]>([])
+const remote_repos = ref<RemoteRepo[]>([])
+const local_repos = ref<RepoDTO[]>([])
 
 const PLATFORM_META: Record<string, { label: string; iconBg: string; iconColor: string }> = {
   gitlab: { label: 'GitLab', iconBg: '#FFF4E6', iconColor: '#FC6D26' },
@@ -128,14 +128,14 @@ function formatDate(t: string) {
 }
 
 const activeProvider = computed(() => providers.value.find(p => p.id === activeProviderId.value))
-const filteredRepos = computed(() => remoteRepos.value)
+const filteredRepos = computed(() => remote_repos.value)
 
 async function loadData() {
   loading.value = true
   try {
     await providerStore.fetchProviders()
     const repoList = await getRepoList().catch(() => [] as RepoDTO[])
-    localRepos.value = repoList || []
+    local_repos.value = repoList || []
 
     if (providers.value.length > 0 && !activeProviderId.value) {
       activeProviderId.value = providers.value[0]?.id ?? null
@@ -151,11 +151,11 @@ async function loadData() {
 async function loadRemoteRepos() {
   if (!activeProvider.value) return
   loading.value = true
-  remoteRepos.value = []
+  remote_repos.value = []
   try {
     const res = await listProviderRepos(activeProvider.value.id, { page: 1, per_page: 100 })
     const items = res || []
-    remoteRepos.value = items.map(r => ({
+    remote_repos.value = items.map(r => ({
       id: String(r.id),
       name: r.name,
       full_name: r.full_name,
@@ -163,19 +163,19 @@ async function loadRemoteRepos() {
       http_url: r.clone_url,
       default_branch: r.default_branch,
       updated_at: '',
-      linked: localRepos.value.some(lr =>
+      linked: local_repos.value.some(lr =>
         lr.provider_config_id === activeProvider.value!.id &&
         lr.platform_repo === r.name
       ),
       linked_repo_key: undefined,
     }))
-    const matched = localRepos.value.filter(lr =>
+    const matched = local_repos.value.filter(lr =>
       lr.provider_config_id === activeProvider.value!.id
     )
     for (const m of matched) {
-      const idx = remoteRepos.value.findIndex(r => r.name === m.platform_repo)
+      const idx = remote_repos.value.findIndex(r => r.name === m.platform_repo)
       if (idx >= 0) {
-        const repo = remoteRepos.value[idx]
+        const repo = remote_repos.value[idx]
         if (repo) {
           repo.linked = true
           repo.linked_repo_key = m.key
@@ -183,7 +183,7 @@ async function loadRemoteRepos() {
       }
     }
   } catch {
-    remoteRepos.value = []
+    remote_repos.value = []
   } finally {
     loading.value = false
   }
@@ -208,12 +208,12 @@ function handleClone(repo: RemoteRepo) {
 async function handleLinkExisting(remoteRepo: RemoteRepo) {
   const parts = remoteRepo.full_name.split('/')
   const owner = parts.slice(0, -1).join('/')
-  const repoName = parts[parts.length - 1] || ''
-  if (!activeProviderId.value || !owner || !repoName) {
+  const repo_name = parts[parts.length - 1] || ''
+  if (!activeProviderId.value || !owner || !repo_name) {
     ElMessage.warning('缺少关联所需的信息')
     return
   }
-  const repos = localRepos.value
+  const repos = local_repos.value
   if (repos.length === 0) {
     ElMessage.warning('没有已注册的本地仓库可关联')
     return
@@ -239,7 +239,7 @@ async function handleLinkExisting(remoteRepo: RemoteRepo) {
       repo_key: selectedKey,
       provider_config_id: activeProviderId.value,
       platform_owner: owner,
-      platform_repo: repoName,
+      platform_repo: repo_name,
       is_primary: true,
     })
     ElMessage.success('关联成功')
@@ -248,11 +248,11 @@ async function handleLinkExisting(remoteRepo: RemoteRepo) {
 }
 
 function handleGoDetail(repo: RemoteRepo) {
-  router.push({ name: 'RemoteRepoDetail', params: { providerId: String(activeProviderId.value), repoOwner: repo.full_name.split('/').slice(0, -1).join('/') || '-', repoName: repo.full_name.split('/').pop() || '' } })
+  router.push({ name: 'RemoteRepoDetail', params: { provider_id: String(activeProviderId.value), repoOwner: repo.full_name.split('/').slice(0, -1).join('/') || '-', repo_name: repo.full_name.split('/').pop() || '' } })
 }
 
 function handleGoCR(repo: RemoteRepo) {
-  router.push({ name: 'RemoteRepoDetail', params: { providerId: String(activeProviderId.value), repoOwner: repo.full_name.split('/').slice(0, -1).join('/') || '-', repoName: repo.full_name.split('/').pop() || '' }, query: { tab: 'cr' } })
+  router.push({ name: 'RemoteRepoDetail', params: { provider_id: String(activeProviderId.value), repoOwner: repo.full_name.split('/').slice(0, -1).join('/') || '-', repo_name: repo.full_name.split('/').pop() || '' }, query: { tab: 'cr' } })
 }
 
 watch(activeProviderId, () => {

@@ -14,7 +14,7 @@
       <div class="cr-editor">
         <div class="cr-pane">
           <div class="cr-pane-header ours-header">Ours (HEAD)</div>
-          <pre class="cr-pane-content">{{ conflictDetail?.oursContent || '加载中...' }}</pre>
+          <pre class="cr-pane-content">{{ conflictDetail?.ours_content || '加载中...' }}</pre>
         </div>
         <div class="cr-pane">
           <div class="cr-pane-header merged-header">
@@ -68,8 +68,8 @@ const aiResolved = ref<AIResolvedFile | null>(null)
 onMounted(async () => {
   try {
     conflictDetail.value = await getConflictDetail(props.repoKey, props.filePath)
-    if (conflictDetail.value?.conflictMarker) {
-      mergedContent.value = conflictDetail.value.conflictMarker
+    if (conflictDetail.value?.conflict_marker) {
+      mergedContent.value = conflictDetail.value.conflict_marker
     }
   } catch (e: any) {
     ElMessage.error('加载冲突详情失败')
@@ -77,11 +77,11 @@ onMounted(async () => {
 })
 
 function keepOurs() {
-  mergedContent.value = conflictDetail.value?.oursContent || ''
+  mergedContent.value = conflictDetail.value?.ours_content || ''
 }
 
 function keepTheirs() {
-  mergedContent.value = conflictDetail.value?.theirsContent || ''
+  mergedContent.value = conflictDetail.value?.theirs_content || ''
 }
 
 async function doAIResolve() {
@@ -91,13 +91,13 @@ async function doAIResolve() {
     const result = await aiResolveConflict(
       props.repoKey,
       props.filePath,
-      conflictDetail.value.oursContent,
-      conflictDetail.value.theirsContent,
-      conflictDetail.value.baseContent,
+      conflictDetail.value.ours_content,
+      conflictDetail.value.theirs_content,
+      conflictDetail.value.base_content,
     )
     if (result) {
       aiResolved.value = result
-      mergedContent.value = result.resolvedContent
+      mergedContent.value = result.resolved_content
       ElMessage.success('AI 解决完成')
     }
   } catch (e: any) {

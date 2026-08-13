@@ -1,7 +1,7 @@
 import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
 
 export interface PaginationOptions {
-  pageSize?: number
+  page_size?: number
   pageSizes?: number[]
 }
 
@@ -13,12 +13,12 @@ export function usePagination<T>(
   options: PaginationOptions = {}
 ) {
   const {
-    pageSize = 10,
+    page_size = 10,
     pageSizes = [10, 20, 50, 100]
   } = options
 
   const currentPage = ref(1)
-  const currentPageSize = ref(pageSize)
+  const currentPageSize = ref(page_size)
   const availablePageSizes = pageSizes
 
   // 计算总条数
@@ -50,7 +50,7 @@ export function usePagination<T>(
   // 重置分页
   const resetPagination = () => {
     currentPage.value = 1
-    currentPageSize.value = pageSize
+    currentPageSize.value = page_size
   }
 
   // 当数据源变化时，如果当前页超出范围，重置到最后一页

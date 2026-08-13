@@ -1,6 +1,6 @@
 <template>
   <div class="webhook-page-wrapper">
-    <PageHeader :title="repoName || '仓库'" showBack :backRoute="`/local-repos/${repoKey}`">
+    <PageHeader :title="repo_name || '仓库'" showBack :backRoute="`/local-repos/${repo_key}`">
       <template #title-suffix>
         <span v-if="currentVersion" class="version-tag">{{ currentVersion }}</span>
       </template>
@@ -10,7 +10,7 @@
     </PageHeader>
 
     <div class="webhook-layout">
-      <RepoSidebar :repo-key="repoKey" active-key="webhooks" />
+      <RepoSidebar :repo-key="repo_key" active-key="webhooks" />
       <div class="webhook-content">
         <div class="webhook-events-page">
           <StatsRow :stats="webhookStats" />
@@ -68,12 +68,12 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 import StatsRow from '@/components/common/StatsRow.vue'
 
 const route = useRoute()
-const repoKey = route.params.repoKey as string
+const repo_key = route.params.repo_key as string
 
 const loading = ref(false)
 const events = ref<WebhookEventDTO[]>([])
 const total = ref(0)
-const repoName = ref('')
+const repo_name = ref('')
 const currentVersion = ref('')
 
 const processedCount = computed(() => events.value.filter(e => e.status === 'processed').length)
@@ -142,10 +142,10 @@ async function handleRetry(row: WebhookEventDTO) {
 onMounted(async () => {
   loadEvents()
   try {
-    const r = await getRepoDetail(repoKey)
-    repoName.value = r?.name || ''
+    const r = await getRepoDetail(repo_key)
+    repo_name.value = r?.name || ''
   } catch {}
-  try { currentVersion.value = (await getCurrentVersion(repoKey)) || '' } catch {}
+  try { currentVersion.value = (await getCurrentVersion(repo_key)) || '' } catch {}
 })
 </script>
 

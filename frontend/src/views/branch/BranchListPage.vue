@@ -1,9 +1,9 @@
 <template>
   <div class="branch-list-page">
-    <PageHeader title="分支管理" show-back :back-route="`/local-repos/${repoKey}`">
+    <PageHeader title="分支管理" show-back :back-route="`/local-repos/${repo_key}`">
       <template #actions>
-        <ActionPill variant="green" :icon="SetUp" @click="$router.push(`/local-repos/${repoKey}/branch-actions`)">分支操作</ActionPill>
-        <ActionPill variant="green" :icon="Switch" @click="$router.push(`/local-repos/${repoKey}/compare`)">分支对比 & 合并</ActionPill>
+        <ActionPill variant="green" :icon="SetUp" @click="$router.push(`/local-repos/${repo_key}/branch-actions`)">分支操作</ActionPill>
+        <ActionPill variant="green" :icon="Switch" @click="$router.push(`/local-repos/${repo_key}/compare`)">分支对比 & 合并</ActionPill>
         <ActionPill variant="outline" :icon="Download" :disabled="fetchLoading" @click="handleFetchAll">刷新远端 (Fetch)</ActionPill>
         <ActionPill variant="primary" :icon="Plus" @click="showCreateDialog = true">新建分支</ActionPill>
       </template>
@@ -173,7 +173,7 @@
 
     <CreateTagDialog
       v-model:visible="showTagDialog"
-      :repo-key="repoKey"
+      :repo-key="repo_key"
       :remote-names="remoteNames"
       :branch-name="tagBranchName"
     />
@@ -205,7 +205,7 @@ import CreateTagDialog from '@/components/branch/CreateTagDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
-const repoKey = route.params.repoKey as string
+const repo_key = route.params.repo_key as string
 
 const loading = ref(false)
 const fetchLoading = ref(false)
@@ -282,7 +282,7 @@ function handleBranchNameInput() {
     validationLoading.value = true
     try {
       const res = await validateBranchName({
-        repo_key: repoKey,
+        repo_key: repo_key,
         branch_name: createForm.value.name,
         base_ref: createForm.value.base_ref || undefined,
       })
@@ -303,7 +303,7 @@ function handleBranchNameInput() {
 
 onMounted(async () => {
   try {
-    const repo = await getRepoDetail(repoKey)
+    const repo = await getRepoDetail(repo_key)
     if (repo?.path) {
       const scan = await scanRepo(repo.path)
       remoteNames.value = (scan.remotes || []).map((r: { name: string }) => r.name)
@@ -311,7 +311,7 @@ onMounted(async () => {
   } catch {}
 
   try {
-    const res = await getBranchList(repoKey, { type: 'local', page_size: 500 })
+    const res = await getBranchList(repo_key, { type: 'local', page_size: 500 })
     localBranches.value = res.list || []
   } catch {}
 
@@ -322,22 +322,22 @@ async function loadBranches() {
   loading.value = true
   try {
     let branchType = 'local'
-    let remoteName = ''
+    let remote_name = ''
 
     if (activeTab.value.startsWith('remote-')) {
       branchType = 'remote'
-      remoteName = activeTab.value.replace('remote-', '')
+      remote_name = activeTab.value.replace('remote-', '')
     }
 
-    const res = await getBranchList(repoKey, {
+    const res = await getBranchList(repo_key, {
       type: branchType,
       keyword: searchQuery.value || undefined,
       page_size: 500,
     })
 
     let filteredBranches = res.list || []
-    if (remoteName) {
-      filteredBranches = filteredBranches.filter(branch => branch.name.startsWith(`${remoteName}/`))
+    if (remote_name) {
+      filteredBranches = filteredBranches.filter(branch => branch.name.startsWith(`${remote_name}/`))
     }
 
     branches.value = filteredBranches
@@ -347,8 +347,8 @@ async function loadBranches() {
   }
 }
 
-function getLocalBranch(remoteName: string): string | null {
-  const parts = remoteName.split('/')
+function getLocalBranch(remote_name: string): string | null {
+  const parts = remote_name.split('/')
   if (parts.length < 2) return null
   const localName = parts.slice(1).join('/')
   const found = localBranches.value.find(b => b.name === localName)
@@ -356,13 +356,13 @@ function getLocalBranch(remoteName: string): string | null {
 }
 
 function goDetail(branchName: string) {
-  router.push(`/local-repos/${repoKey}/branches/${encodeURIComponent(branchName)}`)
+  router.push(`/local-repos/${repo_key}/branches/${encodeURIComponent(branchName)}`)
 }
 
 async function handleFetchAll() {
   fetchLoading.value = true
   try {
-    await fetchRepo(repoKey)
+    await fetchRepo(repo_key)
     ElMessage.success('远端数据已刷新')
     await loadBranches()
   } finally {
@@ -372,43 +372,43 @@ async function handleFetchAll() {
 
 async function handleCheckout(name: string) {
   try {
-    await checkoutBranch(repoKey, name)
+    await checkoutBranch(repo_key, name)
     ElMessage.success(`已切换到 ${name}`)
     await loadBranches()
   } catch {}
 }
 
-async function handleCheckoutRemote(remoteName: string) {
-  const parts = remoteName.split('/')
-  const localName = parts.length >= 2 ? parts.slice(1).join('/') : remoteName
+async function handleCheckoutRemote(remote_name: string) {
+  const parts = remote_name.split('/')
+  const localName = parts.length >= 2 ? parts.slice(1).join('/') : remote_name
   try {
     await createBranch({
-      repo_key: repoKey,
+      repo_key: repo_key,
       name: localName,
-      base_ref: remoteName,
+      base_ref: remote_name,
     })
     ElMessage.success(`已检出为本地分支 ${localName}`)
-    const res = await getBranchList(repoKey, { type: 'local', page_size: 500 })
+    const res = await getBranchList(repo_key, { type: 'local', page_size: 500 })
     localBranches.value = res.list || []
     await loadBranches()
   } catch {}
 }
 
-async function handleFfRemote(remoteName: string) {
-  const localName = getLocalBranch(remoteName)
+async function handleFfRemote(remote_name: string) {
+  const localName = getLocalBranch(remote_name)
   if (!localName) return
   try {
-    await pullBranch(repoKey, localName)
+    await pullBranch(repo_key, localName)
     ElMessage.success(`已更新本地分支 ${localName}`)
     await loadBranches()
   } catch {}
 }
 
-async function handlePullRemote(remoteName: string) {
-  const localName = getLocalBranch(remoteName)
+async function handlePullRemote(remote_name: string) {
+  const localName = getLocalBranch(remote_name)
   if (!localName) return
   try {
-    await pullBranch(repoKey, localName)
+    await pullBranch(repo_key, localName)
     ElMessage.success(`已同步本地分支 ${localName}`)
     await loadBranches()
   } catch (e) {
@@ -429,7 +429,7 @@ async function handleSubmitPush() {
     return
   }
   try {
-    await pushBranch(repoKey, pushBranchName.value, pushRemotes.value)
+    await pushBranch(repo_key, pushBranchName.value, pushRemotes.value)
     ElMessage.success('推送成功')
     showPushDialog.value = false
     await loadBranches()
@@ -440,7 +440,7 @@ async function handleSubmitPush() {
 
 async function handlePull(name: string) {
   try {
-    await pullBranch(repoKey, name)
+    await pullBranch(repo_key, name)
     ElMessage.success('拉取成功')
     await loadBranches()
   } catch (e) {
@@ -455,7 +455,7 @@ async function handleCreate() {
   }
   try {
     await createBranch({
-      repo_key: repoKey,
+      repo_key: repo_key,
       name: createForm.value.name,
       base_ref: createForm.value.base_ref || undefined,
     })
@@ -474,7 +474,7 @@ function openRenameDialog(branch: BranchInfo) {
 async function handleRename() {
   if (!renameForm.value.new_name) return
   try {
-    await updateBranch(repoKey, renameForm.value.old_name, renameForm.value.new_name)
+    await updateBranch(repo_key, renameForm.value.old_name, renameForm.value.new_name)
     ElMessage.success('重命名成功')
     showRenameDialog.value = false
     await loadBranches()
@@ -484,7 +484,7 @@ async function handleRename() {
 async function handleDeleteBranch(name: string) {
   try {
     await ElMessageBox.confirm(`确定要删除分支 "${name}" 吗？`, '确认删除', { type: 'warning' })
-    await deleteBranch(repoKey, name)
+    await deleteBranch(repo_key, name)
     ElMessage.success('分支已删除')
     await loadBranches()
   } catch {}

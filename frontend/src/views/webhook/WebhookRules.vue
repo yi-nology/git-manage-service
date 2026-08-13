@@ -71,7 +71,7 @@
         <template #default="{ row }">
           <el-button size="small" :icon="View" @click="viewDetail(row)">详情</el-button>
           <el-button size="small" :icon="Edit" @click="editRule(row)">编辑</el-button>
-          <el-button size="small" type="danger" :icon="Delete" @click="deleteRule(row)">删除</el-button>
+          <el-button size="small" type="danger" :icon="Delete" @click="delete_rule(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -79,7 +79,7 @@
     <div class="pagination-container">
       <el-pagination
         v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
+        v-model:page-size="pagination.page_size"
         :total="pagination.total"
         layout="total, sizes, prev, pager, next, jumper"
         :page-sizes="[10, 20, 50, 100]"
@@ -116,7 +116,7 @@
         </el-form-item>
 
         <el-form-item label="分支过滤">
-          <el-input v-model="ruleForm.branchFilter" placeholder="分支名称过滤，支持通配符" />
+          <el-input v-model="ruleForm.branch_filter" placeholder="分支名称过滤，支持通配符" />
         </el-form-item>
 
         <el-form-item label="触发动作">
@@ -163,7 +163,7 @@ const rules = ref([
     provider: 'github',
     eventTypes: ['push'],
     repoFilter: '',
-    branchFilter: 'main',
+    branch_filter: 'main',
     action: 'sync',
     syncTaskId: '1',
     enabled: true,
@@ -176,7 +176,7 @@ const rules = ref([
     provider: 'gitlab',
     eventTypes: ['pull_request'],
     repoFilter: 'frontend/*',
-    branchFilter: '',
+    branch_filter: '',
     action: 'notify',
     enabled: true,
     triggerCount: 42,
@@ -188,7 +188,7 @@ const rules = ref([
     provider: 'github',
     eventTypes: ['tag'],
     repoFilter: 'backend/*',
-    branchFilter: '',
+    branch_filter: '',
     action: 'sync',
     syncTaskId: '2',
     enabled: false,
@@ -205,7 +205,7 @@ const filters = reactive({
 
 const pagination = reactive({
   page: 1,
-  pageSize: 20,
+  page_size: 20,
   total: 3,
 })
 
@@ -214,7 +214,7 @@ const ruleForm = reactive({
   provider: '',
   eventTypes: [] as string[],
   repoFilter: '',
-  branchFilter: '',
+  branch_filter: '',
   action: 'sync',
   syncTaskId: '',
   enabled: true,
@@ -236,7 +236,7 @@ function editRule(row: any) {
   showCreateDialog.value = true
 }
 
-function deleteRule(row: any) {
+function delete_rule(row: any) {
   console.log('Delete rule:', row)
 }
 

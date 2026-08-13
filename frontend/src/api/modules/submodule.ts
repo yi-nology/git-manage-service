@@ -19,23 +19,23 @@ export interface SubmoduleStatusItem {
 }
 
 // 列出submodule
-export function listSubmodules(repoKey: string) {
+export function listSubmodules(repo_key: string) {
   return request.get<unknown, { submodules: SubmoduleInfo[] }>('/submodule/list', {
-    params: { repo_key: repoKey }
+    params: { repo_key: repo_key }
   })
 }
 
 // 获取submodule状态
-export function getSubmoduleStatus(repoKey: string, recursive?: boolean) {
+export function getSubmoduleStatus(repo_key: string, recursive?: boolean) {
   return request.get<unknown, { items: SubmoduleStatusItem[] }>('/submodule/status', {
-    params: { repo_key: repoKey, recursive }
+    params: { repo_key: repo_key, recursive }
   })
 }
 
 // 添加submodule
-export function addSubmodule(repoKey: string, url: string, path: string, branch?: string) {
+export function addSubmodule(repo_key: string, url: string, path: string, branch?: string) {
   return request.post('/submodule/add', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     url,
     path,
     branch
@@ -43,34 +43,34 @@ export function addSubmodule(repoKey: string, url: string, path: string, branch?
 }
 
 // 初始化submodule
-export function initSubmodule(repoKey: string, path?: string) {
+export function initSubmodule(repo_key: string, path?: string) {
   return request.post('/submodule/init', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     path
   })
 }
 
 // 更新submodule
-export function updateSubmodule(repoKey: string, params: { path?: string; init?: boolean; recursive?: boolean; remote?: boolean }) {
+export function updateSubmodule(repo_key: string, params: { path?: string; init?: boolean; recursive?: boolean; remote?: boolean }) {
   return request.post('/submodule/update', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     ...params
   })
 }
 
 // 同步submodule URL
-export function syncSubmodule(repoKey: string, path?: string, recursive?: boolean) {
+export function syncSubmodule(repo_key: string, path?: string, recursive?: boolean) {
   return request.post('/submodule/sync', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     path,
     recursive
   })
 }
 
 // 移除submodule
-export function removeSubmodule(repoKey: string, path: string, force?: boolean) {
+export function removeSubmodule(repo_key: string, path: string, force?: boolean) {
   return request.post('/submodule/remove', {
-    repo_key: repoKey,
+    repo_key: repo_key,
     path,
     force
   })

@@ -19,7 +19,7 @@
       </div>
     </div>
 
-    <FormCard v-if="!taskId">
+    <FormCard v-if="!task_id">
       <div class="form-field">
         <label class="field-label">远程仓库地址</label>
         <div class="proto-row">
@@ -60,11 +60,11 @@
       </template>
     </FormCard>
 
-    <FormCard v-if="taskId">
+    <FormCard v-if="task_id">
       <template #header>
         <div class="section-header">
           <span class="section-title">克隆进度</span>
-          <span class="status-pill" :class="'status-' + taskStatus">{{ statusLabel }}</span>
+          <span class="status-pill" :class="'status-' + task_status">{{ statusLabel }}</span>
         </div>
       </template>
 
@@ -72,12 +72,12 @@
         <div v-for="(line, i) in progressLines" :key="i" class="log-line">{{ line }}</div>
       </div>
 
-      <div v-if="taskStatus === 'done'" class="result-row">
+      <div v-if="task_status === 'done'" class="result-row">
         <span class="result-text">克隆成功！</span>
         <ActionPill variant="primary" @click="$router.push('/local-repos')">查看仓库列表</ActionPill>
       </div>
 
-      <div v-if="taskStatus === 'failed'" class="result-row">
+      <div v-if="task_status === 'failed'" class="result-row">
         <span class="result-text result-text--error">克隆失败: {{ taskError }}</span>
       </div>
     </FormCard>
@@ -103,8 +103,8 @@ const route = useRoute()
 
 const step = ref(0)
 const cloning = ref(false)
-const taskId = ref('')
-const taskStatus = ref('')
+const task_id = ref('')
+const task_status = ref('')
 const taskError = ref('')
 const progressLines = ref<string[]>([])
 let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -143,7 +143,7 @@ const urlPlaceholder = computed(() => {
 
 const statusLabel = computed(() => {
   const map: Record<string, string> = { running: '克隆中...', done: '已完成', failed: '失败' }
-  return map[taskStatus.value] || taskStatus.value || '等待中'
+  return map[task_status.value] || task_status.value || '等待中'
 })
 
 function switchMode(mode: UrlMode) {
@@ -187,14 +187,14 @@ async function handleClone() {
   cloning.value = true
   progressLines.value = []
   taskError.value = ''
-  taskStatus.value = 'running'
+  task_status.value = 'running'
 
   try {
     const result = await cloneRepo(form.value)
-    taskId.value = result.task_id
+    task_id.value = result.task_id
     startPolling()
   } catch (e: any) {
-    taskStatus.value = 'failed'
+    task_status.value = 'failed'
     taskError.value = e?.message || '克隆启动失败'
   } finally {
     cloning.value = false
@@ -203,10 +203,10 @@ async function handleClone() {
 
 function startPolling() {
   pollTimer = setInterval(async () => {
-    if (!taskId.value) return
+    if (!task_id.value) return
     try {
-      const task = await getCloneTask(taskId.value)
-      taskStatus.value = task.status
+      const task = await getCloneTask(task_id.value)
+      task_status.value = task.status
       progressLines.value = task.progress || []
       if (task.error) taskError.value = task.error
       if (task.status === 'done' || task.status === 'failed') {

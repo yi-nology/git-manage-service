@@ -1,6 +1,6 @@
 <template>
   <div class="cr-page-wrapper">
-    <PageHeader :title="repoName || '仓库'" showBack :backRoute="`/local-repos/${repoKey}`">
+    <PageHeader :title="repo_name || '仓库'" showBack :backRoute="`/local-repos/${repo_key}`">
       <template #title-suffix>
         <span v-if="currentVersion" class="version-tag">{{ currentVersion }}</span>
       </template>
@@ -12,7 +12,7 @@
     </PageHeader>
 
     <div class="cr-layout">
-      <RepoSidebar :repo-key="repoKey" active-key="cr" />
+      <RepoSidebar :repo-key="repo_key" active-key="cr" />
       <div class="cr-content">
         <div class="cr-management-page">
           <div class="filter-bar">
@@ -59,7 +59,7 @@
             <template #cell-actions="{ row }">
               <router-link
                 v-if="getReviewStatus(row.cr_number)"
-                :to="`/local-repos/${repoKey}/review/tasks/${getReviewStatus(row.cr_number)!.id}`"
+                :to="`/local-repos/${repo_key}/review/tasks/${getReviewStatus(row.cr_number)!.id}`"
                 class="action-link"
               >
                 详情
@@ -102,7 +102,7 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 import SearchBar from '@/components/common/SearchBar.vue'
 
 const route = useRoute()
-const repoKey = route.params.repoKey as string
+const repo_key = route.params.repo_key as string
 
 const loading = ref(false)
 const syncing = ref(false)
@@ -111,7 +111,7 @@ const activeFilter = ref('all')
 const searchText = ref('')
 const crs = ref<CRDTO[]>([])
 const reviewTasks = ref<ReviewTaskDTO[]>([])
-const repoName = ref('')
+const repo_name = ref('')
 const currentVersion = ref('')
 
 const filters = [
@@ -163,7 +163,7 @@ async function triggerReview(cr: CRDTO) {
   triggering.value = true
   try {
     await createReviewTask({
-      repo_key: repoKey,
+      repo_key: repo_key,
       mr_iid: String(cr.cr_number),
       trigger_type: 'manual',
     })
@@ -202,7 +202,7 @@ const filteredCRs = computed(() => {
 async function loadCRs() {
   loading.value = true
   try {
-    const res = await listCRs({ repo_key: repoKey, page: 1, page_size: 100 })
+    const res = await listCRs({ repo_key: repo_key, page: 1, page_size: 100 })
     crs.value = res?.items || []
   } catch { crs.value = [] }
   finally { loading.value = false }
@@ -211,7 +211,7 @@ async function loadCRs() {
 async function handleSync() {
   syncing.value = true
   try {
-    const res = await syncCRs(repoKey)
+    const res = await syncCRs(repo_key)
     ElMessage.success(`同步完成，共 ${res?.synced_count || 0} 个 CR`)
     loadCRs()
   } catch (e: any) {
@@ -223,7 +223,7 @@ async function handleSync() {
 
 async function loadReviewTasks() {
   try {
-    const res = await listReviewTasks({ repo_key: repoKey, page: 1, page_size: 100 })
+    const res = await listReviewTasks({ repo_key: repo_key, page: 1, page_size: 100 })
     reviewTasks.value = res?.tasks || []
   } catch { reviewTasks.value = [] }
 }
@@ -232,10 +232,10 @@ onMounted(async () => {
   loadCRs()
   loadReviewTasks()
   try {
-    const r = await getRepoDetail(repoKey)
-    repoName.value = r?.name || ''
+    const r = await getRepoDetail(repo_key)
+    repo_name.value = r?.name || ''
   } catch {}
-  try { currentVersion.value = (await getCurrentVersion(repoKey)) || '' } catch {}
+  try { currentVersion.value = (await getCurrentVersion(repo_key)) || '' } catch {}
 })
 </script>
 

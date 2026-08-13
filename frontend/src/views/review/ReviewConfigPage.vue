@@ -1,9 +1,9 @@
 <template>
   <div class="review-page-wrapper">
     <PageHeader
-      :title="`审查配置 · ${repoName}`"
+      :title="`审查配置 · ${repo_name}`"
       show-back
-      :back-route="`/local-repos/${repoKey}/review`"
+      :back-route="`/local-repos/${repo_key}/review`"
     />
 
     <div class="config-main">
@@ -76,8 +76,8 @@ import ActionPill from '@/components/common/ActionPill.vue'
 import SectionTitle from '@/components/common/SectionTitle.vue'
 
 const route = useRoute()
-const repoKey = route.params.repoKey as string
-const repoName = ref(repoKey)
+const repo_key = route.params.repo_key as string
+const repo_name = ref(repo_key)
 const saving = ref(false)
 
 const form = ref({
@@ -92,7 +92,7 @@ const llmProviders = ref<LLMProviderDTO[]>([])
 
 async function loadConfig() {
   try {
-    const res = await getReviewConfig(repoKey)
+    const res = await getReviewConfig(repo_key)
     if (res?.config_yaml) {
       try {
         const parsed = JSON.parse(res.config_yaml)
@@ -109,7 +109,7 @@ async function loadLLMProviders() {
 async function handleSave() {
   saving.value = true
   try {
-    await updateReviewConfig(repoKey, JSON.stringify(form.value, null, 2))
+    await updateReviewConfig(repo_key, JSON.stringify(form.value, null, 2))
     ElMessage.success('配置已保存')
   } catch (e: any) { ElMessage.error('保存失败: ' + (e?.message || '')) }
   finally { saving.value = false }

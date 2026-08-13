@@ -7,9 +7,9 @@ import type {
   AnalyzeRemoteResponse,
 } from '@/types/mirror'
 
-export function getMirrors(repoId?: number, mirrorType?: string) {
+export function getMirrors(repo_id?: number, mirror_type?: string) {
   return request.get<unknown, MirrorDTO[]>('/mirrors', {
-    params: { ...(repoId ? { repo_id: repoId } : {}), ...(mirrorType ? { mirror_type: mirrorType } : {}) },
+    params: { ...(repo_id ? { repo_id: repo_id } : {}), ...(mirror_type ? { mirror_type: mirror_type } : {}) },
   })
 }
 
@@ -29,20 +29,20 @@ export function deleteMirror(id: number) {
   return request.post(`/mirror/${id}/delete`)
 }
 
-export function triggerMirrorSync(id: number, triggerType?: string) {
-  return request.post(`/mirror/${id}/sync`, { trigger_type: triggerType || 'manual' })
+export function triggerMirrorSync(id: number, trigger_type?: string) {
+  return request.post(`/mirror/${id}/sync`, { trigger_type: trigger_type || 'manual' })
 }
 
-export function batchTriggerMirrorSync(mirrorIds: number[], triggerType?: string) {
-  return request.post('/mirrors/sync', { mirror_ids: mirrorIds, trigger_type: triggerType || 'manual' })
+export function batchTriggerMirrorSync(mirrorIds: number[], trigger_type?: string) {
+  return request.post('/mirrors/sync', { mirror_ids: mirrorIds, trigger_type: trigger_type || 'manual' })
 }
 
 export function previewMirrorSync(id: number) {
   return request.post<unknown, { preview: string }>(`/mirror/${id}/preview`)
 }
 
-export function getMirrorSyncLogs(mirrorId: number, limit?: number) {
-  return request.get<unknown, MirrorSyncLogDTO[]>(`/mirror/${mirrorId}/logs`, {
+export function getMirrorSyncLogs(mirror_id: number, limit?: number) {
+  return request.get<unknown, MirrorSyncLogDTO[]>(`/mirror/${mirror_id}/logs`, {
     params: limit ? { limit } : {},
   })
 }
@@ -63,16 +63,16 @@ export function resumeMirror(id: number) {
   return request.post<unknown, MirrorDTO>(`/mirror/${id}/resume`)
 }
 
-export function analyzeRemote(remoteUrl: string, credentialId?: number) {
+export function analyzeRemote(remote_url: string, credential_id?: number) {
   return request.post<unknown, AnalyzeRemoteResponse>('/mirror/analyze', {
-    remote_url: remoteUrl,
-    credential_id: credentialId,
+    remote_url: remote_url,
+    credential_id: credential_id,
   })
 }
 
-export function validateCredential(credentialId: number, remoteUrl: string) {
+export function validateCredential(credential_id: number, remote_url: string) {
   return request.post<unknown, { valid: boolean; message: string }>('/mirror/validate-credential', {
-    credential_id: credentialId,
-    remote_url: remoteUrl,
+    credential_id: credential_id,
+    remote_url: remote_url,
   })
 }

@@ -30,13 +30,13 @@
 
     <!-- 搜索结果 -->
     <el-table :data="commits" v-loading="loading" @row-click="viewCommitDetail" class="commit-table" size="small">
-      <el-table-column prop="shortHash" label="Commit" width="90">
+      <el-table-column prop="short_hash" label="Commit" width="90">
         <template #default="{ row }">
-          <el-text class="mono-text" type="primary">{{ row.shortHash }}</el-text>
+          <el-text class="mono-text" type="primary">{{ row.short_hash }}</el-text>
         </template>
       </el-table-column>
-      <el-table-column prop="authorName" label="作者" width="120" />
-      <el-table-column prop="authorDate" label="时间" width="160" />
+      <el-table-column prop="author_name" label="作者" width="120" />
+      <el-table-column prop="author_date" label="时间" width="160" />
       <el-table-column prop="message" label="提交信息" show-overflow-tooltip>
         <template #default="{ row }">
           {{ row.message.split('\n')[0] }}
@@ -54,7 +54,7 @@
     <div class="pagination" v-if="total > 0">
       <el-pagination
         v-model:current-page="currentPage"
-        :page-size="pageSize"
+        :page-size="page_size"
         :total="total"
         layout="total, prev, pager, next"
         @current-change="handlePageChange"
@@ -62,17 +62,17 @@
     </div>
 
     <!-- 提交详情 -->
-    <el-dialog v-model="showDetailDialog" :title="`提交详情: ${selectedCommit?.shortHash}`" width="900px" top="5vh" destroy-on-close>
+    <el-dialog v-model="showDetailDialog" :title="`提交详情: ${selectedCommit?.short_hash}`" width="900px" top="5vh" destroy-on-close>
       <div v-if="selectedCommit" class="commit-detail">
         <el-descriptions :column="2" border size="small">
           <el-descriptions-item label="完整Hash" :span="2">
             <el-text class="mono-text">{{ selectedCommit.hash }}</el-text>
             <el-button size="small" link @click="copyText(selectedCommit.hash)">复制</el-button>
           </el-descriptions-item>
-          <el-descriptions-item label="作者">{{ selectedCommit.authorName }} &lt;{{ selectedCommit.authorEmail }}&gt;</el-descriptions-item>
-          <el-descriptions-item label="提交时间">{{ selectedCommit.authorDate }}</el-descriptions-item>
-          <el-descriptions-item label="提交者">{{ selectedCommit.committerName }} &lt;{{ selectedCommit.committerEmail }}&gt;</el-descriptions-item>
-          <el-descriptions-item label="提交者时间">{{ selectedCommit.committerDate }}</el-descriptions-item>
+          <el-descriptions-item label="作者">{{ selectedCommit.author_name }} &lt;{{ selectedCommit.author_email }}&gt;</el-descriptions-item>
+          <el-descriptions-item label="提交时间">{{ selectedCommit.author_date }}</el-descriptions-item>
+          <el-descriptions-item label="提交者">{{ selectedCommit.committer_name }} &lt;{{ selectedCommit.committer_email }}&gt;</el-descriptions-item>
+          <el-descriptions-item label="提交者时间">{{ selectedCommit.committer_date }}</el-descriptions-item>
           <el-descriptions-item label="提交信息" :span="2">
             <pre class="commit-message">{{ selectedCommit.message }}</pre>
           </el-descriptions-item>
@@ -121,7 +121,7 @@ const loading = ref(false)
 const commits = ref<CommitDetail[]>([])
 const total = ref(0)
 const currentPage = ref(1)
-const pageSize = 20
+const page_size = 20
 
 const searchParams = reactive({
   ref: '',
@@ -148,7 +148,7 @@ async function loadCommits() {
     const res = await searchCommits(props.repoKey, {
       ...searchParams,
       page: currentPage.value,
-      page_size: pageSize
+      page_size: page_size
     })
     commits.value = res.commits || []
     total.value = res.total || 0

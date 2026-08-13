@@ -25,7 +25,7 @@
     <div class="credential-section">
       <span class="section-label">认证凭证</span>
       <CredentialSelector
-        v-model="credentialId"
+        v-model="credential_id"
         :url="remote.fetch_url"
         placeholder="选择凭证（可选）"
         @update:model-value="handleCredentialChange"
@@ -45,17 +45,17 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:credentialId', value: number | undefined): void
+  (e: 'update:credential_id', value: number | undefined): void
 }>()
 
-const credentialId = ref<number | undefined>(props.credentialId)
+const credential_id = ref<number | undefined>(props.credentialId)
 
 watch(() => props.credentialId, (val) => {
-  credentialId.value = val
+  credential_id.value = val
 })
 
 function handleCredentialChange(val: number | undefined) {
-  emit('update:credentialId', val)
+  emit('update:credential_id', val)
 }
 </script>
 

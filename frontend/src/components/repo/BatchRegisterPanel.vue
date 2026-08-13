@@ -72,7 +72,7 @@
     <div v-if="selectedRepos.length > 0" class="form-field">
       <label class="field-label">默认凭证 (可选)</label>
       <CredentialSelector
-        v-model="batchForm.credentialId"
+        v-model="batchForm.credential_id"
         placeholder="选择默认认证凭证（可选）"
         style="width: 100%"
       />
@@ -121,7 +121,7 @@ const registering = ref(false)
 
 const batchForm = reactive({
   path: '',
-  credentialId: undefined as number | undefined,
+  credential_id: undefined as number | undefined,
 })
 const scannedRepos = ref<ScannedRepo[]>([])
 const selectedRepos = ref<string[]>([])
@@ -192,7 +192,7 @@ async function handleRegister() {
   try {
     const repos = selectedRepos.value.map(path => {
       const repo = scannedRepos.value.find(r => r.path === path)!
-      return { name: repo.name, path: repo.path, default_credential_id: batchForm.credentialId }
+      return { name: repo.name, path: repo.path, default_credential_id: batchForm.credential_id }
     })
     const res = await batchCreateRepos({ repos })
     const failedList = res.failed || []

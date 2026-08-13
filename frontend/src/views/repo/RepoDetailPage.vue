@@ -91,22 +91,22 @@
 
         <BindingDialog
           v-model:visible="showBindingDialog"
-          :repo-key="repoKey"
+          :repo-key="repo_key"
           :providers="availableProviders"
           @created="loadBindings"
         />
 
         <div v-if="loadedTabs.branches" v-show="activeTab === 'branches'">
-          <BranchOverviewPanel :repo-key="repoKey" />
+          <BranchOverviewPanel :repo-key="repo_key" />
         </div>
 
         <div v-if="loadedTabs.spec" v-show="activeTab === 'spec'" class="spec-full-area">
-          <SpecEditor ref="specEditorRef" :repo-key="repoKey" />
+          <SpecEditor ref="specEditorRef" :repo-key="repo_key" />
         </div>
 
         <div v-if="loadedTabs.stats" v-show="activeTab === 'stats'">
           <RepoStatsTab
-            :repo-key="repoKey"
+            :repo-key="repo_key"
             :stats-branches="statsBranches"
             :stats-authors="statsAuthors"
             :repo-name="repo?.name || ''"
@@ -115,7 +115,7 @@
 
         <div v-if="loadedTabs.lines" v-show="activeTab === 'lines'">
           <RepoLineStatsTab
-            :repo-key="repoKey"
+            :repo-key="repo_key"
             :stats-branches="statsBranches"
             :stats-authors="statsAuthors"
             :repo-name="repo?.name || ''"
@@ -124,7 +124,7 @@
 
         <div v-if="loadedTabs.versions" v-show="activeTab === 'versions'">
           <RepoVersionsTab
-            :repo-key="repoKey"
+            :repo-key="repo_key"
             :remote-names="remoteNames"
             :version-list="versionList"
             :versions-loading="versionsLoading"
@@ -134,35 +134,35 @@
         </div>
 
         <div v-if="loadedTabs.files" v-show="activeTab === 'files'" style="height: 100%; min-height: 600px;">
-          <FileExplorer :repo-key="repoKey" />
+          <FileExplorer :repo-key="repo_key" />
         </div>
 
         <div v-if="loadedTabs.commits" v-show="activeTab === 'commits'">
-          <CommitSearch :repo-key="repoKey" :branches="allRefs" :authors="statsAuthors" />
+          <CommitSearch :repo-key="repo_key" :branches="allRefs" :authors="statsAuthors" />
         </div>
 
         <div v-if="loadedTabs.stash" v-show="activeTab === 'stash'">
-          <StashManager :repo-key="repoKey" />
+          <StashManager :repo-key="repo_key" />
         </div>
 
         <div v-if="loadedTabs.submodules" v-show="activeTab === 'submodules'">
-          <SubmoduleManager :repo-key="repoKey" />
+          <SubmoduleManager :repo-key="repo_key" />
         </div>
 
         <div v-if="loadedTabs.patches" v-show="activeTab === 'patches'">
-          <PatchManager :repo-key="repoKey" />
+          <PatchManager :repo-key="repo_key" />
         </div>
 
         <div v-if="loadedTabs.sync" v-show="activeTab === 'sync'">
-          <SyncConfigPanel :repo-key="repoKey" />
+          <SyncConfigPanel :repo-key="repo_key" />
         </div>
 
         <div v-if="loadedTabs.slim" v-show="activeTab === 'slim'">
-          <SlimManager :repo-key="repoKey" />
+          <SlimManager :repo-key="repo_key" />
         </div>
 
         <div v-if="loadedTabs.author" v-show="activeTab === 'author'">
-          <AuthorFix :repo-key="repoKey" :remotes="remoteNames" />
+          <AuthorFix :repo-key="repo_key" :remotes="remoteNames" />
         </div>
       </div>
     </div>
@@ -170,7 +170,7 @@
      <RepoEditDialog
        v-model:visible="showEditDialog"
        :repo="repo"
-       :repo-key="repoKey"
+       :repo-key="repo_key"
        @saved="handleEditSaved"
      />
 
@@ -234,7 +234,7 @@ const providerStore = useProviderStore()
 
 const route = useRoute()
 const router = useRouter()
-const repoKey = route.params.repoKey as string
+const repo_key = route.params.repo_key as string
 
 const loading = ref(false)
 const repo = ref<RepoDTO | null>(null)
@@ -294,7 +294,7 @@ onMounted(async () => {
   loadedTabs[activeTab.value] = true
   loading.value = true
   try {
-    repo.value = await getRepoDetail(repoKey)
+    repo.value = await getRepoDetail(repo_key)
     if (repo.value?.path) {
       try {
         scanData.value = await scanRepo(repo.value.path)
@@ -302,11 +302,11 @@ onMounted(async () => {
       } catch (_e) { /* ignore */ }
     }
     try {
-      statsBranches.value = (await getStatsBranches(repoKey)) || []
+      statsBranches.value = (await getStatsBranches(repo_key)) || []
     } catch (_e) { statsBranches.value = [] }
-    try { statsAuthors.value = (await getStatsAuthors(repoKey)) || [] } catch (_e) { statsAuthors.value = [] }
-    try { currentVersion.value = (await getCurrentVersion(repoKey)) || '' } catch (_e) { /* ignore */ }
-    try { versionList.value = (await getVersionList(repoKey)) || [] } catch (_e) { versionList.value = [] }
+    try { statsAuthors.value = (await getStatsAuthors(repo_key)) || [] } catch (_e) { statsAuthors.value = [] }
+    try { currentVersion.value = (await getCurrentVersion(repo_key)) || '' } catch (_e) { /* ignore */ }
+    try { versionList.value = (await getVersionList(repo_key)) || [] } catch (_e) { versionList.value = [] }
     loadProviderInfo()
     loadBindings()
   } finally {
@@ -332,7 +332,7 @@ watch(activeTab, (val, oldVal) => {
 async function loadVersions() {
   versionsLoading.value = true
   try {
-    versionList.value = (await getVersionList(repoKey)) || []
+    versionList.value = (await getVersionList(repo_key)) || []
   } catch (_e) { /* ignore */ }
   finally {
     versionsLoading.value = false
@@ -340,7 +340,7 @@ async function loadVersions() {
 }
 
 async function handleVersionChanged() {
-  try { currentVersion.value = await getCurrentVersion(repoKey) || '' } catch (_e) { /* ignore */ }
+  try { currentVersion.value = await getCurrentVersion(repo_key) || '' } catch (_e) { /* ignore */ }
 }
 
 function copyKey() {
@@ -361,7 +361,7 @@ async function loadProviderInfo() {
 
 async function loadBindings() {
   try {
-    const result = await listBindings({ repo_key: repoKey })
+    const result = await listBindings({ repo_key: repo_key })
     bindings.value = result || []
   } catch (_e) { bindings.value = [] }
 }
@@ -414,7 +414,7 @@ async function handleDeleteWebhook(id: number) {
 }
 
 async function handleEditSaved() {
-  repo.value = await getRepoDetail(repoKey)
+  repo.value = await getRepoDetail(repo_key)
   if (repo.value?.path) {
     try {
       scanData.value = await scanRepo(repo.value.path)
@@ -426,7 +426,7 @@ async function handleEditSaved() {
 function handleNavSelect(key: string) {
   const item = sidebarItems.find(i => i.key === key)
   if (item && (item as any).route) {
-    router.push(`/local-repos/${repoKey}/${key}`)
+    router.push(`/local-repos/${repo_key}/${key}`)
   } else {
     activeTab.value = key
     router.replace({ query: { ...route.query, tab: key } })
@@ -438,13 +438,13 @@ async function handleAISummary(message: string) {
    try {
      let workspaceStatus: any = null
      try {
-       workspaceStatus = await getWorkspaceStatus(repoKey)
+       workspaceStatus = await getWorkspaceStatus(repo_key)
      } catch (_e) { /* ignore */ }
 
-     let failedRuns: any[] = []
+     let failed_runs: any[] = []
      try {
-       const syncHistory = await getSyncHistory(repoKey)
-       failedRuns = (syncHistory || []).filter((r: any) => r.status === 'failed').slice(0, 5)
+       const syncHistory = await getSyncHistory(repo_key)
+       failed_runs = (syncHistory || []).filter((r: any) => r.status === 'failed').slice(0, 5)
      } catch (_e) { /* ignore */ }
 
      const issues: string[] = []
@@ -457,47 +457,47 @@ async function handleAISummary(message: string) {
      if (workspaceStatus && workspaceStatus.ahead > 0) {
        issues.push(`当前分支有 ${workspaceStatus.ahead} 个未推送提交`)
      }
-     if (failedRuns.length > 0) {
-       issues.push(`最近有 ${failedRuns.length} 次同步失败`)
+     if (failed_runs.length > 0) {
+       issues.push(`最近有 ${failed_runs.length} 次同步失败`)
      }
 
-     const pendingChanges = (workspaceStatus?.staged?.length || 0) + (workspaceStatus?.unstaged?.length || 0) + (workspaceStatus?.untracked?.length || 0)
+     const pending_changes = (workspaceStatus?.staged?.length || 0) + (workspaceStatus?.unstaged?.length || 0) + (workspaceStatus?.untracked?.length || 0)
 
-     let commitCount = 0
+     let commit_count = 0
      try {
-        const commitStats = await getStatsCommits(repoKey) as unknown as any[]
-       commitCount = commitStats?.length || versionList.value?.length || 0
+        const commitStats = await getStatsCommits(repo_key) as unknown as any[]
+       commit_count = commitStats?.length || versionList.value?.length || 0
      } catch (_e) { /* ignore */ }
 
-     const response = await aiApi.generateRepoSummary({
-       repoKey,
+     const response = await aiApi.generate_repo_summary({
+       repo_key,
        status: {
          name: repo.value?.name || '',
-         currentBranch: workspaceStatus?.branch || '',
-         defaultBranch: workspaceStatus?.branch || '',
-         branchCount: statsBranches.value?.length || 0,
-         tagCount: versionList.value?.length || 0,
-         commitCount,
+         current_branch: workspaceStatus?.branch || '',
+         default_branch: workspaceStatus?.branch || '',
+         branch_count: statsBranches.value?.length || 0,
+         tag_count: versionList.value?.length || 0,
+         commit_count,
          stagedCount: workspaceStatus?.staged?.length || 0,
          unstagedCount: workspaceStatus?.unstaged?.length || 0,
          untrackedCount: workspaceStatus?.untracked?.length || 0,
          conflictedCount: workspaceStatus?.conflicted?.length || 0,
          ahead: workspaceStatus?.ahead || 0,
          behind: workspaceStatus?.behind || 0,
-         isClean: workspaceStatus?.isClean ?? true,
-         isMerging: workspaceStatus?.isMerging ?? false,
-         isRebasing: workspaceStatus?.isRebasing ?? false,
+         is_clean: workspaceStatus?.is_clean ?? true,
+         is_merging: workspaceStatus?.is_merging ?? false,
+         is_rebasing: workspaceStatus?.is_rebasing ?? false,
          remoteCount: remoteNames.value.length,
-         hasRecentSyncFailure: failedRuns.length > 0,
-         recentFailureCount: failedRuns.length,
+         hasRecentSyncFailure: failed_runs.length > 0,
+         recentFailureCount: failed_runs.length,
        },
        issues,
-       pendingChanges,
-       userInstruction: message,
+       pending_changes,
+       user_instruction: message,
      })
 
      aiPanelRef.value?.addResponse(
-       `## 仓库健康分析\n\n${response.summary}\n\n**风险等级：** ${response.riskLevel || 'unknown'}\n\n**建议操作：**\n${(response.suggestions || []).map((s: string) => `- ${s}`).join('\n')}`
+       `## 仓库健康分析\n\n${response.summary}\n\n**风险等级：** ${response.risk_level || 'unknown'}\n\n**建议操作：**\n${(response.suggestions || []).map((s: string) => `- ${s}`).join('\n')}`
      )
    } catch (e) {
      aiPanelRef.value?.addResponse('AI 分析失败，请稍后重试。')

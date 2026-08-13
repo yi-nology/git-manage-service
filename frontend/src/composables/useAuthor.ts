@@ -29,7 +29,7 @@ export function useAuthorIdentity() {
     finally { loading.value = false }
   }
 
-  async function handleCreate(data: { canonicalName: string; canonicalEmail: string; aliases: AliasEntry[] }) {
+  async function handleCreate(data: { canonical_name: string; canonical_email: string; aliases: AliasEntry[] }) {
     try {
       await createIdentity(data)
       ElMessage.success('身份创建成功')
@@ -39,7 +39,7 @@ export function useAuthorIdentity() {
     }
   }
 
-  async function handleUpdate(id: number, data: { canonicalName: string; canonicalEmail: string; aliases: AliasEntry[] }) {
+  async function handleUpdate(id: number, data: { canonical_name: string; canonical_email: string; aliases: AliasEntry[] }) {
     try {
       await updateIdentity(id, data)
       ElMessage.success('身份更新成功')
@@ -83,17 +83,17 @@ export function useAuthorIdentity() {
   }
 }
 
-export function useAuthorFix(repoKey: string) {
+export function useAuthorFix(repo_key: string) {
   const repoConfig = ref<RepoAuthorConfigDTO | null>(null)
   const configLoading = ref(false)
 
   const scanResult = ref<MismatchedCommit[]>([])
   const scanLoading = ref(false)
-  const totalCommits = ref(0)
+  const total_commits = ref(0)
   const selectedCommits = ref<MismatchedCommit[]>([])
 
-  const taskId = ref('')
-  const taskStatus = ref('')
+  const task_id = ref('')
+  const task_status = ref('')
   const taskLogs = ref<string[]>([])
   const taskError = ref('')
 
@@ -109,17 +109,17 @@ export function useAuthorFix(repoKey: string) {
   async function loadRepoConfig() {
     configLoading.value = true
     try {
-      repoConfig.value = (await getRepoAuthorConfig(repoKey)) as unknown as RepoAuthorConfigDTO || null
+      repoConfig.value = (await getRepoAuthorConfig(repo_key)) as unknown as RepoAuthorConfigDTO || null
     } catch { repoConfig.value = null }
     finally { configLoading.value = false }
   }
 
-  async function setConfig(identityId: number | null) {
+  async function setConfig(identity_id: number | null) {
     try {
-      if (identityId === null) {
-        await setRepoAuthorConfig(repoKey, null, true)
+      if (identity_id === null) {
+        await setRepoAuthorConfig(repo_key, null, true)
       } else {
-        await setRepoAuthorConfig(repoKey, identityId)
+        await setRepoAuthorConfig(repo_key, identity_id)
       }
       ElMessage.success('仓库作者身份已更新')
       await loadRepoConfig()
@@ -131,9 +131,9 @@ export function useAuthorFix(repoKey: string) {
   async function scan() {
     scanLoading.value = true
     try {
-      const result = (await scanAuthor(repoKey)) as any
+      const result = (await scanAuthor(repo_key)) as any
       scanResult.value = result?.commits || []
-      totalCommits.value = result?.totalCommits || 0
+      total_commits.value = result?.total_commits || 0
     } catch (e: any) {
       ElMessage.error('扫描失败: ' + (e.message || '未知错误'))
     } finally {
@@ -143,9 +143,9 @@ export function useAuthorFix(repoKey: string) {
 
   async function fixAll(pushRemote = '') {
     try {
-      const res = (await fixAuthorAll(repoKey, pushRemote)) as any
-      taskId.value = res?.taskId || ''
-      taskStatus.value = 'running'
+      const res = (await fixAuthorAll(repo_key, pushRemote)) as any
+      task_id.value = res?.task_id || ''
+      task_status.value = 'running'
       taskLogs.value = []
       taskError.value = ''
       startPolling()
@@ -161,9 +161,9 @@ export function useAuthorFix(repoKey: string) {
     }
     try {
       const hashes = selectedCommits.value.map(c => c.hash)
-      const res = (await fixAuthor(repoKey, hashes, pushRemote)) as any
-      taskId.value = res?.taskId || ''
-      taskStatus.value = 'running'
+      const res = (await fixAuthor(repo_key, hashes, pushRemote)) as any
+      task_id.value = res?.task_id || ''
+      task_status.value = 'running'
       taskLogs.value = []
       taskError.value = ''
       startPolling()
@@ -176,8 +176,8 @@ export function useAuthorFix(repoKey: string) {
     stopPolling()
     pollTimer = setInterval(async () => {
       try {
-        const task = (await getTaskStatus(taskId.value)) as any
-        taskStatus.value = task?.status || ''
+        const task = (await getTaskStatus(task_id.value)) as any
+        task_status.value = task?.status || ''
         taskLogs.value = task?.progress || []
         taskError.value = task?.error || ''
         if (task?.status === 'success' || task?.status === 'failed') {
@@ -202,13 +202,13 @@ export function useAuthorFix(repoKey: string) {
   })
 
   return {
-    repoConfig, configLoading, scanResult, scanLoading, totalCommits, selectedCommits,
-    taskId, taskStatus, taskLogs, taskError,
+    repoConfig, configLoading, scanResult, scanLoading, total_commits, selectedCommits,
+    task_id, task_status, taskLogs, taskError,
     loadRepoConfig, setConfig, scan, fixAll, fixSelected, handleSelection,
   }
 }
 
-export function useAuthorAI(repoKey: string) {
+export function useAuthorAI(repo_key: string) {
   const aiLoading = ref(false)
   const aiAnalysis = ref('')
   const aiSuggestion = ref<AliasSuggestionResult | null>(null)
@@ -222,7 +222,7 @@ export function useAuthorAI(repoKey: string) {
     aiLoading.value = true
     aiSuggestion.value = null
     try {
-      const res = (await authorAI(repoKey, 'suggest')) as any
+      const res = (await authorAI(repo_key, 'suggest')) as any
       aiSuggestion.value = res?.suggest || null
     } catch (e: any) {
       ElMessage.error('AI 推荐失败: ' + (e.message || '请检查 LLM 配置'))
@@ -231,11 +231,11 @@ export function useAuthorAI(repoKey: string) {
     }
   }
 
-  async function analyzeScan(scanData: { commits: MismatchedCommit[]; totalCommits: number; matchCount: number }) {
+  async function analyzeScan(scanData: { commits: MismatchedCommit[]; total_commits: number; match_count: number }) {
     aiLoading.value = true
     aiAnalysis.value = ''
     try {
-      const res = (await authorAI(repoKey, 'analyze', { scan: scanData })) as any
+      const res = (await authorAI(repo_key, 'analyze', { scan: scanData })) as any
       aiAnalysis.value = res?.result || ''
     } catch (e: any) {
       ElMessage.error('AI 分析失败: ' + (e.message || '请检查 LLM 配置'))
@@ -248,7 +248,7 @@ export function useAuthorAI(repoKey: string) {
     aiLoading.value = true
     aiMerge.value = null
     try {
-      const res = (await authorAI(repoKey, 'merge')) as any
+      const res = (await authorAI(repo_key, 'merge')) as any
       aiMerge.value = res?.merge || null
     } catch (e: any) {
       ElMessage.error('AI 分析失败: ' + (e.message || '请检查 LLM 配置'))
@@ -261,7 +261,7 @@ export function useAuthorAI(repoKey: string) {
     aiLoading.value = true
     aiRisk.value = null
     try {
-      const res = (await authorAI(repoKey, 'risk', { commits })) as any
+      const res = (await authorAI(repo_key, 'risk', { commits })) as any
       aiRisk.value = res?.risk || null
     } catch (e: any) {
       ElMessage.error('AI 风险评估失败: ' + (e.message || '请检查 LLM 配置'))
@@ -274,7 +274,7 @@ export function useAuthorAI(repoKey: string) {
     chatLoading.value = true
     chatMessages.value.push({ role: 'user', content: prompt })
     try {
-      const res = (await authorChat(repoKey, prompt, chatMessages.value.slice(-10))) as any
+      const res = (await authorChat(repo_key, prompt, chatMessages.value.slice(-10))) as any
       const answer = res?.result || '无回复'
       chatMessages.value.push({ role: 'assistant', content: answer })
     } catch (e: any) {

@@ -34,7 +34,7 @@ export function useSpecEditor() {
   }
 
   async function loadFile(path: string) {
-    if (store.isDirty) {
+    if (store.is_dirty) {
       const confirmed = window.confirm('当前文件未保存，是否继续？')
       if (!confirmed) return
     }
@@ -76,14 +76,14 @@ export function useSpecEditor() {
   }
 
   async function saveCurrentFile(message?: string) {
-    if (!store.currentFile) {
+    if (!store.current_file) {
       showWarning('没有打开的文件')
       return false
     }
 
     try {
       savingInProgress.value = true
-      await saveSpecContent(store.currentFile, {
+      await saveSpecContent(store.current_file, {
         content: store.content,
         message,
       })
@@ -99,7 +99,7 @@ export function useSpecEditor() {
   }
 
   async function commitChanges(message: string, content?: string) {
-    if (!store.currentFile) {
+    if (!store.current_file) {
       showWarning('没有打开的文件')
       return false
     }
@@ -107,7 +107,7 @@ export function useSpecEditor() {
     try {
       committingInProgress.value = true
       const contentToCommit = content || store.content
-      await commitSpec(store.currentFile, {
+      await commitSpec(store.current_file, {
         message,
         content: contentToCommit,
       })
@@ -134,7 +134,7 @@ export function useSpecEditor() {
   async function toggleRule(id: string, enabled: boolean) {
     try {
       await updateLintRule(id, { enabled })
-      store.updateRule(id, { enabled })
+      store.update_rule(id, { enabled })
       showSuccess(enabled ? '规则已启用' : '规则已禁用')
     } catch (error) {
       showError('更新规则失败', error)

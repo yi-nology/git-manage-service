@@ -11,7 +11,7 @@ export interface FlatTreeItem {
   depth: number
 }
 
-export function useFileTree(repoKey: string) {
+export function useFileTree(repo_key: string) {
   const entries = ref<TreeEntry[]>([])
   const treeLoading = ref(false)
   const expandedDirs = ref(new Set<string>())
@@ -39,7 +39,7 @@ export function useFileTree(repoKey: string) {
   async function loadTree(ref: string) {
     treeLoading.value = true
     try {
-      const res = await getFileTree(repoKey, {
+      const res = await getFileTree(repo_key, {
         ref: ref || undefined,
       })
       entries.value = res.entries || []
@@ -52,7 +52,7 @@ export function useFileTree(repoKey: string) {
 
   async function loadSubTree(path: string, ref: string) {
     try {
-      const res = await getFileTree(repoKey, {
+      const res = await getFileTree(repo_key, {
         ref: ref || undefined,
         path,
       })

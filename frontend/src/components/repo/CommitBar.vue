@@ -27,7 +27,7 @@
       <el-option
         v-for="a in authors"
         :key="a.id"
-        :label="a.canonicalName + ' <' + a.canonicalEmail + '>'"
+        :label="a.canonical_name + ' <' + a.canonical_email + '>'"
         :value="a.id"
       />
     </el-select>

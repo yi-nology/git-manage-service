@@ -14,7 +14,7 @@ import {
 } from '@/api/modules/workspace'
 import { showGitError } from '@/utils/git'
 
-export function useWorkspaceStatus(repoKey: string) {
+export function useWorkspaceStatus(repo_key: string) {
   const wsStatus = ref<WorkspaceStatus | null>(null)
   const diff = ref<WorkspaceDiff | null>(null)
   const pulling = ref(false)
@@ -32,7 +32,7 @@ export function useWorkspaceStatus(repoKey: string) {
 
   const hasChanges = computed(() => {
     if (!wsStatus.value) return false
-    return !wsStatus.value.isClean
+    return !wsStatus.value.is_clean
   })
 
   function getFileStatus(path: string): string | undefined {
@@ -57,7 +57,7 @@ export function useWorkspaceStatus(repoKey: string) {
 
   async function loadStatus() {
     try {
-      wsStatus.value = await getWorkspaceStatus(repoKey)
+      wsStatus.value = await getWorkspaceStatus(repo_key)
     } catch {
       wsStatus.value = null
     }
@@ -65,7 +65,7 @@ export function useWorkspaceStatus(repoKey: string) {
 
   async function loadDiff(path: string): Promise<boolean> {
     try {
-      diff.value = await getWorkspaceDiff(repoKey, { file: path })
+      diff.value = await getWorkspaceDiff(repo_key, { file: path })
       return true
     } catch {
       diff.value = null
@@ -75,7 +75,7 @@ export function useWorkspaceStatus(repoKey: string) {
 
   async function stageFile(file: string, onRefresh: () => Promise<void>) {
     try {
-      await stageFiles(repoKey, [file])
+      await stageFiles(repo_key, [file])
       await onRefresh()
     } catch (e: any) {
       ElMessage.error(e?.message || '暂存失败')
@@ -84,7 +84,7 @@ export function useWorkspaceStatus(repoKey: string) {
 
   async function unstageFile(file: string, onRefresh: () => Promise<void>) {
     try {
-      await unstageFiles(repoKey, [file])
+      await unstageFiles(repo_key, [file])
       await onRefresh()
     } catch (e: any) {
       ElMessage.error(e?.message || '取消暂存失败')
@@ -93,7 +93,7 @@ export function useWorkspaceStatus(repoKey: string) {
 
   async function stageAllUnstaged(onRefresh: () => Promise<void>) {
     try {
-      await stageFiles(repoKey, [], true)
+      await stageFiles(repo_key, [], true)
       await onRefresh()
       ElMessage.success('全部已暂存')
     } catch (e: any) {
@@ -103,7 +103,7 @@ export function useWorkspaceStatus(repoKey: string) {
 
   async function unstageAllFiles(onRefresh: () => Promise<void>) {
     try {
-      await unstageFiles(repoKey, [], true)
+      await unstageFiles(repo_key, [], true)
       await onRefresh()
       ElMessage.success('已取消全部暂存')
     } catch (e: any) {
@@ -118,7 +118,7 @@ export function useWorkspaceStatus(repoKey: string) {
         '确认忽略',
         { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' },
       )
-      await addToGitignore(repoKey, paths)
+      await addToGitignore(repo_key, paths)
       await onRefresh()
       ElMessage.success('已加入 .gitignore')
     } catch { /* cancelled or error */ }
@@ -126,7 +126,7 @@ export function useWorkspaceStatus(repoKey: string) {
 
   async function handleUntrack(paths: string[], onRefresh: () => Promise<void>) {
     try {
-      await removeTracking(repoKey, paths)
+      await removeTracking(repo_key, paths)
       await onRefresh()
       ElMessage.success('已取消跟踪')
     } catch (e: any) {
@@ -137,7 +137,7 @@ export function useWorkspaceStatus(repoKey: string) {
   async function handlePull(onRefresh: () => Promise<void>) {
     pulling.value = true
     try {
-      const result = await pullWithResolve(repoKey)
+      const result = await pullWithResolve(repo_key)
       if (result.status === 'conflicts') {
         ElMessage.warning(`拉取完成，检测到 ${result.conflicts.length} 个冲突`)
       } else {
@@ -154,7 +154,7 @@ export function useWorkspaceStatus(repoKey: string) {
   async function handlePush(onRefresh: () => Promise<void>) {
     pushing.value = true
     try {
-      await pushCurrent(repoKey)
+      await pushCurrent(repo_key)
       ElMessage.success('推送成功')
       await onRefresh()
     } catch (e: any) {

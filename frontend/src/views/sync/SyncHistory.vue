@@ -109,11 +109,11 @@
             </div>
             <div>
               <div class="task-name">{{ item.taskName }}</div>
-              <div class="task-repo">{{ item.repoName }}</div>
+              <div class="task-repo">{{ item.repo_name }}</div>
             </div>
           </div>
           <div class="time-info">
-            <div class="start-time">{{ item.startTime }}</div>
+            <div class="start-time">{{ item.start_time }}</div>
             <div class="duration">耗时: {{ item.duration }}s</div>
           </div>
         </div>
@@ -122,19 +122,19 @@
           <div class="sync-flow">
             <div class="endpoint">
               <span class="label">源</span>
-              <span class="value">{{ item.sourceRemote }}/{{ item.sourceBranch }}</span>
+              <span class="value">{{ item.sourceRemote }}/{{ item.source_branch }}</span>
             </div>
             <el-icon class="arrow"><Right /></el-icon>
             <div class="endpoint">
               <span class="label">目标</span>
-              <span class="value">{{ item.targetRemote }}/{{ item.targetBranch }}</span>
+              <span class="value">{{ item.targetRemote }}/{{ item.target_branch }}</span>
             </div>
           </div>
         </div>
 
-        <div v-if="item.errorMessage" class="error-message">
+        <div v-if="item.error_message" class="error-message">
           <el-icon><Warning /></el-icon>
-          <span>{{ item.errorMessage }}</span>
+          <span>{{ item.error_message }}</span>
         </div>
 
         <div class="history-actions">
@@ -147,7 +147,7 @@
     <div class="pagination-container">
       <el-pagination
         v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
+        v-model:page-size="pagination.page_size"
         :total="pagination.total"
         layout="total, sizes, prev, pager, next, jumper"
         :page-sizes="[10, 20, 50, 100]"
@@ -197,7 +197,7 @@ const filters = reactive({
 
 const pagination = reactive({
   page: 1,
-  pageSize: 20,
+  page_size: 20,
   total: 3,
 })
 
@@ -205,44 +205,44 @@ const historyList = ref([
   {
     id: 1,
     taskName: '主分支同步',
-    repoName: 'git-manage-service',
+    repo_name: 'git-manage-service',
     status: 'success',
     sourceRemote: 'origin',
-    sourceBranch: 'main',
+    source_branch: 'main',
     targetRemote: 'mirror',
-    targetBranch: 'main',
-    startTime: '2024-05-16 14:30:00',
+    target_branch: 'main',
+    start_time: '2024-05-16 14:30:00',
     duration: 12,
-    commitCount: 5,
-    errorMessage: '',
+    commit_count: 5,
+    error_message: '',
   },
   {
     id: 2,
     taskName: '全分支镜像同步',
-    repoName: 'frontend',
+    repo_name: 'frontend',
     status: 'success',
     sourceRemote: 'origin',
-    sourceBranch: 'all',
+    source_branch: 'all',
     targetRemote: 'backup',
-    targetBranch: 'all',
-    startTime: '2024-05-16 13:30:00',
+    target_branch: 'all',
+    start_time: '2024-05-16 13:30:00',
     duration: 45,
-    commitCount: 12,
-    errorMessage: '',
+    commit_count: 12,
+    error_message: '',
   },
   {
     id: 3,
     taskName: '开发分支同步',
-    repoName: 'backend',
+    repo_name: 'backend',
     status: 'failed',
     sourceRemote: 'origin',
-    sourceBranch: 'develop',
+    source_branch: 'develop',
     targetRemote: 'dev',
-    targetBranch: 'develop',
-    startTime: '2024-05-15 10:00:00',
+    target_branch: 'develop',
+    start_time: '2024-05-15 10:00:00',
     duration: 8,
-    commitCount: 0,
-    errorMessage: '认证失败: 无法连接到远端仓库 dev',
+    commit_count: 0,
+    error_message: '认证失败: 无法连接到远端仓库 dev',
   },
 ])
 

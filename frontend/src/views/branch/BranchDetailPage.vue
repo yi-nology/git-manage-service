@@ -1,13 +1,13 @@
 <template>
   <div class="branch-detail-page" v-loading="loading">
-    <PageHeader :title="branchName" show-back :back-route="`/local-repos/${repoKey}/branches`">
+    <PageHeader :title="branchName" show-back :back-route="`/local-repos/${repo_key}/branches`">
       <template #title-suffix>
         <StatusBadge v-if="isCurrent" variant="success" text="当前分支" :show-dot="false" />
       </template>
       <template #actions>
-        <ActionPill variant="primary" :icon="Switch" @click="$router.push(`/local-repos/${repoKey}/compare`)">对比/合并</ActionPill>
+        <ActionPill variant="primary" :icon="Switch" @click="$router.push(`/local-repos/${repo_key}/compare`)">对比/合并</ActionPill>
         <ActionPill variant="green" :icon="Top" @click="handlePush">推送远端</ActionPill>
-        <ActionPill v-if="hasUncommitted" variant="amber" :icon="Upload" @click="router.push({ name: 'RepoDetail', params: { repoKey }, query: { tab: 'workspace' } })">前往工作区</ActionPill>
+        <ActionPill v-if="hasUncommitted" variant="amber" :icon="Upload" @click="router.push({ name: 'RepoDetail', params: { repo_key }, query: { tab: 'workspace' } })">前往工作区</ActionPill>
         <ActionPill variant="outline" :icon="Refresh" @click="loadData">刷新</ActionPill>
         <ActionPill v-if="!isCurrent" variant="danger" :icon="Delete" @click="handleDelete">删除分支</ActionPill>
       </template>
@@ -104,7 +104,7 @@ interface CommitInfo {
 
 const route = useRoute()
 const router = useRouter()
-const repoKey = route.params.repoKey as string
+const repo_key = route.params.repo_key as string
 const branchName = route.params.branchName as string
 
 const loading = ref(false)
@@ -158,22 +158,22 @@ async function loadData() {
   loading.value = true
   try {
     try {
-      const res = await getBranchList(repoKey, { type: 'local', page_size: 500 })
+      const res = await getBranchList(repo_key, { type: 'local', page_size: 500 })
       const branch = (res.list || []).find((b) => b.name === branchName)
       isCurrent.value = branch?.is_current || false
     } catch { /* ignore */ }
 
     try {
-      statsData.value = await getStatsAnalyze(repoKey, { branch: branchName })
+      statsData.value = await getStatsAnalyze(repo_key, { branch: branchName })
     } catch { /* ignore */ }
 
     try {
-      const res = await getStatsCommits(repoKey, { branch: branchName })
+      const res = await getStatsCommits(repo_key, { branch: branchName })
       commits.value = (Array.isArray(res) ? res : []).slice(0, 20)
     } catch { /* ignore */ }
 
     try {
-      const repo = await getRepoDetail(repoKey)
+      const repo = await getRepoDetail(repo_key)
       if (repo?.path) {
         const scan = await scanRepo(repo.path)
         remoteNames.value = (scan.remotes || []).map((r: { name: string }) => r.name)
@@ -181,13 +181,13 @@ async function loadData() {
     } catch { /* ignore */ }
 
     try {
-      const status = await getRepoStatus(repoKey) as unknown as { status: string }
+      const status = await getRepoStatus(repo_key) as unknown as { status: string }
       repoStatus.value = status?.status || ''
       hasUncommitted.value = !!repoStatus.value && repoStatus.value.trim() !== ''
     } catch { /* ignore */ }
 
     try {
-      const config = await getRepoGitConfig(repoKey) as unknown as { name: string; email: string }
+      const config = await getRepoGitConfig(repo_key) as unknown as { name: string; email: string }
       submitForm.value.author_name = config?.name || ''
       submitForm.value.author_email = config?.email || ''
     } catch { /* ignore */ }
@@ -208,7 +208,7 @@ async function handleSubmitPush() {
     return
   }
   try {
-    await pushBranch(repoKey, branchName, pushRemotes.value)
+    await pushBranch(repo_key, branchName, pushRemotes.value)
     ElMessage.success('推送成功')
     showPushDialog.value = false
   } catch (e) {
@@ -219,9 +219,9 @@ async function handleSubmitPush() {
 async function handleDelete() {
   try {
     await ElMessageBox.confirm(`确定要删除分支 "${branchName}" 吗？`, '确认删除', { type: 'warning' })
-    await deleteBranch(repoKey, branchName)
+    await deleteBranch(repo_key, branchName)
     ElMessage.success('分支已删除')
-    router.push(`/local-repos/${repoKey}/branches`)
+    router.push(`/local-repos/${repo_key}/branches`)
   } catch { /* cancelled */ }
 }
 
@@ -233,7 +233,7 @@ async function handleSubmitChanges() {
   submitting.value = true
   try {
     await submitChanges({
-      repo_key: repoKey,
+      repo_key: repo_key,
       message: submitForm.value.message,
       push: submitForm.value.push,
       author_name: submitForm.value.author_name || undefined,
