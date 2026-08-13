@@ -364,9 +364,7 @@ func (s *MaintenanceService) FindStashEntries(repoPath string, threshold int64) 
 			continue
 		}
 		ref := fmt.Sprintf("stash@{%d}", i)
-		sizeCmd := exec.Command("git", "cat-file", "-s", ref)
-		sizeCmd.Dir = repoPath
-		sizeOutput, err := sizeCmd.CombinedOutput()
+	sizeOutput, err := runGitCmd(repoPath, "cat-file", "-s", ref)
 		var sizeBytes int64
 		if err == nil {
 			sizeBytes, _ = strconv.ParseInt(strings.TrimSpace(string(sizeOutput)), 10, 64)
@@ -398,9 +396,7 @@ func (s *MaintenanceService) FindStashLargeObjects(repoPath string, threshold in
 
 	for i := 0; i < stashCount; i++ {
 		ref := fmt.Sprintf("stash@{%d}", i)
-		diffCmd := exec.Command("git", "diff-tree", "--no-commit-id", "-r", ref)
-		diffCmd.Dir = repoPath
-		diffOutput, err := diffCmd.CombinedOutput()
+	diffOutput, err := runGitCmd(repoPath, "diff-tree", "--no-commit-id", "-r", ref)
 		if err != nil {
 			continue
 		}
@@ -414,9 +410,7 @@ func (s *MaintenanceService) FindStashLargeObjects(repoPath string, threshold in
 				continue
 			}
 			blobSHA := meta[3]
-			sizeCmd := exec.Command("git", "cat-file", "-s", blobSHA)
-			sizeCmd.Dir = repoPath
-			sizeOutput, err := sizeCmd.CombinedOutput()
+	sizeOutput, err := runGitCmd(repoPath, "cat-file", "-s", blobSHA)
 			if err != nil {
 				continue
 			}
@@ -442,9 +436,7 @@ func (s *MaintenanceService) FindReflogLargeObjects(repoPath string, threshold i
 	var result []api.LargeFileEntry
 	blobSize := make(map[string]int64)
 
-	batchCmd := exec.Command("git", "cat-file", "--batch-check", "--batch-all-objects")
-	batchCmd.Dir = repoPath
-	batchOutput, err := batchCmd.CombinedOutput()
+	batchOutput, err := runGitCmd(repoPath, "cat-file", "--batch-check", "--batch-all-objects")
 	if err != nil {
 		return result
 	}
@@ -457,9 +449,7 @@ func (s *MaintenanceService) FindReflogLargeObjects(repoPath string, threshold i
 		}
 	}
 
-	revCmd := exec.Command("git", "rev-list", "--objects", "--all")
-	revCmd.Dir = repoPath
-	revOutput, err := revCmd.CombinedOutput()
+	revOutput, err := runGitCmd(repoPath, "rev-list", "--objects", "--all")
 	if err != nil {
 		return result
 	}
@@ -471,9 +461,7 @@ func (s *MaintenanceService) FindReflogLargeObjects(repoPath string, threshold i
 		}
 	}
 
-	reflogCmd := exec.Command("git", "reflog", "--format=%H")
-	reflogCmd.Dir = repoPath
-	reflogOutput, err := reflogCmd.CombinedOutput()
+	reflogOutput, err := runGitCmd(repoPath, "reflog", "--format=%H")
 	if err != nil || strings.TrimSpace(string(reflogOutput)) == "" {
 		return result
 	}
@@ -484,9 +472,7 @@ func (s *MaintenanceService) FindReflogLargeObjects(repoPath string, threshold i
 		if commitSHA == "" {
 			continue
 		}
-		treeCmd := exec.Command("git", "ls-tree", "-r", commitSHA)
-		treeCmd.Dir = repoPath
-		treeOutput, err := treeCmd.CombinedOutput()
+	treeOutput, err := runGitCmd(repoPath, "ls-tree", "-r", commitSHA)
 		if err != nil {
 			continue
 		}
@@ -684,9 +670,7 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 
 func (s *MaintenanceService) verifyPathsRemoved(repoPath string, paths []string) []string {
 	var stillExist []string
-	batchCmd := exec.Command("git", "cat-file", "--batch-check", "--batch-all-objects")
-	batchCmd.Dir = repoPath
-	batchOutput, err := batchCmd.CombinedOutput()
+	batchOutput, err := runGitCmd(repoPath, "cat-file", "--batch-check", "--batch-all-objects")
 	if err != nil {
 		return stillExist
 	}
@@ -699,9 +683,7 @@ func (s *MaintenanceService) verifyPathsRemoved(repoPath string, paths []string)
 			}
 		}
 	}
-	revCmd := exec.Command("git", "rev-list", "--objects", "--all")
-	revCmd.Dir = repoPath
-	revOutput, err := revCmd.CombinedOutput()
+	revOutput, err := runGitCmd(repoPath, "rev-list", "--objects", "--all")
 	if err != nil {
 		return stillExist
 	}
@@ -718,9 +700,7 @@ func (s *MaintenanceService) verifyPathsRemoved(repoPath string, paths []string)
 			}
 		}
 	}
-	reflogCmd := exec.Command("git", "reflog", "--format=%H")
-	reflogCmd.Dir = repoPath
-	reflogOutput, err := reflogCmd.CombinedOutput()
+	reflogOutput, err := runGitCmd(repoPath, "reflog", "--format=%H")
 	if err != nil || strings.TrimSpace(string(reflogOutput)) == "" {
 		return stillExist
 	}
@@ -729,9 +709,7 @@ func (s *MaintenanceService) verifyPathsRemoved(repoPath string, paths []string)
 		if commitSHA == "" {
 			continue
 		}
-		treeCmd := exec.Command("git", "ls-tree", "-r", commitSHA)
-		treeCmd.Dir = repoPath
-		treeOutput, err := treeCmd.CombinedOutput()
+	treeOutput, err := runGitCmd(repoPath, "ls-tree", "-r", commitSHA)
 		if err != nil {
 			continue
 		}
