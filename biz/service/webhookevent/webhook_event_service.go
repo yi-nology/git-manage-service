@@ -12,6 +12,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/codereview"
+	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-platform-sdk/provider"
 )
@@ -159,12 +160,22 @@ func applyRules(event *po.WebhookEvent) {
 	eventDAO.Save(event)
 }
 
+// triggerSync runs the configured sync task via git-sync-service. Previously
+// this was a log-only stub, so the "触发同步任务" webhook rule action was
+// silently broken; it now delegates to syncv2.RunTask (the real engine).
 func triggerSync(config map[string]interface{}) {
 	taskKey, _ := config["sync_task_key"].(string)
 	if taskKey == "" {
 		return
 	}
-	log.Printf("Webhook rule triggered sync for task: %s", taskKey)
+	svc := syncv2.GetService()
+	if svc.GetCore() == nil {
+		log.Printf("Webhook sync trigger skipped: sync service not initialized (task %s)", taskKey)
+		return
+	}
+	if err := svc.RunTask(context.Background(), taskKey); err != nil {
+		log.Printf("Webhook sync trigger failed for task %s: %v", taskKey, err)
+	}
 }
 
 func triggerCodeReview(event *po.WebhookEvent) {
