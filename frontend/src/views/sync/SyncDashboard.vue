@@ -245,7 +245,7 @@ function run_task(row: any) {
   console.log('Run task:', row)
 }
 
-function viewHistory(row: any) {
+function viewHistory(_row: any) {
   router.push('/sync/history')
 }
 

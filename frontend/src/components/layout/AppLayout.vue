@@ -45,7 +45,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { Connection, HomeFilled, FolderOpened, Setting, Warning, Monitor, RefreshRight, Link } from '@element-plus/icons-vue'
+import { Connection, HomeFilled, FolderOpened, Setting, Warning, Monitor } from '@element-plus/icons-vue'
 import { useUIStore } from '@/stores/useUIStore'
 import { useKeyboard } from '@/composables/useKeyboard'
 import ThemeSwitch from '@/components/common/ThemeSwitch.vue'

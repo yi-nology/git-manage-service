@@ -13,7 +13,7 @@
             新建 Pull Mirror
           </span>
         </ActionPill>
-        <ActionPill variant="warning" :icon="Plus" @click="showCreateDialog('push')">
+        <ActionPill variant="amber" :icon="Plus" @click="showCreateDialog('push')">
           <span class="btn-content">
             <el-icon><Upload /></el-icon>
             新建 Push Mirror
@@ -22,7 +22,7 @@
       </div>
     </div>
 
-    <el-empty v-if="!loading && mirrors.length === 0" description="暂无镜像配置" image-size="120">
+    <el-empty v-if="!loading && mirrors.length === 0" description="暂无镜像配置" :image-size="120">
       <div class="empty-actions">
         <el-button type="primary" @click="showCreateDialog('pull')">
           <el-icon style="margin-right: 6px;"><Download /></el-icon>
@@ -210,7 +210,7 @@
           刷新
         </el-button>
       </div>
-      <el-empty v-if="!logLoading && syncLogs.length === 0" description="暂无同步日志" image-size="120" />
+      <el-empty v-if="!logLoading && syncLogs.length === 0" description="暂无同步日志" :image-size="120" />
       <el-table v-if="syncLogs.length > 0" :data="syncLogs" v-loading="logLoading" stripe max-height="500">
         <el-table-column label="触发类型" width="100">
           <template #default="{ row }">
@@ -419,9 +419,12 @@ async function showCreateDialog(type: 'pull' | 'push' = 'pull') {
   }
   await loadRepoRemoteInfo()
   if (repoRemotes.value.length > 0 && type === 'pull') {
-    selectedRemote.value = repoRemotes.value[0]
-    form.value.remote_url = repoRemotes.value[0].url
-    form.value.remote_name = repoRemotes.value[0].name
+    const remote = repoRemotes.value[0]
+    if (remote) {
+      selectedRemote.value = remote
+      form.value.remote_url = remote.url
+      form.value.remote_name = remote.name
+    }
   }
   dialogVisible.value = true
 }

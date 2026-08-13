@@ -174,7 +174,6 @@ import {
 import PageHeader from '@/components/common/PageHeader.vue'
 import SectionTitle from '@/components/common/SectionTitle.vue'
 
-const loading = ref(false)
 const stats = reactive({
   total: 0,
   success: 0,
