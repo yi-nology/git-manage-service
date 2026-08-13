@@ -21,14 +21,14 @@ type Repo struct {
 	RemoteAuthsJSON string                     `json:"-"`                     // Stored in DB (deprecated)
 	RemoteAuths     map[string]domain.AuthInfo `gorm:"-" json:"remote_auths"` // Memory & API (deprecated)
 
-	DefaultCredentialID   uint            `json:"default_credential_id"`
+	DefaultCredentialID   uint            `gorm:"index" json:"default_credential_id"`
 	RemoteCredentialsJSON string          `json:"-"`
 	RemoteCredentials     map[string]uint `gorm:"-" json:"remote_credentials"`
 
 	ProviderConfigID uint   `gorm:"index" json:"provider_config_id"`
 	PlatformRepoID   string `gorm:"size:100" json:"platform_repo_id"`
-	PlatformOwner    string `gorm:"size:200" json:"platform_owner"`
-	PlatformRepo     string `gorm:"size:200" json:"platform_repo"`
+	PlatformOwner    string `gorm:"size:200;index:idx_repo_platform_owner_repo,priority:1" json:"platform_owner"`
+	PlatformRepo     string `gorm:"size:200;index:idx_repo_platform_owner_repo,priority:2" json:"platform_repo"`
 	AuthorIdentityID *uint  `gorm:"index" json:"author_identity_id"`
 }
 

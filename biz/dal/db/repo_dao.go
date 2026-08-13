@@ -57,3 +57,12 @@ func (d *RepoDAO) FindByID(id uint) (*po.Repo, error) {
 	err := DB.First(&repo, id).Error
 	return &repo, err
 }
+
+// FindByPlatformOwnerRepo looks up a repo by its platform owner/repo slug via
+// the (platform_owner, platform_repo) index. Use this instead of FindAll() +
+// in-memory matching on hot paths like incoming webhooks.
+func (d *RepoDAO) FindByPlatformOwnerRepo(owner, repo string) (*po.Repo, error) {
+	var r po.Repo
+	err := DB.Where("platform_owner = ? AND platform_repo = ?", owner, repo).First(&r).Error
+	return &r, err
+}

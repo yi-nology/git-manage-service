@@ -52,14 +52,9 @@ func ProcessIncomingEvent(event *provider.NormalizedEvent, providerCfgID uint) e
 
 	var repoID uint
 	if event.Repo != nil {
-		repoDAO := db.NewRepoDAO()
-		repos, rErr := repoDAO.FindAll()
-		if rErr == nil {
-			for _, r := range repos {
-				if r.PlatformOwner+"/"+r.PlatformRepo == event.Repo.FullName {
-					repoID = r.ID
-					break
-				}
+		if parts := strings.SplitN(event.Repo.FullName, "/", 2); len(parts) == 2 {
+			if r, err := db.NewRepoDAO().FindByPlatformOwnerRepo(parts[0], parts[1]); err == nil {
+				repoID = r.ID
 			}
 		}
 	}
