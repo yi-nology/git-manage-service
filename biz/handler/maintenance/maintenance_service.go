@@ -67,6 +67,27 @@ func Health(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, report)
 }
 
+// markMaintenanceFailed records a failed maintenance task: updates the in-memory
+// task status and persists the failure to the maintenance record. paramsJSON is
+// only re-written when non-empty (Slim/SlimByPrefix set it; GC does not), which
+// preserves each handler's prior behavior exactly.
+func markMaintenanceFailed(dao *db.MaintenanceDAO, taskID, paramsJSON, errMsg string) {
+	git.GlobalTaskManager.UpdateStatus(taskID, "failed", errMsg)
+	now := time.Now()
+	rec, _ := dao.FindByTaskID(taskID)
+	if rec == nil {
+		return
+	}
+	rec.Status = "failed"
+	rec.ErrorMessage = errMsg
+	rec.TaskID = taskID
+	if paramsJSON != "" {
+		rec.ParamsJSON = paramsJSON
+	}
+	rec.FinishedAt = &now
+	dao.Update(rec)
+}
+
 func Slim(ctx context.Context, c *app.RequestContext) {
 	var req maintenance.SlimRequest
 	if err := c.BindAndValidate(&req); err != nil {
@@ -108,17 +129,7 @@ func Slim(ctx context.Context, c *app.RequestContext) {
 	go func() {
 		svc := git.NewMaintenanceService()
 		if err := svc.SlimHistory(repo.Path, paths, req.GetAddGitignore(), taskID); err != nil {
-			git.GlobalTaskManager.UpdateStatus(taskID, "failed", err.Error())
-			now := time.Now()
-			rec, _ := dao.FindByTaskID(taskID)
-			if rec != nil {
-				rec.Status = "failed"
-				rec.ErrorMessage = err.Error()
-				rec.TaskID = taskID
-				rec.ParamsJSON = string(paramsJSON)
-				rec.FinishedAt = &now
-				dao.Update(rec)
-			}
+			markMaintenanceFailed(dao, taskID, string(paramsJSON), err.Error())
 			return
 		}
 		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
@@ -153,17 +164,7 @@ func GC(ctx context.Context, c *app.RequestContext) {
 	go func() {
 		svc := git.NewMaintenanceService()
 		if err := svc.GarbageCollect(repo.Path, taskID); err != nil {
-			git.GlobalTaskManager.UpdateStatus(taskID, "failed", err.Error())
-			now := time.Now()
-			dao := db.NewMaintenanceDAO()
-			rec, _ := dao.FindByTaskID(taskID)
-			if rec != nil {
-				rec.Status = "failed"
-				rec.ErrorMessage = err.Error()
-				rec.TaskID = taskID
-				rec.FinishedAt = &now
-				dao.Update(rec)
-			}
+			markMaintenanceFailed(db.NewMaintenanceDAO(), taskID, "", err.Error())
 			return
 		}
 		git.GlobalTaskManager.UpdateStatus(taskID, "success", "")
@@ -474,17 +475,7 @@ func SlimByPrefix(ctx context.Context, c *app.RequestContext) {
 	go func() {
 		svc := git.NewMaintenanceService()
 		if err := svc.SlimHistoryByPrefix(repoPath, body.Prefixes, addGitignore, taskID); err != nil {
-			git.GlobalTaskManager.UpdateStatus(taskID, "failed", err.Error())
-			now := time.Now()
-			rec, _ := dao.FindByTaskID(taskID)
-			if rec != nil {
-				rec.Status = "failed"
-				rec.ErrorMessage = err.Error()
-				rec.TaskID = taskID
-				rec.ParamsJSON = string(paramsJSON)
-				rec.FinishedAt = &now
-				dao.Update(rec)
-			}
+			markMaintenanceFailed(dao, taskID, string(paramsJSON), err.Error())
 			return
 		}
 
