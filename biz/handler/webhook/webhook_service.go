@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -52,7 +53,9 @@ func TriggerSync(ctx context.Context, c *app.RequestContext) {
 
 	// 异步执行同步任务
 	go func() {
-		_ = svc.RunTask(context.Background(), task.Key)
+		if err := svc.RunTask(context.Background(), task.Key); err != nil {
+			log.Printf("[sync] async RunTask %s failed: %v", task.Key, err)
+		}
 	}()
 
 	c.Set("audit_target", "task:"+task.Key)
@@ -96,7 +99,9 @@ func TriggerSyncByToken(ctx context.Context, c *app.RequestContext) {
 
 	// 异步执行同步任务
 	go func() {
-		_ = svc.RunTask(context.Background(), task.Key)
+		if err := svc.RunTask(context.Background(), task.Key); err != nil {
+			log.Printf("[sync] async RunTask %s failed: %v", task.Key, err)
+		}
 	}()
 
 	c.Set("audit_target", "task:"+task.Key)

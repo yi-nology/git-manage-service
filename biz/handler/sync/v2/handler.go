@@ -2,6 +2,7 @@ package syncv2
 
 import (
 	"context"
+	"log"
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -115,7 +116,9 @@ func RunTask(ctx context.Context, c *app.RequestContext) {
 	}
 
 	go func() {
-		_ = svc.RunTask(context.Background(), key)
+		if err := svc.RunTask(context.Background(), key); err != nil {
+			log.Printf("[sync] async RunTask %s failed: %v", key, err)
+		}
 	}()
 
 	response.Success(c, map[string]string{"status": "started"})
@@ -137,7 +140,9 @@ func BatchRunTasks(ctx context.Context, c *app.RequestContext) {
 	}
 
 	go func() {
-		_ = svc.BatchRunTasks(context.Background(), req.TaskKeys)
+		if err := svc.BatchRunTasks(context.Background(), req.TaskKeys); err != nil {
+			log.Printf("[sync] async BatchRunTasks failed: %v", err)
+		}
 	}()
 
 	response.Success(c, map[string]interface{}{"status": "started", "count": len(req.TaskKeys)})
