@@ -118,6 +118,8 @@ func main() {
 		}
 	}
 
+	audit.AuditSvc.Stop()
+
 	bizqueue.CloseClient()
 	mirrorSvc.StopScheduler()
 
