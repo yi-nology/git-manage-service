@@ -60,14 +60,6 @@ func (d *MirrorDAO) FindByWebhookToken(token string) (*po.Mirror, error) {
 	return &mirror, nil
 }
 
-func (d *MirrorDAO) FindBySyncOnPush() ([]po.Mirror, error) {
-	var mirrors []po.Mirror
-	err := DB.Preload("Repo").Preload("Credential").
-		Where("sync_on_push = ? AND enabled = ? AND deleted_at IS NULL", true, true).
-		Find(&mirrors).Error
-	return mirrors, err
-}
-
 func (d *MirrorDAO) Save(mirror *po.Mirror) error {
 	return DB.Save(mirror).Error
 }

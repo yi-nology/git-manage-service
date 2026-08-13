@@ -36,13 +36,6 @@ func (d *SSHKeyDAO) FindByName(name string) (*po.SSHKey, error) {
 	return &key, err
 }
 
-// FindByUserID 根据用户ID查询SSH密钥（预留多用户支持）
-func (d *SSHKeyDAO) FindByUserID(userID uint) ([]po.SSHKey, error) {
-	var keys []po.SSHKey
-	err := DB.Where("user_id = ?", userID).Find(&keys).Error
-	return keys, err
-}
-
 // Update 更新SSH密钥
 func (d *SSHKeyDAO) Update(sshKey *po.SSHKey) error {
 	return DB.Save(sshKey).Error

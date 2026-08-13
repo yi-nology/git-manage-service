@@ -32,28 +32,10 @@ func (d *ReviewTaskDAO) FindByRepoID(repoID uint, status string, page, pageSize 
 	return tasks, total, err
 }
 
-func (d *ReviewTaskDAO) FindByMRIID(repoID uint, mrIID string) ([]po.ReviewTask, error) {
-	var tasks []po.ReviewTask
-	err := DB.Where("repo_id = ? AND mri_id = ?", repoID, mrIID).Order("created_at DESC").Find(&tasks).Error
-	return tasks, err
-}
-
 func (d *ReviewTaskDAO) FindByProviderConfigID(providerConfigID uint, mrIID string, page, pageSize int) ([]po.ReviewTask, int64, error) {
 	var tasks []po.ReviewTask
 	var total int64
 	q := DB.Model(&po.ReviewTask{}).Where("provider_config_id = ? AND mri_id = ?", providerConfigID, mrIID)
-	q.Count(&total)
-	err := q.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&tasks).Error
-	return tasks, total, err
-}
-
-func (d *ReviewTaskDAO) FindByProviderConfigIDAll(providerConfigID uint, status string, page, pageSize int) ([]po.ReviewTask, int64, error) {
-	var tasks []po.ReviewTask
-	var total int64
-	q := DB.Model(&po.ReviewTask{}).Where("provider_config_id = ?", providerConfigID)
-	if status != "" {
-		q = q.Where("status = ?", status)
-	}
 	q.Count(&total)
 	err := q.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&tasks).Error
 	return tasks, total, err

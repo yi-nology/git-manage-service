@@ -42,12 +42,6 @@ func (d *ReviewFindingDAO) CountByTaskID(taskID uint) (int64, error) {
 	return count, err
 }
 
-func (d *ReviewFindingDAO) ExistsByFingerprint(taskID uint, fingerprint string) (bool, error) {
-	var count int64
-	err := DB.Model(&po.ReviewFinding{}).Where("task_id = ? AND fingerprint = ?", taskID, fingerprint).Count(&count).Error
-	return count > 0, err
-}
-
 func (d *ReviewFindingDAO) FindByTimeRange(repoID uint, since, until time.Time) ([]po.ReviewFinding, error) {
 	var findings []po.ReviewFinding
 	q := DB.Model(&po.ReviewFinding{}).
