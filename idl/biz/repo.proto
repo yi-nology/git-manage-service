@@ -85,8 +85,8 @@ message BatchCreateRequest {
 // BatchCreateResponse 批量创建仓库响应
 message BatchCreateResponse {
   common.BaseResponse base = 1;
-  int32 successCount = 2;
-  int32 failureCount = 3;
+  int32 success_count = 2;
+  int32 failure_count = 3;
 }
 
 // Repo 仓库实体
@@ -95,34 +95,34 @@ message Repo {
   string key = 2;
   string name = 3;
   string path = 4;
-  string remoteUrl = 5;
+  string remote_url = 5;
   string status = 6;
-  string authType = 7;
-  string configSource = 8;
+  string auth_type = 7;
+  string config_source = 8;
   repeated Remote remotes = 9;
-  string createdAt = 10;
-  string updatedAt = 11;
+  string created_at = 10;
+  string updated_at = 11;
 }
 
 // Remote 远程仓库配置
 message Remote {
   string name = 1;
-  string fetchUrl = 2;
-  string pushUrl = 3;
-  bool isMirror = 4;
+  string fetch_url = 2;
+  string push_url = 3;
+  bool is_mirror = 4;
 }
 
 // AuthInfo 认证信息
 message AuthInfo {
-  string authType = 1;
-  string authKey = 2;
-  string authSecret = 3;
+  string auth_type = 1;
+  string auth_key = 2;
+  string auth_secret = 3;
 }
 
 // ListRepoRequest 列表请求
 message ListRepoRequest {
   int32 page = 1 [(api.query) = "page"];
-  int32 pageSize = 2 [(api.query) = "pageSize"];
+  int32 page_size = 2 [(api.query) = "page_size"];
 }
 
 // ListRepoResponse 列表响应
@@ -147,13 +147,13 @@ message RepoResponse {
 message CreateRepoRequest {
   string name = 1 [(api.body) = "name"];
   string path = 2 [(api.body) = "path"];
-  string remoteUrl = 3 [(api.body) = "remoteUrl"];
-  string authType = 4 [(api.body) = "authType"];
-  string authKey = 5 [(api.body) = "authKey"];
-  string authSecret = 6 [(api.body) = "authSecret"];
-  string configSource = 7 [(api.body) = "configSource"];
+  string remote_url = 3 [(api.body) = "remote_url"];
+  string auth_type = 4 [(api.body) = "auth_type"];
+  string auth_key = 5 [(api.body) = "auth_key"];
+  string auth_secret = 6 [(api.body) = "auth_secret"];
+  string config_source = 7 [(api.body) = "config_source"];
   repeated Remote remotes = 8 [(api.body) = "remotes"];
-  map<string, AuthInfo> remoteAuths = 9 [(api.body) = "remoteAuths"];
+  map<string, AuthInfo> remote_auths = 9 [(api.body) = "remote_auths"];
 }
 
 // UpdateRepoRequest 更新仓库请求
@@ -161,13 +161,13 @@ message UpdateRepoRequest {
   string key = 1 [(api.body) = "key"];
   string name = 2 [(api.body) = "name"];
   string path = 3 [(api.body) = "path"];
-  string remoteUrl = 4 [(api.body) = "remoteUrl"];
-  string authType = 5 [(api.body) = "authType"];
-  string authKey = 6 [(api.body) = "authKey"];
-  string authSecret = 7 [(api.body) = "authSecret"];
-  string configSource = 8 [(api.body) = "configSource"];
+  string remote_url = 4 [(api.body) = "remote_url"];
+  string auth_type = 5 [(api.body) = "auth_type"];
+  string auth_key = 6 [(api.body) = "auth_key"];
+  string auth_secret = 7 [(api.body) = "auth_secret"];
+  string config_source = 8 [(api.body) = "config_source"];
   repeated Remote remotes = 9 [(api.body) = "remotes"];
-  map<string, AuthInfo> remoteAuths = 10 [(api.body) = "remoteAuths"];
+  map<string, AuthInfo> remote_auths = 10 [(api.body) = "remote_auths"];
 }
 
 // DeleteRepoRequest 删除仓库请求
@@ -185,25 +185,25 @@ message ScanRepoResponse {
   common.BaseResponse base = 1;
   string name = 2;
   string path = 3;
-  string headBranch = 4;
+  string head_branch = 4;
   repeated Remote remotes = 5;
   repeated string branches = 6;
 }
 
 // CloneRepoRequest 克隆仓库请求
 message CloneRepoRequest {
-  string remoteUrl = 1 [(api.body) = "remoteUrl"];
-  string localPath = 2 [(api.body) = "localPath"];
-  string authType = 3 [(api.body) = "authType"];
-  string authKey = 4 [(api.body) = "authKey"];
-  string authSecret = 5 [(api.body) = "authSecret"];
-  string configSource = 6 [(api.body) = "configSource"];
+  string remote_url = 1 [(api.body) = "remote_url"];
+  string local_path = 2 [(api.body) = "local_path"];
+  string auth_type = 3 [(api.body) = "auth_type"];
+  string auth_key = 4 [(api.body) = "auth_key"];
+  string auth_secret = 5 [(api.body) = "auth_secret"];
+  string config_source = 6 [(api.body) = "config_source"];
 }
 
 // CloneRepoResponse 克隆仓库响应
 message CloneRepoResponse {
   common.BaseResponse base = 1;
-  string taskId = 2;
+  string task_id = 2;
 }
 
 // FetchRepoRequest 拉取远程请求
@@ -213,7 +213,7 @@ message FetchRepoRequest {
 
 // GetCloneTaskRequest 获取克隆任务请求
 message GetCloneTaskRequest {
-  string taskId = 1 [(api.query) = "taskId"];
+  string task_id = 1 [(api.query) = "task_id"];
 }
 
 // CloneTask 克隆任务
@@ -229,9 +229,9 @@ message ScannedRepo {
   string name = 1;
   string path = 2;
   repeated Remote remotes = 3;
-  string currentBranch = 4;
-  string lastCommit = 5;
-  bool hasChanges = 6;
+  string current_branch = 4;
+  string last_commit = 5;
+  bool has_changes = 6;
 }
 
 // BatchFailedItem 批量失败项
@@ -247,19 +247,19 @@ message RepoDTO {
   string key = 2;
   string name = 3;
   string path = 4;
-  string remoteUrl = 5;
-  string authType = 6;
-  string authKey = 7;
-  string authSecret = 8;
-  map<string, AuthInfo> remoteAuths = 9;
-  uint64 defaultCredentialId = 10;
-  map<string, uint64> remoteCredentials = 11;
-  uint64 providerConfigId = 12;
-  string platformRepoId = 13;
-  string platformOwner = 14;
-  string platformRepo = 15;
-  string createdAt = 16;
-  string updatedAt = 17;
+  string remote_url = 5;
+  string auth_type = 6;
+  string auth_key = 7;
+  string auth_secret = 8;
+  map<string, AuthInfo> remote_auths = 9;
+  uint64 default_credential_id = 10;
+  map<string, uint64> remote_credentials = 11;
+  uint64 provider_config_id = 12;
+  string platform_repo_id = 13;
+  string platform_owner = 14;
+  string platform_repo = 15;
+  string created_at = 16;
+  string updated_at = 17;
 }
 
 // CloneTaskResponse 克隆任务响应

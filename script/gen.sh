@@ -113,7 +113,7 @@ if [ "$SKIP_HZ" != "true" ]; then
             info "Processing $proto..."
             hz update -idl "$proto" \
                 -I idl \
-                --pb_camel_json_tag || {
+                --snake_tag || {
                 if [ "$REQUIRE_CODEGEN_TOOLS" = "1" ]; then
                     error "Failed to process $proto"
                     exit 1

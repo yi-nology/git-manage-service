@@ -248,8 +248,8 @@ message DeleteHistoryRequest {
 
 // AnalyzeRepoForSyncRequest 分析仓库请求
 message AnalyzeRepoForSyncRequest {
-  string repoPath = 1 [(api.body) = "repoPath"];
-  string repoKey = 2 [(api.body) = "repoKey"];
+  string repo_path = 1 [(api.body) = "repo_path"];
+  string repo_key = 2 [(api.body) = "repo_key"];
 }
 
 // BatchSyncRequest 批量同步请求

@@ -111,7 +111,7 @@ message AuthorScanResult {
 
 message AuthorAIRequest {
     optional string action = 1 [(api.body) = "action"];
-    optional string repo_key = 2 [(api.body) = "repoKey"];
+    optional string repo_key = 2 [(api.body) = "repo_key"];
     optional AuthorScanResult scan = 3 [(api.body) = "scan"];
     repeated AuthorMismatchedCommit commits = 4 [(api.body) = "commits"];
 }
@@ -166,7 +166,7 @@ message AuthorAIResponse {
 }
 
 message AuthorChatRequest {
-    optional string repo_key = 1 [(api.body) = "repoKey"];
+    optional string repo_key = 1 [(api.body) = "repo_key"];
     optional string prompt = 2 [(api.body) = "prompt"];
     repeated AuthorChatMessageDTO history = 3 [(api.body) = "history"];
 }

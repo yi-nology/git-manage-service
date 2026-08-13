@@ -162,11 +162,11 @@ hz-gen:
 	@if ls idl/biz/*.proto 1> /dev/null 2>&1; then \
 		for proto in idl/biz/*.proto; do \
 			echo "Processing $$proto..."; \
-			hz update -idl "$$proto" \
-				-I idl \
-				--handler_dir biz/handler \
-				--model_dir biz/model \
-				--pb_camel_json_tag; \
+				hz update -idl "$$proto" \
+					-I idl \
+					--handler_dir biz/handler \
+					--model_dir biz/model \
+					--snake_tag; \
 		done; \
 	else \
 		echo "No proto files found in idl/biz/"; \
