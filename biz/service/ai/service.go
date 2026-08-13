@@ -42,12 +42,12 @@ func (s *Service) DiagnoseSyncFailure(ctx context.Context, req api.SyncFailureRe
 
  请以 JSON 格式返回，结构如下：
  {
-   "rootCause": "问题根因，简洁描述",
+   "root_cause": "问题根因，简洁描述",
    "evidence": ["证据1", "证据2"],
-   "recommendedActions": ["操作1", "操作2"],
-   "canAutoFix": true/false,
-   "riskLevel": "low/medium/high/critical",
-   "fixDraft": "可自动执行的脚本或命令（如果可以）"
+   "recommended_actions": ["操作1", "操作2"],
+   "can_auto_fix": true/false,
+   "risk_level": "low/medium/high/critical",
+   "fix_draft": "可自动执行的脚本或命令（如果可以）"
  }`
 
 	if req.UserInstruction != "" {
@@ -132,7 +132,7 @@ func (s *Service) GenerateRepoSummary(ctx context.Context, repoReq api.RepoSumma
  请以 JSON 格式返回，结构如下：
  {
    "summary": "仓库状态概述，一句话总结",
-   "riskLevel": "low/medium/high/critical",
+   "risk_level": "low/medium/high/critical",
    "suggestions": ["建议1", "建议2", "建议3"],
    "actions": [{"id": "action_id", "label": "按钮文字", "type": "primary/secondary", "description": "操作说明"}]
  }`
@@ -175,8 +175,8 @@ func (s *Service) GenerateCommitMessage(ctx context.Context, req api.CommitMessa
 请以 JSON 格式返回，结构如下：
 {
   "summary": "提交信息概述",
-  "applyContent": "完整的提交信息字符串",
-  "riskLevel": "low"
+  "apply_content": "完整的提交信息字符串",
+  "risk_level": "low"
 }
 
 风格说明：
@@ -218,12 +218,12 @@ func (s *Service) CodeReview(ctx context.Context, req api.CodeReviewRequest) (*a
  请以 JSON 格式返回，结构如下：
  {
    "summary": "审查总结，一句话概述整体质量",
-   "blocking": [{"severity": "blocking", "category": "bug/security/performance", "message": "问题描述", "filePath": "文件路径", "startLine": 1, "endLine": 2, "suggestion": "修复建议"}],
-   "highRisk": [{"severity": "high", ...}],
+   "blocking": [{"severity": "blocking", "category": "bug/security/performance", "message": "问题描述", "file_path": "文件路径", "start_line": 1, "end_line": 2, "suggestion": "修复建议"}],
+   "high_risk": [{"severity": "high", ...}],
    "optional": [{"severity": "optional", ...}],
-   "riskLevel": "low/medium/high/critical",
-   "shouldMerge": true/false,
-   "mergeNotes": "合并前需要注意的事项"
+   "risk_level": "low/medium/high/critical",
+   "should_merge": true/false,
+   "merge_notes": "合并前需要注意的事项"
  }
 
  审查规则：
@@ -275,8 +275,8 @@ func (s *Service) ReviewReplyDraft(ctx context.Context, req api.ReviewReplyReque
 请以 JSON 格式返回，结构如下：
 {
   "summary": "回复概述",
-  "applyContent": "完整的回复文本",
-  "riskLevel": "low"
+  "apply_content": "完整的回复文本",
+  "risk_level": "low"
 }
 
 风格：professional（专业正式）/ friendly（友好协作）/ concise（简洁直接）`, tone)
@@ -335,12 +335,12 @@ func (s *Service) ReviewSummary(ctx context.Context, req api.ReviewSummaryReques
 请以 JSON 格式返回，结构如下：
 {
   "summary": "整体总结分析",
-  "blocking": [{"severity": "critical", "category": "安全", "message": "描述", "filePath": "路径", "title": "标题"}],
-  "highRisk": [{"severity": "high", "category": "风险", "message": "描述", "filePath": "路径", "title": "标题"}],
-  "optional": [{"severity": "info", "category": "建议", "message": "描述", "filePath": "路径", "title": "标题"}],
-  "riskLevel": "critical/high/medium/low",
-  "shouldMerge": true/false,
-  "mergeNotes": "合并前需要注意的事项"
+  "blocking": [{"severity": "critical", "category": "安全", "message": "描述", "file_path": "路径", "title": "标题"}],
+  "high_risk": [{"severity": "high", "category": "风险", "message": "描述", "file_path": "路径", "title": "标题"}],
+  "optional": [{"severity": "info", "category": "建议", "message": "描述", "file_path": "路径", "title": "标题"}],
+  "risk_level": "critical/high/medium/low",
+  "should_merge": true/false,
+  "merge_notes": "合并前需要注意的事项"
 }
 
 分析要点：
@@ -379,9 +379,9 @@ func (s *Service) ResolveConflict(ctx context.Context, req api.ConflictResolveRe
 请以 JSON 格式返回，结构如下：
 {
   "summary": "冲突解决概述",
-  "changeSummary": "变更说明",
-  "applyContent": "合并后的完整代码",
-  "riskLevel": "low/medium/high",
+  "change_summary": "变更说明",
+  "apply_content": "合并后的完整代码",
+  "risk_level": "low/medium/high",
   "references": [{"type": "conflict", "id": "1", "label": "冲突位置"}]
 }
 
@@ -422,7 +422,7 @@ func (s *Service) ExplainConflict(ctx context.Context, req api.ConflictResolveRe
 请以 JSON 格式返回，结构如下：
 {
   "summary": "冲突概述",
-  "riskLevel": "low/medium/high",
+  "risk_level": "low/medium/high",
   "suggestions": ["方案1：保留 ours，理由...", "方案2：保留 theirs，理由...", "方案3：手动合并，理由..."],
   "references": [{"type": "section", "id": "1", "label": "冲突区块1"}]
 }`
@@ -459,8 +459,8 @@ func (s *Service) GenerateBranchRule(ctx context.Context, req api.BranchRuleRequ
 请以 JSON 格式返回，结构如下：
 {
   "summary": "分支策略概述",
-  "applyContent": "完整的分支规则配置说明（Markdown 格式）",
-  "riskLevel": "low"
+  "apply_content": "完整的分支规则配置说明（Markdown 格式）",
+  "risk_level": "low"
 }`
 
 	taskReq := TaskRequest{
@@ -503,9 +503,9 @@ func (s *Service) GenerateSpecTemplate(ctx context.Context, req api.SpecTemplate
 请以 JSON 格式返回，结构如下：
 {
   "summary": "模板说明",
-  "changeSummary": "生成了哪些核心部分",
-  "applyContent": "完整的 spec 文件内容",
-  "riskLevel": "low"
+  "change_summary": "生成了哪些核心部分",
+  "apply_content": "完整的 spec 文件内容",
+  "risk_level": "low"
 }`
 
 	taskReq := TaskRequest{
@@ -539,9 +539,9 @@ func (s *Service) RewriteSpecSection(ctx context.Context, req api.SpecRewriteReq
 请以 JSON 格式返回，结构如下：
 {
   "summary": "修改概述",
-  "changeSummary": "具体变更说明",
-  "applyContent": "修改后的完整 spec 文件",
-  "riskLevel": "low"
+  "change_summary": "具体变更说明",
+  "apply_content": "修改后的完整 spec 文件",
+  "risk_level": "low"
 }`
 
 	taskReq := TaskRequest{
@@ -574,7 +574,7 @@ func (s *Service) RecommendProviderBinding(ctx context.Context, req api.Provider
 请以 JSON 格式返回，结构如下：
 {
   "summary": "绑定推荐概述",
-  "riskLevel": "low",
+  "risk_level": "low",
   "suggestions": ["推荐绑定：local-repo-1 -> remote-repo-1，置信度：高，理由：..."],
   "references": []
 }`
@@ -606,11 +606,11 @@ func (s *Service) AnalyzePatchRisk(ctx context.Context, req api.PatchAnalysisReq
 	systemPrompt := `你是一个 Patch 风险分析专家。分析 patch 是否适合应用到目标分支。
 请以 JSON 格式返回，结构如下：
 {
-  "rootCause": "风险概述",
+  "root_cause": "风险概述",
   "evidence": [],
-  "recommendedActions": [],
-  "canAutoFix": false,
-  "riskLevel": "low"
+  "recommended_actions": [],
+  "can_auto_fix": false,
+  "risk_level": "low"
 }`
 
 	taskReq := TaskRequest{
@@ -641,7 +641,7 @@ func (s *Service) SummarizeAuditLogs(ctx context.Context, req api.AuditSummaryRe
 请以 JSON 格式返回，结构如下：
 {
   "summary": "日志分析概述",
-  "riskLevel": "low",
+  "risk_level": "low",
   "suggestions": [],
   "references": []
 }`
@@ -674,7 +674,7 @@ func (s *Service) AnalyzeStatsInsight(ctx context.Context, req api.StatsInsightR
 请以 JSON 格式返回，结构如下：
 {
   "summary": "统计洞察概述",
-  "riskLevel": "low",
+  "risk_level": "low",
   "suggestions": [],
   "references": []
 }`
@@ -706,11 +706,11 @@ func (s *Service) AnalyzeWebhookFailure(ctx context.Context, req api.WebhookFail
 	systemPrompt := `你是一个 Webhook 失败诊断专家。分析 webhook 失败原因并给出修复建议。
 请以 JSON 格式返回，结构如下：
 {
-  "rootCause": "失败根因",
+  "root_cause": "失败根因",
   "evidence": [],
-  "recommendedActions": [],
-  "canAutoFix": false,
-  "riskLevel": "low"
+  "recommended_actions": [],
+  "can_auto_fix": false,
+  "risk_level": "low"
 }`
 
 	taskReq := TaskRequest{

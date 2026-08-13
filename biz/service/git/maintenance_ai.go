@@ -28,13 +28,13 @@ func (s *MaintenanceAIService) AnalyzeSlimFiles(ctx context.Context, healthRepor
 请严格按照以下 JSON 格式返回结果，不要返回其他任何内容：
 {
   "summary": "整体分析总结（中文，2-3句话概括仓库瘦身建议）",
-  "totalSavings": "预计可释放的空间（如 45.2 MB）",
-  "totalSaveBytes": 预计可释放的字节数,
+  "total_savings": "预计可释放的空间（如 45.2 MB）",
+  "total_save_bytes": 预计可释放的字节数,
   "recommendations": [
     {
       "path": "文件路径",
       "size": "文件大小",
-      "sizeBytes": 文件字节数,
+      "size_bytes": 文件字节数,
       "recommendation": "safe_to_delete 或 caution 或 keep",
       "category": "binary 或 build_artifact 或 dependency 或 media 或 test_data 或 docs 或 source 或 config",
       "reason": "推荐理由（中文，说明为什么建议删除/保留/谨慎处理）",

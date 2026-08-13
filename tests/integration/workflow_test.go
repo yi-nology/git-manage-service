@@ -72,7 +72,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 
 		var status map[string]interface{}
 		s.DecodeData(t, resp, &status)
-		if status["isClean"] != true {
+		if status["is_clean"] != true {
 			t.Fatalf("initial repo should be clean")
 		}
 	})
@@ -106,7 +106,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 
 		var status map[string]interface{}
 		s.DecodeData(t, resp, &status)
-		if status["isClean"] == true {
+		if status["is_clean"] == true {
 			t.Fatal("expected dirty after file modifications")
 		}
 
@@ -149,7 +149,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 			t.Fatal("expected diff output")
 		}
 
-		additions, _ := diff["totalAdditions"].(float64)
+		additions, _ := diff["total_additions"].(float64)
 		if additions < 1 {
 			t.Fatalf("expected additions, got %v", additions)
 		}
@@ -166,7 +166,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 
 		var result map[string]interface{}
 		s.DecodeData(t, resp, &result)
-		if result["commitHash"] == nil {
+		if result["commit_hash"] == nil {
 			t.Fatal("expected commit hash")
 		}
 		if result["pushed"] == true {
@@ -180,7 +180,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 
 		var status map[string]interface{}
 		s.DecodeData(t, resp, &status)
-		if status["isClean"] != true {
+		if status["is_clean"] != true {
 			t.Fatal("expected clean after commit")
 		}
 	})
@@ -201,7 +201,7 @@ func TestE2E_FullGitWorkflow(t *testing.T) {
 
 		var result map[string]interface{}
 		s.DecodeData(t, resp, &result)
-		commitHash2 := result["commitHash"]
+		commitHash2 := result["commit_hash"]
 		if commitHash2 == nil {
 			t.Fatal("expected second commit hash")
 		}
@@ -272,7 +272,7 @@ func TestE2E_ModifyAndCommitWorkflow(t *testing.T) {
 
 	var commit1 map[string]interface{}
 	s.DecodeData(t, commitResp, &commit1)
-	hash1 := commit1["commitHash"].(string)
+	hash1 := commit1["commit_hash"].(string)
 
 	writeFile(t, filepath.Join(repoDir, "hello.go"), "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"hello world\")\n}\n")
 
@@ -289,7 +289,7 @@ func TestE2E_ModifyAndCommitWorkflow(t *testing.T) {
 
 	var commit2 map[string]interface{}
 	s.DecodeData(t, commitResp2, &commit2)
-	hash2 := commit2["commitHash"].(string)
+	hash2 := commit2["commit_hash"].(string)
 
 	if hash1 == hash2 {
 		t.Fatal("two commits should have different hashes")

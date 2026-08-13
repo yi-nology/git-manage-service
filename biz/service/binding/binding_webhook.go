@@ -9,8 +9,8 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
-	"github.com/yi-nology/git-platform-sdk/provider"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
+	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
 func RegisterWebhook(ctx context.Context, id uint) (*api.RepoProviderBindingDTO, error) {

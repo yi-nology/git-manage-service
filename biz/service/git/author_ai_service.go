@@ -99,10 +99,10 @@ func (s *AuthorAIService) SmartSuggest(repoPath string) (*api.AliasSuggestionRes
 {
   "suggestions": [
     {
-      "identityId": 1,
-      "identityName": "身份的主名",
-      "aliasName": "推荐的别名名称",
-      "aliasEmail": "推荐的别名邮箱",
+      "identity_id": 1,
+      "identity_name": "身份的主名",
+      "alias_name": "推荐的别名名称",
+      "alias_email": "推荐的别名邮箱",
       "confidence": "high",
       "reason": "为什么认为这是同一人"
     }
@@ -171,10 +171,10 @@ func (s *AuthorAIService) SuggestMerges(identities []api.AuthorIdentityDTO) (*ap
 {
   "merges": [
     {
-      "keepId": 3,
-      "keepName": "保留的身份名",
-      "mergeIds": [1, 2],
-      "mergeNames": "要合并的身份名",
+      "keep_id": 3,
+      "keep_name": "保留的身份名",
+      "merge_ids": [1, 2],
+      "merge_names": "要合并的身份名",
       "reason": "为什么建议合并"
     }
   ],
@@ -228,7 +228,7 @@ func (s *AuthorAIService) AssessRisk(commits []api.MismatchedCommit, repoPath st
 
 请以 JSON 格式返回：
 {
-  "riskLevel": "low|medium|high",
+  "risk_level": "low|medium|high",
   "summary": "简短总结",
   "factors": [
     {"level": "warning", "description": "描述", "recommendation": "建议"}

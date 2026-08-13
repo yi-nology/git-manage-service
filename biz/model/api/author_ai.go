@@ -2,7 +2,7 @@ package api
 
 type AuthorAIRequest struct {
 	Action  string             `json:"action"`
-	RepoKey string             `json:"repoKey,omitempty"`
+	RepoKey string             `json:"repo_key,omitempty"`
 	Scan    *AuthorScanResult  `json:"scan,omitempty"`
 	Commits []MismatchedCommit `json:"commits,omitempty"`
 }
@@ -16,10 +16,10 @@ type AuthorAIResponse struct {
 }
 
 type AliasSuggestion struct {
-	IdentityID   uint   `json:"identityId"`
-	IdentityName string `json:"identityName"`
-	AliasName    string `json:"aliasName"`
-	AliasEmail   string `json:"aliasEmail"`
+	IdentityID   uint   `json:"identity_id"`
+	IdentityName string `json:"identity_name"`
+	AliasName    string `json:"alias_name"`
+	AliasEmail   string `json:"alias_email"`
 	Confidence   string `json:"confidence"`
 	Reason       string `json:"reason"`
 }
@@ -30,10 +30,10 @@ type AliasSuggestionResult struct {
 }
 
 type MergeCandidate struct {
-	KeepID     uint   `json:"keepId"`
-	KeepName   string `json:"keepName"`
-	MergeIDs   []uint `json:"mergeIds"`
-	MergeNames string `json:"mergeNames"`
+	KeepID     uint   `json:"keep_id"`
+	KeepName   string `json:"keep_name"`
+	MergeIDs   []uint `json:"merge_ids"`
+	MergeNames string `json:"merge_names"`
 	Reason     string `json:"reason"`
 }
 
@@ -49,14 +49,14 @@ type RiskFactor struct {
 }
 
 type RiskAssessmentResult struct {
-	RiskLevel       string       `json:"riskLevel"`
+	RiskLevel       string       `json:"risk_level"`
 	Summary         string       `json:"summary"`
 	Factors         []RiskFactor `json:"factors"`
 	Recommendations []string     `json:"recommendations"`
 }
 
 type AuthorChatRequest struct {
-	RepoKey string           `json:"repoKey"`
+	RepoKey string           `json:"repo_key"`
 	Prompt  string           `json:"prompt"`
 	History []ChatMessageDTO `json:"history"`
 }

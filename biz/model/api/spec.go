@@ -25,8 +25,8 @@ type LintRule struct {
 	Pattern     string    `json:"pattern"`
 	Enabled     bool      `json:"enabled"`
 	Priority    int       `json:"priority"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type UpdateLintRuleReq struct {
@@ -56,7 +56,7 @@ type SaveSpecContentReq struct {
 	Path       string `json:"path" form:"path"`
 	Content    string `json:"content" form:"content"`
 	Message    string `json:"message" form:"message"`
-	AutoCommit bool   `json:"autoCommit" form:"autoCommit"`
+	AutoCommit bool   `json:"auto_commit" form:"autoCommit"`
 }
 
 type CommitSpecReq struct {
@@ -110,7 +110,7 @@ type CommitResponse struct {
 
 type SaveWithValidationResponse struct {
 	Message          string      `json:"message"`
-	ValidationResult interface{} `json:"validationResult,omitempty"`
+	ValidationResult interface{} `json:"validation_result,omitempty"`
 }
 
 type CreateFileResponse struct {
@@ -120,7 +120,7 @@ type CreateFileResponse struct {
 
 type AIAssistResponse struct {
 	Result       string `json:"result"`
-	ApplyContent string `json:"applyContent,omitempty"`
+	ApplyContent string `json:"apply_content,omitempty"`
 }
 
 type AIFixResponse struct {

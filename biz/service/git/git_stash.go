@@ -45,7 +45,7 @@ func (s *GitService) StashSave(path, message string, includeUntracked bool) erro
 	logger.Info("Saving stash", logrus.Fields{
 		"path":             path,
 		"message":          message,
-		"includeUntracked": includeUntracked,
+		"include_untracked": includeUntracked,
 	})
 
 	// 检查是否有可暂存的更改

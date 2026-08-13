@@ -149,12 +149,12 @@ func (s *AnalyzerService) GetCommitStats(repoKey string, days int) (map[string]i
 	}
 
 	return map[string]interface{}{
-		"commitCount":     commitCount,
-		"totalChanges":    totalChanges,
-		"commitTypeCount": commitTypeCount,
-		"dailyCommits":    dailyCommits,
-		"startTime":       startTime,
-		"endTime":         endTime,
+		"commit_count":     commitCount,
+		"total_changes":    totalChanges,
+		"commit_type_count": commitTypeCount,
+		"daily_commits":    dailyCommits,
+		"start_time":       startTime,
+		"end_time":         endTime,
 	}, nil
 }
 

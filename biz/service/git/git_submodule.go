@@ -164,7 +164,7 @@ func (s *GitService) SubmoduleAdd(path, url, subPath, branch string) error {
 	logger.Info("Adding submodule", logrus.Fields{
 		"path":    path,
 		"url":     url,
-		"subPath": subPath,
+		"sub_path": subPath,
 		"branch":  branch,
 	})
 
@@ -176,17 +176,17 @@ func (s *GitService) SubmoduleAdd(path, url, subPath, branch string) error {
 
 	_, err := s.RunCommand(path, args...)
 	if err != nil {
-		logger.ErrorWithErr("Failed to add submodule", err, logrus.Fields{"subPath": subPath})
+		logger.ErrorWithErr("Failed to add submodule", err, logrus.Fields{"sub_path": subPath})
 		return err
 	}
 
-	logger.Info("Submodule added successfully", logrus.Fields{"subPath": subPath})
+	logger.Info("Submodule added successfully", logrus.Fields{"sub_path": subPath})
 	return nil
 }
 
 // SubmoduleInit 初始化 submodule
 func (s *GitService) SubmoduleInit(path, subPath string) error {
-	logger.Info("Initializing submodule", logrus.Fields{"path": path, "subPath": subPath})
+	logger.Info("Initializing submodule", logrus.Fields{"path": path, "sub_path": subPath})
 
 	args := []string{"submodule", "init"}
 	if subPath != "" {
@@ -195,11 +195,11 @@ func (s *GitService) SubmoduleInit(path, subPath string) error {
 
 	_, err := s.RunCommand(path, args...)
 	if err != nil {
-		logger.ErrorWithErr("Failed to init submodule", err, logrus.Fields{"subPath": subPath})
+		logger.ErrorWithErr("Failed to init submodule", err, logrus.Fields{"sub_path": subPath})
 		return err
 	}
 
-	logger.Info("Submodule initialized", logrus.Fields{"subPath": subPath})
+	logger.Info("Submodule initialized", logrus.Fields{"sub_path": subPath})
 	return nil
 }
 
@@ -207,7 +207,7 @@ func (s *GitService) SubmoduleInit(path, subPath string) error {
 func (s *GitService) SubmoduleUpdate(path, subPath string, init, recursive, remote bool) error {
 	logger.Info("Updating submodule", logrus.Fields{
 		"path":      path,
-		"subPath":   subPath,
+		"sub_path":   subPath,
 		"init":      init,
 		"recursive": recursive,
 		"remote":    remote,
@@ -229,11 +229,11 @@ func (s *GitService) SubmoduleUpdate(path, subPath string, init, recursive, remo
 
 	_, err := s.RunCommand(path, args...)
 	if err != nil {
-		logger.ErrorWithErr("Failed to update submodule", err, logrus.Fields{"subPath": subPath})
+		logger.ErrorWithErr("Failed to update submodule", err, logrus.Fields{"sub_path": subPath})
 		return err
 	}
 
-	logger.Info("Submodule updated", logrus.Fields{"subPath": subPath})
+	logger.Info("Submodule updated", logrus.Fields{"sub_path": subPath})
 	return nil
 }
 
@@ -241,7 +241,7 @@ func (s *GitService) SubmoduleUpdate(path, subPath string, init, recursive, remo
 func (s *GitService) SubmoduleSync(path, subPath string, recursive bool) error {
 	logger.Info("Syncing submodule", logrus.Fields{
 		"path":      path,
-		"subPath":   subPath,
+		"sub_path":   subPath,
 		"recursive": recursive,
 	})
 
@@ -255,11 +255,11 @@ func (s *GitService) SubmoduleSync(path, subPath string, recursive bool) error {
 
 	_, err := s.RunCommand(path, args...)
 	if err != nil {
-		logger.ErrorWithErr("Failed to sync submodule", err, logrus.Fields{"subPath": subPath})
+		logger.ErrorWithErr("Failed to sync submodule", err, logrus.Fields{"sub_path": subPath})
 		return err
 	}
 
-	logger.Info("Submodule synced", logrus.Fields{"subPath": subPath})
+	logger.Info("Submodule synced", logrus.Fields{"sub_path": subPath})
 	return nil
 }
 
@@ -267,7 +267,7 @@ func (s *GitService) SubmoduleSync(path, subPath string, recursive bool) error {
 func (s *GitService) SubmoduleRemove(path, subPath string, force bool) error {
 	logger.Info("Removing submodule", logrus.Fields{
 		"path":    path,
-		"subPath": subPath,
+		"sub_path": subPath,
 		"force":   force,
 	})
 
@@ -279,7 +279,7 @@ func (s *GitService) SubmoduleRemove(path, subPath string, force bool) error {
 	args = append(args, subPath)
 
 	if _, err := s.RunCommand(path, args...); err != nil {
-		logger.ErrorWithErr("Failed to deinit submodule", err, logrus.Fields{"subPath": subPath})
+		logger.ErrorWithErr("Failed to deinit submodule", err, logrus.Fields{"sub_path": subPath})
 		return fmt.Errorf("deinit failed: %w", err)
 	}
 
@@ -291,7 +291,7 @@ func (s *GitService) SubmoduleRemove(path, subPath string, force bool) error {
 	rmArgs = append(rmArgs, subPath)
 
 	if _, err := s.RunCommand(path, rmArgs...); err != nil {
-		logger.ErrorWithErr("Failed to remove submodule from git", err, logrus.Fields{"subPath": subPath})
+		logger.ErrorWithErr("Failed to remove submodule from git", err, logrus.Fields{"sub_path": subPath})
 		return fmt.Errorf("rm failed: %w", err)
 	}
 
@@ -304,7 +304,7 @@ func (s *GitService) SubmoduleRemove(path, subPath string, force bool) error {
 		}
 	}
 
-	logger.Info("Submodule removed successfully", logrus.Fields{"subPath": subPath})
+	logger.Info("Submodule removed successfully", logrus.Fields{"sub_path": subPath})
 	return nil
 }
 

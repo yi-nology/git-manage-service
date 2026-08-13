@@ -3,58 +3,58 @@ package api
 import "time"
 
 type MaintenanceSnapshotDTO struct {
-	GitDirSize      string `json:"gitDirSize"`
-	GitDirSizeBytes int64  `json:"gitDirSizeBytes"`
-	LooseObjects    int64  `json:"looseObjects"`
-	PackFiles       int    `json:"packFiles"`
-	InPackObjects   int64  `json:"inPackObjects"`
-	CommitCount     int64  `json:"commitCount"`
-	BranchCount     int    `json:"branchCount"`
-	TagCount        int    `json:"tagCount"`
+	GitDirSize      string `json:"git_dir_size"`
+	GitDirSizeBytes int64  `json:"git_dir_size_bytes"`
+	LooseObjects    int64  `json:"loose_objects"`
+	PackFiles       int    `json:"pack_files"`
+	InPackObjects   int64  `json:"in_pack_objects"`
+	CommitCount     int64  `json:"commit_count"`
+	BranchCount     int    `json:"branch_count"`
+	TagCount        int    `json:"tag_count"`
 }
 
 type GitDirBreakdown struct {
-	PackDirSize       string `json:"packDirSize"`
-	PackDirSizeBytes  int64  `json:"packDirSizeBytes"`
-	LooseObjSize      string `json:"looseObjSize"`
-	LooseObjSizeBytes int64  `json:"looseObjSizeBytes"`
-	ReflogSize        string `json:"reflogSize"`
-	ReflogSizeBytes   int64  `json:"reflogSizeBytes"`
-	StashCount        int    `json:"stashCount"`
-	OtherSize         string `json:"otherSize"`
-	OtherSizeBytes    int64  `json:"otherSizeBytes"`
+	PackDirSize       string `json:"pack_dir_size"`
+	PackDirSizeBytes  int64  `json:"pack_dir_size_bytes"`
+	LooseObjSize      string `json:"loose_obj_size"`
+	LooseObjSizeBytes int64  `json:"loose_obj_size_bytes"`
+	ReflogSize        string `json:"reflog_size"`
+	ReflogSizeBytes   int64  `json:"reflog_size_bytes"`
+	StashCount        int    `json:"stash_count"`
+	OtherSize         string `json:"other_size"`
+	OtherSizeBytes    int64  `json:"other_size_bytes"`
 }
 
 type StashEntry struct {
 	Index     int    `json:"index"`
 	Message   string `json:"message"`
 	Size      string `json:"size"`
-	SizeBytes int64  `json:"sizeBytes"`
+	SizeBytes int64  `json:"size_bytes"`
 }
 
 type RepoHealthReport struct {
-	GitDirSize      string           `json:"gitDirSize"`
-	GitDirSizeBytes int64            `json:"gitDirSizeBytes"`
-	LooseObjects    int64            `json:"looseObjects"`
-	PackFiles       int              `json:"packFiles"`
-	InPackObjects   int64            `json:"inPackObjects"`
-	CommitCount     int64            `json:"commitCount"`
-	BranchCount     int              `json:"branchCount"`
-	TagCount        int              `json:"tagCount"`
-	GitDirBreakdown *GitDirBreakdown `json:"gitDirBreakdown"`
-	StashEntries    []StashEntry     `json:"stashEntries"`
-	LargeFiles      []LargeFileEntry `json:"largeFiles"`
+	GitDirSize      string           `json:"git_dir_size"`
+	GitDirSizeBytes int64            `json:"git_dir_size_bytes"`
+	LooseObjects    int64            `json:"loose_objects"`
+	PackFiles       int              `json:"pack_files"`
+	InPackObjects   int64            `json:"in_pack_objects"`
+	CommitCount     int64            `json:"commit_count"`
+	BranchCount     int              `json:"branch_count"`
+	TagCount        int              `json:"tag_count"`
+	GitDirBreakdown *GitDirBreakdown `json:"git_dir_breakdown"`
+	StashEntries    []StashEntry     `json:"stash_entries"`
+	LargeFiles      []LargeFileEntry `json:"large_files"`
 	Threshold       int64            `json:"threshold"`
-	ThresholdHuman  string           `json:"thresholdHuman"`
+	ThresholdHuman  string           `json:"threshold_human"`
 	Excludes        []string         `json:"excludes"`
 }
 
 type LargeFileEntry struct {
 	Path        string `json:"path"`
 	Size        string `json:"size"`
-	SizeBytes   int64  `json:"sizeBytes"`
+	SizeBytes   int64  `json:"size_bytes"`
 	Exists      bool   `json:"exists"`
-	CommitCount int    `json:"commitCount"`
+	CommitCount int    `json:"commit_count"`
 	Source      string `json:"source"`
 }
 
@@ -62,28 +62,28 @@ type MaintenanceRecordDTO struct {
 	ID             uint                    `json:"id"`
 	Type           string                  `json:"type"`
 	Status         string                  `json:"status"`
-	TriggerBy      string                  `json:"triggerBy"`
-	ParamsJSON     string                  `json:"paramsJson"`
-	SnapshotBefore *MaintenanceSnapshotDTO `json:"snapshotBefore"`
-	SnapshotAfter  *MaintenanceSnapshotDTO `json:"snapshotAfter"`
-	ErrorMessage   string                  `json:"errorMessage"`
-	StartedAt      *time.Time              `json:"startedAt"`
-	FinishedAt     *time.Time              `json:"finishedAt"`
-	CreatedAt      time.Time               `json:"createdAt"`
+	TriggerBy      string                  `json:"trigger_by"`
+	ParamsJSON     string                  `json:"params_json"`
+	SnapshotBefore *MaintenanceSnapshotDTO `json:"snapshot_before"`
+	SnapshotAfter  *MaintenanceSnapshotDTO `json:"snapshot_after"`
+	ErrorMessage   string                  `json:"error_message"`
+	StartedAt      *time.Time              `json:"started_at"`
+	FinishedAt     *time.Time              `json:"finished_at"`
+	CreatedAt      time.Time               `json:"created_at"`
 	Duration       string                  `json:"duration"`
-	SavedBytes     int64                   `json:"savedBytes"`
-	SavedPercent   float64                 `json:"savedPercent"`
+	SavedBytes     int64                   `json:"saved_bytes"`
+	SavedPercent   float64                 `json:"saved_percent"`
 }
 
 type MaintenanceRecordListResponse struct {
 	Records  []MaintenanceRecordDTO `json:"records"`
 	Total    int64                  `json:"total"`
 	Page     int                    `json:"page"`
-	PageSize int                    `json:"pageSize"`
+	PageSize int                    `json:"page_size"`
 }
 
 type MaintenanceTaskResponse struct {
-	TaskID string `json:"taskId"`
+	TaskID string `json:"task_id"`
 }
 
 type MessageResponse struct {
@@ -93,7 +93,7 @@ type MessageResponse struct {
 type FileAIRecommendation struct {
 	Path           string `json:"path"`
 	Size           string `json:"size"`
-	SizeBytes      int64  `json:"sizeBytes"`
+	SizeBytes      int64  `json:"size_bytes"`
 	Recommendation string `json:"recommendation"`
 	Category       string `json:"category"`
 	Reason         string `json:"reason"`
@@ -102,28 +102,28 @@ type FileAIRecommendation struct {
 
 type MaintenanceAIAnalysisResponse struct {
 	Summary         string                 `json:"summary"`
-	TotalSavings    string                 `json:"totalSavings"`
-	TotalSaveBytes  int64                  `json:"totalSaveBytes"`
+	TotalSavings    string                 `json:"total_savings"`
+	TotalSaveBytes  int64                  `json:"total_save_bytes"`
 	Recommendations []FileAIRecommendation `json:"recommendations"`
 }
 
 type PrefixFileEntry struct {
 	Path        string `json:"path"`
 	Size        string `json:"size"`
-	SizeBytes   int64  `json:"sizeBytes"`
+	SizeBytes   int64  `json:"size_bytes"`
 	Exists      bool   `json:"exists"`
-	CommitCount int    `json:"commitCount"`
+	CommitCount int    `json:"commit_count"`
 }
 
 type PrefixSlimPreview struct {
 	Files      []PrefixFileEntry `json:"files"`
-	TotalCount int               `json:"totalCount"`
-	TotalSize  string            `json:"totalSize"`
-	TotalBytes int64             `json:"totalBytes"`
+	TotalCount int               `json:"total_count"`
+	TotalSize  string            `json:"total_size"`
+	TotalBytes int64             `json:"total_bytes"`
 }
 
 type ForcePushResult struct {
-	RemoteName string `json:"remoteName"`
+	RemoteName string `json:"remote_name"`
 	Platform   string `json:"platform"`
 	Branches   int    `json:"branches"`
 	Success    bool   `json:"success"`

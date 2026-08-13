@@ -15,7 +15,7 @@ func TestParseJSONResponse(t *testing.T) {
 	}{
 		{
 			name:    "valid json in markdown",
-			input:   "```json\n{\"rootCause\":\"test\",\"canAutoFix\":true}\n```",
+			input:   "```json\n{\"root_cause\":\"test\",\"can_auto_fix\":true}\n```",
 			wantErr: false,
 			checkVal: func(r *api.AIDiagnosisResponse) bool {
 				return r.RootCause == "test" && r.CanAutoFix
@@ -23,7 +23,7 @@ func TestParseJSONResponse(t *testing.T) {
 		},
 		{
 			name:    "valid json without markdown",
-			input:   "{\"rootCause\":\"direct\",\"canAutoFix\":false}",
+			input:   "{\"root_cause\":\"direct\",\"can_auto_fix\":false}",
 			wantErr: false,
 			checkVal: func(r *api.AIDiagnosisResponse) bool {
 				return r.RootCause == "direct" && !r.CanAutoFix
@@ -36,7 +36,7 @@ func TestParseJSONResponse(t *testing.T) {
 		},
 		{
 			name:    "partial json with text around",
-			input:   "some text {\"rootCause\":\"embedded\"} more text",
+			input:   "some text {\"root_cause\":\"embedded\"} more text",
 			wantErr: false,
 			checkVal: func(r *api.AIDiagnosisResponse) bool {
 				return r.RootCause == "embedded"

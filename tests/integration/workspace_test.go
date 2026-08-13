@@ -17,7 +17,7 @@ func TestWorkspace_GetStatus_CleanRepo(t *testing.T) {
 	var status map[string]interface{}
 	s.DecodeData(t, resp, &status)
 
-	if status["isClean"] != true {
+	if status["is_clean"] != true {
 		t.Fatalf("expected clean workspace, got: %v", status)
 	}
 	if status["branch"] == nil {
@@ -39,7 +39,7 @@ func TestWorkspace_GetStatus_WithUntrackedFiles(t *testing.T) {
 	var status map[string]interface{}
 	s.DecodeData(t, resp, &status)
 
-	if status["isClean"] == true {
+	if status["is_clean"] == true {
 		t.Fatal("expected dirty workspace with untracked files")
 	}
 
@@ -141,7 +141,7 @@ func TestWorkspace_CommitChanges(t *testing.T) {
 	var result map[string]interface{}
 	s.DecodeData(t, resp, &result)
 
-	if result["commitHash"] == nil || result["commitHash"] == "" {
+	if result["commit_hash"] == nil || result["commit_hash"] == "" {
 		t.Fatalf("expected commit hash, got: %v", result)
 	}
 
@@ -150,7 +150,7 @@ func TestWorkspace_CommitChanges(t *testing.T) {
 
 	var status map[string]interface{}
 	s.DecodeData(t, statusResp, &status)
-	if status["isClean"] != true {
+	if status["is_clean"] != true {
 		t.Fatalf("expected clean after commit, got: %v", status)
 	}
 }
@@ -172,7 +172,7 @@ func TestWorkspace_CommitWithStageAll(t *testing.T) {
 
 	var result map[string]interface{}
 	s.DecodeData(t, resp, &result)
-	if result["commitHash"] == nil {
+	if result["commit_hash"] == nil {
 		t.Fatal("expected commit hash")
 	}
 }
@@ -198,7 +198,7 @@ func TestWorkspace_CommitSpecificFiles(t *testing.T) {
 
 	var status map[string]interface{}
 	s.DecodeData(t, statusResp, &status)
-	if status["isClean"] == true {
+	if status["is_clean"] == true {
 		t.Fatal("expected dirty workspace (excluded.txt still untracked)")
 	}
 }
@@ -298,7 +298,7 @@ func TestWorkspace_ModifyTrackedFile(t *testing.T) {
 	var status map[string]interface{}
 	s.DecodeData(t, statusResp, &status)
 
-	if status["isClean"] == true {
+	if status["is_clean"] == true {
 		t.Fatal("expected dirty after modifying tracked file")
 	}
 
@@ -320,7 +320,7 @@ func TestWorkspace_ModifyTrackedFile(t *testing.T) {
 
 	var result map[string]interface{}
 	s.DecodeData(t, commitResp, &result)
-	if result["commitHash"] == nil {
+	if result["commit_hash"] == nil {
 		t.Fatal("expected commit hash")
 	}
 }

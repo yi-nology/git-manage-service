@@ -27,7 +27,7 @@ func (s *GitService) AddRemote(path, name, url string, isMirror bool) error {
 		"path":     path,
 		"name":     name,
 		"url":      url,
-		"isMirror": isMirror,
+		"is_mirror": isMirror,
 	})
 
 	err := s.backend.AddRemote(context.Background(), path, name, url)

@@ -230,21 +230,15 @@ rg -n '38080|localhost:8080|localhost:3000' README.md DEPLOY.md docs .github con
 
 ### API 字段命名治理
 
-当前 `biz/model/api` 中仍有大量 snake_case JSON tag，同时也存在 camelCase。直接大规模重命名会破坏前端兼容，所以先采用冻结策略。
+**状态：已统一为 snake_case（决策已反转）**
 
-**状态：已完成新增约束**
+历史上 `biz/model/api` 同时存在 snake_case 与 camelCase JSON tag。经过评估，由于请求体、集成测试、前端大多数字段都已经是 snake_case，决定将整个后端 API 统一为 snake_case。
 
-- `biz/model/api/json_tag_baseline.txt` 记录当前手写 API DTO 中已有的 snake_case JSON tag。
-- `biz/model/api/json_tag_contract_test.go` 会阻止新增 snake_case JSON tag。
-- `make check-api-json-tags` 提供显式本地检查入口。
-
-推荐路线：
-
-1. 决策：长期规范使用 camelCase。
-2. 冻结：新增接口已通过测试禁止继续引入 snake_case。
-3. 兼容：旧接口保留，新增 v2 DTO 或 adapter。
-4. 生成：引入 OpenAPI/proto 到 TypeScript 的生成流程。
-5. 收敛：按模块逐步减少 `json_tag_baseline.txt` 中的历史项。
+- codegen：`script/gen.sh` / `Makefile hz-gen` 由 `--pb_camel_json_tag` 切换为 `--snake_tag`，IDL 重新生成后所有 `.pb.go` 的 json/form/query tag 均为 snake_case。
+- IDL：`repo.proto` / `sync.proto` / `author.proto` 中残留的 camelCase 字段名及 `[(api.body)]`/`[(api.query)]` 注解值已改为 snake_case（Go 结构体字段名不变、Kitex 按字段号兼容）。
+- 手写 DTO：`biz/model/api/*.go` 的 camelCase json tag 全部改为 snake_case。
+- 门禁：`biz/model/api/json_tag_contract_test.go` 已反转为"禁止 camelCase"（原 baseline 已删除）。
+- 剩余：前端（~50 文件，camelCase 响应字段）需单独一轮迁移（建议在 `frontend/src/api/request.ts` 拦截器加 snake↔camel 转换），后端改动在前端迁移完成前不应上线。
 
 ### 数据库 migration 版本化
 

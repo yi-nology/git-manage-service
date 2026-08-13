@@ -100,23 +100,14 @@
 
 ---
 
-### 6. API 字段命名仍有历史混用
+### 6. API 字段命名统一为 snake_case（已处理）
 
-当前新增 snake_case 已被门禁限制，但历史 API DTO 里仍同时存在 snake_case 和 camelCase。
+后端 API JSON 字段已统一为 snake_case：codegen 切到 `--snake_tag`、IDL 与手写 DTO 全部 snake_case、门禁反转为禁止 camelCase（详见 `docs/PROJECT_REVIEW_FOLLOWUP_PLAN.md`）。
 
-问题：
+遗留：
 
-- 前端容易字段错配
-- 类型定义需要人工同步
-- API 长期对外会难以演进
-
-建议：
-
-- 明确长期标准为 camelCase
-- 保留旧接口兼容
-- 新接口只使用 camelCase
-- 引入 OpenAPI / proto 生成 TypeScript 类型
-- 逐模块减少 `json_tag_baseline.txt` 中的历史项
+- 前端（~50 文件）仍混用 camelCase 响应字段，需单独一轮迁移
+- 后端可在前端迁移完成后再上线
 
 ---
 

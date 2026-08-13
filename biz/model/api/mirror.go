@@ -1,31 +1,31 @@
 package api
 
 type CreateMirrorReq struct {
-	RepoID       uint   `json:"repoId" binding:"required"`
-	MirrorType   string `json:"mirrorType" binding:"required"`
-	RemoteURL    string `json:"remoteUrl" binding:"required"`
-	RemoteName   string `json:"remoteName"`
-	CredentialID *uint  `json:"credentialId"`
-	BranchFilter string `json:"branchFilter"`
-	SyncInterval int    `json:"syncInterval"`
-	CronExpr     string `json:"cronExpr"`
-	SyncOnPush   bool   `json:"syncOnPush"`
-	GitForce     bool   `json:"gitForce"`
-	GitPrune     bool   `json:"gitPrune"`
-	GitTags      bool   `json:"gitTags"`
+	RepoID       uint   `json:"repo_id" binding:"required"`
+	MirrorType   string `json:"mirror_type" binding:"required"`
+	RemoteURL    string `json:"remote_url" binding:"required"`
+	RemoteName   string `json:"remote_name"`
+	CredentialID *uint  `json:"credential_id"`
+	BranchFilter string `json:"branch_filter"`
+	SyncInterval int    `json:"sync_interval"`
+	CronExpr     string `json:"cron_expr"`
+	SyncOnPush   bool   `json:"sync_on_push"`
+	GitForce     bool   `json:"git_force"`
+	GitPrune     bool   `json:"git_prune"`
+	GitTags      bool   `json:"git_tags"`
 	Enabled      bool   `json:"enabled"`
 }
 
 type UpdateMirrorReq struct {
-	RemoteURL    string `json:"remoteUrl"`
-	RemoteName   string `json:"remoteName"`
-	CredentialID *uint  `json:"credentialId"`
-	BranchFilter string `json:"branchFilter"`
-	SyncInterval int    `json:"syncInterval"`
-	CronExpr     string `json:"cronExpr"`
-	SyncOnPush   bool   `json:"syncOnPush"`
-	GitForce     bool   `json:"gitForce"`
-	GitPrune     bool   `json:"gitPrune"`
-	GitTags      bool   `json:"gitTags"`
+	RemoteURL    string `json:"remote_url"`
+	RemoteName   string `json:"remote_name"`
+	CredentialID *uint  `json:"credential_id"`
+	BranchFilter string `json:"branch_filter"`
+	SyncInterval int    `json:"sync_interval"`
+	CronExpr     string `json:"cron_expr"`
+	SyncOnPush   bool   `json:"sync_on_push"`
+	GitForce     bool   `json:"git_force"`
+	GitPrune     bool   `json:"git_prune"`
+	GitTags      bool   `json:"git_tags"`
 	Enabled      bool   `json:"enabled"`
 }
