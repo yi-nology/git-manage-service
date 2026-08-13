@@ -6,6 +6,7 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
@@ -118,6 +119,7 @@ func applyRules(event *po.WebhookEvent) {
 	ruleDAO := db.NewWebhookRuleDAO()
 	rules, err := ruleDAO.FindByProviderConfigID(event.ProviderConfigID)
 	if err != nil {
+		log.Printf("[webhook] failed to load rules for provider_config %d (event %s): %v", event.ProviderConfigID, event.EventID, err)
 		return
 	}
 
@@ -152,7 +154,9 @@ func applyRules(event *po.WebhookEvent) {
 	event.Status = "processed"
 	event.ProcessedAt = &now
 	eventDAO := db.NewWebhookEventDAO()
-	eventDAO.Save(event)
+	if err := eventDAO.Save(event); err != nil {
+		log.Printf("[webhook] failed to mark event %s processed: %v", event.EventID, err)
+	}
 }
 
 // triggerSync runs the configured sync task via git-sync-service. Previously
@@ -325,16 +329,28 @@ func shouldReviewBranch(repo *po.Repo, event *po.WebhookEvent) bool {
 	return true
 }
 
+var regexCache sync.Map // map[string]*regexp.Regexp — avoids recompiling per event
+
 func matchPattern(pattern, value string) bool {
 	if pattern == "" || pattern == "*" {
 		return true
 	}
-	if strings.Contains(pattern, "*") {
-		regex := "^" + strings.ReplaceAll(regexp.QuoteMeta(pattern), "\\*", ".*") + "$"
-		matched, _ := regexp.MatchString(regex, value)
-		return matched
+	if !strings.Contains(pattern, "*") {
+		return pattern == value
 	}
-	return pattern == value
+	regexStr := "^" + strings.ReplaceAll(regexp.QuoteMeta(pattern), "\\*", ".*") + "$"
+	var re *regexp.Regexp
+	if v, ok := regexCache.Load(regexStr); ok {
+		re = v.(*regexp.Regexp)
+	} else {
+		compiled, err := regexp.Compile(regexStr)
+		if err != nil {
+			return false
+		}
+		re = compiled
+		regexCache.Store(regexStr, re)
+	}
+	return re.MatchString(value)
 }
 
 func toEventDTO(e *po.WebhookEvent) api.WebhookEventDTO {
