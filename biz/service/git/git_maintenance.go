@@ -255,13 +255,7 @@ func (s *MaintenanceService) FindLargeFiles(repoPath string, threshold int64) ([
 			stats = append(stats, fileStat{path: path, maxSize: maxSz, count: len(shas)})
 		}
 	}
-	for i := 0; i < len(stats); i++ {
-		for j := i + 1; j < len(stats); j++ {
-			if stats[j].maxSize > stats[i].maxSize {
-				stats[i], stats[j] = stats[j], stats[i]
-			}
-		}
-	}
+	sort.Slice(stats, func(i, j int) bool { return stats[i].maxSize > stats[j].maxSize })
 	if len(stats) > 50 {
 		stats = stats[:50]
 	}

@@ -1,6 +1,7 @@
 package codereview
 
 import (
+	"sort"
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
@@ -145,13 +146,7 @@ func topN(m map[string]int, n int) []map[string]interface{} {
 	for k, v := range m {
 		sorted = append(sorted, kv{k, v})
 	}
-	for i := 0; i < len(sorted); i++ {
-		for j := i + 1; j < len(sorted); j++ {
-			if sorted[j].Value > sorted[i].Value {
-				sorted[i], sorted[j] = sorted[j], sorted[i]
-			}
-		}
-	}
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Value > sorted[j].Value })
 	if len(sorted) > n {
 		sorted = sorted[:n]
 	}
