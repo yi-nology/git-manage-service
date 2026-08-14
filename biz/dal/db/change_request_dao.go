@@ -24,6 +24,22 @@ func (d *ChangeRequestDAO) FindByRepoAndNumber(repoID uint, crNumber int) (*po.C
 	return &cr, err
 }
 
+// FindAllByRepo returns all CRs for a repo (no filters/pagination), for
+// batch-sync flows that need a number→CR map in one query.
+func (d *ChangeRequestDAO) FindAllByRepo(repoID uint) ([]po.ChangeRequest, error) {
+	var crs []po.ChangeRequest
+	err := DB.Where("repo_id = ?", repoID).Find(&crs).Error
+	return crs, err
+}
+
+// BatchCreate inserts multiple CRs in one statement.
+func (d *ChangeRequestDAO) BatchCreate(crs []po.ChangeRequest) error {
+	if len(crs) == 0 {
+		return nil
+	}
+	return DB.Create(&crs).Error
+}
+
 func (d *ChangeRequestDAO) FindByRepo(repoID uint, state, sourceBranch, targetBranch string, page, pageSize int) ([]po.ChangeRequest, int64, error) {
 	q := DB.Model(&po.ChangeRequest{}).Where("repo_id = ?", repoID)
 	if state != "" {

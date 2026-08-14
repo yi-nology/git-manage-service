@@ -127,16 +127,24 @@ func SyncCRs(ctx context.Context, repoKey, state string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	crDAO := db.NewChangeRequestDAO()
+
+	// Batch-load all existing CRs for this repo in ONE query (previously one
+	// SELECT per incoming CR — 100 CRs = 100 lookups).
+	existingCRs, err := crDAO.FindAllByRepo(repo.ID)
+	if err != nil {
+		return 0, err
+	}
+	existingByNumber := make(map[int]*po.ChangeRequest, len(existingCRs))
+	for i := range existingCRs {
+		existingByNumber[existingCRs[i].CRNumber] = &existingCRs[i]
+	}
+
 	synced := 0
+	var toCreate []po.ChangeRequest
 	for _, cr := range crs {
-		localCR := platformCRToLocal(repo.ID, providerCfgID, cr)
-		existing, dbErr := crDAO.FindByRepoAndNumber(repo.ID, cr.Number)
-		if dbErr != nil {
-			if saveErr := crDAO.Create(localCR); saveErr == nil {
-				synced++
-			}
-		} else {
+		if existing, ok := existingByNumber[cr.Number]; ok {
 			existing.State = string(cr.State)
 			existing.Title = cr.Title
 			existing.Description = cr.Description
@@ -153,8 +161,17 @@ func SyncCRs(ctx context.Context, repoKey, state string) (int, error) {
 			}
 			crDAO.Save(existing)
 			synced++
+		} else {
+			toCreate = append(toCreate, *platformCRToLocal(repo.ID, providerCfgID, cr))
 		}
 	}
+
+	// Batch-insert all new CRs in one statement.
+	if err := crDAO.BatchCreate(toCreate); err != nil {
+		return synced, err
+	}
+	synced += len(toCreate)
+
 	return synced, nil
 }
 
