@@ -254,14 +254,6 @@ func truncateString(s string, maxLen int) string {
 	return s[:maxLen]
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func init() {
-	_ = min
 	log.Printf("[RAG] Vector store initialized")
 }

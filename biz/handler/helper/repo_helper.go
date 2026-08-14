@@ -44,17 +44,6 @@ func GetRepoKeyFromQuery(c *app.RequestContext) (string, bool) {
 	return repoKey, true
 }
 
-// MustBindAndValidate 绑定并验证请求参数
-// 返回 bool 表示是否成功，失败时已自动返回错误响应
-func MustBindAndValidate[T any](c *app.RequestContext) (*T, bool) {
-	var req T
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return nil, false
-	}
-	return &req, true
-}
-
 // BindJSON 绑定 JSON 请求体
 func BindJSON[T any](c *app.RequestContext) (*T, bool) {
 	var req T

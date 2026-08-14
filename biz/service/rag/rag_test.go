@@ -131,15 +131,6 @@ func TestVectorStore_IndexAndSearch(t *testing.T) {
 	}
 }
 
-func TestVectorStore_Clear(t *testing.T) {
-	store := NewVectorStore(100)
-	store.Index("repo", []*Vector{{ID: "1", Values: []float64{1.0}}})
-	store.Clear("repo")
-	if store.HasIndex("repo") {
-		t.Error("store should not have index after clear")
-	}
-}
-
 func TestCosineSimilarity(t *testing.T) {
 	a := []float64{1, 0, 0}
 	b := []float64{1, 0, 0}

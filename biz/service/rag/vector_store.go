@@ -85,12 +85,6 @@ func (s *VectorStore) HasIndex(repoKey string) bool {
 	return ok && len(vectors) > 0
 }
 
-func (s *VectorStore) Clear(repoKey string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.vectors, repoKey)
-}
-
 func (s *VectorStore) Stats() map[string]int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -128,12 +122,6 @@ type IndexResult struct {
 	FileCount  int
 	Duration   time.Duration
 	Error      string
-}
-
-type RetrieveResult struct {
-	Query    string
-	Results  []*SearchResult
-	Duration time.Duration
 }
 
 func FormatContextForPrompt(results []*SearchResult, maxChars int) string {
