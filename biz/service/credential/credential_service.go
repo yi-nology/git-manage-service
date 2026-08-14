@@ -29,7 +29,15 @@ func NewCredentialService() *CredentialService {
 }
 
 func (s *CredentialService) List(req *credential.ListCredentialsRequest) ([]*credential.CredentialInfo, error) {
-	creds, err := s.credDAO.FindAll()
+	// Push the type filter to SQL when set (avoids loading + decrypting all
+	// credentials just to discard most of them).
+	var creds []po.Credential
+	var err error
+	if req.Type != "" {
+		creds, err = s.credDAO.FindByType(req.Type)
+	} else {
+		creds, err = s.credDAO.FindAll()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -38,10 +46,9 @@ func (s *CredentialService) List(req *credential.ListCredentialsRequest) ([]*cre
 	result := make([]*credential.CredentialInfo, 0, len(creds))
 
 	for _, cred := range creds {
-		if req.Type != "" && cred.Type != req.Type {
-			continue
-		}
-		if req.Purpose != "" {
+		// Type already filtered at SQL level when req.Type is set; apply
+		// purpose filter only when type wasn't pre-filtered.
+		if req.Type == "" && req.Purpose != "" {
 			hasPurpose := false
 			switch req.Purpose {
 			case "git_remote":
