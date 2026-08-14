@@ -123,6 +123,14 @@ func applyRules(event *po.WebhookEvent) {
 		return
 	}
 
+	// Pre-load the repo once (it's constant per event) instead of per-rule.
+	var repoFullName string
+	if event.RepoID > 0 {
+		if repo, err := db.NewRepoDAO().FindByID(event.RepoID); err == nil {
+			repoFullName = repo.PlatformOwner + "/" + repo.PlatformRepo
+		}
+	}
+
 	for _, rule := range rules {
 		if !rule.Enabled {
 			continue
@@ -130,13 +138,9 @@ func applyRules(event *po.WebhookEvent) {
 		if !matchPattern(rule.EventTypePattern, event.EventType) {
 			continue
 		}
-		if rule.RepoPattern != "" && rule.RepoPattern != "*" {
-			repoDAO := db.NewRepoDAO()
-			if repo, err := repoDAO.FindByID(event.RepoID); err == nil {
-				fullName := repo.PlatformOwner + "/" + repo.PlatformRepo
-				if !matchPattern(rule.RepoPattern, fullName) {
-					continue
-				}
+		if rule.RepoPattern != "" && rule.RepoPattern != "*" && repoFullName != "" {
+			if !matchPattern(rule.RepoPattern, repoFullName) {
+				continue
 			}
 		}
 
