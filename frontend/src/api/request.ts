@@ -103,9 +103,13 @@ service.interceptors.response.use(
       cancelTokens.delete(requestKey)
     }
 
-    // 处理取消请求（静默处理，不报错）
+    // 处理取消请求：必须 reject（而不是永不 settle 的 promise），否则调用方
+    // 的 await 会永久挂起、finally/loading 复位永不执行（轮询场景下表现为
+    // spinner 卡死）。用标记过的 CanceledError 让调用方可以静默忽略。
     if (axios.isCancel(error) || (error as any).code === 'ERR_CANCELED' || (error as any).name === 'CanceledError') {
-      return new Promise(() => {})
+      const cancelErr = new Error('request canceled (superseded by identical request)') as Error & { canceled?: boolean }
+      cancelErr.canceled = true
+      return Promise.reject(cancelErr)
     }
 
     // 处理网络错误

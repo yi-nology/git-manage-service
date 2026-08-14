@@ -120,6 +120,10 @@ func (s *Service) IndexRepo(ctx context.Context, repoKey string) (*IndexResult, 
 	}
 
 	s.store.Index(repoKey, vectors)
+	// Record the HEAD this index was built at so unchanged repos skip reindex.
+	if head, err := s.gitSvc.GetCommitHash(repo.Path, "", "HEAD"); err == nil {
+		markIndexed(repoKey, head)
+	}
 
 	return &IndexResult{
 		RepoKey:    repoKey,
@@ -172,9 +176,14 @@ func (s *Service) RetrieveForReview(ctx context.Context, repoID uint, files []st
 	}
 
 	repoKey := repo.Key
-	_, idxErr := s.IndexRepo(ctx, repoKey)
-	if idxErr != nil {
-		log.Printf("[RAG] Index error (non-fatal): %v", idxErr)
+
+	// Only re-index when HEAD moved since the last index — previously this
+	// re-embedded the entire repo (up to 200 files) before EVERY code review.
+	if s.repoChangedSinceIndex(repoKey, repo.Path) {
+		_, idxErr := s.IndexRepo(ctx, repoKey)
+		if idxErr != nil {
+			log.Printf("[RAG] Index error (non-fatal): %v", idxErr)
+		}
 	}
 
 	results, err := s.Retrieve(ctx, repoKey, files, 5)
@@ -183,6 +192,28 @@ func (s *Service) RetrieveForReview(ctx context.Context, repoID uint, files []st
 	}
 
 	return FormatContextForPrompt(results, 6000), nil
+}
+
+// indexedHead tracks the HEAD commit each repo was last indexed at, so
+// unchanged repos skip the full re-embed.
+var indexedHead sync.Map // map[repoKey]string
+
+func (s *Service) repoChangedSinceIndex(repoKey, repoPath string) bool {
+	head, err := s.gitSvc.GetCommitHash(repoPath, "", "HEAD")
+	if err != nil || head == "" {
+		return true // can't tell — index anyway
+	}
+	if last, ok := indexedHead.Load(repoKey); ok && last.(string) == head {
+		return false
+	}
+	return true
+}
+
+// markIndexed records the HEAD the repo was indexed at.
+func markIndexed(repoKey, head string) {
+	if head != "" {
+		indexedHead.Store(repoKey, head)
+	}
 }
 
 func filterSourceFiles(tree []git.TreeEntry) []git.TreeEntry {

@@ -22,19 +22,23 @@ var namedParamPatterns = []struct {
 	prefix string
 	suffix string
 	repl   string
+	// whole: replace the entire remainder with repl. When false, only the
+	// first path segment is replaced and the rest is preserved (e.g. the
+	// /author/fix tail after /{repo_key}).
+	whole bool
 }{
-	{"/api/v1/repo/", "/author/", "/{repo_key}/author/"},
-	{"/api/v1/repo/", "/maintenance/", "/{repo_key}/maintenance/"},
-	{"/api/v1/reviews/config/", "", "/{repo_key}"},
-	{"/api/v1/review/remote-config/", "", "/{provider_id}/{owner}/{repo}"},
-	{"/api/v1/branch-rules/remote-config/", "", "/{provider_id}/{owner}/{repo}"},
-	{"/api/webhooks/trigger/", "", "/{token}"},
-	{"/api/v1/spec/commit/", "", "/{path}"},
-	{"/api/v1/spec/content/", "", "/{path}"},
-	{"/api/v1/spec/rules/", "", "/{id}"},
-	{"/api/v1/settings/llm-providers/", "/default", "/{id}/default"},
-	{"/api/v1/settings/llm-providers/", "/test", "/{id}/test"},
-	{"/api/v1/settings/review-rules/", "", "/{rule_id}"},
+	{"/api/v1/repo/", "/author/", "/{repo_key}", false},
+	{"/api/v1/repo/", "/maintenance/", "/{repo_key}", false},
+	{"/api/v1/reviews/config/", "", "/{repo_key}", true},
+	{"/api/v1/review/remote-config/", "", "/{provider_id}/{owner}/{repo}", true},
+	{"/api/v1/branch-rules/remote-config/", "", "/{provider_id}/{owner}/{repo}", true},
+	{"/api/webhooks/trigger/", "", "/{token}", true},
+	{"/api/v1/spec/commit/", "", "/{path}", true},
+	{"/api/v1/spec/content/", "", "/{path}", true},
+	{"/api/v1/spec/rules/", "", "/{id}", true},
+	{"/api/v1/settings/llm-providers/", "/default", "/{id}/default", true},
+	{"/api/v1/settings/llm-providers/", "/test", "/{id}/test", true},
+	{"/api/v1/settings/review-rules/", "", "/{rule_id}", true},
 }
 
 var auditRoutes = map[string]AuditConfig{
@@ -235,7 +239,7 @@ func matchRoute(method, path string) *AuditConfig {
 
 	for _, p := range namedParamPatterns {
 		if strings.HasPrefix(path, p.prefix) && (p.suffix == "" || strings.Contains(path, p.suffix)) {
-			norm2 := applyNamedPattern(path, p.prefix, p.repl)
+			norm2 := applyNamedPattern(path, p.prefix, p.repl, p.whole)
 			key2 := method + ":" + norm2
 			if cfg, ok := auditRoutes[key2]; ok {
 				return &cfg
@@ -246,8 +250,15 @@ func matchRoute(method, path string) *AuditConfig {
 	return nil
 }
 
-func applyNamedPattern(path, prefix, repl string) string {
+func applyNamedPattern(path, prefix, repl string, whole bool) string {
 	rest := strings.TrimPrefix(path, prefix)
+	// prefix ends with "/" and repl starts with "/" — drop one to avoid "//".
+	if strings.HasSuffix(prefix, "/") {
+		repl = strings.TrimPrefix(repl, "/")
+	}
+	if whole {
+		return prefix + repl
+	}
 	slashIdx := strings.Index(rest, "/")
 	if slashIdx == -1 {
 		return prefix + repl

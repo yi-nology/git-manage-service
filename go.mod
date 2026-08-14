@@ -13,9 +13,7 @@ require (
 	github.com/cloudwego/prutal v0.2.1
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.3
 	github.com/hertz-contrib/monitor-prometheus v0.1.3
-	github.com/hibiken/asynq v0.26.0
 	github.com/minio/minio-go/v7 v7.2.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.21.0
@@ -26,7 +24,6 @@ require (
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/crypto v0.54.0
 	golang.org/x/text v0.40.0
-	golang.org/x/time v0.15.0
 	google.golang.org/protobuf v1.36.11
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/driver/postgres v1.6.0
@@ -73,6 +70,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/iancoleman/strcase v0.2.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

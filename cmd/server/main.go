@@ -19,7 +19,6 @@ import (
 	prometheus "github.com/hertz-contrib/monitor-prometheus"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/kitex_gen/git/gitservice"
-	bizqueue "github.com/yi-nology/git-manage-service/biz/queue"
 	"github.com/yi-nology/git-manage-service/biz/router"
 	"github.com/yi-nology/git-manage-service/biz/rpc_handler"
 	"github.com/yi-nology/git-manage-service/biz/service/audit"
@@ -121,7 +120,6 @@ func main() {
 
 	audit.AuditSvc.Stop()
 
-	bizqueue.CloseClient()
 	mirrorSvc.StopScheduler()
 
 	log.Println("All servers stopped. Exiting.")
@@ -171,16 +169,17 @@ func initSyncV2Service() {
 }
 
 func initQueue() {
-	cfg := configs.GlobalConfig
-	if !cfg.CodeReview.Enabled {
-		log.Println("[Queue] Code review disabled, skipping queue init")
+	// The asynq pipeline was scaffolding that never enqueued anything (the
+	// review path invokes RunReview directly); it was removed along with
+	// biz/queue. LLM providers must still be initialized — they serve spec-AI,
+	// workspace, and maintenance features regardless of code-review state.
+	if !configs.GetCodeReviewConfig().Enabled {
+		log.Println("[Queue] Code review disabled, skipping LLM provider init")
 		return
 	}
 	llm.InitProviders()
 	llm.InitProvidersFromDB()
-	bizqueue.InitClient(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
-	go bizqueue.StartWorker(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
-	log.Println("[Queue] Asynq client + worker initialized")
+	log.Println("[Queue] LLM providers initialized")
 }
 
 func initMirrorSystem() {
