@@ -1,9 +1,10 @@
 package main
 
 import (
+	"log"
+
 	git "github.com/yi-nology/git-manage-service/biz/kitex_gen/git/gitservice"
 	"github.com/yi-nology/git-manage-service/biz/rpc_handler"
-	"log"
 )
 
 func main() {

@@ -364,7 +364,7 @@ func (s *MaintenanceService) FindStashEntries(repoPath string, threshold int64) 
 			continue
 		}
 		ref := fmt.Sprintf("stash@{%d}", i)
-	sizeOutput, err := runGitCmd(repoPath, "cat-file", "-s", ref)
+		sizeOutput, err := runGitCmd(repoPath, "cat-file", "-s", ref)
 		var sizeBytes int64
 		if err == nil {
 			sizeBytes, _ = strconv.ParseInt(strings.TrimSpace(string(sizeOutput)), 10, 64)
@@ -396,7 +396,7 @@ func (s *MaintenanceService) FindStashLargeObjects(repoPath string, threshold in
 
 	for i := 0; i < stashCount; i++ {
 		ref := fmt.Sprintf("stash@{%d}", i)
-	diffOutput, err := runGitCmd(repoPath, "diff-tree", "--no-commit-id", "-r", ref)
+		diffOutput, err := runGitCmd(repoPath, "diff-tree", "--no-commit-id", "-r", ref)
 		if err != nil {
 			continue
 		}
@@ -410,7 +410,7 @@ func (s *MaintenanceService) FindStashLargeObjects(repoPath string, threshold in
 				continue
 			}
 			blobSHA := meta[3]
-	sizeOutput, err := runGitCmd(repoPath, "cat-file", "-s", blobSHA)
+			sizeOutput, err := runGitCmd(repoPath, "cat-file", "-s", blobSHA)
 			if err != nil {
 				continue
 			}
@@ -472,7 +472,7 @@ func (s *MaintenanceService) FindReflogLargeObjects(repoPath string, threshold i
 		if commitSHA == "" {
 			continue
 		}
-	treeOutput, err := runGitCmd(repoPath, "ls-tree", "-r", commitSHA)
+		treeOutput, err := runGitCmd(repoPath, "ls-tree", "-r", commitSHA)
 		if err != nil {
 			continue
 		}
@@ -709,7 +709,7 @@ func (s *MaintenanceService) verifyPathsRemoved(repoPath string, paths []string)
 		if commitSHA == "" {
 			continue
 		}
-	treeOutput, err := runGitCmd(repoPath, "ls-tree", "-r", commitSHA)
+		treeOutput, err := runGitCmd(repoPath, "ls-tree", "-r", commitSHA)
 		if err != nil {
 			continue
 		}

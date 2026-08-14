@@ -55,21 +55,3 @@ func BuildRepoContext(repoKey, defaultBranch string, branchCount, tagCount, comm
 	))
 	return b.Build()
 }
-
-func BuildFileContext(filePath, language, content string, maxChars int) string {
-	if len(content) > maxChars {
-		content = ClampText(content, maxChars)
-	}
-	b := NewContextBuilder()
-	b.AddCodeSection(fmt.Sprintf("File: %s", filePath), language, content)
-	return b.Build()
-}
-
-func BuildDiffContext(filePath, diff string, maxChars int) string {
-	if len(diff) > maxChars {
-		diff = ClampText(diff, maxChars)
-	}
-	b := NewContextBuilder()
-	b.AddCodeSection(fmt.Sprintf("Diff: %s", filePath), "diff", diff)
-	return b.Build()
-}

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
@@ -246,18 +245,6 @@ func (c *EmbeddingClient) Model() string {
 		return ""
 	}
 	return c.model
-}
-
-func ResolveEmbeddingProvider() *po.LLMProvider {
-	p, err := db.NewLLMProviderDAO().FindEmbeddingProvider()
-	if err == nil && p != nil {
-		return p
-	}
-	def, err := db.NewLLMProviderDAO().FindDefault()
-	if err == nil && def != nil {
-		return def
-	}
-	return nil
 }
 
 func truncateString(s string, maxLen int) string {

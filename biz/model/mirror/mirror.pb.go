@@ -7,12 +7,13 @@
 package mirror
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	_ "github.com/yi-nology/git-manage-service/biz/model/api"
 	common "github.com/yi-nology/git-manage-service/biz/model/common"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (

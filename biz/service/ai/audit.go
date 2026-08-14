@@ -70,9 +70,3 @@ func RecordUserFeedback(invocationID uint, feedback string) error {
 	}
 	return db.DB.Model(&po.AIInvocation{}).Where("id = ?", invocationID).Update("user_feedback", feedback).Error
 }
-
-func GetInvocation(id uint) (*po.AIInvocation, error) {
-	var inv po.AIInvocation
-	err := db.DB.First(&inv, id).Error
-	return &inv, err
-}

@@ -5,8 +5,6 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
-	"github.com/yi-nology/git-manage-service/biz/model/domain"
-	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-platform-sdk/provider"
 )
@@ -82,44 +80,4 @@ func AutoDetect(repoKey string) (*api.AutoDetectResp, error) {
 	}
 
 	return &api.AutoDetectResp{Suggestions: suggestions}, nil
-}
-
-func FindBindingForRepo(repoKey string, providerConfigID uint) (*po.RepoProviderBinding, error) {
-	repoDAO := db.NewRepoDAO()
-	repo, err := repoDAO.FindByKey(repoKey)
-	if err != nil {
-		return nil, err
-	}
-
-	bindingDAO := db.NewRepoProviderBindingDAO()
-
-	if providerConfigID > 0 {
-		return bindingDAO.FindByRepoAndProvider(repo.ID, providerConfigID)
-	}
-
-	return bindingDAO.FindPrimaryByRepoID(repo.ID)
-}
-
-func FindBindingByPlatformRepo(providerConfigID uint, owner, repoName string) (*api.RepoProviderBindingDTO, error) {
-	dao := db.NewRepoProviderBindingDAO()
-	b, err := dao.FindByPlatformRepo(providerConfigID, owner, repoName)
-	if err != nil {
-		return nil, err
-	}
-	dto := api.NewBindingDTO(*b)
-	return &dto, nil
-}
-
-func GetRemotesForRepo(repoKey string) ([]domain.GitRemote, error) {
-	repoDAO := db.NewRepoDAO()
-	repo, err := repoDAO.FindByKey(repoKey)
-	if err != nil {
-		return nil, err
-	}
-	gitSvc := git.NewGitService()
-	repoConfig, err := gitSvc.GetRepoConfig(repo.Path)
-	if err != nil {
-		return nil, err
-	}
-	return repoConfig.Remotes, nil
 }

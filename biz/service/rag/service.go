@@ -9,7 +9,6 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
 type Service struct {
@@ -91,79 +90,6 @@ func (s *Service) IndexRepo(ctx context.Context, repoKey string) (*IndexResult, 
 
 	if len(allChunks) == 0 {
 		return &IndexResult{RepoKey: repoKey, Error: "no chunks generated"}, nil
-	}
-
-	texts := make([]string, len(allChunks))
-	for i, c := range allChunks {
-		texts[i] = truncateForEmbedding(c.Content, 2000)
-	}
-
-	embeddings, err := s.client.Embed(ctx, texts)
-	if err != nil {
-		return &IndexResult{RepoKey: repoKey, Error: fmt.Sprintf("embedding failed: %v", err)}, nil
-	}
-
-	vectors := make([]*Vector, len(allChunks))
-	for i, chunk := range allChunks {
-		vec := &Vector{
-			ID:        fmt.Sprintf("%s:%d", chunk.FilePath, chunk.StartLine),
-			FilePath:  chunk.FilePath,
-			Content:   chunk.Content,
-			StartLine: chunk.StartLine,
-			EndLine:   chunk.EndLine,
-		}
-		if i < len(embeddings) {
-			vec.Values = embeddings[i]
-		}
-		vectors[i] = vec
-	}
-
-	s.store.Index(repoKey, vectors)
-
-	return &IndexResult{
-		RepoKey:    repoKey,
-		ChunkCount: len(vectors),
-		FileCount:  fileCount,
-		Duration:   time.Since(start),
-	}, nil
-}
-
-func (s *Service) IndexRemoteRepo(ctx context.Context, p provider.Provider, owner, repo, branch string) (*IndexResult, error) {
-	start := time.Now()
-
-	if !s.IsAvailable() {
-		return &IndexResult{Error: "embedding client not configured"}, nil
-	}
-
-	repoKey := fmt.Sprintf("remote:%s/%s/%s", string(p.Platform()), owner, repo)
-
-	files, err := p.GetCRFiles(ctx, owner, repo, 0)
-	if err != nil || len(files) == 0 {
-		return &IndexResult{RepoKey: repoKey, Error: fmt.Sprintf("list remote files: %v", err)}, nil
-	}
-
-	var allChunks []*Chunk
-	fileCount := 0
-	ref := branch
-	if ref == "" {
-		ref = "HEAD"
-	}
-
-	for _, f := range files {
-		if f.IsBinary || f.Diff == "" {
-			continue
-		}
-		path := f.NewPath
-		if path == "" {
-			path = f.OldPath
-		}
-		chunks := ChunkFile(path, f.Diff, 800)
-		allChunks = append(allChunks, chunks...)
-		fileCount++
-	}
-
-	if len(allChunks) == 0 {
-		return &IndexResult{RepoKey: repoKey, Error: "no chunks from remote diff"}, nil
 	}
 
 	texts := make([]string, len(allChunks))

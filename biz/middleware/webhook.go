@@ -5,9 +5,10 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"net/http"
 	"strings"
+
+	"github.com/yi-nology/git-manage-service/pkg/configs"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"golang.org/x/time/rate"
