@@ -3,7 +3,6 @@ package webhook_event
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
@@ -145,9 +144,8 @@ func CreateRule(ctx context.Context, c *app.RequestContext) {
 
 // UpdateRule updates a webhook rule by id.
 func UpdateRule(ctx context.Context, c *app.RequestContext) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		pkgresponse.BadRequest(c, "invalid id")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 	var req webhookRuleRequest
@@ -167,9 +165,8 @@ func UpdateRule(ctx context.Context, c *app.RequestContext) {
 
 // DeleteRule deletes a webhook rule by id.
 func DeleteRule(ctx context.Context, c *app.RequestContext) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		pkgresponse.BadRequest(c, "invalid id")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 	if err := db.NewWebhookRuleDAO().Delete(uint(id)); err != nil {

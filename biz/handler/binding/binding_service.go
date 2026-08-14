@@ -2,7 +2,6 @@ package binding
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
@@ -25,15 +24,6 @@ func convertToProtoBinding(dto api.RepoProviderBindingDTO) *bindingModel.Binding
 		CreatedAt:        dto.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt:        dto.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
-}
-
-func parseID(c *app.RequestContext) (uint, error) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return uint(id), nil
 }
 
 // List .
@@ -63,9 +53,8 @@ func List(ctx context.Context, c *app.RequestContext) {
 // Get .
 // @router /api/v1/bindings/:id [GET]
 func Get(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -98,9 +87,8 @@ func Create(ctx context.Context, c *app.RequestContext) {
 // Update .
 // @router /api/v1/bindings/:id [PUT]
 func Update(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -121,9 +109,8 @@ func Update(ctx context.Context, c *app.RequestContext) {
 // Delete .
 // @router /api/v1/bindings/:id [DELETE]
 func Delete(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -138,9 +125,8 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 // SetPrimary .
 // @router /api/v1/bindings/:id/set-primary [POST]
 func SetPrimary(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -172,9 +158,8 @@ func AutoDetect(ctx context.Context, c *app.RequestContext) {
 // RegisterWebhook .
 // @router /api/v1/bindings/:id/webhook [POST]
 func RegisterWebhook(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -189,9 +174,8 @@ func RegisterWebhook(ctx context.Context, c *app.RequestContext) {
 // DeleteWebhook .
 // @router /api/v1/bindings/:id/webhook [DELETE]
 func DeleteWebhook(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 

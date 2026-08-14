@@ -40,12 +40,6 @@ func toProviderConfigDTO(cfg *po.ProviderConfig) api.ProviderConfigDTO {
 	}
 }
 
-func parseID(c *app.RequestContext) (uint, error) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	return uint(id), err
-}
-
 // List .
 // @router /api/v1/providers [GET]
 func List(ctx context.Context, c *app.RequestContext) {
@@ -78,9 +72,8 @@ func List(ctx context.Context, c *app.RequestContext) {
 // Get .
 // @router /api/v1/providers/:id [GET]
 func Get(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 	dao := db.NewProviderConfigDAO()
@@ -141,9 +134,8 @@ func Create(ctx context.Context, c *app.RequestContext) {
 // Update .
 // @router /api/v1/providers/:id [PUT]
 func Update(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 	var req api.UpdateProviderConfigReq
@@ -188,9 +180,8 @@ func Update(ctx context.Context, c *app.RequestContext) {
 // Delete .
 // @router /api/v1/providers/:id [DELETE]
 func Delete(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 	dao := db.NewProviderConfigDAO()
@@ -215,9 +206,8 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 // Test .
 // @router /api/v1/providers/:id/test [POST]
 func Test(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 	p, err := provider_manager.GetManager().GetProvider(id)
@@ -236,9 +226,8 @@ func Test(ctx context.Context, c *app.RequestContext) {
 // ListRemoteRepos .
 // @router /api/v1/providers/:id/repos [GET]
 func ListRemoteRepos(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c)
-	if err != nil {
-		pkgresponse.BadRequest(c, "Invalid ID")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 	p, err := provider_manager.GetManager().GetProvider(id)

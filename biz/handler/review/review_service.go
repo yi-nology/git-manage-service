@@ -145,9 +145,8 @@ func CreateTask(ctx context.Context, c *app.RequestContext) {
 }
 
 func GetTask(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c.Param("id"))
-	if err != nil {
-		pkgresponse.BadRequest(c, "invalid id")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 	task, err := db.NewReviewTaskDAO().FindByID(id)
@@ -214,9 +213,8 @@ func ListTasks(ctx context.Context, c *app.RequestContext) {
 }
 
 func ListFindings(ctx context.Context, c *app.RequestContext) {
-	taskID, err := parseID(c.Param("task_id"))
-	if err != nil {
-		pkgresponse.BadRequest(c, "invalid task_id")
+	taskID, ok := pkgresponse.ParseIDParam(c, "task_id")
+	if !ok {
 		return
 	}
 	severity := c.Query("severity")
@@ -250,9 +248,8 @@ func ListFindings(ctx context.Context, c *app.RequestContext) {
 }
 
 func RetryTask(ctx context.Context, c *app.RequestContext) {
-	id, err := parseID(c.Param("id"))
-	if err != nil {
-		pkgresponse.BadRequest(c, "invalid id")
+	id, ok := pkgresponse.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 	var body struct {
@@ -329,9 +326,8 @@ func UpdateReviewConfig(ctx context.Context, c *app.RequestContext) {
 }
 
 func GetRemoteRepoConfig(ctx context.Context, c *app.RequestContext) {
-	providerID, err := parseID(c.Param("provider_id"))
-	if err != nil {
-		pkgresponse.BadRequest(c, "invalid provider_id")
+	providerID, ok := pkgresponse.ParseIDParam(c, "provider_id")
+	if !ok {
 		return
 	}
 	owner := c.Param("owner")
@@ -349,9 +345,8 @@ func GetRemoteRepoConfig(ctx context.Context, c *app.RequestContext) {
 }
 
 func UpdateRemoteRepoConfig(ctx context.Context, c *app.RequestContext) {
-	providerID, err := parseID(c.Param("provider_id"))
-	if err != nil {
-		pkgresponse.BadRequest(c, "invalid provider_id")
+	providerID, ok := pkgresponse.ParseIDParam(c, "provider_id")
+	if !ok {
 		return
 	}
 	owner := c.Param("owner")
@@ -372,14 +367,6 @@ func UpdateRemoteRepoConfig(ctx context.Context, c *app.RequestContext) {
 	}
 	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", providerID, owner, repo))
 	pkgresponse.Success(c, result)
-}
-
-func parseID(s string) (uint, error) {
-	id, err := strconv.ParseUint(s, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return uint(id), nil
 }
 
 func GetReviewStats(ctx context.Context, c *app.RequestContext) {
@@ -406,9 +393,8 @@ func GetReviewStats(ctx context.Context, c *app.RequestContext) {
 }
 
 func GetReviewFeedback(ctx context.Context, c *app.RequestContext) {
-	findingID, err := parseID(c.Param("finding_id"))
-	if err != nil {
-		pkgresponse.BadRequest(c, "invalid finding_id")
+	findingID, ok := pkgresponse.ParseIDParam(c, "finding_id")
+	if !ok {
 		return
 	}
 	var req struct {
@@ -467,7 +453,7 @@ func CreateTaskByProvider(ctx context.Context, c *app.RequestContext) {
 }
 
 func ListTasksByProvider(ctx context.Context, c *app.RequestContext) {
-	providerID, err := parseID(c.Query("provider_id"))
+	providerID, err := strconv.ParseUint(c.Query("provider_id"), 10, 64)
 	if err != nil {
 		pkgresponse.BadRequest(c, "invalid provider_id")
 		return
@@ -487,7 +473,7 @@ func ListTasksByProvider(ctx context.Context, c *app.RequestContext) {
 		pageSize = 20
 	}
 
-	tasks, total, err := db.NewReviewTaskDAO().FindByProviderConfigID(providerID, mrIID, page, pageSize)
+	tasks, total, err := db.NewReviewTaskDAO().FindByProviderConfigID(uint(providerID), mrIID, page, pageSize)
 	if err != nil {
 		pkgresponse.InternalServerError(c, err.Error())
 		return

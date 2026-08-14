@@ -2,7 +2,6 @@ package credential
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/credential"
@@ -58,10 +57,8 @@ func Match(ctx context.Context, c *app.RequestContext) {
 }
 
 func Get(ctx context.Context, c *app.RequestContext) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		response.BadRequest(c, "invalid id")
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -74,10 +71,8 @@ func Get(ctx context.Context, c *app.RequestContext) {
 }
 
 func Update(ctx context.Context, c *app.RequestContext) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		response.BadRequest(c, "invalid id")
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -96,10 +91,8 @@ func Update(ctx context.Context, c *app.RequestContext) {
 }
 
 func Delete(ctx context.Context, c *app.RequestContext) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		response.BadRequest(c, "invalid id")
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -111,10 +104,8 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 }
 
 func Test(ctx context.Context, c *app.RequestContext) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		response.BadRequest(c, "invalid id")
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -133,10 +124,8 @@ func Test(ctx context.Context, c *app.RequestContext) {
 }
 
 func GetUsages(ctx context.Context, c *app.RequestContext) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		response.BadRequest(c, "invalid id")
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -149,10 +138,8 @@ func GetUsages(ctx context.Context, c *app.RequestContext) {
 }
 
 func Rotate(ctx context.Context, c *app.RequestContext) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		response.BadRequest(c, "invalid id")
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 

@@ -162,9 +162,8 @@ func GetMirror(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	id, err := parseIDParam(c, "id")
-	if err != nil {
-		response.BadRequest(c, err.Error())
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -234,9 +233,8 @@ func UpdateMirror(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	id, err := parseIDParam(c, "id")
-	if err != nil {
-		response.BadRequest(c, err.Error())
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -296,9 +294,8 @@ func DeleteMirror(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	id, err := parseIDParam(c, "id")
-	if err != nil {
-		response.BadRequest(c, err.Error())
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -321,9 +318,8 @@ func TriggerSync(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	id, err := parseIDParam(c, "id")
-	if err != nil {
-		response.BadRequest(c, err.Error())
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -372,9 +368,8 @@ func PreviewSync(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	id, err := parseIDParam(c, "id")
-	if err != nil {
-		response.BadRequest(c, err.Error())
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -394,9 +389,8 @@ func ListSyncLogs(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	id, err := parseIDParam(c, "id")
-	if err != nil {
-		response.BadRequest(c, err.Error())
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -427,9 +421,8 @@ func GetSyncLog(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	logID, err := parseIDParam(c, "log_id")
-	if err != nil {
-		response.BadRequest(c, err.Error())
+	logID, ok := response.ParseIDParam(c, "log_id")
+	if !ok {
 		return
 	}
 
@@ -448,9 +441,8 @@ func DeleteSyncLog(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	logID, err := parseIDParam(c, "log_id")
-	if err != nil {
-		response.BadRequest(c, err.Error())
+	logID, ok := response.ParseIDParam(c, "log_id")
+	if !ok {
 		return
 	}
 
@@ -468,9 +460,8 @@ func PauseMirror(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	id, err := parseIDParam(c, "id")
-	if err != nil {
-		response.BadRequest(c, err.Error())
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -498,9 +489,8 @@ func ResumeMirror(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	id, err := parseIDParam(c, "id")
-	if err != nil {
-		response.BadRequest(c, err.Error())
+	id, ok := response.ParseIDParam(c, "id")
+	if !ok {
 		return
 	}
 
@@ -586,16 +576,4 @@ func HandleWebhook(ctx context.Context, c *app.RequestContext) {
 	}
 
 	response.Success(c, nil)
-}
-
-func parseIDParam(c *app.RequestContext, param string) (uint, error) {
-	str := c.Param(param)
-	if str == "" {
-		return 0, strconv.ErrSyntax
-	}
-	id, err := strconv.ParseUint(str, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return uint(id), nil
 }

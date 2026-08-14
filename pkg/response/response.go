@@ -2,12 +2,29 @@ package response
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/errno"
 )
+
+// ParseIDParam parses a uint path param, writing a BadRequest response on
+// failure. Returns ok=false when the caller should return immediately.
+func ParseIDParam(c *app.RequestContext, name string) (uint, bool) {
+	idStr := c.Param(name)
+	if idStr == "" {
+		BadRequest(c, "invalid "+name)
+		return 0, false
+	}
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		BadRequest(c, "invalid "+name)
+		return 0, false
+	}
+	return uint(id), true
+}
 
 // Response 标准响应结构（符合 AGENT.md 规范）
 type Response struct {
