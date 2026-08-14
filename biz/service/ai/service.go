@@ -25,6 +25,23 @@ func fillResponseMeta(resp aiResponseMeta, raw string, invocationID uint) {
 	resp.SetInvocationID(invocationID)
 }
 
+// runParsedInto runs the LLM chat, parses the JSON response into result,
+// applies onParseFail(raw) when the LLM returned unparseable content, then
+// fills response metadata. This is the shared tail of the Generate* methods.
+func (s *Service) runParsedInto(ctx context.Context, taskReq TaskRequest, result aiResponseMeta, onParseFail func(raw string)) error {
+	resp, err := s.runner.Chat(ctx, taskReq)
+	if err != nil {
+		return err
+	}
+	if err := parseJSONResponse(resp.Content, result); err != nil {
+		if onParseFail != nil {
+			onParseFail(resp.Content)
+		}
+	}
+	fillResponseMeta(result, resp.Content, resp.InvocationID)
+	return nil
+}
+
 type Service struct {
 	runner *Runner
 }
@@ -61,19 +78,13 @@ func (s *Service) DiagnoseSyncFailure(ctx context.Context, req api.SyncFailureRe
 		RepoKey:      req.RepoKey,
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIDiagnosisResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.RootCause = raw
+		result.RecommendedActions = []string{"请查看详细输出"}
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIDiagnosisResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.RootCause = resp.Content
-		result.RecommendedActions = []string{"请查看详细输出"}
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -144,18 +155,12 @@ func (s *Service) GenerateRepoSummary(ctx context.Context, repoReq api.RepoSumma
 		RepoKey:      repoReq.RepoKey,
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIAdviceResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = raw
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIAdviceResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = resp.Content
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -191,19 +196,13 @@ func (s *Service) GenerateCommitMessage(ctx context.Context, req api.CommitMessa
 		RepoKey:      req.RepoKey,
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIDraftResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = "Generated commit message"
+		result.ApplyContent = strings.TrimSpace(raw)
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIDraftResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = "Generated commit message"
-		result.ApplyContent = strings.TrimSpace(resp.Content)
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -288,19 +287,13 @@ func (s *Service) ReviewReplyDraft(ctx context.Context, req api.ReviewReplyReque
 		RepoKey:      req.RepoKey,
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIDraftResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = "Generated reply draft"
+		result.ApplyContent = strings.TrimSpace(raw)
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIDraftResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = "Generated reply draft"
-		result.ApplyContent = strings.TrimSpace(resp.Content)
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -356,18 +349,12 @@ func (s *Service) ReviewSummary(ctx context.Context, req api.ReviewSummaryReques
 		RepoKey:      req.RepoKey,
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIReviewResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = raw
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIReviewResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = resp.Content
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -398,19 +385,13 @@ func (s *Service) ResolveConflict(ctx context.Context, req api.ConflictResolveRe
 		RepoKey:      req.RepoKey,
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIDraftResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = "Conflict resolution draft"
+		result.ApplyContent = strings.TrimSpace(raw)
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIDraftResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = "Conflict resolution draft"
-		result.ApplyContent = strings.TrimSpace(resp.Content)
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -434,18 +415,12 @@ func (s *Service) ExplainConflict(ctx context.Context, req api.ConflictResolveRe
 		RepoKey:      req.RepoKey,
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIAdviceResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = raw
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIAdviceResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = resp.Content
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -470,19 +445,13 @@ func (s *Service) GenerateBranchRule(ctx context.Context, req api.BranchRuleRequ
 		RepoKey:      req.RepoKey,
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIDraftResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = "Branch rule recommendation"
+		result.ApplyContent = strings.TrimSpace(raw)
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIDraftResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = "Branch rule recommendation"
-		result.ApplyContent = strings.TrimSpace(resp.Content)
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -515,19 +484,13 @@ func (s *Service) GenerateSpecTemplate(ctx context.Context, req api.SpecTemplate
 		RepoKey:      req.RepoKey,
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIDraftResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = "Spec template generated"
+		result.ApplyContent = strings.TrimSpace(raw)
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIDraftResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = "Spec template generated"
-		result.ApplyContent = strings.TrimSpace(resp.Content)
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -551,19 +514,13 @@ func (s *Service) RewriteSpecSection(ctx context.Context, req api.SpecRewriteReq
 		RepoKey:      req.RepoKey,
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIDraftResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = "Spec section modified"
+		result.ApplyContent = strings.TrimSpace(raw)
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIDraftResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = "Spec section modified"
-		result.ApplyContent = strings.TrimSpace(resp.Content)
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -585,18 +542,12 @@ func (s *Service) RecommendProviderBinding(ctx context.Context, req api.Provider
 		Messages:     []llm.ChatMessage{{Role: "user", Content: context}},
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIAdviceResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = raw
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIAdviceResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = resp.Content
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -619,18 +570,12 @@ func (s *Service) AnalyzePatchRisk(ctx context.Context, req api.PatchAnalysisReq
 		Messages:     []llm.ChatMessage{{Role: "user", Content: context}},
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIDiagnosisResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.RootCause = raw
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIDiagnosisResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.RootCause = resp.Content
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -652,18 +597,12 @@ func (s *Service) SummarizeAuditLogs(ctx context.Context, req api.AuditSummaryRe
 		Messages:     []llm.ChatMessage{{Role: "user", Content: context}},
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIAdviceResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = raw
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIAdviceResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = resp.Content
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -685,18 +624,12 @@ func (s *Service) AnalyzeStatsInsight(ctx context.Context, req api.StatsInsightR
 		Messages:     []llm.ChatMessage{{Role: "user", Content: context}},
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIAdviceResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.Summary = raw
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIAdviceResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.Summary = resp.Content
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
@@ -719,18 +652,12 @@ func (s *Service) AnalyzeWebhookFailure(ctx context.Context, req api.WebhookFail
 		Messages:     []llm.ChatMessage{{Role: "user", Content: context}},
 	}
 
-	resp, err := s.runner.Chat(ctx, taskReq)
-	if err != nil {
+	result := &api.AIDiagnosisResponse{}
+	if err := s.runParsedInto(ctx, taskReq, result, func(raw string) {
+		result.RootCause = raw
+	}); err != nil {
 		return nil, err
 	}
-
-	result := &api.AIDiagnosisResponse{}
-	if err := parseJSONResponse(resp.Content, result); err != nil {
-		result.RootCause = resp.Content
-
-	}
-	fillResponseMeta(result, resp.Content, resp.InvocationID)
-
 	return result, nil
 }
 
