@@ -22,6 +22,34 @@ import (
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
+// describeScannedRepo builds a ScannedRepo with git metadata (remotes, branch,
+// last commit, dirty status) for the given path.
+func describeScannedRepo(gitSvc *git.GitService, name, path string) api.ScannedRepo {
+	repo := api.ScannedRepo{
+		Name:    name,
+		Path:    path,
+		Remotes: []domain.GitRemote{},
+	}
+	config, err := gitSvc.GetRepoConfig(path)
+	if err == nil {
+		repo.Remotes = config.Remotes
+	}
+	branch, _ := gitSvc.GetHeadBranch(path)
+	repo.CurrentBranch = branch
+	if branch != "" {
+		if hash, err := gitSvc.GetCommitHash(path, "", branch); err == nil {
+			if len(hash) > 7 {
+				repo.LastCommit = hash[:7]
+			} else {
+				repo.LastCommit = hash
+			}
+		}
+	}
+	status, _ := gitSvc.GetStatus(path)
+	repo.HasChanges = status != ""
+	return repo
+}
+
 // syncRemotes reconciles a repo's remotes to match the requested list:
 // removes remotes not in the list, then re-adds each requested remote.
 func syncRemotes(repoPath string, remotes []domain.GitRemote) {
@@ -327,35 +355,7 @@ func ScanDirectory(ctx context.Context, c *app.RequestContext) {
 	var repos []api.ScannedRepo
 
 	if gitSvc.IsGitRepo(req.Path) {
-		name := filepath.Base(req.Path)
-		repo := api.ScannedRepo{
-			Name:    name,
-			Path:    req.Path,
-			Remotes: []domain.GitRemote{},
-		}
-
-		config, err := gitSvc.GetRepoConfig(req.Path)
-		if err == nil {
-			repo.Remotes = config.Remotes
-		}
-
-		branch, _ := gitSvc.GetHeadBranch(req.Path)
-		repo.CurrentBranch = branch
-
-		if branch != "" {
-			if hash, err := gitSvc.GetCommitHash(req.Path, "", branch); err == nil {
-				if len(hash) > 7 {
-					repo.LastCommit = hash[:7]
-				} else {
-					repo.LastCommit = hash
-				}
-			}
-		}
-
-		status, _ := gitSvc.GetStatus(req.Path)
-		repo.HasChanges = status != ""
-
-		repos = append(repos, repo)
+		repos = append(repos, describeScannedRepo(gitSvc, filepath.Base(req.Path), req.Path))
 	}
 
 	var scan func(path string, currentDepth int)
@@ -382,34 +382,7 @@ func ScanDirectory(ctx context.Context, c *app.RequestContext) {
 			subPath := filepath.Join(path, name)
 
 			if gitSvc.IsGitRepo(subPath) {
-				repo := api.ScannedRepo{
-					Name:    name,
-					Path:    subPath,
-					Remotes: []domain.GitRemote{},
-				}
-
-				config, err := gitSvc.GetRepoConfig(subPath)
-				if err == nil {
-					repo.Remotes = config.Remotes
-				}
-
-				branch, _ := gitSvc.GetHeadBranch(subPath)
-				repo.CurrentBranch = branch
-
-				if branch != "" {
-					if hash, err := gitSvc.GetCommitHash(subPath, "", branch); err == nil {
-						if len(hash) > 7 {
-							repo.LastCommit = hash[:7]
-						} else {
-							repo.LastCommit = hash
-						}
-					}
-				}
-
-				status, _ := gitSvc.GetStatus(subPath)
-				repo.HasChanges = status != ""
-
-				repos = append(repos, repo)
+				repos = append(repos, describeScannedRepo(gitSvc, name, subPath))
 			} else if req.Recursive || currentDepth < depth {
 				scan(subPath, currentDepth+1)
 			}
