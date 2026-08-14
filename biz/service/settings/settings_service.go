@@ -31,32 +31,34 @@ func LoadCodeReviewSettingsFromDB() {
 		log.Printf("[Settings] Failed to parse saved code review settings: %v", err)
 		return
 	}
-	cfg := &configs.GlobalConfig.CodeReview
-	cfg.Enabled = dto.Enabled
-	cfg.AutoReviewOnMR = dto.AutoReviewOnMR
-	cfg.BlockOnHigh = dto.BlockOnHigh
-	cfg.RAG.Enabled = dto.RAGEnabled
-	if dto.MaxFiles > 0 {
-		cfg.MaxFiles = dto.MaxFiles
+		configs.UpdateCodeReviewConfig(func(cfg *configs.CodeReviewConfig) {
+			cfg.Enabled = dto.Enabled
+			cfg.AutoReviewOnMR = dto.AutoReviewOnMR
+			cfg.BlockOnHigh = dto.BlockOnHigh
+			cfg.RAG.Enabled = dto.RAGEnabled
+			if dto.MaxFiles > 0 {
+				cfg.MaxFiles = dto.MaxFiles
+			}
+			if dto.MaxDiffLines > 0 {
+				cfg.MaxDiffLines = dto.MaxDiffLines
+			}
+		})
+		log.Printf("[Settings] Loaded code review settings from DB (rag_enabled=%v)", dto.RAGEnabled)
 	}
-	if dto.MaxDiffLines > 0 {
-		cfg.MaxDiffLines = dto.MaxDiffLines
-	}
-	log.Printf("[Settings] Loaded code review settings from DB (rag_enabled=%v)", dto.RAGEnabled)
-}
 
 func SaveCodeReviewSettingsToDB(dto CodeReviewSettings) error {
-	cfg := &configs.GlobalConfig.CodeReview
-	cfg.Enabled = dto.Enabled
-	cfg.AutoReviewOnMR = dto.AutoReviewOnMR
-	cfg.BlockOnHigh = dto.BlockOnHigh
-	cfg.RAG.Enabled = dto.RAGEnabled
-	if dto.MaxFiles > 0 {
-		cfg.MaxFiles = dto.MaxFiles
-	}
-	if dto.MaxDiffLines > 0 {
-		cfg.MaxDiffLines = dto.MaxDiffLines
-	}
+		configs.UpdateCodeReviewConfig(func(cfg *configs.CodeReviewConfig) {
+			cfg.Enabled = dto.Enabled
+			cfg.AutoReviewOnMR = dto.AutoReviewOnMR
+			cfg.BlockOnHigh = dto.BlockOnHigh
+			cfg.RAG.Enabled = dto.RAGEnabled
+			if dto.MaxFiles > 0 {
+				cfg.MaxFiles = dto.MaxFiles
+			}
+			if dto.MaxDiffLines > 0 {
+				cfg.MaxDiffLines = dto.MaxDiffLines
+			}
+		})
 	data, err := json.Marshal(dto)
 	if err != nil {
 		return err

@@ -3,10 +3,16 @@ package configs
 import (
 	"log"
 	"os"
+	"sync"
 )
 
 var (
 	GlobalConfig Config
+
+	// configMu guards runtime mutations to GlobalConfig.CodeReview (the only
+	// sub-config written by HTTP handlers at runtime). The rest of GlobalConfig
+	// is set once during Init() and never mutated.
+	configMu sync.RWMutex
 
 	// Keep backward compatibility
 	WebhookSecret      = "my-secret-key"
@@ -39,4 +45,19 @@ func Init() {
 	if dbPath := os.Getenv("DB_PATH"); dbPath != "" {
 		GlobalConfig.Database.Path = dbPath
 	}
+}
+
+// GetCodeReviewConfig returns a copy of the CodeReview config under a read lock.
+// Use this instead of direct GlobalConfig.CodeReview access from goroutines.
+func GetCodeReviewConfig() CodeReviewConfig {
+	configMu.RLock()
+	defer configMu.RUnlock()
+	return GlobalConfig.CodeReview
+}
+
+// UpdateCodeReviewConfig mutates the CodeReview config under a write lock.
+func UpdateCodeReviewConfig(fn func(*CodeReviewConfig)) {
+	configMu.Lock()
+	defer configMu.Unlock()
+	fn(&GlobalConfig.CodeReview)
 }

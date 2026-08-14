@@ -23,6 +23,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/router"
 	"github.com/yi-nology/git-manage-service/biz/rpc_handler"
 	"github.com/yi-nology/git-manage-service/biz/service/audit"
+	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
 	mirrorSvc "github.com/yi-nology/git-manage-service/biz/service/mirror"
 	settingssvc "github.com/yi-nology/git-manage-service/biz/service/settings"
@@ -151,6 +152,7 @@ func initResources() {
 	initSyncV2Service()
 	stats.InitStatsService()
 	audit.InitAuditService()
+	git.GlobalTaskManager.Init()
 	initMirrorSystem()
 
 	initQueue()

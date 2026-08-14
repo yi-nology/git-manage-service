@@ -176,7 +176,7 @@ func GetCodeReviewSettings(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, err.Error())
 		return
 	}
-	cfg := configs.GlobalConfig.CodeReview
+	cfg := configs.GetCodeReviewConfig()
 	pkgresponse.Success(c, &settings.CodeReviewSettings{
 		Enabled:        cfg.Enabled,
 		AutoReviewOnMr: cfg.AutoReviewOnMR,
@@ -196,10 +196,10 @@ func UpdateCodeReviewSettings(ctx context.Context, c *app.RequestContext) {
 	maxFiles := int(req.MaxFiles)
 	maxDiffLines := int(req.MaxDiffLines)
 	if maxFiles <= 0 {
-		maxFiles = configs.GlobalConfig.CodeReview.MaxFiles
+		maxFiles = configs.GetCodeReviewConfig().MaxFiles
 	}
 	if maxDiffLines <= 0 {
-		maxDiffLines = configs.GlobalConfig.CodeReview.MaxDiffLines
+		maxDiffLines = configs.GetCodeReviewConfig().MaxDiffLines
 	}
 	dto := settingssvc.CodeReviewSettings{
 		Enabled:        req.Enabled,

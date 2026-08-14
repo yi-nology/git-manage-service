@@ -66,7 +66,7 @@ func NewEmbeddingClientFromDB() *EmbeddingClient {
 }
 
 func NewEmbeddingClientFromConfig() *EmbeddingClient {
-	cfg := configs.GlobalConfig.CodeReview
+	cfg := configs.GetCodeReviewConfig()
 	if cfg.DefaultLLM == "" {
 		return nil
 	}

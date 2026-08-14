@@ -2,6 +2,7 @@ package mirror
 
 import (
 	"log"
+	"sync"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -20,6 +21,7 @@ type Scheduler struct {
 	scanTick  *time.Ticker
 	cfg       configs.MirrorConfig
 	cronMap   map[uint]cron.EntryID
+	cronMu    sync.Mutex
 	stopCh    chan struct{}
 }
 
@@ -70,10 +72,12 @@ func (s *Scheduler) Stop() {
 }
 
 func (s *Scheduler) Reload() {
+	s.cronMu.Lock()
 	for id, entryID := range s.cronMap {
 		s.cron.Remove(entryID)
 		delete(s.cronMap, id)
 	}
+	s.cronMu.Unlock()
 	s.loadCronMirrors()
 }
 
@@ -82,8 +86,13 @@ func (s *Scheduler) AddCronMirror(mirror *po.Mirror) {
 		return
 	}
 
-	if _, exists := s.cronMap[mirror.ID]; exists {
-		s.RemoveCronMirror(mirror.ID)
+	s.cronMu.Lock()
+	defer s.cronMu.Unlock()
+
+	// Remove old entry if exists (inline to avoid recursive lock)
+	if entryID, exists := s.cronMap[mirror.ID]; exists {
+		s.cron.Remove(entryID)
+		delete(s.cronMap, mirror.ID)
 	}
 
 	entryID, err := s.cron.AddFunc(mirror.CronExpr, func() {
@@ -102,6 +111,8 @@ func (s *Scheduler) AddCronMirror(mirror *po.Mirror) {
 }
 
 func (s *Scheduler) RemoveCronMirror(mirrorID uint) {
+	s.cronMu.Lock()
+	defer s.cronMu.Unlock()
 	if entryID, exists := s.cronMap[mirrorID]; exists {
 		s.cron.Remove(entryID)
 		delete(s.cronMap, mirrorID)

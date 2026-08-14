@@ -55,15 +55,22 @@ func computeFingerprint(ruleID, filePath string, line int, content string) strin
 var (
 	registeredRules []Rule
 	rulesOnce       sync.Once
+	rulesMu         sync.RWMutex
 )
 
 func RegisterRule(r Rule) {
+	rulesMu.Lock()
+	defer rulesMu.Unlock()
 	registeredRules = append(registeredRules, r)
 }
 
 func GetRules() []Rule {
 	rulesOnce.Do(initDefaultRules)
-	return registeredRules
+	rulesMu.RLock()
+	defer rulesMu.RUnlock()
+	out := make([]Rule, len(registeredRules))
+	copy(out, registeredRules)
+	return out
 }
 
 func initDefaultRules() {

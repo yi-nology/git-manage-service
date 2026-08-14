@@ -10,7 +10,7 @@ import (
 )
 
 func GetRemoteRepoConfig(providerConfigID uint, platformOwner, platformRepo string) (*api.ReviewRepoConfigDTO, error) {
-	gc := configs.GlobalConfig.CodeReview
+	gc := configs.GetCodeReviewConfig()
 	dao := db.NewReviewRepoConfigDAO()
 	cfg, err := dao.FindByRemoteRepo(providerConfigID, platformOwner, platformRepo)
 	if err != nil {

@@ -155,7 +155,7 @@ func BuildProviderFromDB(p *po.LLMProvider) (Provider, error) {
 }
 
 func buildProviderFromConfigName(name string) (Provider, bool) {
-	for _, pCfg := range configs.GlobalConfig.CodeReview.LLMProviders {
+	for _, pCfg := range configs.GetCodeReviewConfig().LLMProviders {
 		if pCfg.Name != name {
 			continue
 		}

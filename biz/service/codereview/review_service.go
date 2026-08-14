@@ -513,7 +513,7 @@ type reviewConfig struct {
 }
 
 func getConfig() reviewConfig {
-	gc := configs.GlobalConfig.CodeReview
+	gc := configs.GetCodeReviewConfig()
 	return reviewConfig{
 		BlockOnHigh:    gc.BlockOnHigh,
 		MaxFiles:       gc.MaxFiles,

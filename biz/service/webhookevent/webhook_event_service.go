@@ -178,10 +178,10 @@ func triggerSync(config map[string]interface{}) {
 }
 
 func triggerCodeReview(event *po.WebhookEvent) {
-	if !configs.GlobalConfig.CodeReview.Enabled {
+	if !configs.GetCodeReviewConfig().Enabled {
 		return
 	}
-	if !configs.GlobalConfig.CodeReview.AutoReviewOnMR {
+	if !configs.GetCodeReviewConfig().AutoReviewOnMR {
 		return
 	}
 
