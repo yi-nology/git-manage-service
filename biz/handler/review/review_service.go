@@ -531,6 +531,10 @@ func IndexRepoRAG(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, err.Error())
 		return
 	}
+	if result != nil && result.Error != "" {
+		pkgresponse.InternalServerError(c, "RAG indexing failed: "+result.Error)
+		return
+	}
 	c.Set("audit_target", "rag:"+repoKey)
 	pkgresponse.Success(c, result)
 }

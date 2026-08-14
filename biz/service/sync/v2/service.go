@@ -51,7 +51,7 @@ func (s *SyncServiceV2) Initialize(appCfg *configs.Config) error {
 	// 构建 git-sync-service 配置
 	cfg := &gitsyncmodel.Config{
 		Database: gitsyncmodel.DatabaseConfig{
-			Driver:       string(appCfg.Database.Type),
+			Driver:       gitsyncmodel.DriverSQLite, // sync service uses its own sqlite DB
 			DSN:          buildDSN(appCfg),
 			MaxIdleConns: 10,
 			MaxOpenConns: 100,

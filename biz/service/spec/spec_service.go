@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type SpecService struct{}
@@ -106,17 +107,17 @@ func (s *SpecService) DeleteSpecFile(repoPath, specPath string) error {
 }
 
 func (s *SpecService) GetSpecTemplate() string {
-	return `Name:           
-Version:        
+	tmpl := `Name:
+Version:
 Release:        1%{?dist}
-Summary:        
+Summary:
 
-License:        
-URL:            
-Source0:        
+License:
+URL:
+Source0:
 
-BuildRequires:  
-Requires:       
+BuildRequires:
+Requires:
 
 %description
 
@@ -139,6 +140,9 @@ rm -rf $RPM_BUILD_ROOT
 * $(date +"%a %b %d %Y") Your Name <your.email@example.com> - VERSION-1
 - Initial package
 `
+	// Replace the shell date placeholder with the actual date (Go, not bash).
+	tmpl = strings.ReplaceAll(tmpl, "$(date +\"%a %b %d %Y\")", time.Now().Format("Mon Jan 02 2006"))
+	return tmpl
 }
 
 type SpecFileInfo struct {
