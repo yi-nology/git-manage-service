@@ -551,6 +551,13 @@ func doForcePushAllRemotes(repoID uint, repoPath string, taskID string) []api.Fo
 	}
 
 	gitSvc := git.NewGitService()
+
+	// Load repo once — it's constant for every branch/remote push.
+	repo, err := db.NewRepoDAO().FindByID(repoID)
+	if err != nil {
+		tm.AppendLog(taskID, fmt.Sprintf("获取仓库信息失败: %v", err))
+		return nil
+	}
 	branches, err := gitSvc.GetBranches(repoPath)
 	if err != nil {
 		tm.AppendLog(taskID, "获取本地分支失败: "+err.Error())
@@ -611,7 +618,7 @@ func doForcePushAllRemotes(repoID uint, repoPath string, taskID string) []api.Fo
 				continue
 			}
 
-			pushErrDetail := pushBranchToRemote(repoID, repoPath, remoteName, remoteURL, branch, hash, gitSvc, skipTLS)
+			pushErrDetail := pushBranchToRemote(repo, repoPath, remoteName, remoteURL, branch, hash, gitSvc, skipTLS)
 			if pushErrDetail != "" {
 				pushErr = pushErrDetail
 				tm.AppendLog(taskID, fmt.Sprintf("  分支 %s 推送失败: %s", branch, pushErrDetail))
@@ -633,12 +640,7 @@ func doForcePushAllRemotes(repoID uint, repoPath string, taskID string) []api.Fo
 	return results
 }
 
-func pushBranchToRemote(repoID uint, repoPath, remoteName, remoteURL, branch, hash string, gitSvc *git.GitService, skipTLS bool) string {
-	repo, err := db.NewRepoDAO().FindByID(repoID)
-	if err != nil {
-		return fmt.Sprintf("获取仓库信息失败: %v", err)
-	}
-
+func pushBranchToRemote(repo *po.Repo, repoPath, remoteName, remoteURL, branch, hash string, gitSvc *git.GitService, skipTLS bool) string {
 	authSvc := auth.NewAuthService()
 	authMethod, isDBKey, err := authSvc.ResolveCredentialForRemote(
 		repo.RemoteCredentials,
