@@ -31,7 +31,14 @@ func (s *GitServiceImpl) ListRepos(ctx context.Context, req *git.ListReposReques
 		})
 	}
 
-	// Simple pagination
+	// Simple pagination — proto3 zero-defaults: clamp page/pageSize so an
+	// omitted field doesn't produce an empty slice.
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 50
+	}
 	start := (req.Page - 1) * req.PageSize
 	end := start + req.PageSize
 	if start < 0 {

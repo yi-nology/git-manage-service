@@ -46,9 +46,9 @@ func (s *CredentialService) List(req *credential.ListCredentialsRequest) ([]*cre
 	result := make([]*credential.CredentialInfo, 0, len(creds))
 
 	for _, cred := range creds {
-		// Type already filtered at SQL level when req.Type is set; apply
-		// purpose filter only when type wasn't pre-filtered.
-		if req.Type == "" && req.Purpose != "" {
+		// Purpose is an orthogonal dimension to type (http_basic/http_token
+		// satisfy both purposes) — always apply it.
+		if req.Purpose != "" {
 			hasPurpose := false
 			switch req.Purpose {
 			case "git_remote":

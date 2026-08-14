@@ -122,7 +122,9 @@ export function getRepoHealth(repo_key: string, threshold?: number, excludes?: s
 }
 
 export function slimRepo(repo_key: string, paths: string[], addGitignore = true) {
-  return request.post<MaintenanceTaskResponse>(`/repo/${repo_key}/maintenance/slim`, { paths, addGitignore })
+  // SlimRequest proto binds json:"add_gitignore" — the key must be snake_case
+  // (slimByPrefix below uses a raw-BindJSON handler that expects camelCase).
+  return request.post<MaintenanceTaskResponse>(`/repo/${repo_key}/maintenance/slim`, { paths, add_gitignore: addGitignore })
 }
 
 export function gcRepo(repo_key: string) {

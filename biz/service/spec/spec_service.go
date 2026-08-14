@@ -47,8 +47,23 @@ func (s *SpecService) ListSpecFiles(repoPath string) ([]SpecFileInfo, error) {
 	return files, err
 }
 
+// resolveInRepo joins repoPath with a user-supplied relative path and rejects
+// any result that escapes the repo directory (path traversal, e.g.
+// "../../etc/passwd"). All user-supplied spec paths must go through this.
+func resolveInRepo(repoPath, relPath string) (string, error) {
+	fullPath := filepath.Join(repoPath, relPath)
+	// filepath.Join cleans "..", so verify the result is still inside repoPath.
+	if !strings.HasPrefix(fullPath, repoPath+string(os.PathSeparator)) && fullPath != repoPath {
+		return "", fmt.Errorf("path %q escapes repository directory", relPath)
+	}
+	return fullPath, nil
+}
+
 func (s *SpecService) GetSpecContent(repoPath, specPath string) (string, error) {
-	fullPath := filepath.Join(repoPath, specPath)
+	fullPath, err := resolveInRepo(repoPath, specPath)
+	if err != nil {
+		return "", err
+	}
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read spec file: %v", err)
@@ -57,7 +72,10 @@ func (s *SpecService) GetSpecContent(repoPath, specPath string) (string, error) 
 }
 
 func (s *SpecService) SaveSpecContent(repoPath, specPath, content, commitMessage string) error {
-	fullPath := filepath.Join(repoPath, specPath)
+	fullPath, err := resolveInRepo(repoPath, specPath)
+	if err != nil {
+		return err
+	}
 
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -76,12 +94,18 @@ func (s *SpecService) CreateSpecFile(repoPath, dirPath, fileName string) (string
 }
 
 func (s *SpecService) CreateSpecFileWithContent(repoPath, dirPath, fileName, content string) (string, error) {
-	fullDir := filepath.Join(repoPath, dirPath)
+	fullDir, err := resolveInRepo(repoPath, dirPath)
+	if err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(fullDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create directory: %v", err)
 	}
 
-	fullPath := filepath.Join(fullDir, fileName)
+	fullPath, err := resolveInRepo(fullDir, fileName)
+	if err != nil {
+		return "", err
+	}
 	if _, err := os.Stat(fullPath); err == nil {
 		return "", fmt.Errorf("file already exists: %s", fileName)
 	}
@@ -99,7 +123,10 @@ func (s *SpecService) CreateSpecFileWithContent(repoPath, dirPath, fileName, con
 }
 
 func (s *SpecService) DeleteSpecFile(repoPath, specPath string) error {
-	fullPath := filepath.Join(repoPath, specPath)
+	fullPath, err := resolveInRepo(repoPath, specPath)
+	if err != nil {
+		return err
+	}
 	if err := os.Remove(fullPath); err != nil {
 		return fmt.Errorf("failed to delete spec file: %v", err)
 	}

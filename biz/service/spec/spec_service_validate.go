@@ -13,29 +13,38 @@ func (s *SpecService) ValidateSpec(content string) SpecValidationResult {
 
 	lines := strings.Split(content, "\n")
 
+	var all []SpecIssue
 	for _, rule := range rules {
 		if !rule.Enabled {
 			continue
 		}
 
-		issues = append(issues, s.applyRule(lines, rule)...)
+		all = append(all, s.applyRule(lines, rule)...)
 	}
 
-	for _, issue := range issues {
-		if issue.Severity == "error" {
-			issues = append(issues, issue)
-		} else {
+	// Issues keeps ALL issues (callers rely on it as the superset); Warnings
+	// additionally collects the non-error subset. The previous code duplicated
+	// every error into Issues and double-counted the errors stat.
+	issues = all
+	for _, issue := range all {
+		if issue.Severity != "error" {
 			warnings = append(warnings, issue)
+		}
+	}
+	errorCount := 0
+	for _, issue := range all {
+		if issue.Severity == "error" {
+			errorCount++
 		}
 	}
 
 	return SpecValidationResult{
-		Valid:    len(issues) == 0,
+		Valid:    errorCount == 0,
 		Issues:   issues,
 		Warnings: warnings,
 		Stats: map[string]string{
 			"total_lines": fmt.Sprintf("%d", len(lines)),
-			"errors":      fmt.Sprintf("%d", len(issues)),
+			"errors":      fmt.Sprintf("%d", errorCount),
 			"warnings":    fmt.Sprintf("%d", len(warnings)),
 		},
 	}

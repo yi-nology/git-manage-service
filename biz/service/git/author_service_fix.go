@@ -306,6 +306,8 @@ func StartAuthorFixTask(repoID uint, repoPath string, commitHashes []string, pus
 
 	record, err := CreateMaintenanceRecord(repoID, "author_fix", repoPath)
 	if err != nil {
+		// Release the concurrency slot (see runMaintenanceTask for rationale).
+		GlobalTaskManager.UpdateStatus(taskID, "failed", err.Error())
 		return "", err
 	}
 	dao := db.NewMaintenanceDAO()

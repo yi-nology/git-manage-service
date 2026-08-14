@@ -45,9 +45,6 @@ func (p *OpenAICompatible) Chat(ctx context.Context, req *ChatRequest) (*ChatRes
 	if maxTokens == 0 {
 		maxTokens = p.maxTokens
 	}
-	if maxTokens < 8192 {
-		maxTokens = 8192
-	}
 	resp, err := p.client.CreateChatCompletion(ctx, oai.ChatCompletionRequest{
 		Model:       p.model,
 		Messages:    msgs,

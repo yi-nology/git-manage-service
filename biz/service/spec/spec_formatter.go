@@ -173,15 +173,17 @@ var preambleTagOrder = map[string]int{
 	"Vendor": 110, "Packager": 111,
 }
 
+// pathToMacro is applied in order — longest-path-first so specific rules
+// (/usr/share/man) fire before generic ones (/usr/share).
 var pathToMacro = []struct{ From, To string }{
-	{"/usr/bin", "%{_bindir}"},
-	{"/usr/sbin", "%{_sbindir}"},
+	{"/usr/share/doc/packages", "%{_docdir}"},
+	{"/usr/share/info", "%{_infodir}"},
+	{"/usr/share/man", "%{_mandir}"},
+	{"/usr/share", "%{_datadir}"},
 	{"/usr/libexec", "%{_libexecdir}"},
 	{"/usr/include", "%{_includedir}"},
-	{"/usr/share", "%{_datadir}"},
-	{"/usr/share/man", "%{_mandir}"},
-	{"/usr/share/info", "%{_infodir}"},
-	{"/usr/share/doc/packages", "%{_docdir}"},
+	{"/usr/sbin", "%{_sbindir}"},
+	{"/usr/bin", "%{_bindir}"},
 	{"/etc/init.d", "%{_initddir}"},
 	{"/etc", "%{_sysconfdir}"},
 	{"/var", "%{_localstatedir}"},

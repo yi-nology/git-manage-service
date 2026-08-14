@@ -99,6 +99,10 @@ func runMaintenanceTask(repo *po.Repo, taskID, kind, paramsJSON string, op func(
 
 	record, err := git.CreateMaintenanceRecord(repo.ID, kind, repo.Path)
 	if err != nil {
+		// Release the concurrency slot we just acquired — otherwise the
+		// runningTasks counter leaks one slot per failure and eventually
+		// deadlocks the task queue.
+		git.GlobalTaskManager.UpdateStatus(taskID, "failed", err.Error())
 		return err
 	}
 	record.TaskID = taskID

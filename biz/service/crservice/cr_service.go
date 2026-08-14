@@ -162,15 +162,21 @@ func SyncCRs(ctx context.Context, repoKey, state string) (int, error) {
 			crDAO.Save(existing)
 			synced++
 		} else {
-			toCreate = append(toCreate, *platformCRToLocal(repo.ID, providerCfgID, cr))
+			localCR := platformCRToLocal(repo.ID, providerCfgID, cr)
+			// Dedupe within the same batch (platform pages can repeat a number)
+			// and mark it so a later duplicate updates instead of re-inserting.
+			existingByNumber[cr.Number] = localCR
+			toCreate = append(toCreate, *localCR)
 		}
 	}
 
-	// Batch-insert all new CRs in one statement.
-	if err := crDAO.BatchCreate(toCreate); err != nil {
-		return synced, err
+	// Insert new CRs individually so one bad row doesn't fail the whole sync
+	// (restores the old per-CR failure tolerance the batch create removed).
+	for i := range toCreate {
+		if err := crDAO.Create(&toCreate[i]); err == nil {
+			synced++
+		}
 	}
-	synced += len(toCreate)
 
 	return synced, nil
 }

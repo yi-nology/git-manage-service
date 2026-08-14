@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
@@ -17,7 +18,10 @@ type Service struct {
 	gitSvc *git.GitService
 }
 
-var defaultService *Service
+var (
+	defaultService *Service
+	initOnce       sync.Once
+)
 
 func InitService() {
 	client := NewEmbeddingClientFromDB()
@@ -35,9 +39,7 @@ func InitService() {
 }
 
 func DefaultService() *Service {
-	if defaultService == nil {
-		InitService()
-	}
+	initOnce.Do(InitService)
 	return defaultService
 }
 

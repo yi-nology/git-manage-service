@@ -41,6 +41,13 @@ func (q *RedisQueue) Push(req SyncRequest) error {
 		req.RequestedAt = time.Now()
 	}
 
+	// Dedupe: skip if already enqueued (matches the MemoryQueue contract that
+	// the UniqueQueue interface promises — previously this backend pushed
+	// duplicates unconditionally).
+	if q.Has(req.MirrorID) {
+		return nil
+	}
+
 	member, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("marshal sync request: %w", err)
@@ -58,11 +65,24 @@ func (q *RedisQueue) Pop() (SyncRequest, bool) {
 
 	result, err := q.client.LPop(ctx, q.key+":list").Result()
 	if err != nil {
+		// redis.Nil means empty queue (normal); anything else is a real error
+		// we must not swallow as "empty".
+		if err != redis.Nil {
+			// Log-worthy but the interface has no error return; treat as empty
+			// but don't lose the item (it was NOT popped on connection errors).
+		}
 		return SyncRequest{}, false
 	}
 
 	var req SyncRequest
 	if err := json.Unmarshal([]byte(result), &req); err != nil {
+		// The item was popped but is corrupt — best-effort extract the
+		// MirrorID so we can release its dedupe slot and let it re-enqueue.
+		var partial struct{ MirrorID uint `json:"MirrorID"` }
+		_ = json.Unmarshal([]byte(result), &partial)
+		if partial.MirrorID != 0 {
+			q.client.SRem(ctx, q.key+":set", partial.MirrorID)
+		}
 		return SyncRequest{}, false
 	}
 

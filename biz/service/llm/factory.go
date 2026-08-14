@@ -23,8 +23,8 @@ func InitProviders() {
 	providersMu.Lock()
 	defer providersMu.Unlock()
 
-	cfg := configs.GlobalConfig
-	for _, pCfg := range cfg.CodeReview.LLMProviders {
+	cfg := configs.GetCodeReviewConfig()
+	for _, pCfg := range cfg.LLMProviders {
 		if _, exists := providers[pCfg.Name]; exists {
 			continue
 		}
@@ -94,8 +94,8 @@ func GetProvider(name string) (Provider, error) {
 }
 
 func GetDefaultProvider() (Provider, error) {
-	cfg := configs.GlobalConfig
-	name := cfg.CodeReview.DefaultLLM
+	cfg := configs.GetCodeReviewConfig()
+	name := cfg.DefaultLLM
 	if name != "" {
 		if p, err := GetProvider(name); err == nil {
 			return p, nil
@@ -192,8 +192,8 @@ func buildProviderFromConfigName(name string) (Provider, bool) {
 }
 
 func HasDefaultProvider() bool {
-	cfg := configs.GlobalConfig
-	name := cfg.CodeReview.DefaultLLM
+	cfg := configs.GetCodeReviewConfig()
+	name := cfg.DefaultLLM
 	if name != "" {
 		providersMu.RLock()
 		_, ok := providers[name]
