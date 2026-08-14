@@ -22,6 +22,38 @@ import (
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
+// syncRemotes reconciles a repo's remotes to match the requested list:
+// removes remotes not in the list, then re-adds each requested remote.
+func syncRemotes(repoPath string, remotes []domain.GitRemote) {
+	if len(remotes) == 0 {
+		return
+	}
+	gitSvc := git.NewGitService()
+	existingConfig, err := gitSvc.GetRepoConfig(repoPath)
+	if err != nil {
+		return
+	}
+	for _, existing := range existingConfig.Remotes {
+		found := false
+		for _, r := range remotes {
+			if r.Name == existing.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			gitSvc.RemoveRemote(repoPath, existing.Name)
+		}
+	}
+	for _, r := range remotes {
+		gitSvc.RemoveRemote(repoPath, r.Name)
+		_ = gitSvc.AddRemote(repoPath, r.Name, r.FetchURL, r.IsMirror)
+		if r.PushURL != "" && r.PushURL != r.FetchURL {
+			gitSvc.SetRemotePushURL(repoPath, r.Name, r.PushURL)
+		}
+	}
+}
+
 func toProtoRepo(r po.Repo) *repoModel.RepoDTO {
 	return &repoModel.RepoDTO{
 		Id:                  uint64(r.ID),
@@ -109,32 +141,7 @@ func Create(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	if len(req.Remotes) > 0 {
-		existingConfig, err := gitSvc.GetRepoConfig(req.Path)
-		if err == nil {
-			for _, existing := range existingConfig.Remotes {
-				found := false
-				for _, r := range req.Remotes {
-					if r.Name == existing.Name {
-						found = true
-						break
-					}
-				}
-				if !found {
-					gitSvc.RemoveRemote(req.Path, existing.Name)
-				}
-			}
-
-			for _, r := range req.Remotes {
-				gitSvc.RemoveRemote(req.Path, r.Name)
-				if err := gitSvc.AddRemote(req.Path, r.Name, r.FetchURL, r.IsMirror); err != nil {
-				}
-				if r.PushURL != "" && r.PushURL != r.FetchURL {
-					gitSvc.SetRemotePushURL(req.Path, r.Name, r.PushURL)
-				}
-			}
-		}
-	}
+	syncRemotes(req.Path, req.Remotes)
 
 	repo := po.Repo{
 		Key:                 uuid.New().String(),
@@ -193,33 +200,7 @@ func Update(ctx context.Context, c *app.RequestContext) {
 		repoPath = req.Path
 	}
 
-	if len(req.Remotes) > 0 {
-		gitSvc := git.NewGitService()
-		existingConfig, err := gitSvc.GetRepoConfig(repoPath)
-		if err == nil {
-			for _, existing := range existingConfig.Remotes {
-				found := false
-				for _, r := range req.Remotes {
-					if r.Name == existing.Name {
-						found = true
-						break
-					}
-				}
-				if !found {
-					gitSvc.RemoveRemote(repoPath, existing.Name)
-				}
-			}
-
-			for _, r := range req.Remotes {
-				gitSvc.RemoveRemote(repoPath, r.Name)
-				if err := gitSvc.AddRemote(repoPath, r.Name, r.FetchURL, r.IsMirror); err != nil {
-				}
-				if r.PushURL != "" && r.PushURL != r.FetchURL {
-					gitSvc.SetRemotePushURL(repoPath, r.Name, r.PushURL)
-				}
-			}
-		}
-	}
+	syncRemotes(repoPath, req.Remotes)
 
 	// Apply only the fields that were actually provided.
 	if req.Name != "" {
