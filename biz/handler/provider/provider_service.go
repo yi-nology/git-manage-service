@@ -55,14 +55,20 @@ func List(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.InternalServerError(c, "Failed to fetch providers: "+err.Error())
 		return
 	}
-	credDAO := db.NewCredentialDAO()
+	// Batch-resolve credential names in one query (avoids N+1 per provider).
+	credIDs := make([]uint, 0, len(configs))
+	for _, cfg := range configs {
+		if cfg.CredentialID > 0 {
+			credIDs = append(credIDs, cfg.CredentialID)
+		}
+	}
+	credNames, _ := db.NewCredentialDAO().FindNamesMap(credIDs)
+
 	result := make([]*providerModel.ProviderConfig, 0, len(configs))
 	for _, cfg := range configs {
 		dto := toProtoProviderConfig(&cfg)
 		if cfg.CredentialID > 0 {
-			if cred, err := credDAO.FindByID(cfg.CredentialID); err == nil {
-				dto.CredentialName = cred.Name
-			}
+			dto.CredentialName = credNames[cfg.CredentialID]
 		}
 		result = append(result, dto)
 	}

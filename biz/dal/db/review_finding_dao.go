@@ -42,6 +42,32 @@ func (d *ReviewFindingDAO) CountByTaskID(taskID uint) (int64, error) {
 	return count, err
 }
 
+// CountByTaskIDs returns a map of task_id → finding count for the given task
+// IDs in a single GROUP BY query, avoiding N+1 per-task count queries.
+func (d *ReviewFindingDAO) CountByTaskIDs(taskIDs []uint) (map[uint]int64, error) {
+	result := make(map[uint]int64)
+	if len(taskIDs) == 0 {
+		return result, nil
+	}
+	type row struct {
+		TaskID uint  `gorm:"column:task_id"`
+		Count  int64 `gorm:"column:cnt"`
+	}
+	var rows []row
+	err := DB.Model(&po.ReviewFinding{}).
+		Select("task_id, count(*) as cnt").
+		Where("task_id IN ?", taskIDs).
+		Group("task_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		result[r.TaskID] = r.Count
+	}
+	return result, nil
+}
+
 func (d *ReviewFindingDAO) FindByTimeRange(repoID uint, since, until time.Time) ([]po.ReviewFinding, error) {
 	var findings []po.ReviewFinding
 	q := DB.Model(&po.ReviewFinding{}).

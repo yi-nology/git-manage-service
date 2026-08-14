@@ -25,6 +25,28 @@ func (d *CredentialDAO) FindAll() ([]po.Credential, error) {
 	return creds, err
 }
 
+// FindNamesMap returns a map of credential id → name for the given IDs.
+// Lightweight: only selects id and name (skips Secret decryption).
+func (d *CredentialDAO) FindNamesMap(ids []uint) (map[uint]string, error) {
+	result := make(map[uint]string)
+	if len(ids) == 0 {
+		return result, nil
+	}
+	type row struct {
+		ID   uint   `gorm:"column:id"`
+		Name string `gorm:"column:name"`
+	}
+	var rows []row
+	err := DB.Model(&po.Credential{}).Select("id, name").Where("id IN ?", ids).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		result[r.ID] = r.Name
+	}
+	return result, nil
+}
+
 // FindByID 根据 ID 查询凭证
 func (d *CredentialDAO) FindByID(id uint) (*po.Credential, error) {
 	var cred po.Credential

@@ -495,11 +495,17 @@ func ListTasksByProvider(ctx context.Context, c *app.RequestContext) {
 
 	_ = status
 
+	// Batch-count findings for all tasks in one query (avoids N+1 per-task).
+	taskIDs := make([]uint, len(tasks))
+	for i, t := range tasks {
+		taskIDs[i] = t.ID
+	}
+	countMap, _ := db.NewReviewFindingDAO().CountByTaskIDs(taskIDs)
+
 	dtos := make([]*reviewModel.ReviewTask, 0, len(tasks))
 	for _, t := range tasks {
 		dto := api.NewReviewTaskDTO(t)
-		findingCount, _ := db.NewReviewFindingDAO().CountByTaskID(t.ID)
-		dto.FindingsCount = int(findingCount)
+		dto.FindingsCount = int(countMap[t.ID])
 		dtos = append(dtos, convertToProtoReviewTask(dto))
 	}
 
