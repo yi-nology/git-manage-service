@@ -155,8 +155,8 @@ check-generated:
 	@echo "Generated code is up to date."
 
 kitex-gen:
-	cd biz && kitex -module github.com/yi-nology/git-manage-service/biz \
-		-service git_service -I ../idl ../idl/git.proto
+	cd biz && kitex -module github.com/yi-nology/git-manage-service \
+		-I ../idl ../idl/git.proto
 
 hz-gen:
 	@if ls idl/biz/*.proto 1> /dev/null 2>&1; then \

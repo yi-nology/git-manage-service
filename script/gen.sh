@@ -85,8 +85,10 @@ fi
 if [ "$SKIP_KITEX" != "true" ]; then
     info "Generating Kitex RPC code..."
     cd biz
+    # NOTE: no `-service` flag — that generates the scaffold main.go/handler.go
+    # under biz/, which this project does not use (the RPC server lives in
+    # biz/rpc_handler + cmd/server). We only need the kitex_gen/ package.
     kitex -module github.com/yi-nology/git-manage-service \
-          -service git_service \
           -I ../idl \
           ../idl/git.proto
     cd ..
@@ -99,7 +101,7 @@ fi
 if [ "$SKIP_HZ" != "true" ]; then
     if ls idl/biz/*.proto 1> /dev/null 2>&1; then
         info "Generating Hz HTTP code..."
-        
+
         # 检查是否已初始化 Hz（当前项目使用 .hz 记录生成目录）
         if [ ! -f ".hz" ]; then
             info "Initializing Hz project..."
@@ -107,7 +109,13 @@ if [ "$SKIP_HZ" != "true" ]; then
                 -I idl \
                 -module github.com/yi-nology/git-manage-service
         fi
-        
+
+        # sync 路由被手动从 v1 stub 改指向 v2 handler（git-sync-service）。
+        # hz update 会把它改回 v1 并生成空 stub —— 备份、生成后恢复。
+        SYNC_ROUTER_BAK="$(mktemp -d)"
+        cp -r biz/router/sync "$SYNC_ROUTER_BAK/router_sync" 2>/dev/null || true
+        rm -f biz/handler/sync/sync_service.go 2>/dev/null || true
+
         # 更新生成代码
         for proto in idl/biz/*.proto; do
             info "Processing $proto..."
@@ -121,7 +129,15 @@ if [ "$SKIP_HZ" != "true" ]; then
                 warn "Failed to process $proto"
             }
         done
-        
+
+        # 恢复 v2 sync 路由，删除 hz 生成的 v1 stub。
+        if [ -d "$SYNC_ROUTER_BAK/router_sync" ]; then
+            rm -rf biz/router/sync
+            cp -r "$SYNC_ROUTER_BAK/router_sync" biz/router/sync
+        fi
+        rm -f biz/handler/sync/sync_service.go 2>/dev/null || true
+        rm -rf "$SYNC_ROUTER_BAK"
+
         info "Hz code generation completed"
     else
         warn "No proto files found in idl/biz/. Skipping Hz code generation."
@@ -137,8 +153,8 @@ go mod tidy
 # 5. 清理 hz update 生成的问题
 info "Cleaning up generated code..."
 
-# 5a. 修复 hz update 生成的错误 consts 包路径
-find biz/handler -name '*.go' -exec sed -i '' 's|"github.com/hertz-contrib/swagger-generate/common/consts"|"github.com/cloudwego/hertz/pkg/protocol/consts"|g' {} +
+# (5a removed: the swagger-generate consts import no longer exists in any
+#  handler — and the old `sed -i ''` was BSD-only, breaking Linux CI.)
 
 # 5b. 删除 hz 生成的重复 stub 函数（已有真实实现的文件）
 if grep -q 'func ListLLMPresets' biz/handler/settings/settings_service.go 2>/dev/null; then

@@ -78,7 +78,9 @@ func (q *RedisQueue) Pop() (SyncRequest, bool) {
 	if err := json.Unmarshal([]byte(result), &req); err != nil {
 		// The item was popped but is corrupt — best-effort extract the
 		// MirrorID so we can release its dedupe slot and let it re-enqueue.
-		var partial struct{ MirrorID uint `json:"MirrorID"` }
+		var partial struct {
+			MirrorID uint `json:"MirrorID"`
+		}
 		_ = json.Unmarshal([]byte(result), &partial)
 		if partial.MirrorID != 0 {
 			q.client.SRem(ctx, q.key+":set", partial.MirrorID)
