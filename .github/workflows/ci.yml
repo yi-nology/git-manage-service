@@ -17,7 +17,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
 
       - name: Set up Node.js
@@ -61,19 +61,28 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
 
       - name: Install protoc
         run: |
-          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+          # Pinned to v35.1 — the version the committed .pb.go files were
+          # generated with. The generated descriptors embed the protoc
+          # version, so any other version produces drift in check-generated.
+          PB_VER=35.1
+          curl -fsSL -o /tmp/protoc.zip \
+            "https://github.com/protocolbuffers/protobuf/releases/download/v${PB_VER}/protoc-${PB_VER}-linux-x86_64.zip"
+          sudo unzip -o /tmp/protoc.zip -d /usr/local bin/protoc 'include/*'
+          sudo chmod +x /usr/local/bin/protoc
           protoc --version
 
       - name: Install Hz and Kitex
         run: |
+          # Tool versions must match those used to generate the committed
+          # code (see the headers in biz/kitex_gen and biz/model/*.pb.go).
           go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.0
           go install github.com/cloudwego/hertz/cmd/hz@v0.9.7
-          go install github.com/cloudwego/kitex/tool/cmd/kitex@v0.15.4
+          go install github.com/cloudwego/kitex/tool/cmd/kitex@v0.16.3
           protoc-gen-go --version
           hz --version
           kitex --version || true
