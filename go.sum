@@ -383,8 +383,8 @@ github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
 github.com/yi-nology/git-platform-sdk v0.38.1 h1:JXl0FwobjYuTIa0NqilXN66dWiJ4+3iCI2hHaswZ304=
 github.com/yi-nology/git-platform-sdk v0.38.1/go.mod h1:Wy23BsD1L1NR6lSk+TmVfBo6vXIguFlvcv+wkmwldY4=
-github.com/yi-nology/git-sync-service v1.5.5 h1:wUe1U8HhFsvHgVpSDklFg5SuLEW2YL1Lw0H5fZK+TyQ=
-github.com/yi-nology/git-sync-service v1.5.5/go.mod h1:1z1XfYHFoYUneeS25m16eK2MVTBohuQGP9pfN5bmCTQ=
+github.com/yi-nology/git-sync-service v1.6.0 h1:w0yUbkZz6B4ZTQYMvDB6hodPl7NuZyrH63To1ryRjx0=
+github.com/yi-nology/git-sync-service v1.6.0/go.mod h1:LNb79ZttWdoCLtHIJESKWEWWjuPm89jV8+xYmbkr0is=
 github.com/yi-nology/gitcode_api v0.6.0 h1:Jbb3YvGqpnYnBG4BbuXBJoDD/cl8qkNOorPuuC6sh1g=
 github.com/yi-nology/gitcode_api v0.6.0/go.mod h1:YaRLRDyxaVqy6Nm4xLISmGJ7AZOf5sPWcWtwZOKd8ig=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
