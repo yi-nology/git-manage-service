@@ -3,7 +3,7 @@ module github.com/yi-nology/git-manage-service
 go 1.26
 
 require (
-	github.com/yi-nology/git-platform-sdk v0.37.0
+	github.com/yi-nology/git-platform-sdk v0.38.1
 	github.com/yi-nology/git-sync-service v1.5.5
 )
 
