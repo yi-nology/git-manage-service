@@ -17,7 +17,7 @@ import (
 // snake_case. camelCase JSON tags are rejected so the HTTP API stays
 // consistent with the codegen output (--snake_tag) and the frontend.
 //
-// Decision: API JSON fields are snake_case (see docs/API_NAMING_CONVENTION.md).
+// Decision: API JSON fields are snake_case (see docs/dev-notes/API_NAMING_CONVENTION.md).
 // This supersedes the earlier "camelCase long-term / snake_case freeze" policy.
 func TestHandwrittenAPIJSONTagsAreSnakeCase(t *testing.T) {
 	files, err := filepath.Glob("*.go")

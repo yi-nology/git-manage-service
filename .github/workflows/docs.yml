@@ -6,7 +6,6 @@ on:
       - main  # 当推送到 main 分支时触发
     paths:
       - 'docs/**'  # 当文档相关文件变化时触发
-      - 'docs-site/**'  # 当 VuePress 配置变化时触发
   workflow_dispatch:  # 允许手动触发
 
 permissions:
@@ -28,14 +27,14 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: docs-site/package-lock.json
+          cache-dependency-path: docs/package-lock.json
 
       - name: Install dependencies
-        working-directory: docs-site
+        working-directory: docs
         run: npm ci
 
       - name: Build VuePress docs
-        working-directory: docs-site
+        working-directory: docs
         run: npm run build
 
       - name: Deploy to GitHub Pages

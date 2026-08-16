@@ -1,6 +1,6 @@
 #!/bin/bash
 # Start both frontend and backend for development
-# Usage: bash scripts/dev.sh
+# Usage: bash script/dev.sh
 
 set -e
 
