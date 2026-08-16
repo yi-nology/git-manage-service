@@ -11,7 +11,6 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	"github.com/yi-nology/git-manage-service/biz/handler/helper"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	statsModel "github.com/yi-nology/git-manage-service/biz/model/stats"
@@ -24,57 +23,31 @@ import (
 // ListBranches .
 // @router /api/v1/stats/branches [GET]
 func ListBranches(ctx context.Context, c *app.RequestContext) {
-	repo, ok := helper.GetRepoFromQuery(c)
-	if !ok {
-		return
-	}
-
-	branches, err := git.NewGitService().GetBranches(repo.Path)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, branches)
+	handler.DoWithQueryRepo(c, func(repo *po.Repo) (any, error) {
+		return git.NewGitService().GetBranches(repo.Path)
+	})
 }
 
 // ListAuthors .
 // @router /api/v1/stats/authors [GET]
 func ListAuthors(ctx context.Context, c *app.RequestContext) {
-	repo, ok := helper.GetRepoFromQuery(c)
-	if !ok {
-		return
-	}
-
-	authors, err := git.NewGitService().GetAuthors(repo.Path)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, authors)
+	handler.DoWithQueryRepo(c, func(repo *po.Repo) (any, error) {
+		return git.NewGitService().GetAuthors(repo.Path)
+	})
 }
 
 // ListCommits .
 // @router /api/v1/stats/commits [GET]
 func ListCommits(ctx context.Context, c *app.RequestContext) {
-	repo, ok := helper.GetRepoFromQuery(c)
-	if !ok {
-		return
-	}
 	branch := c.Query("branch")
 	since := c.Query("since")
 	until := c.Query("until")
-
-	raw, err := git.NewGitService().GetCommits(repo.Path, branch, since, until)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	commits := statsSvc.StatsSvc.ParseCommits(raw)
-	response.Success(c, map[string]interface{}{
-		"commits": commits,
+	handler.DoWithQueryRepo(c, func(repo *po.Repo) (any, error) {
+		raw, err := git.NewGitService().GetCommits(repo.Path, branch, since, until)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"commits": statsSvc.StatsSvc.ParseCommits(raw)}, nil
 	})
 }
 
