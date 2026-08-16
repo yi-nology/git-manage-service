@@ -36,6 +36,7 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/metrics"
 	pkgqueue "github.com/yi-nology/git-manage-service/pkg/queue"
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	_ "github.com/yi-nology/git-platform-sdk/backends/all"
 )
 
 // @title Git Manage Service API
