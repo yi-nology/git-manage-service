@@ -6,82 +6,43 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 )
 
 // GetVersion .
 // @router /api/v1/version/current [GET]
 func GetVersion(ctx context.Context, c *app.RequestContext) {
-	repoKey := c.Query("repo_key")
-	if repoKey == "" {
-		response.BadRequest(c, "repo_key is required")
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	svc := git.NewGitService()
-	version, err := svc.GetDescribe(repo.Path)
-	if err != nil {
-		response.InternalServerError(c, "failed to determine version: "+err.Error())
-		return
-	}
-
-	response.Success(c, version)
+	handler.DoWithQueryRepo(c, func(repo *po.Repo) (interface{}, error) {
+		version, err := git.NewGitService().GetDescribe(repo.Path)
+		if err != nil {
+			return nil, handler.ErrInternal("failed to determine version: " + err.Error())
+		}
+		return version, nil
+	})
 }
 
 // ListVersions .
 // @router /api/v1/version/list [GET]
 func ListVersions(ctx context.Context, c *app.RequestContext) {
-	repoKey := c.Query("repo_key")
-	if repoKey == "" {
-		response.BadRequest(c, "repo_key is required")
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	svc := git.NewGitService()
-	tags, err := svc.GetTagList(repo.Path)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, tags)
+	handler.DoWithQueryRepo(c, func(repo *po.Repo) (interface{}, error) {
+		tags, err := git.NewGitService().GetTagList(repo.Path)
+		if err != nil {
+			return nil, handler.ErrInternal(err.Error())
+		}
+		return tags, nil
+	})
 }
 
 // GetNextVersions .
 // @router /api/v1/version/next [GET]
 func GetNextVersions(ctx context.Context, c *app.RequestContext) {
-	repoKey := c.Query("repo_key")
-	if repoKey == "" {
-		response.BadRequest(c, "repo_key is required")
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	svc := git.NewGitService()
-	info, err := svc.GetNextVersions(repo.Path)
-	if err != nil {
-		response.InternalServerError(c, "failed to calculate next versions: "+err.Error())
-		return
-	}
-
-	response.Success(c, info)
+	handler.DoWithQueryRepo(c, func(repo *po.Repo) (interface{}, error) {
+		info, err := git.NewGitService().GetNextVersions(repo.Path)
+		if err != nil {
+			return nil, handler.ErrInternal("failed to calculate next versions: " + err.Error())
+		}
+		return info, nil
+	})
 }

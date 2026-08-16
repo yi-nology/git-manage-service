@@ -6,148 +6,86 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	commit "github.com/yi-nology/git-manage-service/biz/model/commit"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 )
 
 // SearchCommits .
 // @router /api/v1/commit/search [GET]
 func SearchCommits(ctx context.Context, c *app.RequestContext) {
-	var req commit.SearchCommitsRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	commits, total, err := gitSvc.SearchCommits(repo.Path, git.SearchCommitsOptions{
-		Ref:      req.Ref,
-		Author:   req.Author,
-		Keyword:  req.Keyword,
-		Since:    req.Since,
-		Until:    req.Until,
-		Path:     req.Path,
-		Page:     int(req.Page),
-		PageSize: int(req.PageSize),
-	})
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	// 转换为proto格式
-	var details []*commit.CommitDetail
-	for _, c := range commits {
-		details = append(details, &commit.CommitDetail{
-			Hash:           c.Hash,
-			ShortHash:      c.ShortHash,
-			Message:        c.Message,
-			AuthorName:     c.AuthorName,
-			AuthorEmail:    c.AuthorEmail,
-			AuthorDate:     c.AuthorDate,
-			CommitterName:  c.CommitterName,
-			CommitterEmail: c.CommitterEmail,
-			CommitterDate:  c.CommitterDate,
-			ParentHashes:   c.ParentHashes,
-			FilesChanged:   int32(c.FilesChanged),
-			Additions:      int32(c.Additions),
-			Deletions:      int32(c.Deletions),
-		})
-	}
-
-	response.Success(c, map[string]interface{}{
-		"commits": details,
-		"total":   total,
-	})
+	handler.DoWithRepo(c,
+		func(r *commit.SearchCommitsRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *commit.SearchCommitsRequest) (any, error) {
+			commits, total, err := git.NewGitService().SearchCommits(repo.Path, git.SearchCommitsOptions{
+				Ref:      req.Ref,
+				Author:   req.Author,
+				Keyword:  req.Keyword,
+				Since:    req.Since,
+				Until:    req.Until,
+				Path:     req.Path,
+				Page:     int(req.Page),
+				PageSize: int(req.PageSize),
+			})
+			if err != nil {
+				return nil, err
+			}
+			var details []*commit.CommitDetail
+			for _, c := range commits {
+				details = append(details, &commit.CommitDetail{
+					Hash: c.Hash, ShortHash: c.ShortHash, Message: c.Message,
+					AuthorName: c.AuthorName, AuthorEmail: c.AuthorEmail, AuthorDate: c.AuthorDate,
+					CommitterName: c.CommitterName, CommitterEmail: c.CommitterEmail, CommitterDate: c.CommitterDate,
+					ParentHashes: c.ParentHashes, FilesChanged: int32(c.FilesChanged),
+					Additions: int32(c.Additions), Deletions: int32(c.Deletions),
+				})
+			}
+			return map[string]interface{}{"commits": details, "total": total}, nil
+		},
+	)
 }
 
 // GetCommit .
 // @router /api/v1/commit/detail [GET]
 func GetCommit(ctx context.Context, c *app.RequestContext) {
-	var req commit.GetCommitRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	detail, changes, err := gitSvc.GetCommitDetail(repo.Path, req.Hash)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	// 转换为proto格式
-	commitDetail := &commit.CommitDetail{
-		Hash:           detail.Hash,
-		ShortHash:      detail.ShortHash,
-		Message:        detail.Message,
-		AuthorName:     detail.AuthorName,
-		AuthorEmail:    detail.AuthorEmail,
-		AuthorDate:     detail.AuthorDate,
-		CommitterName:  detail.CommitterName,
-		CommitterEmail: detail.CommitterEmail,
-		CommitterDate:  detail.CommitterDate,
-		ParentHashes:   detail.ParentHashes,
-		FilesChanged:   int32(detail.FilesChanged),
-		Additions:      int32(detail.Additions),
-		Deletions:      int32(detail.Deletions),
-	}
-
-	var fileChanges []*commit.FileChange
-	for _, ch := range changes {
-		fileChanges = append(fileChanges, &commit.FileChange{
-			Path:      ch.Path,
-			Status:    ch.Status,
-			Additions: int32(ch.Additions),
-			Deletions: int32(ch.Deletions),
-			OldPath:   ch.OldPath,
-		})
-	}
-
-	response.Success(c, map[string]interface{}{
-		"commit": commitDetail,
-		"files":  fileChanges,
-	})
+	handler.DoWithRepo(c,
+		func(r *commit.GetCommitRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *commit.GetCommitRequest) (any, error) {
+			detail, changes, err := git.NewGitService().GetCommitDetail(repo.Path, req.Hash)
+			if err != nil {
+				return nil, err
+			}
+			cd := &commit.CommitDetail{
+				Hash: detail.Hash, ShortHash: detail.ShortHash, Message: detail.Message,
+				AuthorName: detail.AuthorName, AuthorEmail: detail.AuthorEmail, AuthorDate: detail.AuthorDate,
+				CommitterName: detail.CommitterName, CommitterEmail: detail.CommitterEmail, CommitterDate: detail.CommitterDate,
+				ParentHashes: detail.ParentHashes, FilesChanged: int32(detail.FilesChanged),
+				Additions: int32(detail.Additions), Deletions: int32(detail.Deletions),
+			}
+			var fcs []*commit.FileChange
+			for _, ch := range changes {
+				fcs = append(fcs, &commit.FileChange{
+					Path: ch.Path, Status: ch.Status, OldPath: ch.OldPath,
+					Additions: int32(ch.Additions), Deletions: int32(ch.Deletions),
+				})
+			}
+			return map[string]interface{}{"commit": cd, "files": fcs}, nil
+		},
+	)
 }
 
 // GetCommitDiff .
 // @router /api/v1/commit/diff [GET]
 func GetCommitDiff(ctx context.Context, c *app.RequestContext) {
-	var req commit.GetCommitDiffRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	diff, err := gitSvc.GetCommitDiff(repo.Path, req.Hash, req.File)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]interface{}{
-		"diff": diff,
-	})
+	handler.DoWithRepo(c,
+		func(r *commit.GetCommitDiffRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *commit.GetCommitDiffRequest) (any, error) {
+			diff, err := git.NewGitService().GetCommitDiff(repo.Path, req.Hash, req.File)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]interface{}{"diff": diff}, nil
+		},
+	)
 }

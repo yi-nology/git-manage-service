@@ -6,188 +6,113 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	file "github.com/yi-nology/git-manage-service/biz/model/file"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 )
 
 // GetTree .
 // @router /api/v1/file/tree [GET]
 func GetTree(ctx context.Context, c *app.RequestContext) {
-	var req file.GetTreeRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepo(c,
+		func(r *file.GetTreeRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *file.GetTreeRequest) (any, error) {
+			svc := git.NewGitService()
+			ref := req.Ref
+			if ref == "" {
+				ref = "HEAD"
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			if ref == "worktree" {
+				entries, err := svc.GetWorktree(repo.Path, req.Path)
+				if err != nil {
+					return nil, err
+				}
+				return buildTreeResponse(entries, "worktree", req.Path), nil
+			}
 
-	// 默认使用HEAD
-	ref := req.Ref
-	if ref == "" {
-		ref = "HEAD"
-	}
+			entries, err := svc.GetTree(repo.Path, ref, req.Path, req.Recursive)
+			if err != nil {
+				return nil, err
+			}
+			return buildTreeResponse(entries, ref, req.Path), nil
+		},
+	)
+}
 
-	gitSvc := git.NewGitService()
-
-	if ref == "worktree" {
-		entries, err := gitSvc.GetWorktree(repo.Path, req.Path)
-		if err != nil {
-			response.InternalServerError(c, err.Error())
-			return
-		}
-
-		var treeEntries []*file.TreeEntry
-		for _, e := range entries {
-			treeEntries = append(treeEntries, &file.TreeEntry{
-				Name: e.Name,
-				Path: e.Path,
-				Type: e.Type,
-				Size: e.Size,
-				Mode: e.Mode,
-				Hash: e.Hash,
-			})
-		}
-
-		response.Success(c, map[string]interface{}{
-			"entries":      treeEntries,
-			"current_ref":  "worktree",
-			"current_path": req.Path,
-		})
-		return
-	}
-
-	entries, err := gitSvc.GetTree(repo.Path, ref, req.Path, req.Recursive)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	// 转换为proto格式
+func buildTreeResponse(entries []git.TreeEntry, ref, path string) map[string]interface{} {
 	var treeEntries []*file.TreeEntry
 	for _, e := range entries {
 		treeEntries = append(treeEntries, &file.TreeEntry{
-			Name: e.Name,
-			Path: e.Path,
-			Type: e.Type,
-			Size: e.Size,
-			Mode: e.Mode,
-			Hash: e.Hash,
+			Name: e.Name, Path: e.Path, Type: e.Type,
+			Size: e.Size, Mode: e.Mode, Hash: e.Hash,
 		})
 	}
-
-	response.Success(c, map[string]interface{}{
-		"entries":      treeEntries,
-		"current_ref":  ref,
-		"current_path": req.Path,
-	})
+	return map[string]interface{}{"entries": treeEntries, "current_ref": ref, "current_path": path}
 }
 
 // GetBlob .
 // @router /api/v1/file/blob [GET]
 func GetBlob(ctx context.Context, c *app.RequestContext) {
-	var req file.GetBlobRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
+	handler.DoWithRepo(c,
+		func(r *file.GetBlobRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *file.GetBlobRequest) (any, error) {
+			svc := git.NewGitService()
+			ref := req.Ref
+			if ref == "" {
+				ref = "HEAD"
+			}
+
+			if ref == "worktree" {
+				blob, err := svc.GetWorktreeBlob(repo.Path, req.Path)
+				if err != nil {
+					return nil, err
+				}
+				return blobResponse(blob), nil
+			}
+			blob, err := svc.GetBlob(repo.Path, ref, req.Path)
+			if err != nil {
+				return nil, err
+			}
+			return blobResponse(blob), nil
+		},
+	)
+}
+
+func blobResponse(b *git.BlobContent) map[string]interface{} {
+	return map[string]interface{}{
+		"content": b.Content, "encoding": b.Encoding,
+		"size": b.Size, "is_binary": b.IsBinary, "mime_type": b.MimeType,
 	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	// 默认使用HEAD
-	ref := req.Ref
-	if ref == "" {
-		ref = "HEAD"
-	}
-
-	gitSvc := git.NewGitService()
-
-	if ref == "worktree" {
-		blob, err := gitSvc.GetWorktreeBlob(repo.Path, req.Path)
-		if err != nil {
-			response.InternalServerError(c, err.Error())
-			return
-		}
-		response.Success(c, map[string]interface{}{
-			"content":   blob.Content,
-			"encoding":  blob.Encoding,
-			"size":      blob.Size,
-			"is_binary": blob.IsBinary,
-			"mime_type": blob.MimeType,
-		})
-		return
-	}
-
-	blob, err := gitSvc.GetBlob(repo.Path, ref, req.Path)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]interface{}{
-		"content":   blob.Content,
-		"encoding":  blob.Encoding,
-		"size":      blob.Size,
-		"is_binary": blob.IsBinary,
-		"mime_type": blob.MimeType,
-	})
 }
 
 // GetFileHistory .
 // @router /api/v1/file/history [GET]
 func GetFileHistory(ctx context.Context, c *app.RequestContext) {
-	var req file.GetFileHistoryRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	// 默认使用HEAD
-	ref := req.Ref
-	if ref == "" {
-		ref = "HEAD"
-	}
-
-	limit := int(req.Limit)
-	if limit <= 0 {
-		limit = 50
-	}
-
-	gitSvc := git.NewGitService()
-	commits, err := gitSvc.GetFileHistory(repo.Path, ref, req.Path, limit)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	// 转换为proto格式
-	var fileCommits []*file.FileCommit
-	for _, c := range commits {
-		fileCommits = append(fileCommits, &file.FileCommit{
-			Hash:      c.Hash,
-			ShortHash: c.ShortHash,
-			Message:   c.Message,
-			Author:    c.Author,
-			Date:      c.Date,
-		})
-	}
-
-	response.Success(c, map[string]interface{}{
-		"commits": fileCommits,
-	})
+	handler.DoWithRepo(c,
+		func(r *file.GetFileHistoryRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *file.GetFileHistoryRequest) (any, error) {
+			ref := req.Ref
+			if ref == "" {
+				ref = "HEAD"
+			}
+			limit := int(req.Limit)
+			if limit <= 0 {
+				limit = 50
+			}
+			commits, err := git.NewGitService().GetFileHistory(repo.Path, ref, req.Path, limit)
+			if err != nil {
+				return nil, err
+			}
+			var fcs []*file.FileCommit
+			for _, cm := range commits {
+				fcs = append(fcs, &file.FileCommit{
+					Hash: cm.Hash, ShortHash: cm.ShortHash,
+					Message: cm.Message, Author: cm.Author, Date: cm.Date,
+				})
+			}
+			return map[string]interface{}{"commits": fcs}, nil
+		},
+	)
 }

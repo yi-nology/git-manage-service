@@ -8,146 +8,89 @@ import (
 	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	tagModel "github.com/yi-nology/git-manage-service/biz/model/tag"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 )
 
 // List .
 // @router /api/v1/tag/list [GET]
 func List(ctx context.Context, c *app.RequestContext) {
-	repoKey := c.Query("repo_key")
-	if repoKey == "" {
-		response.BadRequest(c, "repo_key is required")
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	svc := git.NewGitService()
-	tags, err := svc.GetTags(repo.Path)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, tags)
+	handler.DoWithQueryRepo(c, func(repo *po.Repo) (any, error) {
+		return git.NewGitService().GetTags(repo.Path)
+	})
 }
 
 // Create .
 // @router /api/v1/tag/create [POST]
 func Create(ctx context.Context, c *app.RequestContext) {
-	var req tagModel.CreateTagRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepo(c,
+		func(r *tagModel.CreateTagRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *tagModel.CreateTagRequest) (any, error) {
+			svc := git.NewGitService()
+			authorName, authorEmail, _ := svc.GetGlobalGitUser()
 
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			tagName := req.Name
+			if tagName == "auto" {
+				latest, err := svc.GetLatestVersion(repo.Path)
+				if err != nil || latest == "" {
+					tagName = "v0.1.0"
+				} else {
+					tagName = incrementVersion(latest)
+				}
+			}
 
-	svc := git.NewGitService()
-	authorName, authorEmail, _ := svc.GetGlobalGitUser()
+			if err := svc.CreateTag(repo.Path, tagName, req.Ref, req.Message, authorName, authorEmail); err != nil {
+				return nil, handler.ErrInternal("failed to create tag: " + err.Error())
+			}
 
-	tagName := req.Name
-	// Auto-increment version logic
-	if tagName == "auto" {
-		latest, err := svc.GetLatestVersion(repo.Path)
-		if err != nil || latest == "" {
-			tagName = "v0.1.0"
-		} else {
-			tagName = incrementVersion(latest)
-		}
-	}
-
-	err = svc.CreateTag(repo.Path, tagName, req.Ref, req.Message, authorName, authorEmail)
-	if err != nil {
-		response.InternalServerError(c, "failed to create tag: "+err.Error())
-		return
-	}
-
-	if req.PushRemote != "" {
-		err = svc.PushTag(repo.Path, req.PushRemote, tagName, "none", "", "")
-		if err != nil {
-			response.Success(c, map[string]string{
-				"status": "created_local_only",
-				"error":  "tag created but push failed: " + err.Error(),
-			})
-			return
-		}
-	}
-
-	response.Success(c, nil)
+			if req.PushRemote != "" {
+				if err := svc.PushTag(repo.Path, req.PushRemote, tagName, "none", "", ""); err != nil {
+					return map[string]string{"status": "created_local_only", "error": "tag created but push failed: " + err.Error()}, nil
+				}
+			}
+			return nil, nil
+		},
+	)
 }
 
 // Delete .
 // @router /api/v1/tag/delete [POST]
 func Delete(ctx context.Context, c *app.RequestContext) {
-	var req tagModel.DeleteTagRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	svc := git.NewGitService()
-
-	// Delete remote tag first if requested
-	if req.DeleteRemote && req.RemoteName != "" {
-		if err := svc.DeleteRemoteTag(repo.Path, req.RemoteName, req.Name, "none", "", ""); err != nil {
-			response.InternalServerError(c, "failed to delete remote tag: "+err.Error())
-			return
-		}
-	}
-
-	// Delete local tag
-	if err := svc.DeleteTag(repo.Path, req.Name); err != nil {
-		response.InternalServerError(c, "failed to delete local tag: "+err.Error())
-		return
-	}
-
-	response.Success(c, nil)
+	handler.DoWithRepoVoid(c,
+		func(r *tagModel.DeleteTagRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *tagModel.DeleteTagRequest) error {
+			svc := git.NewGitService()
+			if req.DeleteRemote && req.RemoteName != "" {
+				if err := svc.DeleteRemoteTag(repo.Path, req.RemoteName, req.Name, "none", "", ""); err != nil {
+					return handler.ErrInternal("failed to delete remote tag: " + err.Error())
+				}
+			}
+			if err := svc.DeleteTag(repo.Path, req.Name); err != nil {
+				return handler.ErrInternal("failed to delete local tag: " + err.Error())
+			}
+			return nil
+		},
+	)
 }
 
 // Push .
 // @router /api/v1/tag/push [POST]
 func Push(ctx context.Context, c *app.RequestContext) {
-	var req tagModel.PushTagRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	if req.RemoteName == "" {
-		req.RemoteName = "origin"
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	svc := git.NewGitService()
-	if err := svc.PushTag(repo.Path, req.RemoteName, req.TagName, "none", "", ""); err != nil {
-		response.InternalServerError(c, "failed to push tag: "+err.Error())
-		return
-	}
-
-	response.Success(c, nil)
+	handler.DoWithRepoVoid(c,
+		func(r *tagModel.PushTagRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *tagModel.PushTagRequest) error {
+			remote := req.RemoteName
+			if remote == "" {
+				remote = "origin"
+			}
+			if err := git.NewGitService().PushTag(repo.Path, remote, req.TagName, "none", "", ""); err != nil {
+				return handler.ErrInternal("failed to push tag: " + err.Error())
+			}
+			return nil
+		},
+	)
 }
 
 func incrementVersion(v string) string {
@@ -156,7 +99,6 @@ func incrementVersion(v string) string {
 		hasV = true
 		v = v[1:]
 	}
-
 	parts := strings.Split(v, ".")
 	if len(parts) > 0 {
 		lastIdx := len(parts) - 1
@@ -169,7 +111,6 @@ func incrementVersion(v string) string {
 	} else {
 		return "v0.0.1"
 	}
-
 	res := strings.Join(parts, ".")
 	if hasV {
 		return "v" + res

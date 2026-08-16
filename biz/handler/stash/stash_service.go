@@ -6,167 +6,74 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	stash "github.com/yi-nology/git-manage-service/biz/model/stash"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 )
 
 // ListStash .
 // @router /api/v1/stash/list [GET]
 func ListStash(ctx context.Context, c *app.RequestContext) {
-	var req stash.ListStashRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	stashes, err := gitSvc.StashList(repo.Path)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	// 转换为proto格式（初始化切片避免返回null）
-	entries := make([]*stash.StashEntry, 0, len(stashes))
-	for _, s := range stashes {
-		entries = append(entries, &stash.StashEntry{
-			Index:   int32(s.Index),
-			Ref:     s.Ref,
-			Message: s.Message,
-			Branch:  s.Branch,
-			Date:    s.Date,
-		})
-	}
-
-	response.Success(c, map[string]interface{}{
-		"stashes": entries,
-	})
+	handler.DoWithRepo(c,
+		func(r *stash.ListStashRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *stash.ListStashRequest) (any, error) {
+			return git.NewGitService().StashList(repo.Path)
+		},
+	)
 }
 
 // SaveStash .
 // @router /api/v1/stash/save [POST]
 func SaveStash(ctx context.Context, c *app.RequestContext) {
-	var req stash.SaveStashRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.StashSave(repo.Path, req.Message, req.IncludeUntracked); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "stash saved"})
+	handler.DoWithRepoVoid(c,
+		func(r *stash.SaveStashRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *stash.SaveStashRequest) error {
+			return git.NewGitService().StashSave(repo.Path, req.Message, req.IncludeUntracked)
+		},
+	)
 }
 
 // ApplyStash .
 // @router /api/v1/stash/apply [POST]
 func ApplyStash(ctx context.Context, c *app.RequestContext) {
-	var req stash.ApplyStashRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.StashApply(repo.Path, int(req.Index)); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "stash applied"})
+	handler.DoWithRepoVoid(c,
+		func(r *stash.ApplyStashRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *stash.ApplyStashRequest) error {
+			return git.NewGitService().StashApply(repo.Path, int(req.Index))
+		},
+	)
 }
 
 // PopStash .
 // @router /api/v1/stash/pop [POST]
 func PopStash(ctx context.Context, c *app.RequestContext) {
-	var req stash.PopStashRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.StashPop(repo.Path, int(req.Index)); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "stash popped"})
+	handler.DoWithRepoVoid(c,
+		func(r *stash.PopStashRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *stash.PopStashRequest) error {
+			return git.NewGitService().StashPop(repo.Path, int(req.Index))
+		},
+	)
 }
 
 // DropStash .
 // @router /api/v1/stash/drop [POST]
 func DropStash(ctx context.Context, c *app.RequestContext) {
-	var req stash.DropStashRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.StashDrop(repo.Path, int(req.Index)); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "stash dropped"})
+	handler.DoWithRepoVoid(c,
+		func(r *stash.DropStashRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *stash.DropStashRequest) error {
+			return git.NewGitService().StashDrop(repo.Path, int(req.Index))
+		},
+	)
 }
 
 // ClearStash .
 // @router /api/v1/stash/clear [POST]
 func ClearStash(ctx context.Context, c *app.RequestContext) {
-	var req stash.ClearStashRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.StashClear(repo.Path); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "all stashes cleared"})
+	handler.DoWithRepoVoid(c,
+		func(r *stash.ClearStashRequest) string { return r.RepoKey },
+		func(repo *po.Repo, req *stash.ClearStashRequest) error {
+			return git.NewGitService().StashClear(repo.Path)
+		},
+	)
 }

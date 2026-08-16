@@ -6,206 +6,108 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	submodule "github.com/yi-nology/git-manage-service/biz/model/submodule"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
-	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 )
 
 // ListSubmodules .
 // @router /api/v1/submodule/list [GET]
 func ListSubmodules(ctx context.Context, c *app.RequestContext) {
-	var req submodule.ListSubmodulesRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	submodules, err := gitSvc.SubmoduleList(repo.Path)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	// 转换为proto格式
-	var items []*submodule.SubmoduleInfo
-	for _, sm := range submodules {
-		items = append(items, &submodule.SubmoduleInfo{
-			Name:   sm.Name,
-			Path:   sm.Path,
-			Url:    sm.URL,
-			Branch: sm.Branch,
-			Commit: sm.Commit,
-			Status: sm.Status,
+	handler.DoWithRepo(c,
+		func(req *submodule.ListSubmodulesRequest) string { return req.RepoKey },
+		func(repo *po.Repo, req *submodule.ListSubmodulesRequest) (map[string]interface{}, error) {
+			gitSvc := git.NewGitService()
+			submodules, err := gitSvc.SubmoduleList(repo.Path)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			var items []*submodule.SubmoduleInfo
+			for _, sm := range submodules {
+				items = append(items, &submodule.SubmoduleInfo{
+					Name:   sm.Name,
+					Path:   sm.Path,
+					Url:    sm.URL,
+					Branch: sm.Branch,
+					Commit: sm.Commit,
+					Status: sm.Status,
+				})
+			}
+			return map[string]interface{}{"submodules": items}, nil
 		})
-	}
-
-	response.Success(c, map[string]interface{}{
-		"submodules": items,
-	})
 }
 
 // GetStatus .
 // @router /api/v1/submodule/status [GET]
 func GetStatus(ctx context.Context, c *app.RequestContext) {
-	var req submodule.GetSubmoduleStatusRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	statusItems, err := gitSvc.SubmoduleStatus(repo.Path, req.Recursive)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	// 转换为proto格式
-	var items []*submodule.SubmoduleStatusItem
-	for _, item := range statusItems {
-		items = append(items, &submodule.SubmoduleStatusItem{
-			Path:        item.Path,
-			Commit:      item.Commit,
-			Status:      item.Status,
-			Description: item.Description,
+	handler.DoWithRepo(c,
+		func(req *submodule.GetSubmoduleStatusRequest) string { return req.RepoKey },
+		func(repo *po.Repo, req *submodule.GetSubmoduleStatusRequest) (map[string]interface{}, error) {
+			gitSvc := git.NewGitService()
+			statusItems, err := gitSvc.SubmoduleStatus(repo.Path, req.Recursive)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			var items []*submodule.SubmoduleStatusItem
+			for _, item := range statusItems {
+				items = append(items, &submodule.SubmoduleStatusItem{
+					Path:        item.Path,
+					Commit:      item.Commit,
+					Status:      item.Status,
+					Description: item.Description,
+				})
+			}
+			return map[string]interface{}{"items": items}, nil
 		})
-	}
-
-	response.Success(c, map[string]interface{}{
-		"items": items,
-	})
 }
 
 // AddSubmodule .
 // @router /api/v1/submodule/add [POST]
 func AddSubmodule(ctx context.Context, c *app.RequestContext) {
-	var req submodule.AddSubmoduleRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.SubmoduleAdd(repo.Path, req.Url, req.Path, req.Branch); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "submodule added"})
+	handler.DoWithRepoVoid(c,
+		func(req *submodule.AddSubmoduleRequest) string { return req.RepoKey },
+		func(repo *po.Repo, req *submodule.AddSubmoduleRequest) error {
+			return git.NewGitService().SubmoduleAdd(repo.Path, req.Url, req.Path, req.Branch)
+		})
 }
 
 // InitSubmodule .
 // @router /api/v1/submodule/init [POST]
 func InitSubmodule(ctx context.Context, c *app.RequestContext) {
-	var req submodule.InitSubmoduleRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.SubmoduleInit(repo.Path, req.Path); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "submodule initialized"})
+	handler.DoWithRepoVoid(c,
+		func(req *submodule.InitSubmoduleRequest) string { return req.RepoKey },
+		func(repo *po.Repo, req *submodule.InitSubmoduleRequest) error {
+			return git.NewGitService().SubmoduleInit(repo.Path, req.Path)
+		})
 }
 
 // UpdateSubmodule .
 // @router /api/v1/submodule/update [POST]
 func UpdateSubmodule(ctx context.Context, c *app.RequestContext) {
-	var req submodule.UpdateSubmoduleRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.SubmoduleUpdate(repo.Path, req.Path, req.Init, req.Recursive, req.Remote); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "submodule updated"})
+	handler.DoWithRepoVoid(c,
+		func(req *submodule.UpdateSubmoduleRequest) string { return req.RepoKey },
+		func(repo *po.Repo, req *submodule.UpdateSubmoduleRequest) error {
+			return git.NewGitService().SubmoduleUpdate(repo.Path, req.Path, req.Init, req.Recursive, req.Remote)
+		})
 }
 
 // SyncSubmodule .
 // @router /api/v1/submodule/sync [POST]
 func SyncSubmodule(ctx context.Context, c *app.RequestContext) {
-	var req submodule.SyncSubmoduleRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.SubmoduleSync(repo.Path, req.Path, req.Recursive); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "submodule synced"})
+	handler.DoWithRepoVoid(c,
+		func(req *submodule.SyncSubmoduleRequest) string { return req.RepoKey },
+		func(repo *po.Repo, req *submodule.SyncSubmoduleRequest) error {
+			return git.NewGitService().SubmoduleSync(repo.Path, req.Path, req.Recursive)
+		})
 }
 
 // RemoveSubmodule .
 // @router /api/v1/submodule/remove [POST]
 func RemoveSubmodule(ctx context.Context, c *app.RequestContext) {
-	var req submodule.RemoveSubmoduleRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.SubmoduleRemove(repo.Path, req.Path, req.Force); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "submodule removed"})
+	handler.DoWithRepoVoid(c,
+		func(req *submodule.RemoveSubmoduleRequest) string { return req.RepoKey },
+		func(repo *po.Repo, req *submodule.RemoveSubmoduleRequest) error {
+			return git.NewGitService().SubmoduleRemove(repo.Path, req.Path, req.Force)
+		})
 }
