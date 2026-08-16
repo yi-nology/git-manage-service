@@ -5,51 +5,38 @@ import (
 	"gorm.io/gorm"
 )
 
-type AuthorIdentityDAO struct{}
+type AuthorIdentityDAO struct{ BaseDAO[po.AuthorIdentity] }
 
-func NewAuthorIdentityDAO() *AuthorIdentityDAO {
-	return &AuthorIdentityDAO{}
-}
+func NewAuthorIdentityDAO() *AuthorIdentityDAO { return &AuthorIdentityDAO{} }
 
-func (d *AuthorIdentityDAO) Create(identity *po.AuthorIdentity) error {
-	return DB.Create(identity).Error
-}
-
+// Update 更新身份（与 Save 相同，保持向后兼容）
 func (d *AuthorIdentityDAO) Update(identity *po.AuthorIdentity) error {
 	return DB.Save(identity).Error
 }
 
-func (d *AuthorIdentityDAO) Delete(id uint) error {
-	return DB.Delete(&po.AuthorIdentity{}, id).Error
-}
-
-func (d *AuthorIdentityDAO) FindByID(id uint) (*po.AuthorIdentity, error) {
-	var identity po.AuthorIdentity
-	err := DB.First(&identity, id).Error
-	return &identity, err
-}
-
+// ListAll 按默认优先、创建时间正序列出
 func (d *AuthorIdentityDAO) ListAll() ([]po.AuthorIdentity, error) {
 	var identities []po.AuthorIdentity
-	err := DB.Order("is_default DESC, created_at ASC").Find(&identities).Error
-	return identities, err
+	return identities, DB.Order("is_default DESC, created_at ASC").Find(&identities).Error
 }
 
+// GetDefault 查询默认身份
 func (d *AuthorIdentityDAO) GetDefault() (*po.AuthorIdentity, error) {
 	var identity po.AuthorIdentity
-	err := DB.Where("is_default = ?", true).First(&identity).Error
-	return &identity, err
+	return &identity, DB.Where("is_default = ?", true).First(&identity).Error
 }
 
+// ClearAllDefaults 取消所有默认
 func (d *AuthorIdentityDAO) ClearAllDefaults() error {
-	return DB.Model(&po.AuthorIdentity{}).Where("is_default = ?", true).Update("is_default", false).Error
+	return DB.Model(new(po.AuthorIdentity)).Where("is_default = ?", true).Update("is_default", false).Error
 }
 
+// SetDefault 设为默认（事务）
 func (d *AuthorIdentityDAO) SetDefault(id uint) error {
 	return DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&po.AuthorIdentity{}).Where("is_default = ?", true).Update("is_default", false).Error; err != nil {
+		if err := tx.Model(new(po.AuthorIdentity)).Where("is_default = ?", true).Update("is_default", false).Error; err != nil {
 			return err
 		}
-		return tx.Model(&po.AuthorIdentity{}).Where("id = ?", id).Update("is_default", true).Error
+		return tx.Model(new(po.AuthorIdentity)).Where("id = ?", id).Update("is_default", true).Error
 	})
 }

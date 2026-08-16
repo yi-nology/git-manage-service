@@ -4,22 +4,19 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
-type WebhookEventDAO struct{}
+type WebhookEventDAO struct{ BaseDAO[po.WebhookEvent] }
 
 func NewWebhookEventDAO() *WebhookEventDAO { return &WebhookEventDAO{} }
 
-func (d *WebhookEventDAO) Create(event *po.WebhookEvent) error {
-	return DB.Create(event).Error
-}
-
+// FindByEventID 根据事件 ID 查询
 func (d *WebhookEventDAO) FindByEventID(eventID string) (*po.WebhookEvent, error) {
 	var event po.WebhookEvent
-	err := DB.Where("event_id = ?", eventID).First(&event).Error
-	return &event, err
+	return &event, DB.Where("event_id = ?", eventID).First(&event).Error
 }
 
+// List 分页带筛选查询
 func (d *WebhookEventDAO) List(eventType, source, status string, page, pageSize int) ([]po.WebhookEvent, int64, error) {
-	q := DB.Model(&po.WebhookEvent{})
+	q := DB.Model(new(po.WebhookEvent))
 	if eventType != "" {
 		q = q.Where("event_type = ?", eventType)
 	}
@@ -34,39 +31,23 @@ func (d *WebhookEventDAO) List(eventType, source, status string, page, pageSize 
 		return nil, 0, err
 	}
 	var events []po.WebhookEvent
-	offset := (page - 1) * pageSize
-	err := q.Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&events).Error
-	return events, total, err
+	return events, total, q.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&events).Error
 }
 
-func (d *WebhookEventDAO) Save(event *po.WebhookEvent) error {
-	return DB.Save(event).Error
-}
-
-type WebhookRuleDAO struct{}
+// WebhookRuleDAO webhook 规则
+type WebhookRuleDAO struct{ BaseDAO[po.WebhookRule] }
 
 func NewWebhookRuleDAO() *WebhookRuleDAO { return &WebhookRuleDAO{} }
 
-func (d *WebhookRuleDAO) Create(rule *po.WebhookRule) error {
-	return DB.Create(rule).Error
-}
-
+// FindAll 覆盖基类：仅返回启用的规则
 func (d *WebhookRuleDAO) FindAll() ([]po.WebhookRule, error) {
 	var rules []po.WebhookRule
-	err := DB.Where("enabled = ?", true).Find(&rules).Error
-	return rules, err
+	return rules, DB.Where("enabled = ?", true).Find(&rules).Error
 }
 
+// FindByProviderConfigID 查询 provider 关联的启用规则（含全局规则）
 func (d *WebhookRuleDAO) FindByProviderConfigID(providerConfigID uint) ([]po.WebhookRule, error) {
 	var rules []po.WebhookRule
-	err := DB.Where("provider_config_id = ? OR provider_config_id = 0", providerConfigID).Where("enabled = ?", true).Find(&rules).Error
-	return rules, err
-}
-
-func (d *WebhookRuleDAO) Save(rule *po.WebhookRule) error {
-	return DB.Save(rule).Error
-}
-
-func (d *WebhookRuleDAO) Delete(id uint) error {
-	return DB.Delete(&po.WebhookRule{}, id).Error
+	return rules, DB.Where("provider_config_id = ? OR provider_config_id = 0", providerConfigID).
+		Where("enabled = ?", true).Find(&rules).Error
 }

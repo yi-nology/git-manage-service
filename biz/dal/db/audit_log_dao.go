@@ -7,50 +7,34 @@ import (
 	"gorm.io/gorm"
 )
 
-type AuditLogDAO struct{}
+type AuditLogDAO struct{ BaseDAO[po.AuditLog] }
 
-func NewAuditLogDAO() *AuditLogDAO {
-	return &AuditLogDAO{}
-}
+func NewAuditLogDAO() *AuditLogDAO { return &AuditLogDAO{} }
 
-func (d *AuditLogDAO) Create(log *po.AuditLog) error {
-	return DB.Create(log).Error
-}
-
+// FindLatest 获取最近 N 条日志
 func (d *AuditLogDAO) FindLatest(limit int) ([]po.AuditLog, error) {
 	var logs []po.AuditLog
-	err := DB.Order("created_at desc").Limit(limit).Find(&logs).Error
-	return logs, err
+	return logs, DB.Order("created_at desc").Limit(limit).Find(&logs).Error
 }
 
-func (d *AuditLogDAO) Count() (int64, error) {
-	var count int64
-	err := DB.Model(&po.AuditLog{}).Count(&count).Error
-	return count, err
-}
-
+// FindPage 分页查询
 func (d *AuditLogDAO) FindPage(page, pageSize int) ([]po.AuditLog, error) {
 	return d.FindPageWithFilters(page, pageSize, "", "", "", "")
 }
 
+// FindPageWithFilters 带筛选的分页查询
 func (d *AuditLogDAO) FindPageWithFilters(page, pageSize int, action, target, startDate, endDate string) ([]po.AuditLog, error) {
 	var logs []po.AuditLog
 	offset := (page - 1) * pageSize
 	query := d.applyFilters(DB, action, target, startDate, endDate)
-	// Exclude 'details' column for list view to improve performance
-	err := query.Select("id", "action", "target", "operator", "ip_address", "user_agent", "created_at").
-		Order("created_at desc").
-		Offset(offset).
-		Limit(pageSize).
-		Find(&logs).Error
-	return logs, err
+	return logs, query.Select("id", "action", "target", "operator", "ip_address", "user_agent", "created_at").
+		Order("created_at desc").Offset(offset).Limit(pageSize).Find(&logs).Error
 }
 
+// CountWithFilters 带筛选的计数
 func (d *AuditLogDAO) CountWithFilters(action, target, startDate, endDate string) (int64, error) {
 	var count int64
-	query := d.applyFilters(DB.Model(&po.AuditLog{}), action, target, startDate, endDate)
-	err := query.Count(&count).Error
-	return count, err
+	return count, d.applyFilters(DB.Model(new(po.AuditLog)), action, target, startDate, endDate).Count(&count).Error
 }
 
 func (d *AuditLogDAO) applyFilters(query *gorm.DB, action, target, startDate, endDate string) *gorm.DB {
@@ -69,23 +53,14 @@ func (d *AuditLogDAO) applyFilters(query *gorm.DB, action, target, startDate, en
 	return query
 }
 
-func (d *AuditLogDAO) FindByID(id uint) (*po.AuditLog, error) {
-	var log po.AuditLog
-	err := DB.First(&log, id).Error
-	return &log, err
-}
-
-// FindByDateRange 查询指定日期范围内的审计日志
+// FindByDateRange 查询日期范围内的日志
 func (d *AuditLogDAO) FindByDateRange(startDate, endDate time.Time) ([]po.AuditLog, error) {
 	var logs []po.AuditLog
-	err := DB.Where("created_at >= ? AND created_at <= ?", startDate, endDate).
-		Order("created_at asc").
-		Find(&logs).Error
-	return logs, err
+	return logs, DB.Where("created_at >= ? AND created_at <= ?", startDate, endDate).
+		Order("created_at asc").Find(&logs).Error
 }
 
-// DeleteByDateRange 删除指定日期范围内的审计日志
+// DeleteByDateRange 删除日期范围内的日志
 func (d *AuditLogDAO) DeleteByDateRange(startDate, endDate time.Time) error {
-	return DB.Where("created_at >= ? AND created_at <= ?", startDate, endDate).
-		Delete(&po.AuditLog{}).Error
+	return DB.Where("created_at >= ? AND created_at <= ?", startDate, endDate).Delete(new(po.AuditLog)).Error
 }

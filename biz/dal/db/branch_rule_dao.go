@@ -4,16 +4,17 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
-type BranchRuleSetDAO struct{}
+type BranchRuleSetDAO struct{ BaseDAO[po.BranchRuleSet] }
 
 func NewBranchRuleSetDAO() *BranchRuleSetDAO { return &BranchRuleSetDAO{} }
 
+// FindGlobal 查询全局规则集
 func (d *BranchRuleSetDAO) FindGlobal() (*po.BranchRuleSet, error) {
 	var s po.BranchRuleSet
-	err := DB.Where("scope_type = ? AND scope_id = ?", "global", "default").First(&s).Error
-	return &s, err
+	return &s, DB.Where("scope_type = ? AND scope_id = ?", "global", "default").First(&s).Error
 }
 
+// Upsert 存在则更新，否则创建
 func (d *BranchRuleSetDAO) Upsert(s *po.BranchRuleSet) error {
 	var existing po.BranchRuleSet
 	err := DB.Where("scope_type = ? AND scope_id = ?", s.ScopeType, s.ScopeID).First(&existing).Error
@@ -25,23 +26,19 @@ func (d *BranchRuleSetDAO) Upsert(s *po.BranchRuleSet) error {
 	return DB.Save(s).Error
 }
 
-func (d *BranchRuleSetDAO) Save(s *po.BranchRuleSet) error {
-	return DB.Save(s).Error
-}
+// BranchRuleOverrideDAO 分支规则覆盖
+type BranchRuleOverrideDAO struct{ BaseDAO[po.BranchRuleOverride] }
 
-type BranchRuleOverrideDAO struct{}
+func NewBranchRuleOverrideDAO() *BranchRuleOverrideDAO { return &BranchRuleOverrideDAO{} }
 
-func NewBranchRuleOverrideDAO() *BranchRuleOverrideDAO {
-	return &BranchRuleOverrideDAO{}
-}
-
+// FindByRemoteRepo 按平台配置和 owner/repo 查询
 func (d *BranchRuleOverrideDAO) FindByRemoteRepo(providerConfigID uint, platformOwner, platformRepo string) (*po.BranchRuleOverride, error) {
 	var o po.BranchRuleOverride
-	err := DB.Where("provider_config_id = ? AND platform_owner = ? AND platform_repo = ?",
+	return &o, DB.Where("provider_config_id = ? AND platform_owner = ? AND platform_repo = ?",
 		providerConfigID, platformOwner, platformRepo).First(&o).Error
-	return &o, err
 }
 
+// Upsert 存在则更新，否则创建
 func (d *BranchRuleOverrideDAO) Upsert(o *po.BranchRuleOverride) error {
 	var existing po.BranchRuleOverride
 	err := DB.Where("provider_config_id = ? AND platform_owner = ? AND platform_repo = ?",
@@ -52,8 +49,4 @@ func (d *BranchRuleOverrideDAO) Upsert(o *po.BranchRuleOverride) error {
 	o.ID = existing.ID
 	o.CreatedAt = existing.CreatedAt
 	return DB.Save(o).Error
-}
-
-func (d *BranchRuleOverrideDAO) Delete(id uint) error {
-	return DB.Delete(&po.BranchRuleOverride{}, id).Error
 }

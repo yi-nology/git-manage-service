@@ -4,26 +4,18 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
-type ReviewRepoConfigDAO struct{}
+type ReviewRepoConfigDAO struct{ BaseDAO[po.ReviewRepoConfig] }
 
 func NewReviewRepoConfigDAO() *ReviewRepoConfigDAO { return &ReviewRepoConfigDAO{} }
 
-func (d *ReviewRepoConfigDAO) Create(c *po.ReviewRepoConfig) error {
-	return DB.Create(c).Error
-}
-
+// FindByRemoteRepo 按平台配置和 owner/repo 查询
 func (d *ReviewRepoConfigDAO) FindByRemoteRepo(providerConfigID uint, platformOwner, platformRepo string) (*po.ReviewRepoConfig, error) {
 	var c po.ReviewRepoConfig
-	err := DB.Where("provider_config_id = ? AND platform_owner = ? AND platform_repo = ?", providerConfigID, platformOwner, platformRepo).First(&c).Error
-	return &c, err
+	return &c, DB.Where("provider_config_id = ? AND platform_owner = ? AND platform_repo = ?",
+		providerConfigID, platformOwner, platformRepo).First(&c).Error
 }
 
-func (d *ReviewRepoConfigDAO) FindByID(id uint) (*po.ReviewRepoConfig, error) {
-	var c po.ReviewRepoConfig
-	err := DB.First(&c, id).Error
-	return &c, err
-}
-
+// Upsert 存在则更新，否则创建
 func (d *ReviewRepoConfigDAO) Upsert(c *po.ReviewRepoConfig) error {
 	var existing po.ReviewRepoConfig
 	err := DB.Where("provider_config_id = ? AND platform_owner = ? AND platform_repo = ?",
@@ -36,12 +28,8 @@ func (d *ReviewRepoConfigDAO) Upsert(c *po.ReviewRepoConfig) error {
 	return DB.Save(c).Error
 }
 
-func (d *ReviewRepoConfigDAO) Delete(id uint) error {
-	return DB.Delete(&po.ReviewRepoConfig{}, id).Error
-}
-
+// FindByProviderConfigID 按 provider 配置查询
 func (d *ReviewRepoConfigDAO) FindByProviderConfigID(providerConfigID uint) ([]po.ReviewRepoConfig, error) {
 	var configs []po.ReviewRepoConfig
-	err := DB.Where("provider_config_id = ?", providerConfigID).Find(&configs).Error
-	return configs, err
+	return configs, DB.Where("provider_config_id = ?", providerConfigID).Find(&configs).Error
 }

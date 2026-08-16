@@ -4,35 +4,23 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
-type ChangeRequestDAO struct{}
+type ChangeRequestDAO struct{ BaseDAO[po.ChangeRequest] }
 
 func NewChangeRequestDAO() *ChangeRequestDAO { return &ChangeRequestDAO{} }
 
-func (d *ChangeRequestDAO) Create(cr *po.ChangeRequest) error {
-	return DB.Create(cr).Error
-}
-
-func (d *ChangeRequestDAO) FindByID(id uint) (*po.ChangeRequest, error) {
-	var cr po.ChangeRequest
-	err := DB.First(&cr, id).Error
-	return &cr, err
-}
-
+// FindByRepoAndNumber 根据仓库 ID 和 MR/PR 编号查询
 func (d *ChangeRequestDAO) FindByRepoAndNumber(repoID uint, crNumber int) (*po.ChangeRequest, error) {
 	var cr po.ChangeRequest
-	err := DB.Where("repo_id = ? AND cr_number = ?", repoID, crNumber).First(&cr).Error
-	return &cr, err
+	return &cr, DB.Where("repo_id = ? AND cr_number = ?", repoID, crNumber).First(&cr).Error
 }
 
-// FindAllByRepo returns all CRs for a repo (no filters/pagination), for
-// batch-sync flows that need a number→CR map in one query.
+// FindAllByRepo 返回仓库的所有 CR（批量同步用）
 func (d *ChangeRequestDAO) FindAllByRepo(repoID uint) ([]po.ChangeRequest, error) {
 	var crs []po.ChangeRequest
-	err := DB.Where("repo_id = ?", repoID).Find(&crs).Error
-	return crs, err
+	return crs, DB.Where("repo_id = ?", repoID).Find(&crs).Error
 }
 
-// BatchCreate inserts multiple CRs in one statement.
+// BatchCreate 覆盖基类：空切片时跳过
 func (d *ChangeRequestDAO) BatchCreate(crs []po.ChangeRequest) error {
 	if len(crs) == 0 {
 		return nil
@@ -40,8 +28,9 @@ func (d *ChangeRequestDAO) BatchCreate(crs []po.ChangeRequest) error {
 	return DB.Create(&crs).Error
 }
 
+// FindByRepo 分页带筛选查询
 func (d *ChangeRequestDAO) FindByRepo(repoID uint, state, sourceBranch, targetBranch string, page, pageSize int) ([]po.ChangeRequest, int64, error) {
-	q := DB.Model(&po.ChangeRequest{}).Where("repo_id = ?", repoID)
+	q := DB.Model(new(po.ChangeRequest)).Where("repo_id = ?", repoID)
 	if state != "" {
 		q = q.Where("state = ?", state)
 	}
@@ -56,15 +45,11 @@ func (d *ChangeRequestDAO) FindByRepo(repoID uint, state, sourceBranch, targetBr
 		return nil, 0, err
 	}
 	var crs []po.ChangeRequest
-	offset := (page - 1) * pageSize
-	err := q.Order("updated_at DESC").Offset(offset).Limit(pageSize).Find(&crs).Error
+	err := q.Order("updated_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&crs).Error
 	return crs, total, err
 }
 
-func (d *ChangeRequestDAO) Save(cr *po.ChangeRequest) error {
-	return DB.Save(cr).Error
-}
-
+// DeleteByRepo 删除仓库的所有 CR
 func (d *ChangeRequestDAO) DeleteByRepo(repoID uint) error {
-	return DB.Where("repo_id = ?", repoID).Delete(&po.ChangeRequest{}).Error
+	return DB.Where("repo_id = ?", repoID).Delete(new(po.ChangeRequest)).Error
 }

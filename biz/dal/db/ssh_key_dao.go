@@ -4,29 +4,13 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 )
 
-type SSHKeyDAO struct{}
+type SSHKeyDAO struct{ BaseDAO[po.SSHKey] }
 
-func NewSSHKeyDAO() *SSHKeyDAO {
-	return &SSHKeyDAO{}
-}
+func NewSSHKeyDAO() *SSHKeyDAO { return &SSHKeyDAO{} }
 
-// Create 创建SSH密钥
-func (d *SSHKeyDAO) Create(sshKey *po.SSHKey) error {
-	return DB.Create(sshKey).Error
-}
-
-// FindAll 查询所有SSH密钥
-func (d *SSHKeyDAO) FindAll() ([]po.SSHKey, error) {
-	var keys []po.SSHKey
-	err := DB.Find(&keys).Error
-	return keys, err
-}
-
-// FindByID 根据ID查询SSH密钥
-func (d *SSHKeyDAO) FindByID(id uint) (*po.SSHKey, error) {
-	var key po.SSHKey
-	err := DB.First(&key, id).Error
-	return &key, err
+// Update 更新 SSH 密钥（与 Save 相同，保持向后兼容）
+func (d *SSHKeyDAO) Update(sshKey *po.SSHKey) error {
+	return DB.Save(sshKey).Error
 }
 
 // FindByName 根据名称查询SSH密钥
@@ -34,28 +18,4 @@ func (d *SSHKeyDAO) FindByName(name string) (*po.SSHKey, error) {
 	var key po.SSHKey
 	err := DB.Where("name = ?", name).First(&key).Error
 	return &key, err
-}
-
-// Update 更新SSH密钥
-func (d *SSHKeyDAO) Update(sshKey *po.SSHKey) error {
-	return DB.Save(sshKey).Error
-}
-
-// Delete 删除SSH密钥
-func (d *SSHKeyDAO) Delete(id uint) error {
-	return DB.Delete(&po.SSHKey{}, id).Error
-}
-
-// ExistsByName 检查名称是否已存在
-func (d *SSHKeyDAO) ExistsByName(name string) (bool, error) {
-	var count int64
-	err := DB.Model(&po.SSHKey{}).Where("name = ?", name).Count(&count).Error
-	return count > 0, err
-}
-
-// ExistsByNameExcludeID 检查名称是否已存在（排除指定ID）
-func (d *SSHKeyDAO) ExistsByNameExcludeID(name string, excludeID uint) (bool, error) {
-	var count int64
-	err := DB.Model(&po.SSHKey{}).Where("name = ? AND id != ?", name, excludeID).Count(&count).Error
-	return count > 0, err
 }
