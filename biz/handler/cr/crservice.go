@@ -166,71 +166,66 @@ func ListByProvider(ctx context.Context, c *app.RequestContext) {
 }
 
 func CreateByProvider(ctx context.Context, c *app.RequestContext) {
-	var req api.CreateCRByProviderReq
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.Title == "" || req.SourceBranch == "" || req.TargetBranch == "" {
-		pkgresponse.BadRequest(c, "provider_id, owner, repo, title, source_branch and target_branch are required")
-		return
-	}
-	cr, err := crservice.CreateCRByProvider(ctx, &req)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to create CR: "+err.Error())
-		return
-	}
-	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
-	pkgresponse.Success(c, cr)
+	handler.BindAndDo(c,
+		func(req *api.CreateCRByProviderReq) (*api.CRDTO, error) {
+			if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.Title == "" || req.SourceBranch == "" || req.TargetBranch == "" {
+				return nil, handler.ErrBadRequest("provider_id, owner, repo, title, source_branch and target_branch are required")
+			}
+			cr, err := crservice.CreateCRByProvider(ctx, req)
+			if err != nil {
+				return nil, handler.ErrInternal("Failed to create CR: " + err.Error())
+			}
+			c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
+			return cr, nil
+		},
+	)
+}
+
+type mergeByProviderReq struct {
+	ProviderID         uint   `json:"provider_id"`
+	Owner              string `json:"owner"`
+	Repo               string `json:"repo"`
+	CRNumber           int    `json:"cr_number"`
+	MergeCommitMessage string `json:"merge_commit_message"`
+	Squash             bool   `json:"squash"`
+	RemoveSourceBranch bool   `json:"remove_source_branch"`
 }
 
 func MergeByProvider(ctx context.Context, c *app.RequestContext) {
-	var req struct {
-		ProviderID         uint   `json:"provider_id"`
-		Owner              string `json:"owner"`
-		Repo               string `json:"repo"`
-		CRNumber           int    `json:"cr_number"`
-		MergeCommitMessage string `json:"merge_commit_message"`
-		Squash             bool   `json:"squash"`
-		RemoveSourceBranch bool   `json:"remove_source_branch"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.CRNumber == 0 {
-		pkgresponse.BadRequest(c, "provider_id, owner, repo and cr_number are required")
-		return
-	}
-	cr, err := crservice.MergeCRByProvider(ctx, req.ProviderID, req.Owner, req.Repo, req.CRNumber, req.MergeCommitMessage, req.Squash, req.RemoveSourceBranch)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to merge CR: "+err.Error())
-		return
-	}
-	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
-	pkgresponse.Success(c, cr)
+	handler.BindAndDo(c,
+		func(req *mergeByProviderReq) (*api.CRDTO, error) {
+			if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.CRNumber == 0 {
+				return nil, handler.ErrBadRequest("provider_id, owner, repo and cr_number are required")
+			}
+			cr, err := crservice.MergeCRByProvider(ctx, req.ProviderID, req.Owner, req.Repo, req.CRNumber, req.MergeCommitMessage, req.Squash, req.RemoveSourceBranch)
+			if err != nil {
+				return nil, handler.ErrInternal("Failed to merge CR: " + err.Error())
+			}
+			c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
+			return cr, nil
+		},
+	)
+}
+
+type closeByProviderReq struct {
+	ProviderID uint   `json:"provider_id"`
+	Owner      string `json:"owner"`
+	Repo       string `json:"repo"`
+	CRNumber   int    `json:"cr_number"`
 }
 
 func CloseByProvider(ctx context.Context, c *app.RequestContext) {
-	var req struct {
-		ProviderID uint   `json:"provider_id"`
-		Owner      string `json:"owner"`
-		Repo       string `json:"repo"`
-		CRNumber   int    `json:"cr_number"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.CRNumber == 0 {
-		pkgresponse.BadRequest(c, "provider_id, owner, repo and cr_number are required")
-		return
-	}
-	cr, err := crservice.CloseCRByProvider(ctx, req.ProviderID, req.Owner, req.Repo, req.CRNumber)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to close CR: "+err.Error())
-		return
-	}
-	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
-	pkgresponse.Success(c, cr)
+	handler.BindAndDo(c,
+		func(req *closeByProviderReq) (*api.CRDTO, error) {
+			if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.CRNumber == 0 {
+				return nil, handler.ErrBadRequest("provider_id, owner, repo and cr_number are required")
+			}
+			cr, err := crservice.CloseCRByProvider(ctx, req.ProviderID, req.Owner, req.Repo, req.CRNumber)
+			if err != nil {
+				return nil, handler.ErrInternal("Failed to close CR: " + err.Error())
+			}
+			c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
+			return cr, nil
+		},
+	)
 }

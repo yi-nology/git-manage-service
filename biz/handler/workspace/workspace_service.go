@@ -5,13 +5,11 @@ import (
 	"fmt"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/model/workspace"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
-	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
 type PushCurrentReq struct {
@@ -144,42 +142,30 @@ func AIResolveConflict(ctx context.Context, c *app.RequestContext) {
 }
 
 func GenerateCommitMessage(ctx context.Context, c *app.RequestContext) {
-	var req GenerateCommitMessageReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepo(c,
+		func(req *GenerateCommitMessageReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *GenerateCommitMessageReq) (map[string]string, error) {
+			gitSvc := git.NewGitService()
+			diffOutput, err := gitSvc.GetWorkspaceDiffRaw(repo.Path, "")
+			if err != nil {
+				return nil, handler.ErrInternal("获取 diff 失败: " + err.Error())
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			if diffOutput == "" {
+				return nil, handler.ErrBadRequest("没有变更可以生成提交信息")
+			}
 
-	gitSvc := git.NewGitService()
-	diffOutput, err := gitSvc.GetWorkspaceDiffRaw(repo.Path, "")
-	if err != nil {
-		response.InternalServerError(c, "获取 diff 失败: "+err.Error())
-		return
-	}
+			provider, err := llm.GetDefaultProvider()
+			if err != nil {
+				return nil, handler.ErrInternal("未配置 LLM 提供商: " + err.Error())
+			}
 
-	if diffOutput == "" {
-		response.BadRequest(c, "没有变更可以生成提交信息")
-		return
-	}
+			truncated := diffOutput
+			if len(truncated) > 8000 {
+				truncated = truncated[:8000] + "\n... (truncated)"
+			}
 
-	provider, err := llm.GetDefaultProvider()
-	if err != nil {
-		response.InternalServerError(c, "未配置 LLM 提供商: "+err.Error())
-		return
-	}
-
-	truncated := diffOutput
-	if len(truncated) > 8000 {
-		truncated = truncated[:8000] + "\n... (truncated)"
-	}
-
-	prompt := fmt.Sprintf(`根据以下 git diff 变更内容，生成一条简洁的 commit message。
+			prompt := fmt.Sprintf(`根据以下 git diff 变更内容，生成一条简洁的 commit message。
 要求：
 1. 使用中文
 2. 不超过一行，不超过72个字符
@@ -189,18 +175,19 @@ func GenerateCommitMessage(ctx context.Context, c *app.RequestContext) {
 Diff 内容:
 %s`, truncated)
 
-	resp, err := provider.Chat(ctx, &llm.ChatRequest{
-		Messages: []llm.ChatMessage{{Role: "user", Content: prompt}},
-	})
-	if err != nil {
-		response.InternalServerError(c, "AI 生成失败: "+err.Error())
-		return
-	}
+			resp, err := provider.Chat(ctx, &llm.ChatRequest{
+				Messages: []llm.ChatMessage{{Role: "user", Content: prompt}},
+			})
+			if err != nil {
+				return nil, handler.ErrInternal("AI 生成失败: " + err.Error())
+			}
 
-	msg := resp.Content
-	if len(msg) > 200 {
-		msg = msg[:200]
-	}
+			msg := resp.Content
+			if len(msg) > 200 {
+				msg = msg[:200]
+			}
 
-	response.Success(c, map[string]string{"message": msg})
+			return map[string]string{"message": msg}, nil
+		},
+	)
 }

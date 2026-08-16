@@ -48,17 +48,9 @@ func Update(ctx context.Context, c *app.RequestContext) {
 	if !ok {
 		return
 	}
-	var req credential.UpdateCredentialRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	resp, err := svc.Update(uint(id), &req)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-	response.Success(c, resp)
+	handler.BindAndDo(c, func(req *credential.UpdateCredentialRequest) (*credential.CredentialInfo, error) {
+		return svc.Update(uint(id), req)
+	})
 }
 
 func Delete(ctx context.Context, c *app.RequestContext) {
@@ -78,17 +70,13 @@ func Test(ctx context.Context, c *app.RequestContext) {
 	if !ok {
 		return
 	}
-	var req credential.TestCredentialRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	success, message, err := svc.TestConnection(uint(id), req.Url)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-	response.Success(c, map[string]interface{}{"success": success, "message": message})
+	handler.BindAndDo(c, func(req *credential.TestCredentialRequest) (map[string]interface{}, error) {
+		success, message, err := svc.TestConnection(uint(id), req.Url)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"success": success, "message": message}, nil
+	})
 }
 
 func GetUsages(ctx context.Context, c *app.RequestContext) {
@@ -109,14 +97,10 @@ func Rotate(ctx context.Context, c *app.RequestContext) {
 	if !ok {
 		return
 	}
-	var req credential.RotateCredentialRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	if err := svc.Rotate(uint(id), &req); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-	response.Success(c, map[string]string{"message": "Credential rotated successfully"})
+	handler.BindAndDo(c, func(req *credential.RotateCredentialRequest) (map[string]string, error) {
+		if err := svc.Rotate(uint(id), req); err != nil {
+			return nil, err
+		}
+		return map[string]string{"message": "Credential rotated successfully"}, nil
+	})
 }

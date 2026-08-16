@@ -11,6 +11,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	providerModel "github.com/yi-nology/git-manage-service/biz/model/provider"
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-platform-sdk/provider"
 )
@@ -95,40 +96,32 @@ func Get(ctx context.Context, c *app.RequestContext) {
 // Create .
 // @router /api/v1/providers [POST]
 func Create(ctx context.Context, c *app.RequestContext) {
-	var req api.CreateProviderConfigReq
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.Name == "" || req.Platform == "" {
-		pkgresponse.BadRequest(c, "name and platform are required")
-		return
-	}
-	if req.Platform != "gitlab" && req.Platform != "github" && req.Platform != "gitea" && req.Platform != "forgejo" && req.Platform != "tencent_code" && req.Platform != "gitee" {
-		pkgresponse.BadRequest(c, "platform must be gitlab, github, gitea, forgejo, tencent_code or gitee")
-		return
-	}
-	if req.CredentialID == 0 {
-		pkgresponse.BadRequest(c, "credential_id is required")
-		return
-	}
-	credDAO := db.NewCredentialDAO()
-	if _, err := credDAO.FindByID(req.CredentialID); err != nil {
-		pkgresponse.BadRequest(c, "credential not found")
-		return
-	}
-	dao := db.NewProviderConfigDAO()
-	cfg := &po.ProviderConfig{
-		Name: req.Name, Platform: req.Platform, BaseURL: req.BaseURL,
-		CredentialID: req.CredentialID, WebhookSecret: req.WebhookSecret,
-		SkipTLS: req.SkipTLS,
-	}
-	if err := dao.Create(cfg); err != nil {
-		pkgresponse.InternalServerError(c, "Failed to create provider config: "+err.Error())
-		return
-	}
-	c.Set("audit_details", map[string]string{"name": req.Name, "platform": req.Platform})
-	pkgresponse.Success(c, toProtoProviderConfig(cfg))
+	handler.BindAndDo(c, func(req *api.CreateProviderConfigReq) (*providerModel.ProviderConfig, error) {
+		if req.Name == "" || req.Platform == "" {
+			return nil, handler.ErrBadRequest("name and platform are required")
+		}
+		if req.Platform != "gitlab" && req.Platform != "github" && req.Platform != "gitea" && req.Platform != "forgejo" && req.Platform != "tencent_code" && req.Platform != "gitee" {
+			return nil, handler.ErrBadRequest("platform must be gitlab, github, gitea, forgejo, tencent_code or gitee")
+		}
+		if req.CredentialID == 0 {
+			return nil, handler.ErrBadRequest("credential_id is required")
+		}
+		credDAO := db.NewCredentialDAO()
+		if _, err := credDAO.FindByID(req.CredentialID); err != nil {
+			return nil, handler.ErrBadRequest("credential not found")
+		}
+		dao := db.NewProviderConfigDAO()
+		cfg := &po.ProviderConfig{
+			Name: req.Name, Platform: req.Platform, BaseURL: req.BaseURL,
+			CredentialID: req.CredentialID, WebhookSecret: req.WebhookSecret,
+			SkipTLS: req.SkipTLS,
+		}
+		if err := dao.Create(cfg); err != nil {
+			return nil, handler.ErrInternal("Failed to create provider config: " + err.Error())
+		}
+		c.Set("audit_details", map[string]string{"name": req.Name, "platform": req.Platform})
+		return toProtoProviderConfig(cfg), nil
+	})
 }
 
 // Update .
@@ -138,43 +131,37 @@ func Update(ctx context.Context, c *app.RequestContext) {
 	if !ok {
 		return
 	}
-	var req api.UpdateProviderConfigReq
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	dao := db.NewProviderConfigDAO()
-	cfg, err := dao.FindByID(id)
-	if err != nil {
-		pkgresponse.NotFound(c, "Provider config not found")
-		return
-	}
-	if req.Name != "" {
-		cfg.Name = req.Name
-	}
-	if req.BaseURL != "" {
-		cfg.BaseURL = req.BaseURL
-	}
-	if req.CredentialID > 0 {
-		credDAO := db.NewCredentialDAO()
-		if _, err := credDAO.FindByID(req.CredentialID); err != nil {
-			pkgresponse.BadRequest(c, "credential not found")
-			return
+	handler.BindAndDo(c, func(req *api.UpdateProviderConfigReq) (*providerModel.ProviderConfig, error) {
+		dao := db.NewProviderConfigDAO()
+		cfg, err := dao.FindByID(id)
+		if err != nil {
+			return nil, handler.ErrNotFound("Provider config not found")
 		}
-		cfg.CredentialID = req.CredentialID
-	}
-	if req.WebhookSecret != "" {
-		cfg.WebhookSecret = req.WebhookSecret
-	}
-	if req.SkipTLS != nil {
-		cfg.SkipTLS = *req.SkipTLS
-	}
-	if err := dao.Save(cfg); err != nil {
-		pkgresponse.InternalServerError(c, "Failed to update provider config: "+err.Error())
-		return
-	}
-	provider_manager.GetManager().Invalidate(id)
-	pkgresponse.Success(c, toProtoProviderConfig(cfg))
+		if req.Name != "" {
+			cfg.Name = req.Name
+		}
+		if req.BaseURL != "" {
+			cfg.BaseURL = req.BaseURL
+		}
+		if req.CredentialID > 0 {
+			credDAO := db.NewCredentialDAO()
+			if _, err := credDAO.FindByID(req.CredentialID); err != nil {
+				return nil, handler.ErrBadRequest("credential not found")
+			}
+			cfg.CredentialID = req.CredentialID
+		}
+		if req.WebhookSecret != "" {
+			cfg.WebhookSecret = req.WebhookSecret
+		}
+		if req.SkipTLS != nil {
+			cfg.SkipTLS = *req.SkipTLS
+		}
+		if err := dao.Save(cfg); err != nil {
+			return nil, handler.ErrInternal("Failed to update provider config: " + err.Error())
+		}
+		provider_manager.GetManager().Invalidate(id)
+		return toProtoProviderConfig(cfg), nil
+	})
 }
 
 // Delete .
@@ -311,66 +298,54 @@ func ListRemoteBranches(ctx context.Context, c *app.RequestContext) {
 // CreateRemoteBranch .
 // @router /api/v1/providers/branches/create [POST]
 func CreateRemoteBranch(ctx context.Context, c *app.RequestContext) {
-	var req struct {
+	handler.BindAndDo(c, func(req *struct {
 		ProviderID uint   `json:"provider_id"`
 		Owner      string `json:"owner"`
 		Repo       string `json:"repo"`
 		Branch     string `json:"branch"`
 		Ref        string `json:"ref"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.Branch == "" {
-		pkgresponse.BadRequest(c, "provider_id, owner, repo and branch are required")
-		return
-	}
-	if req.Ref == "" {
-		req.Ref = "main"
-	}
-	p, err := provider_manager.GetManager().GetProvider(req.ProviderID)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
-		return
-	}
-	br, err := p.CreateBranch(ctx, req.Owner, req.Repo, req.Branch, req.Ref)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to create branch: "+err.Error())
-		return
-	}
-	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
-	c.Set("audit_details", map[string]string{"branch": req.Branch, "ref": req.Ref})
-	pkgresponse.Success(c, br)
+	}) (any, error) {
+		if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.Branch == "" {
+			return nil, handler.ErrBadRequest("provider_id, owner, repo and branch are required")
+		}
+		if req.Ref == "" {
+			req.Ref = "main"
+		}
+		p, err := provider_manager.GetManager().GetProvider(req.ProviderID)
+		if err != nil {
+			return nil, handler.ErrInternal("Failed to get provider: " + err.Error())
+		}
+		br, err := p.CreateBranch(ctx, req.Owner, req.Repo, req.Branch, req.Ref)
+		if err != nil {
+			return nil, handler.ErrInternal("Failed to create branch: " + err.Error())
+		}
+		c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
+		c.Set("audit_details", map[string]string{"branch": req.Branch, "ref": req.Ref})
+		return br, nil
+	})
 }
 
 // DeleteRemoteBranch .
 // @router /api/v1/providers/branches/delete [POST]
 func DeleteRemoteBranch(ctx context.Context, c *app.RequestContext) {
-	var req struct {
+	handler.BindAndDo(c, func(req *struct {
 		ProviderID uint   `json:"provider_id"`
 		Owner      string `json:"owner"`
 		Repo       string `json:"repo"`
 		Branch     string `json:"branch"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.Branch == "" {
-		pkgresponse.BadRequest(c, "provider_id, owner, repo and branch are required")
-		return
-	}
-	p, err := provider_manager.GetManager().GetProvider(req.ProviderID)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to get provider: "+err.Error())
-		return
-	}
-	if err := p.DeleteBranch(ctx, req.Owner, req.Repo, req.Branch); err != nil {
-		pkgresponse.InternalServerError(c, "Failed to delete branch: "+err.Error())
-		return
-	}
-	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
-	c.Set("audit_details", map[string]string{"branch": req.Branch})
-	pkgresponse.Success(c, map[string]string{"message": "deleted"})
+	}) (map[string]string, error) {
+		if req.ProviderID == 0 || req.Owner == "" || req.Repo == "" || req.Branch == "" {
+			return nil, handler.ErrBadRequest("provider_id, owner, repo and branch are required")
+		}
+		p, err := provider_manager.GetManager().GetProvider(req.ProviderID)
+		if err != nil {
+			return nil, handler.ErrInternal("Failed to get provider: " + err.Error())
+		}
+		if err := p.DeleteBranch(ctx, req.Owner, req.Repo, req.Branch); err != nil {
+			return nil, handler.ErrInternal("Failed to delete branch: " + err.Error())
+		}
+		c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", req.ProviderID, req.Owner, req.Repo))
+		c.Set("audit_details", map[string]string{"branch": req.Branch})
+		return map[string]string{"message": "deleted"}, nil
+	})
 }

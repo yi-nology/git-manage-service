@@ -13,9 +13,11 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/handler/helper"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	statsModel "github.com/yi-nology/git-manage-service/biz/model/stats"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	statsSvc "github.com/yi-nology/git-manage-service/biz/service/stats"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -247,31 +249,19 @@ func GetLineStatsConfig(ctx context.Context, c *app.RequestContext) {
 // SaveLineStatsConfig .
 // @router /api/v1/stats/lines/config [POST]
 func SaveLineStatsConfig(ctx context.Context, c *app.RequestContext) {
-	var req statsModel.LineStatsConfigRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepo(c,
+		func(req *statsModel.LineStatsConfigRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *statsModel.LineStatsConfigRequest) (map[string]string, error) {
+			// 清除该仓库的缓存，以便下次统计使用新配置
+			lineCounter := statsSvc.GetLineCounter()
+			lineCounter.ClearCache(repo.Path)
 
-	if req.RepoKey == nil || *req.RepoKey == "" {
-		response.BadRequest(c, "repo_key is required")
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(*req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	// 清除该仓库的缓存，以便下次统计使用新配置
-	lineCounter := statsSvc.GetLineCounter()
-	lineCounter.ClearCache(repo.Path)
-
-	c.Set("audit_target", "repo:"+repo.Key)
-	response.Success(c, map[string]string{
-		"message": "配置已保存，下次统计将使用新配置",
-	})
+			c.Set("audit_target", "repo:"+repo.Key)
+			return map[string]string{
+				"message": "配置已保存，下次统计将使用新配置",
+			}, nil
+		},
+	)
 }
 
 // ExportLineStatsCSV .

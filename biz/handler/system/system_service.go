@@ -60,56 +60,53 @@ func UpdateConfig(ctx context.Context, c *app.RequestContext) {
 // ListDirs .
 // @router /api/v1/system/dirs [GET]
 func ListDirs(ctx context.Context, c *app.RequestContext) {
-	var req systemModel.ListDirsRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	currentPath := req.Path
-	if currentPath == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			currentPath = "/"
-		} else {
-			currentPath = home
-		}
-	}
-
-	entries, err := os.ReadDir(currentPath)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	var dirs []*systemModel.DirEntry
-	for _, entry := range entries {
-		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
-			if req.Search != "" && !strings.Contains(strings.ToLower(entry.Name()), strings.ToLower(req.Search)) {
-				continue
+	handler.BindAndDo(c,
+		func(req *systemModel.ListDirsRequest) (map[string]interface{}, error) {
+			currentPath := req.Path
+			if currentPath == "" {
+				home, err := os.UserHomeDir()
+				if err != nil {
+					currentPath = "/"
+				} else {
+					currentPath = home
+				}
 			}
-			dirs = append(dirs, &systemModel.DirEntry{
-				Name:  entry.Name(),
-				Path:  filepath.Join(currentPath, entry.Name()),
-				IsDir: true,
+
+			entries, err := os.ReadDir(currentPath)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+
+			var dirs []*systemModel.DirEntry
+			for _, entry := range entries {
+				if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+					if req.Search != "" && !strings.Contains(strings.ToLower(entry.Name()), strings.ToLower(req.Search)) {
+						continue
+					}
+					dirs = append(dirs, &systemModel.DirEntry{
+						Name:  entry.Name(),
+						Path:  filepath.Join(currentPath, entry.Name()),
+						IsDir: true,
+					})
+				}
+			}
+
+			sort.Slice(dirs, func(i, j int) bool {
+				return dirs[i].Name < dirs[j].Name
 			})
-		}
-	}
 
-	sort.Slice(dirs, func(i, j int) bool {
-		return dirs[i].Name < dirs[j].Name
-	})
+			parent := filepath.Dir(currentPath)
+			if currentPath == "/" {
+				parent = ""
+			}
 
-	parent := filepath.Dir(currentPath)
-	if currentPath == "/" {
-		parent = ""
-	}
-
-	response.Success(c, map[string]interface{}{
-		"parent":  parent,
-		"current": currentPath,
-		"dirs":    dirs,
-	})
+			return map[string]interface{}{
+				"parent":  parent,
+				"current": currentPath,
+				"dirs":    dirs,
+			}, nil
+		},
+	)
 }
 
 // ListSSHKeys .

@@ -82,19 +82,13 @@ func Update(ctx context.Context, c *app.RequestContext) {
 	if !ok {
 		return
 	}
-
-	var req api.UpdateBindingReq
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, "Invalid request: "+err.Error())
-		return
-	}
-
-	result, err := bindingsvc.UpdateBinding(id, &req)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to update binding: "+err.Error())
-		return
-	}
-	pkgresponse.Success(c, result)
+	handler.BindAndDo(c, func(req *api.UpdateBindingReq) (*api.RepoProviderBindingDTO, error) {
+		result, err := bindingsvc.UpdateBinding(id, req)
+		if err != nil {
+			return nil, handler.ErrInternal("Failed to update binding: " + err.Error())
+		}
+		return result, nil
+	})
 }
 
 // Delete .

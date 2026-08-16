@@ -22,50 +22,42 @@ import (
 )
 
 func Health(ctx context.Context, c *app.RequestContext) {
-	var req maintenance.HealthRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	var threshold int64
-	if t := c.Query("threshold"); t != "" {
-		if v, err := strconv.ParseInt(t, 10, 64); err == nil && v > 0 {
-			threshold = v
-		}
-	}
-
-	var excludes []string
-	if e := c.Query("exclude"); e != "" {
-		for _, p := range strings.Split(e, ",") {
-			p = strings.TrimSpace(p)
-			if p != "" {
-				excludes = append(excludes, p)
+	handler.DoWithRepo(c,
+		func(req *maintenance.HealthRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *maintenance.HealthRequest) (*api.RepoHealthReport, error) {
+			var threshold int64
+			if t := c.Query("threshold"); t != "" {
+				if v, err := strconv.ParseInt(t, 10, 64); err == nil && v > 0 {
+					threshold = v
+				}
 			}
-		}
-	}
 
-	svc := git.NewMaintenanceService()
-	report, err := svc.AnalyzeHealth(repo.Path, threshold, excludes)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
+			var excludes []string
+			if e := c.Query("exclude"); e != "" {
+				for _, p := range strings.Split(e, ",") {
+					p = strings.TrimSpace(p)
+					if p != "" {
+						excludes = append(excludes, p)
+					}
+				}
+			}
 
-	if report.LargeFiles == nil {
-		report.LargeFiles = []api.LargeFileEntry{}
-	}
-	if report.StashEntries == nil {
-		report.StashEntries = []api.StashEntry{}
-	}
+			svc := git.NewMaintenanceService()
+			report, err := svc.AnalyzeHealth(repo.Path, threshold, excludes)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
 
-	response.Success(c, report)
+			if report.LargeFiles == nil {
+				report.LargeFiles = []api.LargeFileEntry{}
+			}
+			if report.StashEntries == nil {
+				report.StashEntries = []api.StashEntry{}
+			}
+
+			return report, nil
+		},
+	)
 }
 
 // markMaintenanceFailed records a failed maintenance task: updates the in-memory
@@ -288,45 +280,37 @@ func formatDuration(d time.Duration) string {
 // AIAnalyze .
 // @router /api/v1/repo/:repo_key/maintenance/ai-analyze [POST]
 func AIAnalyze(ctx context.Context, c *app.RequestContext) {
-	var req maintenance.AIAnalyzeRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepo(c,
+		func(req *maintenance.AIAnalyzeRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *maintenance.AIAnalyzeRequest) (any, error) {
+			var threshold int64
+			if req.GetThreshold() > 0 {
+				threshold = req.GetThreshold()
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			svc := git.NewMaintenanceService()
 
-	var threshold int64
-	if req.GetThreshold() > 0 {
-		threshold = req.GetThreshold()
-	}
+			var healthReport *api.RepoHealthReport
+			var err error
 
-	svc := git.NewMaintenanceService()
+			if len(req.GetFilePaths()) > 0 {
+				healthReport, err = svc.AnalyzeHealthForPaths(repo.Path, threshold, req.GetFilePaths())
+			} else {
+				healthReport, err = svc.AnalyzeHealth(repo.Path, threshold, nil)
+			}
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
 
-	var healthReport *api.RepoHealthReport
+			aiSvc := git.NewMaintenanceAIService()
+			result, err := aiSvc.AnalyzeSlimFiles(ctx, healthReport)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
 
-	if len(req.GetFilePaths()) > 0 {
-		healthReport, err = svc.AnalyzeHealthForPaths(repo.Path, threshold, req.GetFilePaths())
-	} else {
-		healthReport, err = svc.AnalyzeHealth(repo.Path, threshold, nil)
-	}
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	aiSvc := git.NewMaintenanceAIService()
-	result, err := aiSvc.AnalyzeSlimFiles(ctx, healthReport)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	response.Success(c, result)
+			return result, nil
+		},
+	)
 }
 
 func PreviewPrefixSlim(ctx context.Context, c *app.RequestContext) {

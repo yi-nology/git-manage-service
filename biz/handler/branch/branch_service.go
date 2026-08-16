@@ -23,86 +23,73 @@ import (
 // List .
 // @router /api/v1/branch/list [GET]
 func List(ctx context.Context, c *app.RequestContext) {
-	var req branch.ListBranchRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	if req.GetRepoKey() == "" {
-		response.BadRequest(c, "repo_key is required")
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	branches, err := gitSvc.ListBranchesWithInfo(repo.Path)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	branchTypeFilter := c.Query("type")
-	if branchTypeFilter != "" && (branchTypeFilter == "local" || branchTypeFilter == "remote") {
-		var filtered []domain.BranchInfo
-		for _, b := range branches {
-			if b.Type == branchTypeFilter {
-				filtered = append(filtered, b)
+	handler.DoWithRepo(c,
+		func(req *branch.ListBranchRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *branch.ListBranchRequest) (map[string]interface{}, error) {
+			gitSvc := git.NewGitService()
+			branches, err := gitSvc.ListBranchesWithInfo(repo.Path)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
 			}
-		}
-		branches = filtered
-	}
 
-	if req.GetKeyword() != "" {
-		var filtered []domain.BranchInfo
-		keyword := strings.ToLower(req.GetKeyword())
-		for _, b := range branches {
-			if strings.Contains(strings.ToLower(b.Name), keyword) ||
-				strings.Contains(strings.ToLower(b.Author), keyword) {
-				filtered = append(filtered, b)
+			branchTypeFilter := c.Query("type")
+			if branchTypeFilter != "" && (branchTypeFilter == "local" || branchTypeFilter == "remote") {
+				var filtered []domain.BranchInfo
+				for _, b := range branches {
+					if b.Type == branchTypeFilter {
+						filtered = append(filtered, b)
+					}
+				}
+				branches = filtered
 			}
-		}
-		branches = filtered
-	}
 
-	page := int(req.GetPage())
-	if page < 1 {
-		page = 1
-	}
-	pageSize := int(req.GetPageSize())
-	if pageSize < 1 {
-		pageSize = 100
-	}
+			if req.GetKeyword() != "" {
+				var filtered []domain.BranchInfo
+				keyword := strings.ToLower(req.GetKeyword())
+				for _, b := range branches {
+					if strings.Contains(strings.ToLower(b.Name), keyword) ||
+						strings.Contains(strings.ToLower(b.Author), keyword) {
+						filtered = append(filtered, b)
+					}
+				}
+				branches = filtered
+			}
 
-	start := (page - 1) * pageSize
-	end := start + pageSize
-	if start > len(branches) {
-		start = len(branches)
-	}
-	if end > len(branches) {
-		end = len(branches)
-	}
+			page := int(req.GetPage())
+			if page < 1 {
+				page = 1
+			}
+			pageSize := int(req.GetPageSize())
+			if pageSize < 1 {
+				pageSize = 100
+			}
 
-	paged := branches[start:end]
+			start := (page - 1) * pageSize
+			end := start + pageSize
+			if start > len(branches) {
+				start = len(branches)
+			}
+			if end > len(branches) {
+				end = len(branches)
+			}
 
-	for i := range paged {
-		b := &paged[i]
-		if b.Upstream != "" {
-			ahead, behind, _ := gitSvc.GetBranchSyncStatus(repo.Path, b.Name, b.Upstream)
-			b.Ahead = ahead
-			b.Behind = behind
-		}
-	}
+			paged := branches[start:end]
 
-	response.Success(c, map[string]interface{}{
-		"total": len(branches),
-		"list":  paged,
-	})
+			for i := range paged {
+				b := &paged[i]
+				if b.Upstream != "" {
+					ahead, behind, _ := gitSvc.GetBranchSyncStatus(repo.Path, b.Name, b.Upstream)
+					b.Ahead = ahead
+					b.Behind = behind
+				}
+			}
+
+			return map[string]interface{}{
+				"total": len(branches),
+				"list":  paged,
+			}, nil
+		},
+	)
 }
 
 // Create .
@@ -184,172 +171,151 @@ func Checkout(ctx context.Context, c *app.RequestContext) {
 // Push .
 // @router /api/v1/branch/push [POST]
 func Push(ctx context.Context, c *app.RequestContext) {
-	var req branch.PushBranchRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepo(c,
+		func(req *branch.PushBranchRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *branch.PushBranchRequest) (map[string]string, error) {
+			gitSvc := git.NewGitService()
+			authSvc := auth.NewAuthService()
 
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			var errs []string
+			for _, remote := range req.GetRemotes() {
+				authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
+					repo.RemoteCredentials,
+					repo.DefaultCredentialID,
+					repo.RemoteAuths,
+					remote,
+					repo.AuthType, repo.AuthKey, repo.AuthSecret,
+				)
 
-	gitSvc := git.NewGitService()
-	authSvc := auth.NewAuthService()
-
-	var errors []string
-	for _, remote := range req.GetRemotes() {
-		authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
-			repo.RemoteCredentials,
-			repo.DefaultCredentialID,
-			repo.RemoteAuths,
-			remote,
-			repo.AuthType, repo.AuthKey, repo.AuthSecret,
-		)
-
-		if resolveErr != nil {
-			errors = append(errors, fmt.Sprintf("%s: failed to resolve auth: %v", remote, resolveErr))
-			continue
-		}
-
-		if isDBKey {
-			credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, remote)
-			if credID > 0 {
-				privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
-				if keyErr != nil {
-					errors = append(errors, fmt.Sprintf("%s: failed to load SSH key: %v", remote, keyErr))
+				if resolveErr != nil {
+					errs = append(errs, fmt.Sprintf("%s: failed to resolve auth: %v", remote, resolveErr))
 					continue
 				}
-				if err := gitSvc.PushBranchWithDBKey(repo.Path, remote, req.GetName(), privateKey, passphrase); err != nil {
-					errors = append(errors, fmt.Sprintf("%s: %v", remote, err))
+
+				if isDBKey {
+					credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, remote)
+					if credID > 0 {
+						privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
+						if keyErr != nil {
+							errs = append(errs, fmt.Sprintf("%s: failed to load SSH key: %v", remote, keyErr))
+							continue
+						}
+						if err := gitSvc.PushBranchWithDBKey(repo.Path, remote, req.GetName(), privateKey, passphrase); err != nil {
+							errs = append(errs, fmt.Sprintf("%s: %v", remote, err))
+						}
+					} else {
+						errs = append(errs, fmt.Sprintf("%s: no credential configured", remote))
+					}
+				} else if authMethod.Type != gitbackend.AuthNone {
+					if err := gitSvc.PushBranchWithAuth(repo.Path, remote, req.GetName(), authMethod); err != nil {
+						errs = append(errs, fmt.Sprintf("%s: %v", remote, err))
+					}
+				} else {
+					if err := gitSvc.PushBranch(repo.Path, remote, req.GetName()); err != nil {
+						errs = append(errs, fmt.Sprintf("%s: %v", remote, err))
+					}
 				}
-			} else {
-				errors = append(errors, fmt.Sprintf("%s: no credential configured", remote))
 			}
-		} else if authMethod.Type != gitbackend.AuthNone {
-			if err := gitSvc.PushBranchWithAuth(repo.Path, remote, req.GetName(), authMethod); err != nil {
-				errors = append(errors, fmt.Sprintf("%s: %v", remote, err))
-			}
-		} else {
-			if err := gitSvc.PushBranch(repo.Path, remote, req.GetName()); err != nil {
-				errors = append(errors, fmt.Sprintf("%s: %v", remote, err))
-			}
-		}
-	}
 
-	if len(errors) > 0 {
-		response.InternalServerError(c, strings.Join(errors, "; "))
-		return
-	}
+			if len(errs) > 0 {
+				return nil, handler.ErrInternal(strings.Join(errs, "; "))
+			}
 
-	response.Success(c, map[string]string{"message": "pushed"})
+			return map[string]string{"message": "pushed"}, nil
+		},
+	)
 }
 
 // Pull .
 // @router /api/v1/branch/pull [POST]
 func Pull(ctx context.Context, c *app.RequestContext) {
-	var req branch.PullBranchRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepo(c,
+		func(req *branch.PullBranchRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *branch.PullBranchRequest) (map[string]string, error) {
+			gitSvc := git.NewGitService()
+			authSvc := auth.NewAuthService()
+			branches, _ := gitSvc.ListBranchesWithInfo(repo.Path)
 
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			var isCurrent bool
+			var upstreamRemote string
+			var remoteBranch string
 
-	gitSvc := git.NewGitService()
-	authSvc := auth.NewAuthService()
-	branches, _ := gitSvc.ListBranchesWithInfo(repo.Path)
+			for _, b := range branches {
+				if b.Name == req.GetName() {
+					isCurrent = b.IsCurrent
+					if b.Upstream != "" {
+						parts := strings.Split(b.Upstream, "/")
+						if len(parts) > 0 {
+							upstreamRemote = parts[0]
+							if len(parts) > 1 {
+								remoteBranch = strings.Join(parts[1:], "/")
+							}
+						}
+					}
+					break
+				}
+			}
 
-	var isCurrent bool
-	var upstreamRemote string
-	var remoteBranch string
+			if upstreamRemote == "" {
+				return nil, handler.ErrBadRequest("No upstream configured for this branch")
+			}
 
-	for _, b := range branches {
-		if b.Name == req.GetName() {
-			isCurrent = b.IsCurrent
-			if b.Upstream != "" {
-				parts := strings.Split(b.Upstream, "/")
-				if len(parts) > 0 {
-					upstreamRemote = parts[0]
-					if len(parts) > 1 {
-						remoteBranch = strings.Join(parts[1:], "/")
+			if remoteBranch == "" {
+				remoteBranch = req.GetName()
+			}
+
+			authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
+				repo.RemoteCredentials,
+				repo.DefaultCredentialID,
+				repo.RemoteAuths,
+				upstreamRemote,
+				repo.AuthType, repo.AuthKey, repo.AuthSecret,
+			)
+			if resolveErr != nil {
+				return nil, handler.ErrInternal(fmt.Sprintf("failed to resolve auth: %v", resolveErr))
+			}
+
+			var privateKey, passphrase string
+			if isDBKey {
+				credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, upstreamRemote)
+				if credID > 0 {
+					var keyErr error
+					privateKey, passphrase, keyErr = authSvc.GetCredentialKeyContent(credID)
+					if keyErr != nil {
+						return nil, handler.ErrInternal(fmt.Sprintf("failed to load SSH key: %v", keyErr))
 					}
 				}
 			}
-			break
-		}
-	}
 
-	if upstreamRemote == "" {
-		response.BadRequest(c, "No upstream configured for this branch")
-		return
-	}
+			if !isCurrent {
+				var updateErr error
+				if isDBKey {
+					updateErr = gitSvc.FetchBranchWithDBKey(repo.Path, upstreamRemote, remoteBranch, privateKey, passphrase)
+				} else {
+					updateErr = gitSvc.UpdateBranchFastForward(repo.Path, upstreamRemote, req.GetName(), remoteBranch)
+				}
+				if updateErr != nil {
+					return nil, handler.ErrInternal(fmt.Sprintf("Update failed (must be fast-forward): %v", updateErr))
+				}
 
-	if remoteBranch == "" {
-		remoteBranch = req.GetName()
-	}
-
-	authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
-		repo.RemoteCredentials,
-		repo.DefaultCredentialID,
-		repo.RemoteAuths,
-		upstreamRemote,
-		repo.AuthType, repo.AuthKey, repo.AuthSecret,
-	)
-	if resolveErr != nil {
-		response.InternalServerError(c, fmt.Sprintf("failed to resolve auth: %v", resolveErr))
-		return
-	}
-
-	var privateKey, passphrase string
-	if isDBKey {
-		credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, upstreamRemote)
-		if credID > 0 {
-			var keyErr error
-			privateKey, passphrase, keyErr = authSvc.GetCredentialKeyContent(credID)
-			if keyErr != nil {
-				response.InternalServerError(c, fmt.Sprintf("failed to load SSH key: %v", keyErr))
-				return
+				return map[string]string{"message": "updated (fast-forward)"}, nil
 			}
-		}
-	}
 
-	if !isCurrent {
-		var updateErr error
-		if isDBKey {
-			updateErr = gitSvc.FetchBranchWithDBKey(repo.Path, upstreamRemote, remoteBranch, privateKey, passphrase)
-		} else {
-			updateErr = gitSvc.UpdateBranchFastForward(repo.Path, upstreamRemote, req.GetName(), remoteBranch)
-		}
-		if updateErr != nil {
-			response.InternalServerError(c, fmt.Sprintf("Update failed (must be fast-forward): %v", updateErr))
-			return
-		}
+			var pullErr error
+			if isDBKey {
+				pullErr = gitSvc.PullBranchWithDBKey(repo.Path, upstreamRemote, req.GetName(), privateKey, passphrase)
+			} else if authMethod.Type != gitbackend.AuthNone {
+				pullErr = gitSvc.PullBranchWithAuth(repo.Path, upstreamRemote, req.GetName(), authMethod)
+			} else {
+				pullErr = gitSvc.PullBranch(repo.Path, upstreamRemote, req.GetName())
+			}
+			if pullErr != nil {
+				return nil, handler.ErrInternal(pullErr.Error())
+			}
 
-		response.Success(c, map[string]string{"message": "updated (fast-forward)"})
-		return
-	}
-
-	var pullErr error
-	if isDBKey {
-		pullErr = gitSvc.PullBranchWithDBKey(repo.Path, upstreamRemote, req.GetName(), privateKey, passphrase)
-	} else if authMethod.Type != gitbackend.AuthNone {
-		pullErr = gitSvc.PullBranchWithAuth(repo.Path, upstreamRemote, req.GetName(), authMethod)
-	} else {
-		pullErr = gitSvc.PullBranch(repo.Path, upstreamRemote, req.GetName())
-	}
-	if pullErr != nil {
-		response.InternalServerError(c, pullErr.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{"message": "synced"})
+			return map[string]string{"message": "synced"}, nil
+		},
+	)
 }
 
 // Compare .

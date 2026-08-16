@@ -223,75 +223,61 @@ func SaveSpecContent(ctx context.Context, c *app.RequestContext) {
 // SaveSpecContentByPath .
 // @router /api/v1/spec/content/:path [PUT]
 func SaveSpecContentByPath(ctx context.Context, c *app.RequestContext) {
-	path := c.Param("path")
-	if path == "" {
-		response.BadRequest(c, "path is required")
-		return
-	}
+	handler.DoWithRepo(c,
+		func(req *api.SaveSpecContentReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *api.SaveSpecContentReq) (api.SaveSpecResponse, error) {
+			path := c.Param("path")
+			if path == "" {
+				return api.SaveSpecResponse{}, handler.ErrBadRequest("path is required")
+			}
 
-	var req api.SaveSpecContentReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+			if req.Path == "" {
+				req.Path = path
+			}
 
-	if req.Path == "" {
-		req.Path = path
-	}
+			svc := specService.NewSpecService()
 
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			err := svc.SaveSpecContent(repo.Path, req.Path, req.Content, req.Message)
+			if err != nil {
+				return api.SaveSpecResponse{}, handler.ErrInternal(err.Error())
+			}
 
-	svc := specService.NewSpecService()
+			if req.AutoCommit && req.Message != "" {
+				gitService := gitSvc.NewGitService()
+				if err := gitService.AddAndCommit(repo.Path, req.Path, req.Message); err != nil {
+					return api.SaveSpecResponse{}, handler.ErrInternal(err.Error())
+				}
+			}
 
-	err = svc.SaveSpecContent(repo.Path, req.Path, req.Content, req.Message)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	if req.AutoCommit && req.Message != "" {
-		gitService := gitSvc.NewGitService()
-		if err := gitService.AddAndCommit(repo.Path, req.Path, req.Message); err != nil {
-			response.InternalError(c, err)
-			return
-		}
-	}
-
-	c.Set("audit_target", "repo:"+repo.Key)
-	c.Set("audit_details", map[string]string{"path": req.Path, "message": req.Message})
-	response.Success(c, api.SaveSpecResponse{
-		Message: "spec saved successfully",
-		Path:    req.Path,
-	})
+			c.Set("audit_target", "repo:"+repo.Key)
+			c.Set("audit_details", map[string]string{"path": req.Path, "message": req.Message})
+			return api.SaveSpecResponse{
+				Message: "spec saved successfully",
+				Path:    req.Path,
+			}, nil
+		},
+	)
 }
 
 // LintSpec .
 // @router /api/v1/spec/lint [POST]
 func LintSpec(ctx context.Context, c *app.RequestContext) {
-	var req spec.LintRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *spec.LintRequest) (any, error) {
+			content := req.GetContent()
+			if content == "" {
+				return nil, handler.ErrBadRequest("content is required")
+			}
 
-	content := req.GetContent()
-	if content == "" {
-		response.BadRequest(c, "content is required")
-		return
-	}
+			lintService := lintSvc.NewLintService()
+			result, err := lintService.LintWithAI(ctx, content, req.GetRules(), req.GetMode())
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
 
-	lintService := lintSvc.NewLintService()
-	result, err := lintService.LintWithAI(ctx, content, req.GetRules(), req.GetMode())
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	response.Success(c, result)
+			return result, nil
+		},
+	)
 }
 
 // GetLintRules .
@@ -329,194 +315,169 @@ func GetLintRules(ctx context.Context, c *app.RequestContext) {
 // UpdateLintRule .
 // @router /api/v1/spec/rules/:id [PUT]
 func UpdateLintRule(ctx context.Context, c *app.RequestContext) {
-	id := c.Param("id")
-	if id == "" {
-		response.BadRequest(c, "rule id is required")
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *api.UpdateLintRuleReq) (api.LintRule, error) {
+			id := c.Param("id")
+			if id == "" {
+				return api.LintRule{}, handler.ErrBadRequest("rule id is required")
+			}
 
-	var req api.UpdateLintRuleReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+			dao := db.NewLintRuleDAO()
+			rule, err := dao.FindByID(id)
+			if err != nil {
+				return api.LintRule{}, handler.ErrNotFound("rule not found")
+			}
 
-	dao := db.NewLintRuleDAO()
-	rule, err := dao.FindByID(id)
-	if err != nil {
-		response.NotFound(c, "rule not found")
-		return
-	}
+			if req.Name != "" {
+				rule.Name = req.Name
+			}
+			if req.Description != "" {
+				rule.Description = req.Description
+			}
+			if req.Category != "" {
+				rule.Category = req.Category
+			}
+			if req.Severity != "" {
+				rule.Severity = req.Severity
+			}
+			if req.Pattern != "" {
+				rule.Pattern = req.Pattern
+			}
+			if req.Enabled != nil {
+				rule.Enabled = *req.Enabled
+			}
+			if req.Priority != nil {
+				rule.Priority = *req.Priority
+			}
 
-	if req.Name != "" {
-		rule.Name = req.Name
-	}
-	if req.Description != "" {
-		rule.Description = req.Description
-	}
-	if req.Category != "" {
-		rule.Category = req.Category
-	}
-	if req.Severity != "" {
-		rule.Severity = req.Severity
-	}
-	if req.Pattern != "" {
-		rule.Pattern = req.Pattern
-	}
-	if req.Enabled != nil {
-		rule.Enabled = *req.Enabled
-	}
-	if req.Priority != nil {
-		rule.Priority = *req.Priority
-	}
+			if err := dao.Save(rule); err != nil {
+				return api.LintRule{}, handler.ErrInternal(err.Error())
+			}
 
-	if err := dao.Save(rule); err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	response.Success(c, api.LintRule{
-		ID:          rule.ID,
-		Name:        rule.Name,
-		Description: rule.Description,
-		Category:    rule.Category,
-		Severity:    rule.Severity,
-		Pattern:     rule.Pattern,
-		Enabled:     rule.Enabled,
-		Priority:    rule.Priority,
-		CreatedAt:   rule.CreatedAt,
-		UpdatedAt:   rule.UpdatedAt,
-	})
+			return api.LintRule{
+				ID:          rule.ID,
+				Name:        rule.Name,
+				Description: rule.Description,
+				Category:    rule.Category,
+				Severity:    rule.Severity,
+				Pattern:     rule.Pattern,
+				Enabled:     rule.Enabled,
+				Priority:    rule.Priority,
+				CreatedAt:   rule.CreatedAt,
+				UpdatedAt:   rule.UpdatedAt,
+			}, nil
+		},
+	)
 }
 
 // CreateLintRule .
 // @router /api/v1/spec/rules [POST]
 func CreateLintRule(ctx context.Context, c *app.RequestContext) {
-	var req api.CreateLintRuleReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *api.CreateLintRuleReq) (api.LintRule, error) {
+			if req.ID == "" {
+				return api.LintRule{}, handler.ErrBadRequest("id is required")
+			}
+			if req.Name == "" {
+				return api.LintRule{}, handler.ErrBadRequest("name is required")
+			}
 
-	if req.ID == "" {
-		response.BadRequest(c, "id is required")
-		return
-	}
-	if req.Name == "" {
-		response.BadRequest(c, "name is required")
-		return
-	}
+			dao := db.NewLintRuleDAO()
+			exists, _ := dao.ExistsByID(req.ID)
+			if exists {
+				return api.LintRule{}, handler.ErrBadRequest("rule with this id already exists")
+			}
 
-	dao := db.NewLintRuleDAO()
-	exists, _ := dao.ExistsByID(req.ID)
-	if exists {
-		response.BadRequest(c, "rule with this id already exists")
-		return
-	}
+			rule := &po.LintRule{
+				ID:          req.ID,
+				Name:        req.Name,
+				Description: req.Description,
+				Category:    req.Category,
+				Severity:    req.Severity,
+				Pattern:     req.Pattern,
+				Enabled:     req.Enabled,
+				Priority:    req.Priority,
+				CreatedAt:   time.Now(),
+				UpdatedAt:   time.Now(),
+			}
 
-	rule := &po.LintRule{
-		ID:          req.ID,
-		Name:        req.Name,
-		Description: req.Description,
-		Category:    req.Category,
-		Severity:    req.Severity,
-		Pattern:     req.Pattern,
-		Enabled:     req.Enabled,
-		Priority:    req.Priority,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
+			if rule.Category == "" {
+				rule.Category = "custom"
+			}
+			if rule.Severity == "" {
+				rule.Severity = "warning"
+			}
 
-	if rule.Category == "" {
-		rule.Category = "custom"
-	}
-	if rule.Severity == "" {
-		rule.Severity = "warning"
-	}
+			if err := dao.Create(rule); err != nil {
+				return api.LintRule{}, handler.ErrInternal(err.Error())
+			}
 
-	if err := dao.Create(rule); err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	response.Success(c, api.LintRule{
-		ID:          rule.ID,
-		Name:        rule.Name,
-		Description: rule.Description,
-		Category:    rule.Category,
-		Severity:    rule.Severity,
-		Pattern:     rule.Pattern,
-		Enabled:     rule.Enabled,
-		Priority:    rule.Priority,
-		CreatedAt:   rule.CreatedAt,
-		UpdatedAt:   rule.UpdatedAt,
-	})
+			return api.LintRule{
+				ID:          rule.ID,
+				Name:        rule.Name,
+				Description: rule.Description,
+				Category:    rule.Category,
+				Severity:    rule.Severity,
+				Pattern:     rule.Pattern,
+				Enabled:     rule.Enabled,
+				Priority:    rule.Priority,
+				CreatedAt:   rule.CreatedAt,
+				UpdatedAt:   rule.UpdatedAt,
+			}, nil
+		},
+	)
 }
 
 // CommitSpec .
 // @router /api/v1/spec/commit/:path [POST]
 func CommitSpec(ctx context.Context, c *app.RequestContext) {
-	path := c.Param("path")
-	if path == "" {
-		response.BadRequest(c, "path is required")
-		return
-	}
+	handler.DoWithRepo(c,
+		func(req *api.CommitSpecReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *api.CommitSpecReq) (api.CommitResponse, error) {
+			path := c.Param("path")
+			if path == "" {
+				return api.CommitResponse{}, handler.ErrBadRequest("path is required")
+			}
 
-	var req api.CommitSpecReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+			if req.Message == "" {
+				return api.CommitResponse{}, handler.ErrBadRequest("message is required")
+			}
 
-	if req.Message == "" {
-		response.BadRequest(c, "message is required")
-		return
-	}
+			if req.Path == "" {
+				req.Path = path
+			}
 
-	if req.Path == "" {
-		req.Path = path
-	}
+			if req.Content != "" {
+				svc := specService.NewSpecService()
+				if err := svc.SaveSpecContent(repo.Path, req.Path, req.Content, ""); err != nil {
+					return api.CommitResponse{}, handler.ErrInternal(err.Error())
+				}
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			gitService := gitSvc.NewGitService()
+			if err := gitService.AddAndCommit(repo.Path, req.Path, req.Message); err != nil {
+				return api.CommitResponse{}, handler.ErrInternal(err.Error())
+			}
 
-	if req.Content != "" {
-		svc := specService.NewSpecService()
-		if err := svc.SaveSpecContent(repo.Path, req.Path, req.Content, ""); err != nil {
-			response.InternalError(c, err)
-			return
-		}
-	}
-
-	gitService := gitSvc.NewGitService()
-	if err := gitService.AddAndCommit(repo.Path, req.Path, req.Message); err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	c.Set("audit_target", "repo:"+repo.Key)
-	c.Set("audit_details", map[string]string{"path": req.Path, "message": req.Message})
-	response.Success(c, api.CommitResponse{
-		Message: "committed successfully",
-	})
+			c.Set("audit_target", "repo:"+repo.Key)
+			c.Set("audit_details", map[string]string{"path": req.Path, "message": req.Message})
+			return api.CommitResponse{
+				Message: "committed successfully",
+			}, nil
+		},
+	)
 }
 
 // ValidateSpec .
 // @router /api/v1/spec/validate [POST]
 func ValidateSpec(ctx context.Context, c *app.RequestContext) {
-	var req spec.ValidateSpecRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	svc := specService.NewSpecService()
-	result := svc.ValidateSpec(req.GetContent())
-
-	response.Success(c, result)
+	handler.BindAndDo(c,
+		func(req *spec.ValidateSpecRequest) (any, error) {
+			svc := specService.NewSpecService()
+			result := svc.ValidateSpec(req.GetContent())
+			return result, nil
+		},
+	)
 }
 
 // CreateSpecFile .
@@ -564,122 +525,108 @@ func DeleteSpecFile(ctx context.Context, c *app.RequestContext) {
 // AIAssistSpec .
 // @router /api/v1/spec/ai-assist [POST]
 func AIAssistSpec(ctx context.Context, c *app.RequestContext) {
-	var req spec.AIAssistRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *spec.AIAssistRequest) (api.AIAssistResponse, error) {
+			content := req.GetContent()
+			prompt := req.GetPrompt()
+			if content == "" || prompt == "" {
+				return api.AIAssistResponse{}, handler.ErrBadRequest("content and prompt are required")
+			}
 
-	content := req.GetContent()
-	prompt := req.GetPrompt()
-	if content == "" || prompt == "" {
-		response.BadRequest(c, "content and prompt are required")
-		return
-	}
+			var history []llm.ChatMessage
+			for _, h := range req.GetHistory() {
+				history = append(history, llm.ChatMessage{Role: h.GetRole(), Content: h.GetContent()})
+			}
 
-	var history []llm.ChatMessage
-	for _, h := range req.GetHistory() {
-		history = append(history, llm.ChatMessage{Role: h.GetRole(), Content: h.GetContent()})
-	}
+			svc := specService.NewSpecService()
+			result, applyContent, err := svc.AIAssist(ctx, content, prompt, req.GetAction(), history)
+			if err != nil {
+				return api.AIAssistResponse{}, handler.ErrInternal(err.Error())
+			}
 
-	svc := specService.NewSpecService()
-	result, applyContent, err := svc.AIAssist(ctx, content, prompt, req.GetAction(), history)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	resp := api.AIAssistResponse{Result: result, ApplyContent: applyContent}
-	c.Set("audit_target", "repo:spec")
-	c.Set("audit_details", map[string]string{"action": req.GetAction()})
-	response.Success(c, resp)
+			c.Set("audit_target", "repo:spec")
+			c.Set("audit_details", map[string]string{"action": req.GetAction()})
+			return api.AIAssistResponse{Result: result, ApplyContent: applyContent}, nil
+		},
+	)
 }
 
 // AIFixSpec .
 // @router /api/v1/spec/ai-fix [POST]
 func AIFixSpec(ctx context.Context, c *app.RequestContext) {
-	var req spec.AIFixRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *spec.AIFixRequest) (api.AIFixResponse, error) {
+			content := req.GetContent()
+			issue := req.GetIssue()
+			if content == "" || issue == "" {
+				return api.AIFixResponse{}, handler.ErrBadRequest("content and issue are required")
+			}
 
-	content := req.GetContent()
-	issue := req.GetIssue()
-	if content == "" || issue == "" {
-		response.BadRequest(c, "content and issue are required")
-		return
-	}
+			result, err := lintSvc.AIFix(ctx, content, issue, int(req.GetLine()), req.GetSeverity())
+			if err != nil {
+				return api.AIFixResponse{}, handler.ErrInternal(err.Error())
+			}
 
-	result, err := lintSvc.AIFix(ctx, content, issue, int(req.GetLine()), req.GetSeverity())
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	c.Set("audit_target", "repo:spec")
-	c.Set("audit_details", map[string]string{"severity": req.GetSeverity()})
-	response.Success(c, api.AIFixResponse{Content: result})
+			c.Set("audit_target", "repo:spec")
+			c.Set("audit_details", map[string]string{"severity": req.GetSeverity()})
+			return api.AIFixResponse{Content: result}, nil
+		},
+	)
 }
 
 // FormatSpec .
 // @router /api/v1/spec/format [POST]
 func FormatSpec(ctx context.Context, c *app.RequestContext) {
-	var err error
-	var req spec.FormatSpecRequest
-	err = c.BindAndValidate(&req)
-	if err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *spec.FormatSpecRequest) (api.FormatResponse, error) {
+			content := req.GetContent()
+			if content == "" {
+				return api.FormatResponse{}, handler.ErrBadRequest("content is required")
+			}
 
-	content := req.GetContent()
-	if content == "" {
-		response.BadRequest(c, "content is required")
-		return
-	}
+			opts := specService.FormatOptions{
+				Curlify:         req.GetCurlify(),
+				RemoveClean:     req.GetRemoveClean(),
+				RemoveBuildRoot: req.GetRemoveBuildRoot(),
+				RemoveGroup:     req.GetRemoveGroup(),
+				LicenseSPDX:     req.GetLicenseSpdx(),
+				SortDeps:        req.GetSortDeps(),
+				TabToSpaces:     req.GetTabToSpaces(),
+				IndentSize:      int(req.GetIndentSize()),
+				PreambleOrder:   req.GetPreambleOrder(),
+				AlignValues:     req.GetAlignValues(),
+				PathMacros:      req.GetPathMacros(),
+				UtilMacros:      req.GetUtilMacros(),
+				CommonCleanup:   req.GetCommonCleanup(),
+				ConditionalTrim: req.GetConditionalTrim(),
+			}
 
-	opts := specService.FormatOptions{
-		Curlify:         req.GetCurlify(),
-		RemoveClean:     req.GetRemoveClean(),
-		RemoveBuildRoot: req.GetRemoveBuildRoot(),
-		RemoveGroup:     req.GetRemoveGroup(),
-		LicenseSPDX:     req.GetLicenseSpdx(),
-		SortDeps:        req.GetSortDeps(),
-		TabToSpaces:     req.GetTabToSpaces(),
-		IndentSize:      int(req.GetIndentSize()),
-		PreambleOrder:   req.GetPreambleOrder(),
-		AlignValues:     req.GetAlignValues(),
-		PathMacros:      req.GetPathMacros(),
-		UtilMacros:      req.GetUtilMacros(),
-		CommonCleanup:   req.GetCommonCleanup(),
-		ConditionalTrim: req.GetConditionalTrim(),
-	}
+			formatter := specService.NewSpecFormatter()
+			formatted, changes, err := formatter.Format(content, opts)
+			if err != nil {
+				return api.FormatResponse{}, handler.ErrInternal(err.Error())
+			}
 
-	formatter := specService.NewSpecFormatter()
-	formatted, changes, err := formatter.Format(content, opts)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
+			var dtos []api.FormatChangeDTO
+			for _, ch := range changes {
+				dtos = append(dtos, api.FormatChangeDTO{
+					Line:   ch.Line,
+					Type:   ch.Type,
+					Before: ch.Before,
+					After:  ch.After,
+					Reason: ch.Reason,
+				})
+			}
+			if dtos == nil {
+				dtos = []api.FormatChangeDTO{}
+			}
 
-	var dtos []api.FormatChangeDTO
-	for _, ch := range changes {
-		dtos = append(dtos, api.FormatChangeDTO{
-			Line:   ch.Line,
-			Type:   ch.Type,
-			Before: ch.Before,
-			After:  ch.After,
-			Reason: ch.Reason,
-		})
-	}
-	if dtos == nil {
-		dtos = []api.FormatChangeDTO{}
-	}
-
-	response.Success(c, api.FormatResponse{
-		Content: formatted,
-		Changes: dtos,
-	})
+			return api.FormatResponse{
+				Content: formatted,
+				Changes: dtos,
+			}, nil
+		},
+	)
 }
 
 // GetSpecConfig .
@@ -717,47 +664,40 @@ func GetSpecConfig(ctx context.Context, c *app.RequestContext) {
 // SaveSpecConfig .
 // @router /api/v1/spec/config [PUT]
 func SaveSpecConfig(ctx context.Context, c *app.RequestContext) {
-	var req SaveSpecConfigReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *SaveSpecConfigReq) (map[string]string, error) {
+			dao := db.NewSystemConfigDAO()
 
-	dao := db.NewSystemConfigDAO()
+			if req.DefaultTemplate != nil {
+				if err := dao.SetConfig("spec_default_template", *req.DefaultTemplate); err != nil {
+					return nil, handler.ErrInternal(err.Error())
+				}
+			}
 
-	if req.DefaultTemplate != nil {
-		if err := dao.SetConfig("spec_default_template", *req.DefaultTemplate); err != nil {
-			response.InternalError(c, err)
-			return
-		}
-	}
+			if req.FormatOptions != nil {
+				data, err := json.Marshal(req.FormatOptions)
+				if err != nil {
+					return nil, handler.ErrInternal(err.Error())
+				}
+				if err := dao.SetConfig("spec_format_options", string(data)); err != nil {
+					return nil, handler.ErrInternal(err.Error())
+				}
+			}
 
-	if req.FormatOptions != nil {
-		data, err := json.Marshal(req.FormatOptions)
-		if err != nil {
-			response.InternalError(c, err)
-			return
-		}
-		if err := dao.SetConfig("spec_format_options", string(data)); err != nil {
-			response.InternalError(c, err)
-			return
-		}
-	}
+			if req.AIConfig != nil {
+				data, err := json.Marshal(req.AIConfig)
+				if err != nil {
+					return nil, handler.ErrInternal(err.Error())
+				}
+				if err := dao.SetConfig("spec_ai_config", string(data)); err != nil {
+					return nil, handler.ErrInternal(err.Error())
+				}
+			}
 
-	if req.AIConfig != nil {
-		data, err := json.Marshal(req.AIConfig)
-		if err != nil {
-			response.InternalError(c, err)
-			return
-		}
-		if err := dao.SetConfig("spec_ai_config", string(data)); err != nil {
-			response.InternalError(c, err)
-			return
-		}
-	}
-
-	c.Set("audit_details", map[string]interface{}{"template": req.DefaultTemplate, "format": req.FormatOptions, "ai": req.AIConfig})
-	response.Success(c, map[string]string{"message": "配置已保存"})
+			c.Set("audit_details", map[string]interface{}{"template": req.DefaultTemplate, "format": req.FormatOptions, "ai": req.AIConfig})
+			return map[string]string{"message": "配置已保存"}, nil
+		},
+	)
 }
 
 func buildSpecTree(repoPath string) ([]*spec.SpecFile, error) {

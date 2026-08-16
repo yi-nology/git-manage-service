@@ -136,19 +136,15 @@ func UpdateRule(ctx context.Context, c *app.RequestContext) {
 	if !ok {
 		return
 	}
-	var req webhookRuleRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	rule := req.toPO()
-	rule.ID = uint(id)
-	if err := db.NewWebhookRuleDAO().Save(rule); err != nil {
-		pkgresponse.InternalServerError(c, "Failed to update webhook rule: "+err.Error())
-		return
-	}
-	c.Set("audit_target", fmt.Sprintf("webhook_rule:%d", id))
-	pkgresponse.Success(c, toRuleDTO(rule))
+	handler.BindAndDo(c, func(req *webhookRuleRequest) (webhookRuleDTO, error) {
+		rule := req.toPO()
+		rule.ID = uint(id)
+		if err := db.NewWebhookRuleDAO().Save(rule); err != nil {
+			return webhookRuleDTO{}, handler.ErrInternal("Failed to update webhook rule: " + err.Error())
+		}
+		c.Set("audit_target", fmt.Sprintf("webhook_rule:%d", id))
+		return toRuleDTO(rule), nil
+	})
 }
 
 // DeleteRule deletes a webhook rule by id.

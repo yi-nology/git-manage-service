@@ -17,6 +17,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
 	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
 	"github.com/yi-nology/git-manage-service/biz/service/webhookevent"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-platform-sdk/provider"
 )
@@ -24,92 +25,80 @@ import (
 // TriggerSync .
 // @router /api/webhooks/task-sync [POST]
 func TriggerSync(ctx context.Context, c *app.RequestContext) {
-	var req webhook.TriggerSyncRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	// 支持task_key或task_id
-	taskKey := req.TaskKey
-	if taskKey == "" {
-		taskKey = req.TaskId
-	}
-	if taskKey == "" {
-		response.BadRequest(c, "task_key or task_id is required")
-		return
-	}
-
-	// 查找任务
-	svc := syncv2.GetService()
-	task, err := svc.GetTask(ctx, taskKey)
-	if err != nil {
-		response.NotFound(c, "task not found")
-		return
-	}
-
-	// 生成执行ID
-	runID := uuid.New().String()
-
-	// 异步执行同步任务
-	go func() {
-		if err := svc.RunTask(context.Background(), task.Key); err != nil {
-			log.Printf("[sync] async RunTask %s failed: %v", task.Key, err)
+	handler.BindAndDo(c, func(req *webhook.TriggerSyncRequest) (map[string]interface{}, error) {
+		// 支持task_key或task_id
+		taskKey := req.TaskKey
+		if taskKey == "" {
+			taskKey = req.TaskId
 		}
-	}()
+		if taskKey == "" {
+			return nil, handler.ErrBadRequest("task_key or task_id is required")
+		}
 
-	c.Set("audit_target", "task:"+task.Key)
-	c.Set("audit_details", map[string]string{"task_key": taskKey})
-	response.Success(c, map[string]interface{}{
-		"run_id":   runID,
-		"task_key": task.Key,
-		"status":   "started",
-		"message":  "sync task triggered",
+		// 查找任务
+		svc := syncv2.GetService()
+		task, err := svc.GetTask(ctx, taskKey)
+		if err != nil {
+			return nil, handler.ErrNotFound("task not found")
+		}
+
+		// 生成执行ID
+		runID := uuid.New().String()
+
+		// 异步执行同步任务
+		go func() {
+			if err := svc.RunTask(context.Background(), task.Key); err != nil {
+				log.Printf("[sync] async RunTask %s failed: %v", task.Key, err)
+			}
+		}()
+
+		c.Set("audit_target", "task:"+task.Key)
+		c.Set("audit_details", map[string]string{"task_key": taskKey})
+		return map[string]interface{}{
+			"run_id":   runID,
+			"task_key": task.Key,
+			"status":   "started",
+			"message":  "sync task triggered",
+		}, nil
 	})
 }
 
 // TriggerSyncByToken .
 // @router /api/webhooks/trigger/:token [POST]
 func TriggerSyncByToken(ctx context.Context, c *app.RequestContext) {
-	var req webhook.TriggerSyncByTokenRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	token := req.Token
-	if token == "" {
-		token = c.Param("token")
-	}
-	if token == "" {
-		response.BadRequest(c, "token is required")
-		return
-	}
-
-	// 通过 token 查找任务（git-sync-service 是任务的真正来源）
-	svc := syncv2.GetService()
-	task, err := svc.FindTaskByWebhookToken(ctx, token)
-	if err != nil || task == nil {
-		response.NotFound(c, "task not found for this token")
-		return
-	}
-
-	// 生成执行ID
-	runID := uuid.New().String()
-
-	// 异步执行同步任务
-	go func() {
-		if err := svc.RunTask(context.Background(), task.Key); err != nil {
-			log.Printf("[sync] async RunTask %s failed: %v", task.Key, err)
+	handler.BindAndDo(c, func(req *webhook.TriggerSyncByTokenRequest) (map[string]interface{}, error) {
+		token := req.Token
+		if token == "" {
+			token = c.Param("token")
 		}
-	}()
+		if token == "" {
+			return nil, handler.ErrBadRequest("token is required")
+		}
 
-	c.Set("audit_target", "task:"+task.Key)
-	response.Success(c, map[string]interface{}{
-		"run_id":   runID,
-		"task_key": task.Key,
-		"status":   "started",
-		"message":  "sync task triggered by token",
+		// 通过 token 查找任务（git-sync-service 是任务的真正来源）
+		svc := syncv2.GetService()
+		task, err := svc.FindTaskByWebhookToken(ctx, token)
+		if err != nil || task == nil {
+			return nil, handler.ErrNotFound("task not found for this token")
+		}
+
+		// 生成执行ID
+		runID := uuid.New().String()
+
+		// 异步执行同步任务
+		go func() {
+			if err := svc.RunTask(context.Background(), task.Key); err != nil {
+				log.Printf("[sync] async RunTask %s failed: %v", task.Key, err)
+			}
+		}()
+
+		c.Set("audit_target", "task:"+task.Key)
+		return map[string]interface{}{
+			"run_id":   runID,
+			"task_key": task.Key,
+			"status":   "started",
+			"message":  "sync task triggered by token",
+		}, nil
 	})
 }
 

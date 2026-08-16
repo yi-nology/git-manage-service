@@ -105,45 +105,40 @@ func RunTask(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, map[string]string{"status": "started"})
 }
 
+type batchRunTasksReq struct {
+	TaskKeys []string `json:"task_keys"`
+}
+
 // BatchRunTasks 批量运行任务
 func BatchRunTasks(ctx context.Context, c *app.RequestContext) {
-	var req struct {
-		TaskKeys []string `json:"task_keys"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *batchRunTasksReq) (map[string]interface{}, error) {
+			if len(req.TaskKeys) == 0 {
+				return nil, handler.ErrBadRequest("task_keys is required")
+			}
 
-	if len(req.TaskKeys) == 0 {
-		response.BadRequest(c, "task_keys is required")
-		return
-	}
+			go func() {
+				if err := svc.BatchRunTasks(context.Background(), req.TaskKeys); err != nil {
+					log.Printf("[sync] async BatchRunTasks failed: %v", err)
+				}
+			}()
 
-	go func() {
-		if err := svc.BatchRunTasks(context.Background(), req.TaskKeys); err != nil {
-			log.Printf("[sync] async BatchRunTasks failed: %v", err)
-		}
-	}()
-
-	response.Success(c, map[string]interface{}{"status": "started", "count": len(req.TaskKeys)})
+			return map[string]interface{}{"status": "started", "count": len(req.TaskKeys)}, nil
+		},
+	)
 }
 
 // PreviewSync 预览同步
 func PreviewSync(ctx context.Context, c *app.RequestContext) {
-	var req gitsyncmodel.PreviewSyncRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	result, err := svc.PreviewSync(ctx, &req)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, result)
+	handler.BindAndDo(c,
+		func(req *gitsyncmodel.PreviewSyncRequest) (any, error) {
+			result, err := svc.PreviewSync(ctx, req)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			return result, nil
+		},
+	)
 }
 
 // ==================== History API ====================

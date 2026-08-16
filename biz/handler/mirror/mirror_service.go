@@ -183,48 +183,41 @@ func CreateMirror(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var req api.CreateMirrorReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c, func(req *api.CreateMirrorReq) (*mirrorModel.Mirror, error) {
+		if req.MirrorType != po.MirrorTypePull && req.MirrorType != po.MirrorTypePush {
+			return nil, handler.ErrBadRequest("mirror_type must be 'pull' or 'push'")
+		}
 
-	if req.MirrorType != po.MirrorTypePull && req.MirrorType != po.MirrorTypePush {
-		response.BadRequest(c, "mirror_type must be 'pull' or 'push'")
-		return
-	}
+		mirror := &po.Mirror{
+			RepoID:       req.RepoID,
+			MirrorType:   req.MirrorType,
+			RemoteURL:    req.RemoteURL,
+			RemoteName:   req.RemoteName,
+			CredentialID: req.CredentialID,
+			BranchFilter: req.BranchFilter,
+			SyncInterval: req.SyncInterval,
+			CronExpr:     req.CronExpr,
+			SyncOnPush:   req.SyncOnPush,
+			GitForce:     req.GitForce,
+			GitPrune:     req.GitPrune,
+			GitTags:      req.GitTags,
+			Enabled:      req.Enabled,
+		}
 
-	mirror := &po.Mirror{
-		RepoID:       req.RepoID,
-		MirrorType:   req.MirrorType,
-		RemoteURL:    req.RemoteURL,
-		RemoteName:   req.RemoteName,
-		CredentialID: req.CredentialID,
-		BranchFilter: req.BranchFilter,
-		SyncInterval: req.SyncInterval,
-		CronExpr:     req.CronExpr,
-		SyncOnPush:   req.SyncOnPush,
-		GitForce:     req.GitForce,
-		GitPrune:     req.GitPrune,
-		GitTags:      req.GitTags,
-		Enabled:      req.Enabled,
-	}
+		if err := svc.CreateMirror(mirror); err != nil {
+			return nil, handler.ErrInternal(err.Error())
+		}
 
-	if err := svc.CreateMirror(mirror); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
+		if mirrorSvc.GlobalScheduler != nil && mirror.CronExpr != "" {
+			mirrorSvc.GlobalScheduler.AddCronMirror(mirror)
+		}
 
-	created, _ := svc.GetMirror(mirror.ID)
-	if created != nil {
-		response.Success(c, convertToProtoMirror(*created))
-	} else {
-		response.Success(c, convertToProtoMirror(*mirror))
-	}
-
-	if mirrorSvc.GlobalScheduler != nil && mirror.CronExpr != "" {
-		mirrorSvc.GlobalScheduler.AddCronMirror(mirror)
-	}
+		created, _ := svc.GetMirror(mirror.ID)
+		if created != nil {
+			return convertToProtoMirror(*created), nil
+		}
+		return convertToProtoMirror(*mirror), nil
+	})
 }
 
 func UpdateMirror(ctx context.Context, c *app.RequestContext) {
@@ -239,53 +232,46 @@ func UpdateMirror(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var req api.UpdateMirrorReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	mirror, err := svc.GetMirror(id)
-	if err != nil {
-		response.NotFound(c, "mirror not found")
-		return
-	}
-
-	if req.RemoteURL != "" {
-		mirror.RemoteURL = req.RemoteURL
-	}
-	mirror.RemoteName = req.RemoteName
-	mirror.CredentialID = req.CredentialID
-	mirror.BranchFilter = req.BranchFilter
-	if req.SyncInterval > 0 {
-		mirror.SyncInterval = req.SyncInterval
-	}
-	mirror.CronExpr = req.CronExpr
-	mirror.SyncOnPush = req.SyncOnPush
-	mirror.GitForce = req.GitForce
-	mirror.GitPrune = req.GitPrune
-	mirror.GitTags = req.GitTags
-	mirror.Enabled = req.Enabled
-
-	if err := svc.UpdateMirror(mirror); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	updated, _ := svc.GetMirror(id)
-	if updated != nil {
-		response.Success(c, convertToProtoMirror(*updated))
-	} else {
-		response.Success(c, convertToProtoMirror(*mirror))
-	}
-
-	if mirrorSvc.GlobalScheduler != nil {
-		if mirror.CronExpr != "" && mirror.Enabled {
-			mirrorSvc.GlobalScheduler.AddCronMirror(mirror)
-		} else {
-			mirrorSvc.GlobalScheduler.RemoveCronMirror(mirror.ID)
+	handler.BindAndDo(c, func(req *api.UpdateMirrorReq) (*mirrorModel.Mirror, error) {
+		mirror, err := svc.GetMirror(id)
+		if err != nil {
+			return nil, handler.ErrNotFound("mirror not found")
 		}
-	}
+
+		if req.RemoteURL != "" {
+			mirror.RemoteURL = req.RemoteURL
+		}
+		mirror.RemoteName = req.RemoteName
+		mirror.CredentialID = req.CredentialID
+		mirror.BranchFilter = req.BranchFilter
+		if req.SyncInterval > 0 {
+			mirror.SyncInterval = req.SyncInterval
+		}
+		mirror.CronExpr = req.CronExpr
+		mirror.SyncOnPush = req.SyncOnPush
+		mirror.GitForce = req.GitForce
+		mirror.GitPrune = req.GitPrune
+		mirror.GitTags = req.GitTags
+		mirror.Enabled = req.Enabled
+
+		if err := svc.UpdateMirror(mirror); err != nil {
+			return nil, handler.ErrInternal(err.Error())
+		}
+
+		if mirrorSvc.GlobalScheduler != nil {
+			if mirror.CronExpr != "" && mirror.Enabled {
+				mirrorSvc.GlobalScheduler.AddCronMirror(mirror)
+			} else {
+				mirrorSvc.GlobalScheduler.RemoveCronMirror(mirror.ID)
+			}
+		}
+
+		updated, _ := svc.GetMirror(id)
+		if updated != nil {
+			return convertToProtoMirror(*updated), nil
+		}
+		return convertToProtoMirror(*mirror), nil
+	})
 }
 
 func DeleteMirror(ctx context.Context, c *app.RequestContext) {

@@ -12,9 +12,11 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	reviewModel "github.com/yi-nology/git-manage-service/biz/model/review"
 	codereview "github.com/yi-nology/git-manage-service/biz/service/codereview"
 	"github.com/yi-nology/git-manage-service/biz/service/rag"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -104,44 +106,40 @@ func convertToProtoReviewFinding(dto api.ReviewFindingDTO) *reviewModel.ReviewFi
 }
 
 func CreateTask(ctx context.Context, c *app.RequestContext) {
-	var req struct {
+	type CreateTaskReq struct {
 		RepoKey          string `json:"repo_key"`
 		ProviderConfigID uint   `json:"provider_config_id"`
 		MRIID            string `json:"mr_iid"`
 		CommitSHA        string `json:"commit_sha"`
 		TriggerType      string `json:"trigger_type"`
 	}
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.RepoKey == "" || req.MRIID == "" {
-		pkgresponse.BadRequest(c, "repo_key and mr_iid are required")
-		return
-	}
-	if !validateRepoKey(req.RepoKey) {
-		pkgresponse.BadRequest(c, "repo_key contains invalid characters or exceeds 255 chars")
-		return
-	}
-	if !validateMRIID(req.MRIID) {
-		pkgresponse.BadRequest(c, "mr_iid must be a numeric string (max 64 chars)")
-		return
-	}
-	if req.CommitSHA != "" && !validateSHA(req.CommitSHA) {
-		pkgresponse.BadRequest(c, "commit_sha must be a valid hex string (max 128 chars)")
-		return
-	}
-	if req.TriggerType == "" {
-		req.TriggerType = "manual"
-	}
-	task, err := codereview.CreateTask(ctx, req.RepoKey, req.ProviderConfigID, req.MRIID, req.CommitSHA, req.TriggerType)
-	if err != nil {
-		pkgresponse.InternalServerError(c, err.Error())
-		return
-	}
-	c.Set("audit_target", "repo:"+req.RepoKey)
-	c.Set("audit_details", map[string]string{"mr_iid": req.MRIID, "trigger": req.TriggerType})
-	pkgresponse.Success(c, convertToProtoReviewTask(api.NewReviewTaskDTO(*task)))
+	handler.DoWithRepo(c,
+		func(req *CreateTaskReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *CreateTaskReq) (*reviewModel.ReviewTask, error) {
+			if req.MRIID == "" {
+				return nil, handler.ErrBadRequest("repo_key and mr_iid are required")
+			}
+			if !validateRepoKey(req.RepoKey) {
+				return nil, handler.ErrBadRequest("repo_key contains invalid characters or exceeds 255 chars")
+			}
+			if !validateMRIID(req.MRIID) {
+				return nil, handler.ErrBadRequest("mr_iid must be a numeric string (max 64 chars)")
+			}
+			if req.CommitSHA != "" && !validateSHA(req.CommitSHA) {
+				return nil, handler.ErrBadRequest("commit_sha must be a valid hex string (max 128 chars)")
+			}
+			if req.TriggerType == "" {
+				req.TriggerType = "manual"
+			}
+			task, err := codereview.CreateTask(ctx, req.RepoKey, req.ProviderConfigID, req.MRIID, req.CommitSHA, req.TriggerType)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			c.Set("audit_target", "repo:"+req.RepoKey)
+			c.Set("audit_details", map[string]string{"mr_iid": req.MRIID, "trigger": req.TriggerType})
+			return convertToProtoReviewTask(api.NewReviewTaskDTO(*task)), nil
+		},
+	)
 }
 
 func GetTask(ctx context.Context, c *app.RequestContext) {
@@ -252,17 +250,19 @@ func RetryTask(ctx context.Context, c *app.RequestContext) {
 	if !ok {
 		return
 	}
-	var body struct {
+	type RetryTaskReq struct {
 		Owner string `json:"owner"`
 		Repo  string `json:"repo"`
 	}
-	_ = c.BindAndValidate(&body)
-	task, err := codereview.RetryTask(ctx, id, body.Owner, body.Repo)
-	if err != nil {
-		pkgresponse.InternalServerError(c, err.Error())
-		return
-	}
-	pkgresponse.Success(c, convertToProtoReviewTask(api.NewReviewTaskDTO(*task)))
+	handler.BindAndDo(c,
+		func(req *RetryTaskReq) (*reviewModel.ReviewTask, error) {
+			task, err := codereview.RetryTask(ctx, id, req.Owner, req.Repo)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			return convertToProtoReviewTask(api.NewReviewTaskDTO(*task)), nil
+		},
+	)
 }
 
 func CheckMerge(ctx context.Context, c *app.RequestContext) {
@@ -310,19 +310,18 @@ func GetReviewConfig(ctx context.Context, c *app.RequestContext) {
 
 func UpdateReviewConfig(ctx context.Context, c *app.RequestContext) {
 	repoKey := c.Param("repo_key")
-	var req struct {
+	type UpdateReviewConfigReq struct {
 		ConfigYAML string `json:"config_yaml"`
 	}
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if err := codereview.UpdateReviewConfig(repoKey, req.ConfigYAML); err != nil {
-		pkgresponse.InternalServerError(c, err.Error())
-		return
-	}
-	c.Set("audit_target", "repo:"+repoKey)
-	pkgresponse.Success(c, map[string]string{"config_yaml": req.ConfigYAML})
+	handler.BindAndDo(c,
+		func(req *UpdateReviewConfigReq) (map[string]string, error) {
+			if err := codereview.UpdateReviewConfig(repoKey, req.ConfigYAML); err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			c.Set("audit_target", "repo:"+repoKey)
+			return map[string]string{"config_yaml": req.ConfigYAML}, nil
+		},
+	)
 }
 
 func GetRemoteRepoConfig(ctx context.Context, c *app.RequestContext) {
@@ -355,18 +354,16 @@ func UpdateRemoteRepoConfig(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "owner and repo are required")
 		return
 	}
-	var req api.ReviewRepoConfigDTO
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	result, err := codereview.UpdateRemoteRepoConfig(providerID, owner, repo, req)
-	if err != nil {
-		pkgresponse.InternalServerError(c, err.Error())
-		return
-	}
-	c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", providerID, owner, repo))
-	pkgresponse.Success(c, result)
+	handler.BindAndDo(c,
+		func(req *api.ReviewRepoConfigDTO) (*api.ReviewRepoConfigDTO, error) {
+			result, err := codereview.UpdateRemoteRepoConfig(providerID, owner, repo, *req)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			c.Set("audit_target", fmt.Sprintf("provider:%d:%s/%s", providerID, owner, repo))
+			return result, nil
+		},
+	)
 }
 
 func GetReviewStats(ctx context.Context, c *app.RequestContext) {
@@ -397,26 +394,24 @@ func GetReviewFeedback(ctx context.Context, c *app.RequestContext) {
 	if !ok {
 		return
 	}
-	var req struct {
+	type ReviewFeedbackReq struct {
 		Feedback string `json:"feedback"`
 	}
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.Feedback != "useful" && req.Feedback != "false_positive" {
-		pkgresponse.BadRequest(c, "feedback must be 'useful' or 'false_positive'")
-		return
-	}
-	if err := db.NewReviewFindingDAO().UpdateFeedback(findingID, req.Feedback); err != nil {
-		pkgresponse.InternalServerError(c, err.Error())
-		return
-	}
-	pkgresponse.Success(c, map[string]string{"status": "updated"})
+	handler.BindAndDo(c,
+		func(req *ReviewFeedbackReq) (map[string]string, error) {
+			if req.Feedback != "useful" && req.Feedback != "false_positive" {
+				return nil, handler.ErrBadRequest("feedback must be 'useful' or 'false_positive'")
+			}
+			if err := db.NewReviewFindingDAO().UpdateFeedback(findingID, req.Feedback); err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			return map[string]string{"status": "updated"}, nil
+		},
+	)
 }
 
 func CreateTaskByProvider(ctx context.Context, c *app.RequestContext) {
-	var req struct {
+	type CreateTaskByProviderReq struct {
 		ProviderConfigID uint   `json:"provider_config_id"`
 		Owner            string `json:"owner"`
 		Repo             string `json:"repo"`
@@ -424,32 +419,28 @@ func CreateTaskByProvider(ctx context.Context, c *app.RequestContext) {
 		CommitSHA        string `json:"commit_sha"`
 		TriggerType      string `json:"trigger_type"`
 	}
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.ProviderConfigID == 0 || req.MRIID == "" {
-		pkgresponse.BadRequest(c, "provider_config_id and mr_iid are required")
-		return
-	}
-	if !validateMRIID(req.MRIID) {
-		pkgresponse.BadRequest(c, "mr_iid must be a numeric string (max 64 chars)")
-		return
-	}
-	if req.CommitSHA != "" && !validateSHA(req.CommitSHA) {
-		pkgresponse.BadRequest(c, "commit_sha must be a valid hex string (max 128 chars)")
-		return
-	}
-	if req.TriggerType == "" {
-		req.TriggerType = "manual"
-	}
-	task, err := codereview.CreateTaskByProvider(ctx, req.ProviderConfigID, req.Owner, req.Repo, req.MRIID, req.CommitSHA, req.TriggerType)
-	if err != nil {
-		pkgresponse.InternalServerError(c, err.Error())
-		return
-	}
-	c.Set("audit_target", fmt.Sprintf("provider:%d", req.ProviderConfigID))
-	pkgresponse.Success(c, convertToProtoReviewTask(api.NewReviewTaskDTO(*task)))
+	handler.BindAndDo(c,
+		func(req *CreateTaskByProviderReq) (*reviewModel.ReviewTask, error) {
+			if req.ProviderConfigID == 0 || req.MRIID == "" {
+				return nil, handler.ErrBadRequest("provider_config_id and mr_iid are required")
+			}
+			if !validateMRIID(req.MRIID) {
+				return nil, handler.ErrBadRequest("mr_iid must be a numeric string (max 64 chars)")
+			}
+			if req.CommitSHA != "" && !validateSHA(req.CommitSHA) {
+				return nil, handler.ErrBadRequest("commit_sha must be a valid hex string (max 128 chars)")
+			}
+			if req.TriggerType == "" {
+				req.TriggerType = "manual"
+			}
+			task, err := codereview.CreateTaskByProvider(ctx, req.ProviderConfigID, req.Owner, req.Repo, req.MRIID, req.CommitSHA, req.TriggerType)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			c.Set("audit_target", fmt.Sprintf("provider:%d", req.ProviderConfigID))
+			return convertToProtoReviewTask(api.NewReviewTaskDTO(*task)), nil
+		},
+	)
 }
 
 func ListTasksByProvider(ctx context.Context, c *app.RequestContext) {
