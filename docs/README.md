@@ -75,7 +75,7 @@ open http://localhost:12345
 
 | 后端 | 前端 |
 |------|------|
-| Go 1.25 | Vue 3 |
+| Go 1.26 | Vue 3 |
 | CloudWeGo Hertz | Element Plus |
 | CloudWeGo Kitex | Pinia |
 | SQLite / MySQL / PostgreSQL | ECharts |

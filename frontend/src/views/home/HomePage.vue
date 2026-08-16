@@ -86,7 +86,7 @@
     </section>
 
     <footer class="home-footer">
-      Licensed under Apache 2.0
+      Licensed under MIT License
     </footer>
   </div>
 </template>
@@ -134,7 +134,7 @@ for (let i = 0; i < allFeatures.length; i += 3) {
 }
 
 const backendTech = [
-  { label: '语言', value: 'Go 1.24' },
+  { label: '语言', value: 'Go 1.26' },
   { label: 'HTTP 框架', value: 'Hertz (CloudWeGo)' },
   { label: 'RPC 框架', value: 'Kitex (CloudWeGo)' },
   { label: 'ORM', value: 'GORM' },

@@ -18,9 +18,9 @@
   <a href="https://github.com/yi-nology/git-manage-service/actions">
     <img src="https://img.shields.io/github/actions/workflow/status/yi-nology/git-manage-service/release.yml" alt="Build">
   </a>
-  <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go" alt="Go">
+  <img src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go" alt="Go">
   <img src="https://img.shields.io/badge/Vue-3-4FC08D?logo=vue.js" alt="Vue">
-  <img src="https://img.shields.io/badge/API-130+-blue" alt="API">
+  <img src="https://img.shields.io/badge/API-240+-blue" alt="API">
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 
 ## 为什么选择 Git Manage Service？
 
-管理多个 Git 仓库的同步、监控和自动化是一件繁琐的事情。Git Manage Service 提供了 **130+ API 接口**、**35+ 页面**、**8 项 AI 能力** 的一站式解决方案：
+管理多个 Git 仓库的同步、监控和自动化是一件繁琐的事情。Git Manage Service 提供了 **240+ API 接口**、**40+ 页面**、**8 项 AI 能力** 的一站式解决方案：
 
 - **一个面板管理所有仓库** — 注册本地仓库，集中查看分支、提交、标签、文件树
 - **灵活配置同步规则** — 任意 Remote 和分支之间的双向同步，支持定时调度
@@ -209,6 +209,10 @@
 |:---:|:---:|
 | ![文件浏览](docs/.vuepress/public/images/file-browser.png) | ![审计日志](docs/.vuepress/public/images/audit-log.png) |
 
+| 仓库详情 | SSH 密钥管理 |
+|:---:|:---:|
+| ![仓库详情](docs/.vuepress/public/images/repo-detail.png) | ![SSH 密钥](docs/.vuepress/public/images/ssh-keys.png) |
+
 更多截图请查看 [文档](docs/README.md)。
 
 ## 🚀 快速开始
@@ -241,6 +245,10 @@ wget https://github.com/yi-nology/git-manage-service/releases/latest/download/gi
 
 # 解压并运行
 tar -xzf git-manage-service-*.tar.gz
+
+# 设置凭证加密密钥（SyncV2 必需，首次设置后请固定保存，丢失将无法解密已存凭证）
+export ENCRYPTION_KEY=$(openssl rand -hex 32)
+
 ./git-manage-service --mode=http
 
 # 访问 http://localhost:12345
@@ -262,7 +270,7 @@ docker run -d \
 
 | 技术 | 说明 |
 |------|------|
-| [Go 1.25](https://go.dev/) | 主语言 |
+| [Go 1.26](https://go.dev/) | 主语言 |
 | [CloudWeGo Hertz](https://github.com/cloudwego/hertz) | HTTP 框架 |
 | [CloudWeGo Kitex](https://github.com/cloudwego/kitex) | RPC 框架 |
 | [GORM](https://gorm.io/) + SQLite / MySQL / PostgreSQL | ORM + 多数据库 |
@@ -285,7 +293,7 @@ docker run -d \
 
 ### 环境要求
 
-- Go 1.25+（服务端无需 CGO，桌面端需 CGO + Wails）
+- Go 1.26+（服务端无需 CGO，桌面端需 CGO + Wails）
 - Node.js 18+
 
 ### 本地开发
@@ -304,6 +312,9 @@ make build-full
 
 # 运行
 ./output/git-manage-service --mode=http
+
+# 或使用控制脚本（自动处理 ENCRYPTION_KEY、后台运行、日志）
+./control.sh start && ./control.sh status
 
 # 或前后端分离开发
 # 终端 1：后端
