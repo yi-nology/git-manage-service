@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -63,10 +64,10 @@ func ProcessIncomingEvent(event *provider.NormalizedEvent, providerCfgID uint) e
 	var crID uint
 	var platformCRNum int
 	if event.CR != nil {
-		platformCRNum = event.CR.Number
+		platformCRNum, _ = strconv.Atoi(event.CR.Number)
 		if repoID > 0 {
 			crDAO := db.NewChangeRequestDAO()
-			if localCR, err := crDAO.FindByRepoAndNumber(repoID, event.CR.Number); err == nil {
+			if localCR, err := crDAO.FindByRepoAndNumber(repoID, platformCRNum); err == nil {
 				crID = localCR.ID
 			}
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
@@ -49,7 +50,7 @@ func GetCR(ctx context.Context, repoKey string, crNumber int) (*api.CRDTO, error
 	if err != nil {
 		return nil, err
 	}
-	cr, err := p.GetCR(ctx, owner, repoName, crNumber)
+	cr, err := p.GetCR(ctx, owner, repoName, strconv.Itoa(crNumber))
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +80,7 @@ func MergeCR(ctx context.Context, repoKey string, crNumber int, mergeMsg string,
 	if err != nil {
 		return nil, err
 	}
-	cr, err := p.MergeCR(ctx, owner, repoName, crNumber, provider.MergeCROptions{
+	cr, err := p.MergeCR(ctx, owner, repoName, strconv.Itoa(crNumber), provider.MergeCROptions{
 		MergeCommitMessage: mergeMsg, Squash: squash, RemoveSourceBranch: removeBranch,
 	})
 	if err != nil {
@@ -101,7 +102,7 @@ func CloseCR(ctx context.Context, repoKey string, crNumber int) (*api.CRDTO, err
 	if err != nil {
 		return nil, err
 	}
-	cr, err := p.CloseCR(ctx, owner, repoName, crNumber)
+	cr, err := p.CloseCR(ctx, owner, repoName, strconv.Itoa(crNumber))
 	if err != nil {
 		return nil, err
 	}
@@ -136,9 +137,9 @@ func SyncCRs(ctx context.Context, repoKey, state string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	existingByNumber := make(map[int]*po.ChangeRequest, len(existingCRs))
+	existingByNumber := make(map[string]*po.ChangeRequest, len(existingCRs))
 	for i := range existingCRs {
-		existingByNumber[existingCRs[i].CRNumber] = &existingCRs[i]
+		existingByNumber[strconv.Itoa(existingCRs[i].CRNumber)] = &existingCRs[i]
 	}
 
 	synced := 0
@@ -224,11 +225,12 @@ func platformCRToLocal(repoID, providerConfigID uint, cr *provider.ChangeRequest
 		authorName = cr.Author.Name
 		authorUsername = cr.Author.Username
 	}
+	crNumber, _ := strconv.Atoi(cr.Number)
 	return &po.ChangeRequest{
 		RepoID:           repoID,
 		ProviderConfigID: providerConfigID,
 		PlatformCRID:     cr.ID,
-		CRNumber:         cr.Number,
+		CRNumber:         crNumber,
 		Title:            cr.Title,
 		Description:      cr.Description,
 		State:            string(cr.State),
@@ -243,8 +245,9 @@ func platformCRToLocal(repoID, providerConfigID uint, cr *provider.ChangeRequest
 }
 
 func platformCRToAPI(cr *provider.ChangeRequest) *api.CRDTO {
+	crNumber, _ := strconv.Atoi(cr.Number)
 	return &api.CRDTO{
-		CRNumber:       cr.Number,
+		CRNumber:       crNumber,
 		Title:          cr.Title,
 		Description:    cr.Description,
 		State:          string(cr.State),
@@ -331,7 +334,7 @@ func MergeCRByProvider(ctx context.Context, providerID uint, owner, repoName str
 	if err != nil {
 		return nil, err
 	}
-	cr, err := p.MergeCR(ctx, owner, repoName, crNumber, provider.MergeCROptions{
+	cr, err := p.MergeCR(ctx, owner, repoName, strconv.Itoa(crNumber), provider.MergeCROptions{
 		MergeCommitMessage: mergeMsg, Squash: squash, RemoveSourceBranch: removeBranch,
 	})
 	if err != nil {
@@ -345,7 +348,7 @@ func CloseCRByProvider(ctx context.Context, providerID uint, owner, repoName str
 	if err != nil {
 		return nil, err
 	}
-	cr, err := p.CloseCR(ctx, owner, repoName, crNumber)
+	cr, err := p.CloseCR(ctx, owner, repoName, strconv.Itoa(crNumber))
 	if err != nil {
 		return nil, err
 	}

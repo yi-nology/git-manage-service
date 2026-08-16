@@ -243,12 +243,7 @@ func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParam
 		Detail: fmt.Sprintf("owner=%s, repo=%s", params.owner, params.repo),
 	})
 
-	mrNum, err := strconv.Atoi(task.MRIID)
-	if err != nil {
-		return nil, "", fmt.Errorf("invalid MR IID %q: %w", task.MRIID, err)
-	}
-
-	mergeDiff, err := params.p.GetCRDiff(ctx, params.owner, params.repo, mrNum)
+	mergeDiff, err := params.p.GetCRDiff(ctx, params.owner, params.repo, task.MRIID)
 	if err != nil {
 		task.Status = "failed"
 		task.ErrorMessage = fmt.Sprintf("failed to fetch diff: %v", err)
@@ -337,8 +332,6 @@ func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParam
 }
 
 func finalizeReview(ctx context.Context, task *po.ReviewTask, result *AggregatedResult, rawDiff string, params *reviewParams, taskDAO *db.ReviewTaskDAO, repoKey string) {
-	mrNum, _ := strconv.Atoi(task.MRIID)
-
 	task.RiskLevel = string(result.RiskLevel)
 
 	findingIDMap, err := persistFindings(task.ID, result.Findings)
@@ -346,9 +339,9 @@ func finalizeReview(ctx context.Context, task *po.ReviewTask, result *Aggregated
 		logger.ErrorWithErr("Failed to persist findings", err, logrus.Fields{"task_id": task.ID})
 	}
 
-	if mrNum > 0 {
-		cleanupOldComments(ctx, params.p, params.owner, params.repo, mrNum, task.ProviderConfigID, task.MRIID)
-		if pErr := publishComments(ctx, params.p, params.owner, params.repo, mrNum, task.ID, task.CommitSHA, result, findingIDMap); pErr != nil {
+	if task.MRIID != "" {
+		cleanupOldComments(ctx, params.p, params.owner, params.repo, task.MRIID, task.ProviderConfigID, task.MRIID)
+		if pErr := publishComments(ctx, params.p, params.owner, params.repo, task.MRIID, task.ID, task.CommitSHA, result, findingIDMap); pErr != nil {
 			logger.ErrorWithErr("Failed to publish comments", pErr, logrus.Fields{"task_id": task.ID})
 		}
 	}

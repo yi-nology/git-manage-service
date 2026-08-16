@@ -55,7 +55,7 @@ func persistFindings(taskID uint, findings []*Finding) (map[string]uint, error) 
 	return idMap, nil
 }
 
-func cleanupOldComments(ctx context.Context, p provider.DiffManager, owner, repo string, mrNum int, providerConfigID uint, mrIID string) {
+func cleanupOldComments(ctx context.Context, p provider.DiffManager, owner, repo string, mrNum string, providerConfigID uint, mrIID string) {
 	oldComments, err := db.NewReviewCommentDAO().FindSummaryCommentsByMRIID(providerConfigID, mrIID)
 	if err != nil {
 		return
@@ -69,7 +69,7 @@ func cleanupOldComments(ctx context.Context, p provider.DiffManager, owner, repo
 	}
 }
 
-func publishComments(ctx context.Context, p provider.DiffManager, owner, repo string, mrNum int, taskID uint, commitSHA string, result *AggregatedResult, findingIDMap map[string]uint) error {
+func publishComments(ctx context.Context, p provider.DiffManager, owner, repo string, mrNum string, taskID uint, commitSHA string, result *AggregatedResult, findingIDMap map[string]uint) error {
 	commentDAO := db.NewReviewCommentDAO()
 	summary := BuildSummaryComment(result)
 
@@ -102,7 +102,11 @@ func publishComments(ctx context.Context, p provider.DiffManager, owner, repo st
 	}
 
 	// Single API call: summary body + all inline comments
-	reviewResult, err := p.CreateReview(ctx, owner, repo, mrNum, provider.CreateReviewOptions{
+	rm, ok := p.(provider.ReviewManager)
+	if !ok {
+		return fmt.Errorf("provider does not support ReviewManager interface")
+	}
+	reviewResult, err := rm.CreateReview(ctx, owner, repo, mrNum, provider.CreateReviewOptions{
 		CommitID: commitSHA,
 		Event:    "COMMENT",
 		Body:     summary,
