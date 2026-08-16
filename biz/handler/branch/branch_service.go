@@ -182,9 +182,9 @@ func Push(ctx context.Context, c *app.RequestContext) {
 				authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
 					repo.RemoteCredentials,
 					repo.DefaultCredentialID,
-					repo.RemoteAuths,
+					nil,
 					remote,
-					repo.AuthType, repo.AuthKey, repo.AuthSecret,
+					"", "", "",
 				)
 
 				if resolveErr != nil {
@@ -267,9 +267,9 @@ func Pull(ctx context.Context, c *app.RequestContext) {
 			authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
 				repo.RemoteCredentials,
 				repo.DefaultCredentialID,
-				repo.RemoteAuths,
+				nil,
 				upstreamRemote,
-				repo.AuthType, repo.AuthKey, repo.AuthSecret,
+				"", "", "",
 			)
 			if resolveErr != nil {
 				return nil, handler.ErrInternal(fmt.Sprintf("failed to resolve auth: %v", resolveErr))
@@ -363,107 +363,86 @@ func GetDiff(ctx context.Context, c *app.RequestContext) {
 // GetPatch .
 // @router /api/v1/branch/patch [GET]
 func GetPatch(ctx context.Context, c *app.RequestContext) {
-	var req branch.GetPatchRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepoRaw(c,
+		func(req *branch.GetPatchRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *branch.GetPatchRequest) error {
+			gitSvc := git.NewGitService()
+			patch, err := gitSvc.GetPatch(repo.Path, req.GetBase(), req.GetTarget())
+			if err != nil {
+				return handler.ErrInternal(err.Error())
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	patch, err := gitSvc.GetPatch(repo.Path, req.GetBase(), req.GetTarget())
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	c.Header("Content-Type", "application/octet-stream")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s-%s-%s.patch", repo.Name, req.GetBase(), time.Now().Format("20060102")))
-	c.Write([]byte(patch))
+			c.Header("Content-Type", "application/octet-stream")
+			c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s-%s-%s.patch", repo.Name, req.GetBase(), time.Now().Format("20060102")))
+			c.Write([]byte(patch))
+			return nil
+		},
+	)
 }
 
 // CherryPick .
 // @router /api/v1/branch/cherry-pick [POST]
 func CherryPick(ctx context.Context, c *app.RequestContext) {
-	var req branch.CherryPickRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepoRaw(c,
+		func(req *branch.CherryPickRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *branch.CherryPickRequest) error {
+			gitSvc := git.NewGitService()
+			newCommit, conflicts, err := gitSvc.CherryPick(repo.Path, req.GetCommitHash(), false)
+			if err != nil {
+				if len(conflicts) > 0 {
+					c.JSON(200, response.Response{
+						Code: 409,
+						Msg:  "Cherry-pick conflict",
+						Data: map[string]interface{}{
+							"conflicts": conflicts,
+						},
+					})
+					return nil
+				}
+				return handler.ErrInternal(err.Error())
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	newCommit, conflicts, err := gitSvc.CherryPick(repo.Path, req.GetCommitHash(), false)
-	if err != nil {
-		if len(conflicts) > 0 {
-			c.JSON(200, response.Response{
-				Code: 409,
-				Msg:  "Cherry-pick conflict",
-				Data: map[string]interface{}{
-					"conflicts": conflicts,
-				},
+			response.Success(c, map[string]interface{}{
+				"success":    true,
+				"new_commit": newCommit,
 			})
-			return
-		}
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]interface{}{
-		"success":    true,
-		"new_commit": newCommit,
-	})
+			return nil
+		},
+	)
 }
 
 // Rebase .
 // @router /api/v1/branch/rebase [POST]
 func Rebase(ctx context.Context, c *app.RequestContext) {
-	var req branch.RebaseRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepoRaw(c,
+		func(req *branch.RebaseRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *branch.RebaseRequest) error {
+			gitSvc := git.NewGitService()
+			success, conflicts, err := gitSvc.Rebase(repo.Path, req.GetUpstream(), "")
+			if err != nil {
+				return handler.ErrInternal(err.Error())
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			if !success {
+				c.JSON(200, response.Response{
+					Code: 409,
+					Msg:  "Rebase conflict",
+					Data: map[string]interface{}{
+						"success":     false,
+						"in_progress": true,
+						"conflicts":   conflicts,
+					},
+				})
+				return nil
+			}
 
-	gitSvc := git.NewGitService()
-	success, conflicts, err := gitSvc.Rebase(repo.Path, req.GetUpstream(), "")
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	if !success {
-		c.JSON(200, response.Response{
-			Code: 409,
-			Msg:  "Rebase conflict",
-			Data: map[string]interface{}{
-				"success":     false,
-				"in_progress": true,
-				"conflicts":   conflicts,
-			},
-		})
-		return
-	}
-
-	response.Success(c, map[string]interface{}{
-		"success":     true,
-		"in_progress": false,
-	})
+			response.Success(c, map[string]interface{}{
+				"success":     true,
+				"in_progress": false,
+			})
+			return nil
+		},
+	)
 }
 
 // RebaseAbort .
@@ -534,50 +513,42 @@ func RebaseContinue(ctx context.Context, c *app.RequestContext) {
 // Merge .
 // @router /api/v1/branch/merge [POST]
 func Merge(ctx context.Context, c *app.RequestContext) {
-	var req branch.MergeBranchRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepoRaw(c,
+		func(req *branch.MergeBranchRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *branch.MergeBranchRequest) error {
+			gitSvc := git.NewGitService()
 
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			check, err := gitSvc.MergeDryRun(repo.Path, req.GetSource(), req.GetTarget())
+			if err != nil {
+				return handler.ErrInternal("Pre-merge check failed: " + err.Error())
+			}
+			if !check.Success {
+				mergeID := uuid.New().String()
+				reportURL := fmt.Sprintf("/merge_report.html?repo_key=%s&source=%s&target=%s&merge_id=%s", repo.Key, req.GetSource(), req.GetTarget(), mergeID)
 
-	gitSvc := git.NewGitService()
+				c.JSON(200, response.Response{
+					Code: 409,
+					Msg:  "Merge conflict detected",
+					Data: map[string]interface{}{
+						"conflicts":  check.Conflicts,
+						"report_url": reportURL,
+						"merge_id":   mergeID,
+					},
+				})
+				return nil
+			}
 
-	check, err := gitSvc.MergeDryRun(repo.Path, req.GetSource(), req.GetTarget())
-	if err != nil {
-		response.InternalServerError(c, "Pre-merge check failed: "+err.Error())
-		return
-	}
-	if !check.Success {
-		mergeID := uuid.New().String()
-		reportURL := fmt.Sprintf("/merge_report.html?repo_key=%s&source=%s&target=%s&merge_id=%s", repo.Key, req.GetSource(), req.GetTarget(), mergeID)
+			if err := gitSvc.Merge(repo.Path, req.GetSource(), req.GetTarget(), req.GetMessage(), req.GetNoFf(), req.GetSquash()); err != nil {
+				return handler.ErrInternal("Merge execution failed: " + err.Error())
+			}
 
-		c.JSON(200, response.Response{
-			Code: 409,
-			Msg:  "Merge conflict detected",
-			Data: map[string]interface{}{
-				"conflicts":  check.Conflicts,
-				"report_url": reportURL,
-				"merge_id":   mergeID,
-			},
-		})
-		return
-	}
+			c.Set("audit_target", "repo:"+repo.Key)
+			c.Set("audit_details", map[string]string{"source": req.GetSource(), "target": req.GetTarget()})
 
-	if err := gitSvc.Merge(repo.Path, req.GetSource(), req.GetTarget(), req.GetMessage(), req.GetNoFf(), req.GetSquash()); err != nil {
-		response.InternalServerError(c, "Merge execution failed: "+err.Error())
-		return
-	}
-
-	c.Set("audit_target", "repo:"+repo.Key)
-	c.Set("audit_details", map[string]string{"source": req.GetSource(), "target": req.GetTarget()})
-
-	response.Success(c, map[string]string{"status": "merged"})
+			response.Success(c, map[string]string{"status": "merged"})
+			return nil
+		},
+	)
 }
 
 // MergeCheck .

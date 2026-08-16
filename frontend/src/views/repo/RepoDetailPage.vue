@@ -12,81 +12,23 @@
     </div>
 
     <div class="layout-container">
-      <div class="left-nav">
-        <div class="sidebar-card">
-          <div
-            v-for="item in sidebarItems"
-            :key="item.key"
-            class="sidebar-item"
-            :class="{ active: activeTab === item.key && !(item as any).route }"
-            @click="handleNavSelect(item.key)"
-          >
-            <el-icon><component :is="item.icon" /></el-icon>
-            <span>{{ item.label }}</span>
-          </div>
-        </div>
-      </div>
+      <SidebarNav :items="sidebarItems" :active-tab="activeTab" @select="handleNavSelect" />
 
       <div class="content-area">
         <div v-show="activeTab === 'info'">
-          <div v-if="repo" class="info-card">
-            <div class="info-top-row">
-              <div class="info-left-col">
-                <div class="info-section-header">
-                  <SectionTitle title="基本信息" />
-                  <ActionPill variant="outline" :icon="Edit" @click="showEditDialog = true">
-                    编辑仓库
-                  </ActionPill>
-                </div>
-                <div class="info-row">
-                  <div class="info-field"><span class="info-label">名称</span><span class="info-value info-value--bold">{{ repo.name }}</span></div>
-                  <div class="info-field"><span class="info-label">当前版本</span><StatusBadge v-if="currentVersion" variant="success" :text="currentVersion" :show-dot="false" /><span v-else class="info-value">-</span></div>
-                </div>
-                <div class="info-field"><span class="info-label">本地路径</span><span class="info-value mono">{{ repo.path }}</span></div>
-                <div class="info-row">
-                  <div class="info-field"><span class="info-label">Repo Key</span><span class="info-value info-value--accent">{{ repo.key }}<button class="copy-btn-sm" @click="copyKey">复制</button></span></div>
-                  <div class="info-field"><span class="info-label">远程 URL</span><span class="info-value">{{ repo.remote_url || '-' }}</span></div>
-                </div>
-                <div class="info-row">
-                  <div class="info-field"><span class="info-label">创建时间</span><span class="info-value">{{ formatDate(repo.created_at) }}</span></div>
-                  <div class="info-field"><span class="info-label">更新时间</span><span class="info-value">{{ formatDate(repo.updated_at) }}</span></div>
-                </div>
-              </div>
-
-              <div class="info-v-divider"></div>
-
-              <div class="info-right-col">
-                <BindingPanel
-                  :bindings="bindings"
-                  @add="openBindingDialog"
-                  @delete="handleDeleteBinding"
-                  @set-primary="handleSetPrimaryBinding"
-                  @register-webhook="handleRegisterWebhook"
-                  @delete-webhook="handleDeleteWebhook"
-                />
-              </div>
-            </div>
-
-            <template v-if="scanData">
-              <div class="info-divider"></div>
-              <div class="scan-section">
-                <div class="info-section-header" style="margin-bottom:12px">
-                  <SectionTitle title="远程配置" />
-                  <span class="info-subtitle">来自 .git/config</span>
-                </div>
-                <div class="scan-remote-list">
-                  <div v-for="r in scanData.remotes" :key="r.name" class="scan-remote-row">
-                    <span class="remote-name">{{ r.name }}</span>
-                    <span class="remote-url">{{ r.fetch_url }}</span>
-                    <StatusBadge v-if="r.is_mirror" variant="warning" text="Mirror" :show-dot="false" />
-                  </div>
-                </div>
-                <div v-if="scanData.branches?.length" class="tracking-tags">
-                  <StatusBadge v-for="b in scanData.branches" :key="b.name" variant="info" :text="`${b.name} -> ${b.upstream_ref}`" :show-dot="false" />
-                </div>
-              </div>
-            </template>
-          </div>
+          <RepoInfoTab
+            v-if="repo"
+            :repo="repo"
+            :current-version="currentVersion"
+            :scan-data="scanData"
+            :bindings="bindings"
+            @open-edit="showEditDialog = true"
+            @open-binding-dialog="openBindingDialog"
+            @delete-binding="handleDeleteBinding"
+            @set-primary-binding="handleSetPrimaryBinding"
+            @register-webhook="handleRegisterWebhook"
+            @delete-webhook="handleDeleteWebhook"
+          />
         </div>
 
         <BindingDialog
@@ -210,8 +152,9 @@ import { getSyncHistory } from '@/api/modules/sync'
 import PageHeader from '@/components/common/PageHeader.vue'
 import ActionPill from '@/components/common/ActionPill.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import SectionTitle from '@/components/common/SectionTitle.vue'
 import AIPanel from '@/components/ai/AIPanel.vue'
+import SidebarNav from './detail/SidebarNav.vue'
+import RepoInfoTab from './detail/RepoInfoTab.vue'
 
 const FileExplorer = defineAsyncComponent(() => import('@/components/repo/FileExplorer.vue'))
 const BranchOverviewPanel = defineAsyncComponent(() => import('@/components/branch/BranchOverviewPanel.vue'))
@@ -227,7 +170,6 @@ const RepoStatsTab = defineAsyncComponent(() => import('@/components/repo/RepoSt
 const RepoLineStatsTab = defineAsyncComponent(() => import('@/components/repo/RepoLineStatsTab.vue'))
 const RepoVersionsTab = defineAsyncComponent(() => import('@/components/repo/RepoVersionsTab.vue'))
 const RepoEditDialog = defineAsyncComponent(() => import('@/components/repo/RepoEditDialog.vue'))
-const BindingPanel = defineAsyncComponent(() => import('@/components/binding/BindingPanel.vue'))
 const BindingDialog = defineAsyncComponent(() => import('@/components/binding/BindingDialog.vue'))
 
 const providerStore = useProviderStore()
@@ -341,13 +283,6 @@ async function loadVersions() {
 
 async function handleVersionChanged() {
   try { currentVersion.value = await getCurrentVersion(repo_key) || '' } catch (_e) { /* ignore */ }
-}
-
-function copyKey() {
-  if (repo.value?.key) {
-    navigator.clipboard.writeText(repo.value.key)
-    ElMessage.success('已复制 Repo Key')
-  }
 }
 
 async function loadProviderInfo() {
@@ -473,9 +408,6 @@ async function handleAISummary(message: string) {
        repo_key,
        status: {
          name: repo.value?.name || '',
-         // NOTE: these map keys are read by the backend with hardcoded
-         // camelCase keys (service.go reads Status["defaultBranch"] etc.) —
-         // they are NOT response-DTO fields, so they stay camelCase.
          currentBranch: workspaceStatus?.branch || '',
          defaultBranch: workspaceStatus?.branch || '',
          branchCount: statsBranches.value?.length || 0,
@@ -523,195 +455,11 @@ async function handleAISummary(message: string) {
   border-bottom: 1px solid var(--border-color);
 }
 
-.info-card {
-  border-radius: var(--border-radius-md);
-  background: var(--bg-color-page);
-  border: 1px solid var(--border-color);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  box-shadow: var(--box-shadow-sm);
-}
-
-.info-top-row {
-  display: flex;
-  gap: 0;
-}
-
-.info-left-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding-right: 20px;
-}
-
-.info-v-divider {
-  width: 1px;
-  background: var(--border-color);
-  align-self: stretch;
-}
-
-.info-right-col {
-  width: 340px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-left: 20px;
-}
-
-.info-section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.info-subtitle {
-  font-size: 12px;
-  color: var(--text-color-secondary, #94A3B8);
-}
-
-.info-row {
-  display: flex;
-  gap: 20px;
-  min-width: 0;
-}
-
-.info-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-
-.info-label {
-  font-size: 12px;
-  color: var(--text-color-secondary);
-}
-
-.info-value {
-  font-size: 14px;
-  color: var(--text-color-primary);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.info-value--bold { font-weight: 500; }
-.info-value--accent { color: var(--accent-primary); font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; display: flex; align-items: center; gap: 8px; }
-.info-value.mono { font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; font-size: 13px; }
-
-.copy-btn-sm {
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--border-color);
-  background: transparent;
-  font-size: 11px;
-  color: var(--text-color-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.copy-btn-sm:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
-
-.info-divider {
-  height: 1px;
-  background: var(--border-color);
-  margin: 16px 0;
-}
-
-.scan-section { display: flex; flex-direction: column; }
-
-.scan-remote-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.scan-remote-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: var(--border-radius-sm);
-  background: var(--surface-card);
-  font-size: 13px;
-}
-
-.remote-name {
-  font-weight: 600;
-  color: var(--accent-primary);
-  min-width: 60px;
-}
-
-.remote-url {
-  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: 12px;
-  color: var(--text-color-secondary);
-  flex: 1;
-}
-
-.tracking-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-
 .layout-container {
   display: flex;
   gap: 16px;
   padding: 0;
   min-height: 0;
-}
-
-.left-nav {
-  width: 200px;
-  flex-shrink: 0;
-}
-
-.sidebar-card {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: var(--surface-sidebar);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-md);
-  padding: 8px;
-  height: calc(100vh - 156px);
-  overflow-y: auto;
-  position: sticky;
-  top: calc(var(--header-height) + 16px);
-}
-
-.sidebar-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 10px;
-  border-radius: var(--border-radius-sm);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  color: var(--text-color-primary);
-  font-size: var(--font-size-sm);
-  min-height: 34px;
-  white-space: nowrap;
-}
-
-.sidebar-item:hover {
-  background: var(--bg-color-page);
-}
-
-.sidebar-item.active {
-  background: var(--accent-bg);
-  color: var(--accent-primary);
-}
-
-.sidebar-item.active .el-icon {
-  color: var(--accent-primary);
-}
-
-.sidebar-item .el-icon {
-  color: var(--text-color-secondary);
-  font-size: 16px;
 }
 
 .content-area {
@@ -728,52 +476,13 @@ async function handleAISummary(message: string) {
   height: 100%;
 }
 
-@media (max-width: 1024px) {
-  .left-nav {
-    width: 200px;
-  }
-}
-
 @media (max-width: 768px) {
   .layout-container {
     flex-direction: column;
   }
 
-  .left-nav {
-    width: 100%;
-  }
-
-  .sidebar-card {
-    height: auto;
-    max-height: 300px;
-    flex-direction: row;
-    flex-wrap: wrap;
-    position: static;
-  }
-
-  .sidebar-item {
-    flex-shrink: 0;
-  }
-
   .content-area {
     min-height: auto;
-  }
-
-  .info-top-row,
-  .info-row {
-    flex-direction: column;
-  }
-
-  .info-left-col,
-  .info-right-col {
-    width: auto;
-    padding: 0;
-  }
-
-  .info-v-divider {
-    width: auto;
-    height: 1px;
-    margin: 16px 0;
   }
 }
 </style>

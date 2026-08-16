@@ -587,9 +587,9 @@ func pushBranchToRemote(repo *po.Repo, repoPath, remoteName, remoteURL, branch, 
 	authMethod, isDBKey, err := authSvc.ResolveCredentialForRemote(
 		repo.RemoteCredentials,
 		repo.DefaultCredentialID,
-		repo.RemoteAuths,
+		nil,
 		remoteName,
-		repo.AuthType, repo.AuthKey, repo.AuthSecret,
+		"", "", "",
 	)
 	if err != nil {
 	}

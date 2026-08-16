@@ -84,16 +84,23 @@ func syncRemotes(repoPath string, remotes []domain.GitRemote) {
 }
 
 func toProtoRepo(r po.Repo) *repoModel.RepoDTO {
+	// Build RemoteCredentials map with uint64 values for proto compatibility
+	var remoteCredentials map[string]uint64
+	if r.RemoteCredentials != nil {
+		remoteCredentials = make(map[string]uint64, len(r.RemoteCredentials))
+		for k, v := range r.RemoteCredentials {
+			remoteCredentials[k] = uint64(v)
+		}
+	}
+
 	return &repoModel.RepoDTO{
 		Id:                  uint64(r.ID),
 		Key:                 r.Key,
 		Name:                r.Name,
 		Path:                r.Path,
 		RemoteUrl:           r.RemoteURL,
-		AuthType:            r.AuthType,
-		AuthKey:             r.AuthKey,
-		AuthSecret:          r.AuthSecret,
 		DefaultCredentialId: uint64(r.DefaultCredentialID),
+		RemoteCredentials:   remoteCredentials,
 		ProviderConfigId:    uint64(r.ProviderConfigID),
 		PlatformRepoId:      r.PlatformRepoID,
 		PlatformOwner:       r.PlatformOwner,
@@ -172,10 +179,6 @@ func Create(ctx context.Context, c *app.RequestContext) {
 				Name:                req.Name,
 				Path:                req.Path,
 				RemoteURL:           req.RemoteURL,
-				AuthType:            req.AuthType,
-				AuthKey:             req.AuthKey,
-				AuthSecret:          req.AuthSecret,
-				RemoteAuths:         req.RemoteAuths,
 				DefaultCredentialID: req.DefaultCredentialID,
 				RemoteCredentials:   req.RemoteCredentials,
 			}
@@ -223,18 +226,6 @@ func Update(ctx context.Context, c *app.RequestContext) {
 			}
 			if req.RemoteURL != "" {
 				repo.RemoteURL = req.RemoteURL
-			}
-			if req.AuthType != "" {
-				repo.AuthType = req.AuthType
-			}
-			if req.AuthKey != "" {
-				repo.AuthKey = req.AuthKey
-			}
-			if req.AuthSecret != "" {
-				repo.AuthSecret = req.AuthSecret
-			}
-			if req.RemoteAuths != nil {
-				repo.RemoteAuths = req.RemoteAuths
 			}
 			if req.DefaultCredentialID != 0 {
 				repo.DefaultCredentialID = req.DefaultCredentialID
@@ -608,9 +599,9 @@ func Fetch(ctx context.Context, c *app.RequestContext) {
 				authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
 					repo.RemoteCredentials,
 					repo.DefaultCredentialID,
-					repo.RemoteAuths,
+					nil,
 					remoteName,
-					repo.AuthType, repo.AuthKey, repo.AuthSecret,
+					"", "", "",
 				)
 
 				if resolveErr != nil {

@@ -21,6 +21,7 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 // GetConfig .
@@ -138,55 +139,98 @@ func ListSSHKeys(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, keys)
 }
 
+// testConnectionReq extends the protobuf TestConnectionRequest with a
+// CredentialID field so the handler can resolve auth through the credential
+// system instead of relying on deprecated AuthType/AuthKey/AuthSecret fields.
+type testConnectionReq struct {
+	systemModel.TestConnectionRequest
+	CredentialID uint `json:"credential_id"`
+}
+
 // TestConnection .
 // @router /api/v1/system/test-connection [POST]
 func TestConnection(ctx context.Context, c *app.RequestContext) {
-	handler.BindAndDo(c,
-		func(req *systemModel.TestConnectionRequest) (map[string]string, error) {
-			gitSvc := git.NewGitService()
-			authSvc := auth.NewAuthService()
+	var req testConnectionReq
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
 
-			var err error
+	gitSvc := git.NewGitService()
+	authSvc := auth.NewAuthService()
 
-			// 根据认证类型选择测试方法
-			switch req.AuthType {
-			case "ssh_db", "ssh_database":
-				// 数据库 SSH 密钥 - 需要从 auth_key 获取密钥内容
-				// auth_key 格式: credential:<id> 或直接是私钥内容
-				if strings.HasPrefix(req.AuthKey, "credential:") {
-					credIDStr := strings.TrimPrefix(req.AuthKey, "credential:")
-					credID := parseUint(credIDStr)
-					if credID > 0 {
-						privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
-						if keyErr != nil {
-							return map[string]string{"status": "failed", "error": "failed to load credential: " + keyErr.Error()}, nil
-						}
-						err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, privateKey, passphrase)
-					} else {
-						err = fmt.Errorf("invalid credential ID")
+	var err error
+
+	if req.CredentialID > 0 {
+		// Credential system: resolve auth from credential ID
+		isDBKey := authSvc.IsCredentialDBKey(req.CredentialID)
+		if isDBKey {
+			privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(req.CredentialID)
+			if keyErr != nil {
+				response.Success(c, map[string]string{"status": "failed", "error": "failed to load credential: " + keyErr.Error()})
+				return
+			}
+			err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, privateKey, passphrase)
+		} else {
+			authMethod, authErr := authSvc.ResolveCredential(req.CredentialID)
+			if authErr != nil {
+				response.Success(c, map[string]string{"status": "failed", "error": "failed to resolve credential: " + authErr.Error()})
+				return
+			}
+			if authMethod.Type == gitbackend.AuthNone {
+				err = gitSvc.TestRemoteConnection(req.Url)
+			} else {
+				// For HTTP-type credentials, use HTTP test method
+				err = gitSvc.TestRemoteConnectionWithHTTP(req.Url, "", "")
+			}
+			_ = authMethod
+		}
+	} else {
+		// Fallback: resolve auth through auth service (which handles
+		// the deprecated AuthType/AuthKey/AuthSecret fields internally)
+		authConfig, resolveErr := authSvc.ResolveAuthFromParams(req.AuthType, req.AuthKey, req.AuthSecret, 0)
+		if resolveErr != nil {
+			response.Success(c, map[string]string{"status": "failed", "error": "failed to resolve auth: " + resolveErr.Error()})
+			return
+		}
+
+		switch req.AuthType {
+		case "ssh_db", "ssh_database":
+			if strings.HasPrefix(req.AuthKey, "credential:") {
+				credIDStr := strings.TrimPrefix(req.AuthKey, "credential:")
+				credID := parseUint(credIDStr)
+				if credID > 0 {
+					privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
+					if keyErr != nil {
+						response.Success(c, map[string]string{"status": "failed", "error": "failed to load credential: " + keyErr.Error()})
+						return
 					}
+					err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, privateKey, passphrase)
 				} else {
-					// 直接使用私钥内容
-					err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, req.AuthKey, req.AuthSecret)
+					err = fmt.Errorf("invalid credential ID")
 				}
-			case "ssh_local":
-				// 本地 SSH 密钥文件
-				err = gitSvc.TestRemoteConnectionWithLocalKey(req.Url, req.AuthKey, req.AuthSecret)
-			case "http", "https":
-				// HTTP/HTTPS 认证
-				err = gitSvc.TestRemoteConnectionWithHTTP(req.Url, req.AuthKey, req.AuthSecret)
-			default:
-				// 无认证或自动检测
+			} else {
+				err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, req.AuthKey, req.AuthSecret)
+			}
+		case "ssh_local":
+			err = gitSvc.TestRemoteConnectionWithLocalKey(req.Url, req.AuthKey, req.AuthSecret)
+		case "http", "https":
+			err = gitSvc.TestRemoteConnectionWithHTTP(req.Url, req.AuthKey, req.AuthSecret)
+		default:
+			if authConfig.Type != gitbackend.AuthNone {
+				err = gitSvc.TestRemoteConnection(req.Url)
+			} else {
 				err = gitSvc.TestRemoteConnection(req.Url)
 			}
+		}
+	}
 
-			if err != nil {
-				return map[string]string{"status": "failed", "error": err.Error()}, nil
-			}
+	if err != nil {
+		response.Success(c, map[string]string{"status": "failed", "error": err.Error()})
+		return
+	}
 
-			return map[string]string{"status": "success"}, nil
-		},
-	)
+	response.Success(c, map[string]string{"status": "success"})
 }
 
 // parseUint 解析 uint

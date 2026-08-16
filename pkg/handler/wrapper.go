@@ -122,6 +122,35 @@ func DoWithRepoVoid[Req any](
 	})
 }
 
+// DoWithRepoRaw 绑定请求 → 提取 repo_key → 查找仓库 → 业务逻辑。
+// 与 DoWithRepo 不同，回调自行写入响应；仅当回调返回 error 时由框架统一处理错误。
+// 适用于需要自定义 header、二进制输出或非标准响应结构的场景。
+func DoWithRepoRaw[Req any](
+	c *app.RequestContext,
+	getRepoKey func(*Req) string,
+	fn func(repo *po.Repo, req *Req) error,
+) {
+	var req Req
+	if err := c.BindAndValidate(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	repoKey := getRepoKey(&req)
+	if repoKey == "" {
+		response.BadRequest(c, "repo_key is required")
+		return
+	}
+	repo, err := db.NewRepoDAO().FindByKey(repoKey)
+	if err != nil {
+		response.NotFound(c, "repo not found")
+		return
+	}
+	if err := fn(repo, &req); err != nil {
+		respondError(c, err)
+		return
+	}
+}
+
 // DoWithQueryRepo 从 query param "repo_key" 获取仓库 → 业务逻辑 → 响应。
 func DoWithQueryRepo[Resp any](c *app.RequestContext, fn func(repo *po.Repo) (Resp, error)) {
 	repoKey := c.Query("repo_key")
