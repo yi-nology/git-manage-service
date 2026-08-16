@@ -40,7 +40,7 @@ dumped_hertz_remote_config.json
 # Build outputs
 git-manage-desktop
 git-manage-service
-server
+/server
 /build/
 
 # Database
@@ -72,3 +72,6 @@ git-manage-server
 desgin.pen
 design-exports/
 .zcode/
+.encryption_key
+run.pid
+app.log

@@ -35,8 +35,8 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/lock"
 	"github.com/yi-nology/git-manage-service/pkg/metrics"
 	pkgqueue "github.com/yi-nology/git-manage-service/pkg/queue"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
 	_ "github.com/yi-nology/git-platform-sdk/backends/all"
+	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
 
 // @title Git Manage Service API
@@ -133,6 +133,9 @@ func initResources() {
 	// 加载配置
 	configs.Init()
 
+	// 初始化加密工具（必须先于数据库初始化：模型钩子和迁移都会用到密钥）
+	utils.InitEncryption()
+
 	// 初始化数据库
 	db.Init()
 
@@ -143,9 +146,6 @@ func initResources() {
 	settingssvc.LoadCodeReviewSettingsFromDB()
 
 	settingssvc.InitDefaultReviewRules()
-
-	// 初始化加密工具
-	utils.InitEncryption()
 
 	// 初始化业务服务
 	initSyncV2Service()
