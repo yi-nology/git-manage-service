@@ -182,3 +182,5 @@ require (
 	modernc.org/memory v1.5.0 // indirect
 	modernc.org/sqlite v1.23.1 // indirect
 )
+
+replace github.com/studyzy/gongfeng-sdk-go => ./third_party/gongfeng-sdk-go
