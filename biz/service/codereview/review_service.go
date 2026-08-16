@@ -16,6 +16,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
+	servicePkg "github.com/yi-nology/git-manage-service/pkg/service"
 	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
@@ -31,9 +32,9 @@ type reviewParams struct {
 }
 
 func CreateTask(ctx context.Context, repoKey string, providerConfigID uint, mrIID, commitSHA, triggerType string) (*po.ReviewTask, error) {
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
+	repo, err := servicePkg.GetRepoByKey(repoKey)
 	if err != nil {
-		return nil, fmt.Errorf("repo not found: %w", err)
+		return nil, err
 	}
 
 	if providerConfigID == 0 {
@@ -405,9 +406,9 @@ func broadcastReviewStatus(task *po.ReviewTask, repoKey, status string) {
 }
 
 func CheckMerge(ctx context.Context, repoKey, mrIID, commitSHA string) (*api.MergeCheckDTO, error) {
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
+	repo, err := servicePkg.GetRepoByKey(repoKey)
 	if err != nil {
-		return nil, fmt.Errorf("repo not found: %w", err)
+		return nil, err
 	}
 
 	checkDAO := db.NewMergeCheckResultDAO()
@@ -428,17 +429,17 @@ func CheckMerge(ctx context.Context, repoKey, mrIID, commitSHA string) (*api.Mer
 }
 
 func GetReviewConfig(repoKey string) (string, error) {
-	_, err := db.NewRepoDAO().FindByKey(repoKey)
+	_, err := servicePkg.GetRepoByKey(repoKey)
 	if err != nil {
-		return "", fmt.Errorf("repo not found: %w", err)
+		return "", err
 	}
 	return "# .cr-service.yaml placeholder\nversion: 1\nreview:\n  enabled: true\n", nil
 }
 
 func UpdateReviewConfig(repoKey, configYAML string) error {
-	_, err := db.NewRepoDAO().FindByKey(repoKey)
+	_, err := servicePkg.GetRepoByKey(repoKey)
 	if err != nil {
-		return fmt.Errorf("repo not found: %w", err)
+		return err
 	}
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	servicePkg "github.com/yi-nology/git-manage-service/pkg/service"
 )
 
 var emailRegex = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
@@ -140,9 +141,9 @@ func (s *AuthorService) ActivateIdentity(id uint) error {
 }
 
 func (s *AuthorService) GetRepoAuthorConfig(repoKey string) (*api.RepoAuthorConfigDTO, error) {
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
+	repo, err := servicePkg.GetRepoByKey(repoKey)
 	if err != nil {
-		return nil, fmt.Errorf("repo not found: %w", err)
+		return nil, err
 	}
 	cfg := &api.RepoAuthorConfigDTO{RepoKey: repoKey}
 	if repo.AuthorIdentityID != nil {
@@ -166,9 +167,9 @@ func (s *AuthorService) GetRepoAuthorConfig(repoKey string) (*api.RepoAuthorConf
 }
 
 func (s *AuthorService) SetRepoAuthorConfig(repoKey string, identityID *uint, clear bool) error {
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
+	repo, err := servicePkg.GetRepoByKey(repoKey)
 	if err != nil {
-		return fmt.Errorf("repo not found: %w", err)
+		return err
 	}
 	if clear {
 		repo.AuthorIdentityID = nil

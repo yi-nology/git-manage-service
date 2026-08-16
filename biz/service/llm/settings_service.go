@@ -9,6 +9,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	settingsModel "github.com/yi-nology/git-manage-service/biz/model/settings"
+	servicePkg "github.com/yi-nology/git-manage-service/pkg/service"
 	"gorm.io/gorm"
 )
 
@@ -25,9 +26,9 @@ func ListProviders() ([]*settingsModel.LLMProviderInfo, error) {
 }
 
 func GetProviderByID(id uint) (*settingsModel.LLMProviderInfo, error) {
-	p, err := db.NewLLMProviderDAO().FindByID(id)
+	p, err := servicePkg.GetLLMProviderByID(id)
 	if err != nil {
-		return nil, fmt.Errorf("provider not found: %w", err)
+		return nil, err
 	}
 	return convertToProtoLLMProvider(p), nil
 }
@@ -92,9 +93,9 @@ func CreateProvider(req *settingsModel.LLMProviderInfo) (*settingsModel.LLMProvi
 
 func UpdateProvider(id uint, req *settingsModel.LLMProviderInfo) (*settingsModel.LLMProviderInfo, error) {
 	dao := db.NewLLMProviderDAO()
-	p, err := dao.FindByID(id)
+	p, err := servicePkg.GetLLMProviderByID(id)
 	if err != nil {
-		return nil, fmt.Errorf("provider not found: %w", err)
+		return nil, err
 	}
 
 	exists, _ := dao.ExistsByNameExcludeID(req.Name, id)
@@ -130,9 +131,9 @@ func UpdateProvider(id uint, req *settingsModel.LLMProviderInfo) (*settingsModel
 
 func DeleteProvider(id uint) error {
 	dao := db.NewLLMProviderDAO()
-	p, err := dao.FindByID(id)
+	p, err := servicePkg.GetLLMProviderByID(id)
 	if err != nil {
-		return fmt.Errorf("provider not found: %w", err)
+		return err
 	}
 	if err := dao.Delete(id); err != nil {
 		return err
@@ -149,8 +150,8 @@ func DeleteProvider(id uint) error {
 
 func SetDefaultProvider(id uint) error {
 	dao := db.NewLLMProviderDAO()
-	if _, err := dao.FindByID(id); err != nil {
-		return fmt.Errorf("provider not found: %w", err)
+	if _, err := servicePkg.GetLLMProviderByID(id); err != nil {
+		return err
 	}
 	return dao.SetDefault(id)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
+	servicePkg "github.com/yi-nology/git-manage-service/pkg/service"
 	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
@@ -36,10 +37,9 @@ func CreateCR(ctx context.Context, req *api.CreateCRReq) (*api.CRDTO, error) {
 }
 
 func GetCR(ctx context.Context, repoKey string, crNumber int) (*api.CRDTO, error) {
-	repoDAO := db.NewRepoDAO()
-	repo, err := repoDAO.FindByKey(repoKey)
+	repo, err := servicePkg.GetRepoByKey(repoKey)
 	if err != nil {
-		return nil, fmt.Errorf("repo not found: %w", err)
+		return nil, err
 	}
 	crDAO := db.NewChangeRequestDAO()
 	localCR, err := crDAO.FindByRepoAndNumber(repo.ID, crNumber)
@@ -58,10 +58,9 @@ func GetCR(ctx context.Context, repoKey string, crNumber int) (*api.CRDTO, error
 }
 
 func ListCRs(ctx context.Context, repoKey, state, sourceBranch, targetBranch string, page, pageSize int) ([]api.CRDTO, int, error) {
-	repoDAO := db.NewRepoDAO()
-	repo, err := repoDAO.FindByKey(repoKey)
+	repo, err := servicePkg.GetRepoByKey(repoKey)
 	if err != nil {
-		return nil, 0, fmt.Errorf("repo not found: %w", err)
+		return nil, 0, err
 	}
 	crDAO := db.NewChangeRequestDAO()
 	localCRs, total, err := crDAO.FindByRepo(repo.ID, state, sourceBranch, targetBranch, page, pageSize)
@@ -183,10 +182,9 @@ func SyncCRs(ctx context.Context, repoKey, state string) (int, error) {
 }
 
 func resolveRepoProvider(repoKey string) (*po.Repo, provider.Provider, string, string, uint, error) {
-	repoDAO := db.NewRepoDAO()
-	repo, err := repoDAO.FindByKey(repoKey)
+	repo, err := servicePkg.GetRepoByKey(repoKey)
 	if err != nil {
-		return nil, nil, "", "", 0, fmt.Errorf("repo not found: %w", err)
+		return nil, nil, "", "", 0, err
 	}
 
 	bindingDAO := db.NewRepoProviderBindingDAO()

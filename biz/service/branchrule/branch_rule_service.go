@@ -8,6 +8,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	settingsModel "github.com/yi-nology/git-manage-service/biz/model/settings"
+	servicePkg "github.com/yi-nology/git-manage-service/pkg/service"
 )
 
 func GetGlobalRules() (*settingsModel.BranchRuleSet, error) {
@@ -96,9 +97,9 @@ func ValidateBranchName(repoKey, branchName, baseRef string, skipRules bool) (*s
 		return &settingsModel.ValidateBranchNameResponse{Valid: true}, nil
 	}
 
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
+	repo, err := servicePkg.GetRepoByKey(repoKey)
 	if err != nil {
-		return nil, fmt.Errorf("repo not found: %w", err)
+		return nil, err
 	}
 
 	rules, protected := resolveEffectiveRules(repo)
