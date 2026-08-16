@@ -59,6 +59,20 @@ start() {
         build
     fi
 
+    # SyncV2 凭证加密要求 ENCRYPTION_KEY；未设置时生成本地开发密钥并持久化，
+    # 保证重启后使用同一密钥（密钥文件不要提交到仓库）
+    if [ -z "$ENCRYPTION_KEY" ]; then
+        if [ ! -f .encryption_key ]; then
+            openssl rand -hex 32 > .encryption_key 2>/dev/null || \
+                head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > .encryption_key
+            print_warning "Generated local dev key file .encryption_key"
+        fi
+        export ENCRYPTION_KEY
+        ENCRYPTION_KEY=$(cat .encryption_key)
+        export ENCRYPTION_KEY
+        print_warning "ENCRYPTION_KEY not set, using .encryption_key for local dev"
+    fi
+
     print_info "Starting $APP_NAME..."
     nohup $APP_BIN --mode=all > $LOG_FILE 2>&1 &
     echo $! > $PID_FILE

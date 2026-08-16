@@ -2,6 +2,7 @@ package po
 
 import (
 	"encoding/json"
+	"log"
 
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	"github.com/yi-nology/git-manage-service/biz/utils"
@@ -85,6 +86,10 @@ func (r *Repo) AfterFind(tx *gorm.DB) (err error) {
 		dec, err := utils.Decrypt(r.AuthSecret)
 		if err == nil {
 			r.AuthSecret = dec
+		} else {
+			// 密钥与加密时不一致：置空并记录，绝不能把密文当明文外发
+			log.Printf("[Repo] decrypt auth secret failed (id=%d key=%s): %v", r.ID, r.Key, err)
+			r.AuthSecret = ""
 		}
 	}
 

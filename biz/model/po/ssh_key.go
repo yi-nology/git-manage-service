@@ -54,7 +54,9 @@ func (s *SSHKey) AfterFind(tx *gorm.DB) (err error) {
 		if decErr == nil {
 			s.PrivateKey = dec
 		} else {
+			// 密钥与加密时不一致：置空并记录，绝不能把密文当明文外发
 			log.Printf("[WARN] Failed to decrypt SSH private key %d: %v", s.ID, decErr)
+			s.PrivateKey = ""
 		}
 	}
 
@@ -65,6 +67,7 @@ func (s *SSHKey) AfterFind(tx *gorm.DB) (err error) {
 			s.Passphrase = dec
 		} else {
 			log.Printf("[WARN] Failed to decrypt SSH passphrase %d: %v", s.ID, decErr)
+			s.Passphrase = ""
 		}
 	}
 

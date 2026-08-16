@@ -1,6 +1,8 @@
 package po
 
 import (
+	"log"
+
 	"github.com/yi-nology/git-manage-service/biz/utils"
 	"gorm.io/gorm"
 )
@@ -34,6 +36,10 @@ func (p *ProviderConfig) AfterFind(tx *gorm.DB) error {
 		dec, err := utils.Decrypt(p.WebhookSecret)
 		if err == nil {
 			p.WebhookSecret = dec
+		} else {
+			// 密钥与加密时不一致：置空并记录，绝不能把密文当明文外发
+			log.Printf("[ProviderConfig] decrypt webhook secret failed (id=%d): %v", p.ID, err)
+			p.WebhookSecret = ""
 		}
 	}
 	return nil

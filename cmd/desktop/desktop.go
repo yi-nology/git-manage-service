@@ -98,6 +98,9 @@ func (a *App) startBackend() {
 	// 先加载配置（此时 CWD 还在项目目录，能找到 conf/config.yaml）
 	configs.Init()
 
+	// 初始化加密工具（必须先于数据库初始化：模型钩子和迁移都会用到密钥）
+	utils.InitEncryption()
+
 	// 设置桌面应用的数据目录（会切换 CWD）
 	if err := setupDesktopDataDir(); err != nil {
 		log.Printf("Failed to setup data directory: %v\n", err)
@@ -108,9 +111,6 @@ func (a *App) startBackend() {
 	db.Init()
 	db.InitLintRules()
 	db.InitBindingMigration()
-
-	// 初始化加密工具
-	utils.InitEncryption()
 
 	// 初始化业务服务
 	stats.InitStatsService()

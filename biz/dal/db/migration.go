@@ -8,6 +8,7 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"github.com/yi-nology/git-manage-service/biz/utils"
 	"gorm.io/gorm"
 )
 
@@ -109,6 +110,11 @@ func RunMigrations() error {
 				return tx.AutoMigrate(&po.ReviewRepoConfig{})
 			},
 		},
+		{
+			Version: "2026081601_reencrypt_secrets_with_env_key",
+			Name:    "re-encrypt legacy secrets with configured ENCRYPTION_KEY",
+			Run:     migrateLegacySecretEncryption,
+		},
 	})
 }
 
@@ -146,6 +152,75 @@ func runMigrations(gdb *gorm.DB, steps []migrationStep) error {
 		}
 	}
 
+	return nil
+}
+
+// migrateLegacySecretEncryption 将旧默认密钥加密的存量密文重新用当前
+// ENCRYPTION_KEY 加密。ENCRYPTION_KEY 机制引入前的数据全部使用硬编码默认
+// 密钥，切换到显式配置的密钥后必须一次性迁移，否则 CFB 解密只会得到乱码。
+// 直接用 SQL 更新列，绕过 PO 模型的 BeforeSave/AfterFind 钩子避免二次加解密。
+func migrateLegacySecretEncryption(tx *gorm.DB) error {
+	if utils.UsingLegacyKey() {
+		// 未配置 ENCRYPTION_KEY 的开发环境仍在使用旧默认密钥，无需迁移
+		return nil
+	}
+
+	type encryptedColumn struct {
+		table  string
+		column string
+		idCol  string
+	}
+	columns := []encryptedColumn{
+		{"credentials", "secret", "id"},
+		{"ssh_keys", "private_key", "id"},
+		{"ssh_keys", "passphrase", "id"},
+		{"repos", "auth_secret", "id"},
+		{"provider_configs", "webhook_secret", "id"},
+		{"llm_providers", "api_key", "id"},
+	}
+
+	migrated := 0
+	for _, c := range columns {
+		rows, err := tx.Raw(fmt.Sprintf("SELECT %s, %s FROM %s WHERE %s IS NOT NULL AND %s != ''",
+			c.idCol, c.column, c.table, c.column, c.column)).Rows()
+		if err != nil {
+			return fmt.Errorf("load %s.%s: %w", c.table, c.column, err)
+		}
+		type pending struct {
+			id     any
+			cipher string
+		}
+		var updates []pending
+		for rows.Next() {
+			var id any
+			var cipher string
+			if err := rows.Scan(&id, &cipher); err != nil {
+				rows.Close()
+				return fmt.Errorf("scan %s.%s: %w", c.table, c.column, err)
+			}
+			newCipher, ok, err := utils.MigrateLegacyCiphertext(cipher)
+			if err != nil {
+				rows.Close()
+				return fmt.Errorf("re-encrypt %s.%s (id=%v): %w", c.table, c.column, id, err)
+			}
+			if ok {
+				updates = append(updates, pending{id: id, cipher: newCipher})
+			}
+		}
+		rows.Close()
+
+		for _, u := range updates {
+			if err := tx.Exec(fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ?", c.table, c.column, c.idCol),
+				u.cipher, u.id).Error; err != nil {
+				return fmt.Errorf("update %s.%s (id=%v): %w", c.table, c.column, u.id, err)
+			}
+			migrated++
+		}
+	}
+
+	if migrated > 0 {
+		log.Printf("Re-encrypted %d legacy secret(s) with the configured ENCRYPTION_KEY.", migrated)
+	}
 	return nil
 }
 

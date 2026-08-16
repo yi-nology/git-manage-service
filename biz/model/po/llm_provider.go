@@ -1,6 +1,8 @@
 package po
 
 import (
+	"log"
+
 	"github.com/yi-nology/git-manage-service/biz/utils"
 	"gorm.io/gorm"
 )
@@ -38,6 +40,10 @@ func (p *LLMProvider) AfterFind(tx *gorm.DB) error {
 		dec, err := utils.Decrypt(p.APIKey)
 		if err == nil {
 			p.APIKey = dec
+		} else {
+			// 密钥与加密时不一致：置空并记录，绝不能把密文当明文外发
+			log.Printf("[LLMProvider] decrypt api key failed (id=%d): %v", p.ID, err)
+			p.APIKey = ""
 		}
 	}
 	return nil

@@ -1,6 +1,7 @@
 package po
 
 import (
+	"log"
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/utils"
@@ -48,9 +49,13 @@ func (c *Credential) BeforeSave(tx *gorm.DB) (err error) {
 func (c *Credential) AfterFind(tx *gorm.DB) (err error) {
 	if c.Secret != "" {
 		dec, err := utils.Decrypt(c.Secret)
-		if err == nil {
-			c.Secret = dec
+		if err != nil {
+			// 密钥与加密时不一致：置空并记录，绝不能把密文当明文外发
+			log.Printf("[Credential] decrypt secret failed (id=%d name=%s): %v", c.ID, c.Name, err)
+			c.Secret = ""
+			return nil
 		}
+		c.Secret = dec
 	}
 	return nil
 }
