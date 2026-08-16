@@ -44,6 +44,13 @@ const generateRequestKey = (config: InternalAxiosRequestConfig): string => {
 // 请求拦截器
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // /v2/* 路由不在 /api/v1 下，改写 baseURL 为 /api/v2，
+    // 否则 axios 会拼出 /api/v1/v2/... 导致 404
+    if (config.url?.startsWith('/v2/')) {
+      config.baseURL = (config.baseURL || '').replace('/api/v1', '/api/v2') || '/api/v2'
+      config.url = config.url.slice(3)
+    }
+
     // 取消之前的相同请求
     const requestKey = generateRequestKey(config)
     const existingController = cancelTokens.get(requestKey)
