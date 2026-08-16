@@ -17,6 +17,7 @@ import (
 	lintSvc "github.com/yi-nology/git-manage-service/biz/service/lint"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
 	specService "github.com/yi-nology/git-manage-service/biz/service/spec"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -85,65 +86,41 @@ func defaultAIConfig() *AIConfigDTO {
 // GetSpecTree .
 // @router /api/v1/spec/tree [GET]
 func GetSpecTree(ctx context.Context, c *app.RequestContext) {
-	repoKey := c.Query("repo_key")
-	if repoKey == "" {
-		response.BadRequest(c, "repo_key is required")
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	tree, err := buildSpecTree(repo.Path)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	response.Success(c, tree)
+	handler.DoWithQueryRepo(c, func(repo *po.Repo) (any, error) {
+		tree, err := buildSpecTree(repo.Path)
+		if err != nil {
+			return nil, handler.ErrInternal(err.Error())
+		}
+		return tree, nil
+	})
 }
 
 // ListSpecFiles .
 // @router /api/v1/spec/list [GET]
 func ListSpecFiles(ctx context.Context, c *app.RequestContext) {
-	repoKey := c.Query("repo_key")
-	if repoKey == "" {
-		response.BadRequest(c, "repo_key is required")
-		return
-	}
+	handler.DoWithQueryRepo(c, func(repo *po.Repo) (any, error) {
+		svc := specService.NewSpecService()
+		files, err := svc.ListSpecFiles(repo.Path)
+		if err != nil {
+			return nil, handler.ErrInternal(err.Error())
+		}
 
-	repo, err := db.NewRepoDAO().FindByKey(repoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+		if files == nil {
+			files = []specService.SpecFileInfo{}
+		}
 
-	svc := specService.NewSpecService()
-	files, err := svc.ListSpecFiles(repo.Path)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	if files == nil {
-		files = []specService.SpecFileInfo{}
-	}
-
-	var dtos []api.SpecFileInfo
-	for _, f := range files {
-		dtos = append(dtos, api.SpecFileInfo{
-			Name:    f.Name,
-			Path:    f.Path,
-			IsDir:   f.IsDir,
-			Size:    f.Size,
-			ModTime: f.ModTime,
-		})
-	}
-
-	response.Success(c, dtos)
+		var dtos []api.SpecFileInfo
+		for _, f := range files {
+			dtos = append(dtos, api.SpecFileInfo{
+				Name:    f.Name,
+				Path:    f.Path,
+				IsDir:   f.IsDir,
+				Size:    f.Size,
+				ModTime: f.ModTime,
+			})
+		}
+		return dtos, nil
+	})
 }
 
 // GetSpecContent .
@@ -210,51 +187,37 @@ func GetSpecContentByPath(ctx context.Context, c *app.RequestContext) {
 // SaveSpecContent .
 // @router /api/v1/spec/save [POST]
 func SaveSpecContent(ctx context.Context, c *app.RequestContext) {
-	var req api.SaveSpecReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	lintService := lintSvc.NewLintService()
-	validationResult, err := lintService.Lint(req.Content, nil)
-	if err == nil && validationResult != nil {
-		for _, issue := range validationResult.Issues {
-			if issue.Severity == "error" {
-				response.BadRequest(c, "Spec validation failed: "+issue.Message)
-				return
+	handler.DoWithRepo(c,
+		func(req *api.SaveSpecReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *api.SaveSpecReq) (any, error) {
+			lintService := lintSvc.NewLintService()
+			validationResult, err := lintService.Lint(req.Content, nil)
+			if err == nil && validationResult != nil {
+				for _, issue := range validationResult.Issues {
+					if issue.Severity == "error" {
+						return nil, handler.ErrBadRequest("Spec validation failed: " + issue.Message)
+					}
+				}
 			}
-		}
-	}
 
-	svc := specService.NewSpecService()
+			svc := specService.NewSpecService()
+			if err := svc.SaveSpecContent(repo.Path, req.Path, req.Content, req.CommitMessage); err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
 
-	err = svc.SaveSpecContent(repo.Path, req.Path, req.Content, req.CommitMessage)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
+			if req.CommitMessage != "" {
+				gitService := gitSvc.NewGitService()
+				if err := gitService.AddAndCommit(repo.Path, req.Path, req.CommitMessage); err != nil {
+					return nil, handler.ErrInternal(err.Error())
+				}
+			}
 
-	if req.CommitMessage != "" {
-		gitService := gitSvc.NewGitService()
-		if err := gitService.AddAndCommit(repo.Path, req.Path, req.CommitMessage); err != nil {
-			response.InternalError(c, err)
-			return
-		}
-	}
-
-	c.Set("audit_target", "repo:"+repo.Key)
-	c.Set("audit_details", map[string]string{"path": req.Path, "commit_message": req.CommitMessage})
-	response.Success(c, api.SaveWithValidationResponse{
-		Message:          "spec saved successfully",
-		ValidationResult: validationResult,
-	})
+			return api.SaveWithValidationResponse{
+				Message:          "spec saved successfully",
+				ValidationResult: validationResult,
+			}, nil
+		},
+	)
 }
 
 // SaveSpecContentByPath .
@@ -559,68 +522,43 @@ func ValidateSpec(ctx context.Context, c *app.RequestContext) {
 // CreateSpecFile .
 // @router /api/v1/spec/create [POST]
 func CreateSpecFile(ctx context.Context, c *app.RequestContext) {
-	var req api.CreateSpecFileReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	svc := specService.NewSpecService()
-	path, err := svc.CreateSpecFileWithContent(repo.Path, req.Path, req.Name, req.Content)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	c.Set("audit_target", "repo:"+repo.Key)
-	c.Set("audit_details", map[string]string{"path": path})
-	response.Success(c, api.CreateFileResponse{
-		Path:    path,
-		Message: "Spec 文件创建成功",
-	})
+	handler.DoWithRepo(c,
+		func(req *api.CreateSpecFileReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *api.CreateSpecFileReq) (any, error) {
+			svc := specService.NewSpecService()
+			path, err := svc.CreateSpecFileWithContent(repo.Path, req.Path, req.Name, req.Content)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			return api.CreateFileResponse{
+				Path:    path,
+				Message: "Spec 文件创建成功",
+			}, nil
+		},
+	)
 }
 
 // DeleteSpecFile .
 // @router /api/v1/spec/delete [POST]
 func DeleteSpecFile(ctx context.Context, c *app.RequestContext) {
-	var req api.DeleteSpecFileReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepo(c,
+		func(req *api.DeleteSpecFileReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *api.DeleteSpecFileReq) (any, error) {
+			svc := specService.NewSpecService()
+			if err := svc.DeleteSpecFile(repo.Path, req.Path); err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			if req.CommitMessage != "" {
+				gitService := gitSvc.NewGitService()
+				if err := gitService.RemoveAndCommit(repo.Path, req.Path, req.CommitMessage); err != nil {
+					return nil, handler.ErrInternal(err.Error())
+				}
+			}
 
-	svc := specService.NewSpecService()
-	err = svc.DeleteSpecFile(repo.Path, req.Path)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	if req.CommitMessage != "" {
-		gitService := gitSvc.NewGitService()
-		if err := gitService.RemoveAndCommit(repo.Path, req.Path, req.CommitMessage); err != nil {
-			response.InternalError(c, err)
-			return
-		}
-	}
-
-	c.Set("audit_target", "repo:"+repo.Key)
-	c.Set("audit_details", map[string]string{"path": req.Path})
-	response.Success(c, api.MessageResponse{
-		Message: "spec deleted",
-	})
+			return api.MessageResponse{Message: "spec deleted"}, nil
+		},
+	)
 }
 
 // AIAssistSpec .

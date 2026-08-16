@@ -10,6 +10,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	sshkey "github.com/yi-nology/git-manage-service/biz/model/sshkey"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -43,221 +44,186 @@ func ListDBSSHKeys(ctx context.Context, c *app.RequestContext) {
 // CreateDBSSHKey .
 // @router /api/v1/system/db-ssh-keys [POST]
 func CreateDBSSHKey(ctx context.Context, c *app.RequestContext) {
-	var req sshkey.CreateDBSSHKeyRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	if req.Name == "" {
-		response.BadRequest(c, "name is required")
-		return
-	}
-
-	sshKeyDAO := db.NewSSHKeyDAO()
-
-	helper := git.NewSSHKeyHelper()
-	publicKey := req.PublicKey
-	keyType := "unknown"
-
-	if req.PrivateKey != "" {
-		keyType = helper.DetectKeyType(req.PrivateKey, req.Passphrase)
-		if publicKey == "" {
-			extractedKey, err := helper.ExtractPublicKeyFromPrivateKey(req.PrivateKey, req.Passphrase)
-			if err != nil {
-				response.BadRequest(c, "failed to extract public key from private key: "+err.Error())
-				return
-			}
-			publicKey = extractedKey
+	handler.BindAndDo(c, func(req *sshkey.CreateDBSSHKeyRequest) (*sshkey.DBSSHKey, error) {
+		if req.Name == "" {
+			return nil, handler.ErrBadRequest("name is required")
 		}
-	} else if publicKey == "" {
-		response.BadRequest(c, "private_key is required when public_key is not provided")
-		return
-	}
 
-	exists, err := sshKeyDAO.ExistsByName(req.Name)
-	if err != nil {
-		response.InternalServerError(c, "Failed to check SSH key name: "+err.Error())
-		return
-	}
+		sshKeyDAO := db.NewSSHKeyDAO()
 
-	if exists {
-		response.BadRequest(c, "SSH key with this name already exists")
-		return
-	}
+		helper := git.NewSSHKeyHelper()
+		publicKey := req.PublicKey
+		keyType := "unknown"
 
-	sshKey := &po.SSHKey{
-		Name:        req.Name,
-		Description: req.Description,
-		PrivateKey:  req.PrivateKey,
-		PublicKey:   publicKey,
-		Passphrase:  req.Passphrase,
-		KeyType:     keyType,
-	}
+		if req.PrivateKey != "" {
+			keyType = helper.DetectKeyType(req.PrivateKey, req.Passphrase)
+			if publicKey == "" {
+				extractedKey, err := helper.ExtractPublicKeyFromPrivateKey(req.PrivateKey, req.Passphrase)
+				if err != nil {
+					return nil, handler.ErrBadRequest("failed to extract public key from private key: " + err.Error())
+				}
+				publicKey = extractedKey
+			}
+		} else if publicKey == "" {
+			return nil, handler.ErrBadRequest("private_key is required when public_key is not provided")
+		}
 
-	if err := sshKeyDAO.Create(sshKey); err != nil {
-		response.InternalServerError(c, "Failed to create SSH key: "+err.Error())
-		return
-	}
+		exists, err := sshKeyDAO.ExistsByName(req.Name)
+		if err != nil {
+			return nil, handler.ErrInternal("Failed to check SSH key name: " + err.Error())
+		}
 
-	response.Success(c, &sshkey.DBSSHKey{
-		Id:            uint64(sshKey.ID),
-		Name:          sshKey.Name,
-		Description:   sshKey.Description,
-		PublicKey:     sshKey.PublicKey,
-		KeyType:       sshKey.KeyType,
-		HasPassphrase: sshKey.HasPassphraseSet(),
-		CreatedAt:     sshKey.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:     sshKey.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		if exists {
+			return nil, handler.ErrBadRequest("SSH key with this name already exists")
+		}
+
+		sshKey := &po.SSHKey{
+			Name:        req.Name,
+			Description: req.Description,
+			PrivateKey:  req.PrivateKey,
+			PublicKey:   publicKey,
+			Passphrase:  req.Passphrase,
+			KeyType:     keyType,
+		}
+
+		if err := sshKeyDAO.Create(sshKey); err != nil {
+			return nil, handler.ErrInternal("Failed to create SSH key: " + err.Error())
+		}
+
+		return &sshkey.DBSSHKey{
+			Id:            uint64(sshKey.ID),
+			Name:          sshKey.Name,
+			Description:   sshKey.Description,
+			PublicKey:     sshKey.PublicKey,
+			KeyType:       sshKey.KeyType,
+			HasPassphrase: sshKey.HasPassphraseSet(),
+			CreatedAt:     sshKey.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:     sshKey.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}, nil
 	})
 }
 
 // GetDBSSHKey .
 // @router /api/v1/system/db-ssh-keys/:id [GET]
 func GetDBSSHKey(ctx context.Context, c *app.RequestContext) {
-	var req sshkey.GetDBSSHKeyRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c, func(req *sshkey.GetDBSSHKeyRequest) (*sshkey.DBSSHKey, error) {
+		sshKeyDAO := db.NewSSHKeyDAO()
+		key, err := sshKeyDAO.FindByID(uint(req.Id))
+		if err != nil {
+			return nil, handler.ErrNotFound("SSH key not found")
+		}
 
-	sshKeyDAO := db.NewSSHKeyDAO()
-	key, err := sshKeyDAO.FindByID(uint(req.Id))
-	if err != nil {
-		response.NotFound(c, "SSH key not found")
-		return
-	}
-
-	response.Success(c, &sshkey.DBSSHKey{
-		Id:            uint64(key.ID),
-		Name:          key.Name,
-		Description:   key.Description,
-		PublicKey:     key.PublicKey,
-		KeyType:       key.KeyType,
-		HasPassphrase: key.HasPassphraseSet(),
-		CreatedAt:     key.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:     key.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		return &sshkey.DBSSHKey{
+			Id:            uint64(key.ID),
+			Name:          key.Name,
+			Description:   key.Description,
+			PublicKey:     key.PublicKey,
+			KeyType:       key.KeyType,
+			HasPassphrase: key.HasPassphraseSet(),
+			CreatedAt:     key.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:     key.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}, nil
 	})
 }
 
 // UpdateDBSSHKey .
 // @router /api/v1/system/db-ssh-keys/:id [PUT]
 func UpdateDBSSHKey(ctx context.Context, c *app.RequestContext) {
-	var req sshkey.UpdateDBSSHKeyRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	sshKeyDAO := db.NewSSHKeyDAO()
-	key, err := sshKeyDAO.FindByID(uint(req.Id))
-	if err != nil {
-		response.NotFound(c, "SSH key not found")
-		return
-	}
-
-	if req.Description != "" {
-		key.Description = req.Description
-	}
-
-	// When the private key is changed, re-derive public key and key type
-	if req.PrivateKey != "" {
-		passphrase := req.Passphrase
-		if passphrase == "" {
-			passphrase = key.Passphrase
-		}
-		helper := git.NewSSHKeyHelper()
-		newPublicKey, err := helper.ExtractPublicKeyFromPrivateKey(req.PrivateKey, passphrase)
+	handler.BindAndDo(c, func(req *sshkey.UpdateDBSSHKeyRequest) (*sshkey.DBSSHKey, error) {
+		sshKeyDAO := db.NewSSHKeyDAO()
+		key, err := sshKeyDAO.FindByID(uint(req.Id))
 		if err != nil {
-			response.BadRequest(c, "failed to extract public key from new private key: "+err.Error())
-			return
+			return nil, handler.ErrNotFound("SSH key not found")
 		}
-		key.PrivateKey = req.PrivateKey
-		key.PublicKey = newPublicKey
-		key.KeyType = helper.DetectKeyType(req.PrivateKey, passphrase)
-	}
 
-	if req.Passphrase != "" {
-		key.Passphrase = req.Passphrase
-	}
+		if req.Description != "" {
+			key.Description = req.Description
+		}
 
-	if err := sshKeyDAO.Update(key); err != nil {
-		response.InternalServerError(c, "Failed to update SSH key: "+err.Error())
-		return
-	}
+		// When the private key is changed, re-derive public key and key type
+		if req.PrivateKey != "" {
+			passphrase := req.Passphrase
+			if passphrase == "" {
+				passphrase = key.Passphrase
+			}
+			helper := git.NewSSHKeyHelper()
+			newPublicKey, err := helper.ExtractPublicKeyFromPrivateKey(req.PrivateKey, passphrase)
+			if err != nil {
+				return nil, handler.ErrBadRequest("failed to extract public key from new private key: " + err.Error())
+			}
+			key.PrivateKey = req.PrivateKey
+			key.PublicKey = newPublicKey
+			key.KeyType = helper.DetectKeyType(req.PrivateKey, passphrase)
+		}
 
-	response.Success(c, &sshkey.DBSSHKey{
-		Id:            uint64(key.ID),
-		Name:          key.Name,
-		Description:   key.Description,
-		PublicKey:     key.PublicKey,
-		KeyType:       key.KeyType,
-		HasPassphrase: key.HasPassphraseSet(),
-		CreatedAt:     key.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:     key.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		if req.Passphrase != "" {
+			key.Passphrase = req.Passphrase
+		}
+
+		if err := sshKeyDAO.Update(key); err != nil {
+			return nil, handler.ErrInternal("Failed to update SSH key: " + err.Error())
+		}
+
+		return &sshkey.DBSSHKey{
+			Id:            uint64(key.ID),
+			Name:          key.Name,
+			Description:   key.Description,
+			PublicKey:     key.PublicKey,
+			KeyType:       key.KeyType,
+			HasPassphrase: key.HasPassphraseSet(),
+			CreatedAt:     key.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:     key.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}, nil
 	})
 }
 
 // DeleteDBSSHKey .
 // @router /api/v1/system/db-ssh-keys/:id [DELETE]
 func DeleteDBSSHKey(ctx context.Context, c *app.RequestContext) {
-	var req sshkey.DeleteDBSSHKeyRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c, func(req *sshkey.DeleteDBSSHKeyRequest) (map[string]string, error) {
+		sshKeyDAO := db.NewSSHKeyDAO()
+		_, err := sshKeyDAO.FindByID(uint(req.Id))
+		if err != nil {
+			return nil, handler.ErrNotFound("SSH key not found")
+		}
 
-	sshKeyDAO := db.NewSSHKeyDAO()
-	_, err := sshKeyDAO.FindByID(uint(req.Id))
-	if err != nil {
-		response.NotFound(c, "SSH key not found")
-		return
-	}
+		if err := sshKeyDAO.Delete(uint(req.Id)); err != nil {
+			return nil, handler.ErrInternal("Failed to delete SSH key: " + err.Error())
+		}
 
-	if err := sshKeyDAO.Delete(uint(req.Id)); err != nil {
-		response.InternalServerError(c, "Failed to delete SSH key: "+err.Error())
-		return
-	}
-
-	response.Success(c, map[string]string{
-		"message": "SSH key deleted successfully",
+		return map[string]string{
+			"message": "SSH key deleted successfully",
+		}, nil
 	})
 }
 
 // TestDBSSHKey .
 // @router /api/v1/system/db-ssh-keys/:id/test [POST]
 func TestDBSSHKey(ctx context.Context, c *app.RequestContext) {
-	var req sshkey.TestDBSSHKeyRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c, func(req *sshkey.TestDBSSHKeyRequest) (map[string]interface{}, error) {
+		if req.Url == "" {
+			return nil, handler.ErrBadRequest("url is required")
+		}
 
-	if req.Url == "" {
-		response.BadRequest(c, "url is required")
-		return
-	}
+		sshKeyDAO := db.NewSSHKeyDAO()
+		key, err := sshKeyDAO.FindByID(uint(req.Id))
+		if err != nil {
+			return nil, handler.ErrNotFound("SSH key not found")
+		}
 
-	sshKeyDAO := db.NewSSHKeyDAO()
-	key, err := sshKeyDAO.FindByID(uint(req.Id))
-	if err != nil {
-		response.NotFound(c, "SSH key not found")
-		return
-	}
+		gitSvc := git.NewGitService()
+		err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, key.PrivateKey, key.Passphrase)
 
-	gitSvc := git.NewGitService()
-	err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, key.PrivateKey, key.Passphrase)
+		if err != nil {
+			return map[string]interface{}{
+				"success": false,
+				"message": err.Error(),
+			}, nil
+		}
 
-	if err != nil {
-		response.Success(c, map[string]interface{}{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-
-	response.Success(c, map[string]interface{}{
-		"success": true,
-		"message": "Connection successful",
+		return map[string]interface{}{
+			"success": true,
+			"message": "Connection successful",
+		}, nil
 	})
 }

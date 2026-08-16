@@ -7,6 +7,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	bindingModel "github.com/yi-nology/git-manage-service/biz/model/binding"
 	bindingsvc "github.com/yi-nology/git-manage-service/biz/service/binding"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -29,25 +30,20 @@ func convertToProtoBinding(dto api.RepoProviderBindingDTO) *bindingModel.Binding
 // List .
 // @router /api/v1/bindings [GET]
 func List(ctx context.Context, c *app.RequestContext) {
-	var req api.ListBindingsReq
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, "Invalid request: "+err.Error())
-		return
-	}
-
-	result, err := bindingsvc.ListBindings(req.RepoKey, req.ProviderConfigID)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to list bindings: "+err.Error())
-		return
-	}
-	if result == nil {
-		result = []api.RepoProviderBindingDTO{}
-	}
-	protos := make([]*bindingModel.BindingInfo, 0, len(result))
-	for _, dto := range result {
-		protos = append(protos, convertToProtoBinding(dto))
-	}
-	pkgresponse.Success(c, protos)
+	handler.BindAndDo(c, func(req *api.ListBindingsReq) ([]*bindingModel.BindingInfo, error) {
+		result, err := bindingsvc.ListBindings(req.RepoKey, req.ProviderConfigID)
+		if err != nil {
+			return nil, handler.ErrInternal("Failed to list bindings: " + err.Error())
+		}
+		if result == nil {
+			result = []api.RepoProviderBindingDTO{}
+		}
+		protos := make([]*bindingModel.BindingInfo, 0, len(result))
+		for _, dto := range result {
+			protos = append(protos, convertToProtoBinding(dto))
+		}
+		return protos, nil
+	})
 }
 
 // Get .
@@ -69,19 +65,14 @@ func Get(ctx context.Context, c *app.RequestContext) {
 // Create .
 // @router /api/v1/bindings [POST]
 func Create(ctx context.Context, c *app.RequestContext) {
-	var req api.CreateBindingReq
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, "Invalid request: "+err.Error())
-		return
-	}
-
-	result, err := bindingsvc.CreateBinding(ctx, &req)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to create binding: "+err.Error())
-		return
-	}
-	c.Set("audit_details", map[string]interface{}{"repo_key": req.RepoKey, "provider_config_id": req.ProviderConfigID})
-	pkgresponse.Success(c, result)
+	handler.BindAndDo(c, func(req *api.CreateBindingReq) (any, error) {
+		result, err := bindingsvc.CreateBinding(ctx, req)
+		if err != nil {
+			return nil, handler.ErrInternal("Failed to create binding: " + err.Error())
+		}
+		c.Set("audit_details", map[string]interface{}{"repo_key": req.RepoKey, "provider_config_id": req.ProviderConfigID})
+		return result, nil
+	})
 }
 
 // Update .
@@ -141,18 +132,13 @@ func SetPrimary(ctx context.Context, c *app.RequestContext) {
 // AutoDetect .
 // @router /api/v1/bindings/auto-detect [POST]
 func AutoDetect(ctx context.Context, c *app.RequestContext) {
-	var req api.AutoDetectReq
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, "Invalid request: "+err.Error())
-		return
-	}
-
-	result, err := bindingsvc.AutoDetect(req.RepoKey)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to auto-detect: "+err.Error())
-		return
-	}
-	pkgresponse.Success(c, result)
+	handler.BindAndDo(c, func(req *api.AutoDetectReq) (any, error) {
+		result, err := bindingsvc.AutoDetect(req.RepoKey)
+		if err != nil {
+			return nil, handler.ErrInternal("Failed to auto-detect: " + err.Error())
+		}
+		return result, nil
+	})
 }
 
 // RegisterWebhook .

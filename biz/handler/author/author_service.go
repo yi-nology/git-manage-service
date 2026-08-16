@@ -8,191 +8,157 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	author "github.com/yi-nology/git-manage-service/biz/model/author"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
 func ListIdentities(ctx context.Context, c *app.RequestContext) {
-	var req author.ListIdentitiesRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	svc := git.NewAuthorService()
-	identities, err := svc.ListIdentities()
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	response.Success(c, identities)
+	handler.BindAndDo(c,
+		func(req *author.ListIdentitiesRequest) ([]api.AuthorIdentityDTO, error) {
+			svc := git.NewAuthorService()
+			return svc.ListIdentities()
+		},
+	)
 }
 
 func CreateIdentity(ctx context.Context, c *app.RequestContext) {
-	var req author.CreateIdentityRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	var aliases []api.AliasEntry
-	if req.GetAliasesJson() != "" {
-		json.Unmarshal([]byte(req.GetAliasesJson()), &aliases)
-	}
-	svc := git.NewAuthorService()
-	result, err := svc.CreateIdentity(api.CreateIdentityRequest{
-		CanonicalName:  req.GetCanonicalName(),
-		CanonicalEmail: req.GetCanonicalEmail(),
-		Aliases:        aliases,
-	})
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	c.Set("audit_details", map[string]string{"name": req.GetCanonicalName(), "email": req.GetCanonicalEmail()})
-	response.Success(c, result)
+	handler.BindAndDo(c,
+		func(req *author.CreateIdentityRequest) (*api.AuthorIdentityDTO, error) {
+			var aliases []api.AliasEntry
+			if req.GetAliasesJson() != "" {
+				json.Unmarshal([]byte(req.GetAliasesJson()), &aliases)
+			}
+			svc := git.NewAuthorService()
+			result, err := svc.CreateIdentity(api.CreateIdentityRequest{
+				CanonicalName:  req.GetCanonicalName(),
+				CanonicalEmail: req.GetCanonicalEmail(),
+				Aliases:        aliases,
+			})
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			c.Set("audit_details", map[string]string{"name": req.GetCanonicalName(), "email": req.GetCanonicalEmail()})
+			return result, nil
+		},
+	)
 }
 
 func UpdateIdentity(ctx context.Context, c *app.RequestContext) {
-	var req author.UpdateIdentityRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	var aliases []api.AliasEntry
-	if req.GetAliasesJson() != "" {
-		json.Unmarshal([]byte(req.GetAliasesJson()), &aliases)
-	}
-	svc := git.NewAuthorService()
-	result, err := svc.UpdateIdentity(uint(req.GetId()), api.UpdateIdentityRequest{
-		CanonicalName:  req.GetCanonicalName(),
-		CanonicalEmail: req.GetCanonicalEmail(),
-		Aliases:        aliases,
-	})
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	response.Success(c, result)
+	handler.BindAndDo(c,
+		func(req *author.UpdateIdentityRequest) (*api.AuthorIdentityDTO, error) {
+			var aliases []api.AliasEntry
+			if req.GetAliasesJson() != "" {
+				json.Unmarshal([]byte(req.GetAliasesJson()), &aliases)
+			}
+			svc := git.NewAuthorService()
+			result, err := svc.UpdateIdentity(uint(req.GetId()), api.UpdateIdentityRequest{
+				CanonicalName:  req.GetCanonicalName(),
+				CanonicalEmail: req.GetCanonicalEmail(),
+				Aliases:        aliases,
+			})
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			return result, nil
+		},
+	)
 }
 
 func DeleteIdentity(ctx context.Context, c *app.RequestContext) {
-	var req author.DeleteIdentityRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	svc := git.NewAuthorService()
-	if err := svc.DeleteIdentity(uint(req.GetId())); err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	response.Success(c, nil)
+	handler.Do(c,
+		func(req *author.DeleteIdentityRequest) error {
+			svc := git.NewAuthorService()
+			if err := svc.DeleteIdentity(uint(req.GetId())); err != nil {
+				return handler.ErrInternal(err.Error())
+			}
+			return nil
+		},
+	)
 }
 
 func ActivateIdentity(ctx context.Context, c *app.RequestContext) {
-	var req author.ActivateIdentityRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	svc := git.NewAuthorService()
-	if err := svc.ActivateIdentity(uint(req.GetId())); err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	response.Success(c, nil)
+	handler.Do(c,
+		func(req *author.ActivateIdentityRequest) error {
+			svc := git.NewAuthorService()
+			if err := svc.ActivateIdentity(uint(req.GetId())); err != nil {
+				return handler.ErrInternal(err.Error())
+			}
+			return nil
+		},
+	)
 }
 
 func GetRepoAuthorConfig(ctx context.Context, c *app.RequestContext) {
-	var req author.RepoAuthorConfigRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	svc := git.NewAuthorService()
-	config, err := svc.GetRepoAuthorConfig(req.GetRepoKey())
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	response.Success(c, config)
+	handler.BindAndDo(c,
+		func(req *author.RepoAuthorConfigRequest) (*api.RepoAuthorConfigDTO, error) {
+			svc := git.NewAuthorService()
+			config, err := svc.GetRepoAuthorConfig(req.GetRepoKey())
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			return config, nil
+		},
+	)
 }
 
 func SetRepoAuthorConfig(ctx context.Context, c *app.RequestContext) {
-	var req author.SetRepoAuthorConfigRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	svc := git.NewAuthorService()
-	var identityID *uint
-	if req.IdentityId != nil && !req.GetClear() {
-		id := uint(req.GetIdentityId())
-		identityID = &id
-	}
-	if err := svc.SetRepoAuthorConfig(req.GetRepoKey(), identityID, req.GetClear()); err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	c.Set("audit_details", map[string]string{"repo_key": req.GetRepoKey()})
-	response.Success(c, nil)
+	handler.Do(c,
+		func(req *author.SetRepoAuthorConfigRequest) error {
+			svc := git.NewAuthorService()
+			var identityID *uint
+			if req.IdentityId != nil && !req.GetClear() {
+				id := uint(req.GetIdentityId())
+				identityID = &id
+			}
+			if err := svc.SetRepoAuthorConfig(req.GetRepoKey(), identityID, req.GetClear()); err != nil {
+				return handler.ErrInternal(err.Error())
+			}
+			c.Set("audit_details", map[string]string{"repo_key": req.GetRepoKey()})
+			return nil
+		},
+	)
 }
 
 func ScanAuthor(ctx context.Context, c *app.RequestContext) {
-	var req author.ScanAuthorRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-	svc := git.NewAuthorService()
-	result, err := svc.ScanAuthor(repo.Path)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	response.Success(c, result)
+	handler.DoWithRepo(c,
+		func(req *author.ScanAuthorRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *author.ScanAuthorRequest) (*api.AuthorScanResult, error) {
+			svc := git.NewAuthorService()
+			result, err := svc.ScanAuthor(repo.Path)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			return result, nil
+		},
+	)
 }
 
 func FixAuthorAll(ctx context.Context, c *app.RequestContext) {
-	var req author.FixAuthorAllRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-	taskID, err := git.StartAuthorFixTask(repo.ID, repo.Path, nil, req.GetPushRemote())
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	response.Success(c, api.MaintenanceTaskResponse{TaskID: taskID})
+	handler.DoWithRepo(c,
+		func(req *author.FixAuthorAllRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *author.FixAuthorAllRequest) (api.MaintenanceTaskResponse, error) {
+			taskID, err := git.StartAuthorFixTask(repo.ID, repo.Path, nil, req.GetPushRemote())
+			if err != nil {
+				return api.MaintenanceTaskResponse{}, handler.ErrInternal(err.Error())
+			}
+			return api.MaintenanceTaskResponse{TaskID: taskID}, nil
+		},
+	)
 }
 
 func FixAuthor(ctx context.Context, c *app.RequestContext) {
-	var req author.FixAuthorRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-	taskID, err := git.StartAuthorFixTask(repo.ID, repo.Path, req.GetCommitHashes(), req.GetPushRemote())
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-	response.Success(c, api.MaintenanceTaskResponse{TaskID: taskID})
+	handler.DoWithRepo(c,
+		func(req *author.FixAuthorRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *author.FixAuthorRequest) (api.MaintenanceTaskResponse, error) {
+			taskID, err := git.StartAuthorFixTask(repo.ID, repo.Path, req.GetCommitHashes(), req.GetPushRemote())
+			if err != nil {
+				return api.MaintenanceTaskResponse{}, handler.ErrInternal(err.Error())
+			}
+			return api.MaintenanceTaskResponse{TaskID: taskID}, nil
+		},
+	)
 }
 
 // AuthorAI .

@@ -6,296 +6,145 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
-	workspace "github.com/yi-nology/git-manage-service/biz/model/workspace"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"github.com/yi-nology/git-manage-service/biz/model/workspace"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
+type PushCurrentReq struct {
+	RepoKey string `json:"repo_key" vd:"len($)>0"`
+}
+
+type RemoveTrackingReq struct {
+	RepoKey string   `json:"repo_key" vd:"len($)>0"`
+	Files   []string `json:"files"`
+}
+
+type AddToGitignoreReq struct {
+	RepoKey  string   `json:"repo_key" vd:"len($)>0"`
+	Patterns []string `json:"patterns"`
+}
+
+type GenerateCommitMessageReq struct {
+	RepoKey string `json:"repo_key"`
+}
+
 func GetWorkspaceStatus(ctx context.Context, c *app.RequestContext) {
-	var req workspace.GetWorkspaceStatusReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	result, err := gitSvc.GetWorkspaceStatus(repo.Path)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, result)
+	handler.DoWithRepo(c,
+		func(req *workspace.GetWorkspaceStatusReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *workspace.GetWorkspaceStatusReq) (any, error) {
+			return git.NewGitService().GetWorkspaceStatus(repo.Path)
+		},
+	)
 }
 
 func PushCurrent(ctx context.Context, c *app.RequestContext) {
-	var req struct {
-		RepoKey string `json:"repo_key" vd:"len($)>0"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.PushCurrent(repo.Path); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, nil)
+	handler.DoWithRepoVoid(c,
+		func(req *PushCurrentReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *PushCurrentReq) error {
+			return git.NewGitService().PushCurrent(repo.Path)
+		},
+	)
 }
 
 func RemoveTracking(ctx context.Context, c *app.RequestContext) {
-	var req struct {
-		RepoKey string   `json:"repo_key" vd:"len($)>0"`
-		Files   []string `json:"files"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.RemoveTracking(repo.Path, req.Files); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, nil)
+	handler.DoWithRepoVoid(c,
+		func(req *RemoveTrackingReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *RemoveTrackingReq) error {
+			return git.NewGitService().RemoveTracking(repo.Path, req.Files)
+		},
+	)
 }
 
 func AddToGitignore(ctx context.Context, c *app.RequestContext) {
-	var req struct {
-		RepoKey  string   `json:"repo_key" vd:"len($)>0"`
-		Patterns []string `json:"patterns"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	if err := gitSvc.AddToGitignore(repo.Path, req.Patterns); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, nil)
+	handler.DoWithRepoVoid(c,
+		func(req *AddToGitignoreReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *AddToGitignoreReq) error {
+			return git.NewGitService().AddToGitignore(repo.Path, req.Patterns)
+		},
+	)
 }
 
 func GetWorkspaceDiff(ctx context.Context, c *app.RequestContext) {
-	var req workspace.GetWorkspaceDiffReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	result, err := gitSvc.GetWorkspaceDiff(repo.Path, req.File, req.StagedOnly)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, result)
+	handler.DoWithRepo(c,
+		func(req *workspace.GetWorkspaceDiffReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *workspace.GetWorkspaceDiffReq) (any, error) {
+			return git.NewGitService().GetWorkspaceDiff(repo.Path, req.File, req.StagedOnly)
+		},
+	)
 }
 
 func StageFiles(ctx context.Context, c *app.RequestContext) {
-	var req workspace.StageFilesReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	err = gitSvc.StageFiles(repo.Path, req.Files, req.StageAll)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, nil)
+	handler.DoWithRepoVoid(c,
+		func(req *workspace.StageFilesReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *workspace.StageFilesReq) error {
+			return git.NewGitService().StageFiles(repo.Path, req.Files, req.StageAll)
+		},
+	)
 }
 
 func UnstageFiles(ctx context.Context, c *app.RequestContext) {
-	var req workspace.UnstageFilesReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	err = gitSvc.UnstageFiles(repo.Path, req.Files, req.UnstageAll)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, nil)
+	handler.DoWithRepoVoid(c,
+		func(req *workspace.UnstageFilesReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *workspace.UnstageFilesReq) error {
+			return git.NewGitService().UnstageFiles(repo.Path, req.Files, req.UnstageAll)
+		},
+	)
 }
 
 func CommitChanges(ctx context.Context, c *app.RequestContext) {
-	var req workspace.CommitChangesReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	if req.Message == "" {
-		response.BadRequest(c, "commit message is required")
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	result, err := gitSvc.CommitChanges(repo.Path, req.Files, req.StageAll, req.Message, req.AuthorName, req.AuthorEmail, req.Push, req.PushRemote)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, result)
+	handler.DoWithRepo(c,
+		func(req *workspace.CommitChangesReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *workspace.CommitChangesReq) (any, error) {
+			if req.Message == "" {
+				return nil, handler.ErrBadRequest("commit message is required")
+			}
+			return git.NewGitService().CommitChanges(repo.Path, req.Files, req.StageAll, req.Message, req.AuthorName, req.AuthorEmail, req.Push, req.PushRemote)
+		},
+	)
 }
 
 func PullWithResolve(ctx context.Context, c *app.RequestContext) {
-	var req workspace.PullWithResolveReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	result, err := gitSvc.PullWithResolve(repo.Path, req.Remote, req.Branch, req.FetchOnly)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, result)
+	handler.DoWithRepo(c,
+		func(req *workspace.PullWithResolveReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *workspace.PullWithResolveReq) (any, error) {
+			return git.NewGitService().PullWithResolve(repo.Path, req.Remote, req.Branch, req.FetchOnly)
+		},
+	)
 }
 
 func GetConflictDetail(ctx context.Context, c *app.RequestContext) {
-	var req workspace.GetConflictDetailReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	result, err := gitSvc.GetConflictDetail(repo.Path, req.File)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, result)
+	handler.DoWithRepo(c,
+		func(req *workspace.GetConflictDetailReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *workspace.GetConflictDetailReq) (any, error) {
+			return git.NewGitService().GetConflictDetail(repo.Path, req.File)
+		},
+	)
 }
 
 func MarkConflictResolved(ctx context.Context, c *app.RequestContext) {
-	var req workspace.MarkConflictResolvedReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	gitSvc := git.NewGitService()
-	err = gitSvc.MarkConflictResolved(repo.Path, req.File, req.ResolvedContent, req.Stage)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, nil)
+	handler.DoWithRepoVoid(c,
+		func(req *workspace.MarkConflictResolvedReq) string { return req.RepoKey },
+		func(repo *po.Repo, req *workspace.MarkConflictResolvedReq) error {
+			return git.NewGitService().MarkConflictResolved(repo.Path, req.File, req.ResolvedContent, req.Stage)
+		},
+	)
 }
 
 func AIResolveConflict(ctx context.Context, c *app.RequestContext) {
-	var req workspace.AIResolveConflictReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	aiSvc := git.NewWorkspaceAIService()
-	result, err := aiSvc.AIResolveConflict(req.OursContent, req.TheirsContent, req.BaseContent, req.File, req.Hint)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, result)
+	handler.BindAndDo(c,
+		func(req *workspace.AIResolveConflictReq) (any, error) {
+			aiSvc := git.NewWorkspaceAIService()
+			return aiSvc.AIResolveConflict(req.OursContent, req.TheirsContent, req.BaseContent, req.File, req.Hint)
+		},
+	)
 }
 
 func GenerateCommitMessage(ctx context.Context, c *app.RequestContext) {
-	var req struct {
-		RepoKey string `json:"repo_key"`
-	}
+	var req GenerateCommitMessageReq
 	if err := c.BindAndValidate(&req); err != nil {
 		response.BadRequest(c, err.Error())
 		return

@@ -12,7 +12,7 @@ import (
 	notification "github.com/yi-nology/git-manage-service/biz/model/notification"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	notificationSvc "github.com/yi-nology/git-manage-service/biz/service/notification"
-	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"gorm.io/gorm"
 )
 
@@ -63,114 +63,170 @@ func channelToProto(ch *po.NotificationChannel) *notification.NotificationChanne
 // ListChannels .
 // @router /api/v1/notification/channels [GET]
 func ListChannels(ctx context.Context, c *app.RequestContext) {
-	var req notification.ListChannelsRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c, func(req *notification.ListChannelsRequest) (map[string]interface{}, error) {
+		dao := db.NewNotificationChannelDAO()
+		var channels []po.NotificationChannel
+		var err error
 
-	dao := db.NewNotificationChannelDAO()
-	var channels []po.NotificationChannel
-	var err error
+		if req.Type != "" {
+			channels, err = dao.FindByType(req.Type)
+		} else {
+			channels, err = dao.FindAll()
+		}
 
-	if req.Type != "" {
-		channels, err = dao.FindByType(req.Type)
-	} else {
-		channels, err = dao.FindAll()
-	}
+		if err != nil {
+			return nil, handler.ErrInternal(err.Error())
+		}
 
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
+		var items []*notification.NotificationChannel
+		for _, ch := range channels {
+			items = append(items, channelToProto(&ch))
+		}
 
-	var items []*notification.NotificationChannel
-	for _, ch := range channels {
-		items = append(items, channelToProto(&ch))
-	}
-
-	response.Success(c, map[string]interface{}{
-		"channels": items,
+		return map[string]interface{}{
+			"channels": items,
+		}, nil
 	})
 }
 
 // GetChannel .
 // @router /api/v1/notification/channel [GET]
 func GetChannel(ctx context.Context, c *app.RequestContext) {
-	var req notification.GetChannelRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c, func(req *notification.GetChannelRequest) (map[string]interface{}, error) {
+		dao := db.NewNotificationChannelDAO()
+		channel, err := dao.FindByID(uint(req.Id))
+		if err != nil {
+			return nil, handler.ErrNotFound("channel not found")
+		}
 
-	dao := db.NewNotificationChannelDAO()
-	channel, err := dao.FindByID(uint(req.Id))
-	if err != nil {
-		response.NotFound(c, "channel not found")
-		return
-	}
-
-	response.Success(c, map[string]interface{}{
-		"channel": channelToProto(channel),
+		return map[string]interface{}{
+			"channel": channelToProto(channel),
+		}, nil
 	})
 }
 
 // CreateChannel .
 // @router /api/v1/notification/channel/create [POST]
 func CreateChannel(ctx context.Context, c *app.RequestContext) {
-	var req notification.CreateChannelRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	// 验证渠道级模板语法
-	if err := notificationSvc.ValidateTemplate(req.TitleTemplate); err != nil {
-		response.BadRequest(c, "标题模板语法错误: "+err.Error())
-		return
-	}
-	if err := notificationSvc.ValidateTemplate(req.ContentTemplate); err != nil {
-		response.BadRequest(c, "内容模板语法错误: "+err.Error())
-		return
-	}
-
-	// 解析并验证事件级模板
-	var eventDTOs []eventTemplateDTO
-	if req.EventTemplatesJson != "" {
-		if err := json.Unmarshal([]byte(req.EventTemplatesJson), &eventDTOs); err != nil {
-			response.BadRequest(c, "事件模板 JSON 格式错误: "+err.Error())
-			return
+	handler.BindAndDo(c, func(req *notification.CreateChannelRequest) (map[string]interface{}, error) {
+		// 验证渠道级模板语法
+		if err := notificationSvc.ValidateTemplate(req.TitleTemplate); err != nil {
+			return nil, handler.ErrBadRequest("标题模板语法错误: " + err.Error())
 		}
-		for _, dto := range eventDTOs {
-			if err := notificationSvc.ValidateTemplate(dto.TitleTemplate); err != nil {
-				response.BadRequest(c, fmt.Sprintf("事件 %s 标题模板语法错误: %s", dto.EventType, err.Error()))
-				return
+		if err := notificationSvc.ValidateTemplate(req.ContentTemplate); err != nil {
+			return nil, handler.ErrBadRequest("内容模板语法错误: " + err.Error())
+		}
+
+		// 解析并验证事件级模板
+		var eventDTOs []eventTemplateDTO
+		if req.EventTemplatesJson != "" {
+			if err := json.Unmarshal([]byte(req.EventTemplatesJson), &eventDTOs); err != nil {
+				return nil, handler.ErrBadRequest("事件模板 JSON 格式错误: " + err.Error())
 			}
-			if err := notificationSvc.ValidateTemplate(dto.ContentTemplate); err != nil {
-				response.BadRequest(c, fmt.Sprintf("事件 %s 内容模板语法错误: %s", dto.EventType, err.Error()))
-				return
+			for _, dto := range eventDTOs {
+				if err := notificationSvc.ValidateTemplate(dto.TitleTemplate); err != nil {
+					return nil, handler.ErrBadRequest(fmt.Sprintf("事件 %s 标题模板语法错误: %s", dto.EventType, err.Error()))
+				}
+				if err := notificationSvc.ValidateTemplate(dto.ContentTemplate); err != nil {
+					return nil, handler.ErrBadRequest(fmt.Sprintf("事件 %s 内容模板语法错误: %s", dto.EventType, err.Error()))
+				}
 			}
 		}
-	}
 
-	channel := &po.NotificationChannel{
-		Name:            req.Name,
-		Type:            req.Type,
-		Config:          req.Config,
-		Enabled:         req.Enabled,
-		NotifyOnSuccess: req.NotifyOnSuccess,
-		NotifyOnFailure: req.NotifyOnFailure,
-		TriggerEvents:   req.TriggerEvents,
-		TitleTemplate:   req.TitleTemplate,
-		ContentTemplate: req.ContentTemplate,
-	}
-
-	// 使用事务创建渠道和事件模板
-	err := db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(channel).Error; err != nil {
-			return err
+		channel := &po.NotificationChannel{
+			Name:            req.Name,
+			Type:            req.Type,
+			Config:          req.Config,
+			Enabled:         req.Enabled,
+			NotifyOnSuccess: req.NotifyOnSuccess,
+			NotifyOnFailure: req.NotifyOnFailure,
+			TriggerEvents:   req.TriggerEvents,
+			TitleTemplate:   req.TitleTemplate,
+			ContentTemplate: req.ContentTemplate,
 		}
-		if len(eventDTOs) > 0 {
+
+		// 使用事务创建渠道和事件模板
+		err := db.DB.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Create(channel).Error; err != nil {
+				return err
+			}
+			if len(eventDTOs) > 0 {
+				templates := make([]po.NotificationEventTemplate, 0, len(eventDTOs))
+				for _, dto := range eventDTOs {
+					templates = append(templates, po.NotificationEventTemplate{
+						ChannelID:       channel.ID,
+						EventType:       dto.EventType,
+						TitleTemplate:   dto.TitleTemplate,
+						ContentTemplate: dto.ContentTemplate,
+					})
+				}
+				if err := tx.Create(&templates).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, handler.ErrInternal(err.Error())
+		}
+
+		c.Set("audit_target", fmt.Sprintf("channel:%d", channel.ID))
+		return map[string]interface{}{
+			"channel": channelToProto(channel),
+		}, nil
+	})
+}
+
+// UpdateChannel .
+// @router /api/v1/notification/channel/update [POST]
+func UpdateChannel(ctx context.Context, c *app.RequestContext) {
+	handler.BindAndDo(c, func(req *notification.UpdateChannelRequest) (map[string]interface{}, error) {
+		// 验证渠道级模板语法
+		if err := notificationSvc.ValidateTemplate(req.TitleTemplate); err != nil {
+			return nil, handler.ErrBadRequest("标题模板语法错误: " + err.Error())
+		}
+		if err := notificationSvc.ValidateTemplate(req.ContentTemplate); err != nil {
+			return nil, handler.ErrBadRequest("内容模板语法错误: " + err.Error())
+		}
+
+		// 解析并验证事件级模板
+		var eventDTOs []eventTemplateDTO
+		if req.EventTemplatesJson != "" {
+			if err := json.Unmarshal([]byte(req.EventTemplatesJson), &eventDTOs); err != nil {
+				return nil, handler.ErrBadRequest("事件模板 JSON 格式错误: " + err.Error())
+			}
+			for _, dto := range eventDTOs {
+				if err := notificationSvc.ValidateTemplate(dto.TitleTemplate); err != nil {
+					return nil, handler.ErrBadRequest(fmt.Sprintf("事件 %s 标题模板语法错误: %s", dto.EventType, err.Error()))
+				}
+				if err := notificationSvc.ValidateTemplate(dto.ContentTemplate); err != nil {
+					return nil, handler.ErrBadRequest(fmt.Sprintf("事件 %s 内容模板语法错误: %s", dto.EventType, err.Error()))
+				}
+			}
+		}
+
+		dao := db.NewNotificationChannelDAO()
+		channel, err := dao.FindByID(uint(req.Id))
+		if err != nil {
+			return nil, handler.ErrNotFound("channel not found")
+		}
+
+		channel.Name = req.Name
+		channel.Config = req.Config
+		channel.Enabled = req.Enabled
+		channel.NotifyOnSuccess = req.NotifyOnSuccess
+		channel.NotifyOnFailure = req.NotifyOnFailure
+		channel.TriggerEvents = req.TriggerEvents
+		channel.TitleTemplate = req.TitleTemplate
+		channel.ContentTemplate = req.ContentTemplate
+
+		// 使用事务更新渠道和事件模板
+		etDAO := db.NewNotificationEventTemplateDAO()
+		err = db.DB.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Save(channel).Error; err != nil {
+				return err
+			}
+			// 先删后插，替换该渠道的所有事件模板
 			templates := make([]po.NotificationEventTemplate, 0, len(eventDTOs))
 			for _, dto := range eventDTOs {
 				templates = append(templates, po.NotificationEventTemplate{
@@ -180,163 +236,65 @@ func CreateChannel(ctx context.Context, c *app.RequestContext) {
 					ContentTemplate: dto.ContentTemplate,
 				})
 			}
-			if err := tx.Create(&templates).Error; err != nil {
-				return err
-			}
+			return etDAO.ReplaceByChannelID(tx, channel.ID, templates)
+		})
+		if err != nil {
+			return nil, handler.ErrInternal(err.Error())
 		}
-		return nil
-	})
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
 
-	c.Set("audit_target", fmt.Sprintf("channel:%d", channel.ID))
-	response.Success(c, map[string]interface{}{
-		"channel": channelToProto(channel),
-	})
-}
-
-// UpdateChannel .
-// @router /api/v1/notification/channel/update [POST]
-func UpdateChannel(ctx context.Context, c *app.RequestContext) {
-	var req notification.UpdateChannelRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	// 验证渠道级模板语法
-	if err := notificationSvc.ValidateTemplate(req.TitleTemplate); err != nil {
-		response.BadRequest(c, "标题模板语法错误: "+err.Error())
-		return
-	}
-	if err := notificationSvc.ValidateTemplate(req.ContentTemplate); err != nil {
-		response.BadRequest(c, "内容模板语法错误: "+err.Error())
-		return
-	}
-
-	// 解析并验证事件级模板
-	var eventDTOs []eventTemplateDTO
-	if req.EventTemplatesJson != "" {
-		if err := json.Unmarshal([]byte(req.EventTemplatesJson), &eventDTOs); err != nil {
-			response.BadRequest(c, "事件模板 JSON 格式错误: "+err.Error())
-			return
-		}
-		for _, dto := range eventDTOs {
-			if err := notificationSvc.ValidateTemplate(dto.TitleTemplate); err != nil {
-				response.BadRequest(c, fmt.Sprintf("事件 %s 标题模板语法错误: %s", dto.EventType, err.Error()))
-				return
-			}
-			if err := notificationSvc.ValidateTemplate(dto.ContentTemplate); err != nil {
-				response.BadRequest(c, fmt.Sprintf("事件 %s 内容模板语法错误: %s", dto.EventType, err.Error()))
-				return
-			}
-		}
-	}
-
-	dao := db.NewNotificationChannelDAO()
-	channel, err := dao.FindByID(uint(req.Id))
-	if err != nil {
-		response.NotFound(c, "channel not found")
-		return
-	}
-
-	channel.Name = req.Name
-	channel.Config = req.Config
-	channel.Enabled = req.Enabled
-	channel.NotifyOnSuccess = req.NotifyOnSuccess
-	channel.NotifyOnFailure = req.NotifyOnFailure
-	channel.TriggerEvents = req.TriggerEvents
-	channel.TitleTemplate = req.TitleTemplate
-	channel.ContentTemplate = req.ContentTemplate
-
-	// 使用事务更新渠道和事件模板
-	etDAO := db.NewNotificationEventTemplateDAO()
-	err = db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(channel).Error; err != nil {
-			return err
-		}
-		// 先删后插，替换该渠道的所有事件模板
-		templates := make([]po.NotificationEventTemplate, 0, len(eventDTOs))
-		for _, dto := range eventDTOs {
-			templates = append(templates, po.NotificationEventTemplate{
-				ChannelID:       channel.ID,
-				EventType:       dto.EventType,
-				TitleTemplate:   dto.TitleTemplate,
-				ContentTemplate: dto.ContentTemplate,
-			})
-		}
-		return etDAO.ReplaceByChannelID(tx, channel.ID, templates)
-	})
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	c.Set("audit_target", fmt.Sprintf("channel:%d", req.Id))
-	response.Success(c, map[string]interface{}{
-		"channel": channelToProto(channel),
+		c.Set("audit_target", fmt.Sprintf("channel:%d", req.Id))
+		return map[string]interface{}{
+			"channel": channelToProto(channel),
+		}, nil
 	})
 }
 
 // DeleteChannel .
 // @router /api/v1/notification/channel/delete [POST]
 func DeleteChannel(ctx context.Context, c *app.RequestContext) {
-	var req notification.DeleteChannelRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	dao := db.NewNotificationChannelDAO()
-	channel, err := dao.FindByID(uint(req.Id))
-	if err != nil {
-		response.NotFound(c, "channel not found")
-		return
-	}
-
-	// 使用事务级联删除事件模板和渠道
-	etDAO := db.NewNotificationEventTemplateDAO()
-	err = db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := etDAO.DeleteByChannelID(tx, channel.ID); err != nil {
-			return err
+	handler.BindAndDo(c, func(req *notification.DeleteChannelRequest) (map[string]string, error) {
+		dao := db.NewNotificationChannelDAO()
+		channel, err := dao.FindByID(uint(req.Id))
+		if err != nil {
+			return nil, handler.ErrNotFound("channel not found")
 		}
-		return tx.Delete(channel).Error
-	})
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
 
-	c.Set("audit_target", fmt.Sprintf("channel:%d", req.Id))
-	response.Success(c, map[string]string{"message": "channel deleted"})
+		// 使用事务级联删除事件模板和渠道
+		etDAO := db.NewNotificationEventTemplateDAO()
+		err = db.DB.Transaction(func(tx *gorm.DB) error {
+			if err := etDAO.DeleteByChannelID(tx, channel.ID); err != nil {
+				return err
+			}
+			return tx.Delete(channel).Error
+		})
+		if err != nil {
+			return nil, handler.ErrInternal(err.Error())
+		}
+
+		c.Set("audit_target", fmt.Sprintf("channel:%d", req.Id))
+		return map[string]string{"message": "channel deleted"}, nil
+	})
 }
 
 // TestChannel .
 // @router /api/v1/notification/channel/test [POST]
 func TestChannel(ctx context.Context, c *app.RequestContext) {
-	var req notification.TestChannelRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c, func(req *notification.TestChannelRequest) (map[string]interface{}, error) {
+		message := req.Message
+		if message == "" {
+			message = "This is a test notification from Git Manage Service."
+		}
 
-	message := req.Message
-	if message == "" {
-		message = "This is a test notification from Git Manage Service."
-	}
+		err := notificationSvc.NotifySvc.Test(uint(req.Id), message)
+		if err != nil {
+			return map[string]interface{}{
+				"success": false,
+				"error":   err.Error(),
+			}, nil
+		}
 
-	err := notificationSvc.NotifySvc.Test(uint(req.Id), message)
-	if err != nil {
-		response.Success(c, map[string]interface{}{
-			"success": false,
-			"error":   err.Error(),
-		})
-		return
-	}
-
-	response.Success(c, map[string]interface{}{
-		"success": true,
+		return map[string]interface{}{
+			"success": true,
+		}, nil
 	})
 }

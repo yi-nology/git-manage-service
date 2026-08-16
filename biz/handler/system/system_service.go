@@ -19,6 +19,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/appinfo"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -38,25 +39,22 @@ func GetConfig(ctx context.Context, c *app.RequestContext) {
 // UpdateConfig .
 // @router /api/v1/system/config [POST]
 func UpdateConfig(ctx context.Context, c *app.RequestContext) {
-	var req systemModel.UpdateConfigRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *systemModel.UpdateConfigRequest) (map[string]interface{}, error) {
+			configs.DebugMode = req.DebugMode
 
-	configs.DebugMode = req.DebugMode
+			gitSvc := git.NewGitService()
+			if err := gitSvc.SetGlobalGitUser(req.AuthorName, req.AuthorEmail); err != nil {
+				return nil, handler.ErrInternal("Failed to set git config: " + err.Error())
+			}
 
-	gitSvc := git.NewGitService()
-	if err := gitSvc.SetGlobalGitUser(req.AuthorName, req.AuthorEmail); err != nil {
-		response.InternalServerError(c, "Failed to set git config: "+err.Error())
-		return
-	}
-
-	response.Success(c, map[string]interface{}{
-		"debug_mode":   configs.DebugMode,
-		"author_name":  req.AuthorName,
-		"author_email": req.AuthorEmail,
-	})
+			return map[string]interface{}{
+				"debug_mode":   configs.DebugMode,
+				"author_name":  req.AuthorName,
+				"author_email": req.AuthorEmail,
+			}, nil
+		},
+	)
 }
 
 // ListDirs .
@@ -146,56 +144,52 @@ func ListSSHKeys(ctx context.Context, c *app.RequestContext) {
 // TestConnection .
 // @router /api/v1/system/test-connection [POST]
 func TestConnection(ctx context.Context, c *app.RequestContext) {
-	var req systemModel.TestConnectionRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *systemModel.TestConnectionRequest) (map[string]string, error) {
+			gitSvc := git.NewGitService()
+			authSvc := auth.NewAuthService()
 
-	gitSvc := git.NewGitService()
-	authSvc := auth.NewAuthService()
+			var err error
 
-	var err error
-
-	// 根据认证类型选择测试方法
-	switch req.AuthType {
-	case "ssh_db", "ssh_database":
-		// 数据库 SSH 密钥 - 需要从 auth_key 获取密钥内容
-		// auth_key 格式: credential:<id> 或直接是私钥内容
-		if strings.HasPrefix(req.AuthKey, "credential:") {
-			credIDStr := strings.TrimPrefix(req.AuthKey, "credential:")
-			credID := parseUint(credIDStr)
-			if credID > 0 {
-				privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
-				if keyErr != nil {
-					response.Success(c, map[string]string{"status": "failed", "error": "failed to load credential: " + keyErr.Error()})
-					return
+			// 根据认证类型选择测试方法
+			switch req.AuthType {
+			case "ssh_db", "ssh_database":
+				// 数据库 SSH 密钥 - 需要从 auth_key 获取密钥内容
+				// auth_key 格式: credential:<id> 或直接是私钥内容
+				if strings.HasPrefix(req.AuthKey, "credential:") {
+					credIDStr := strings.TrimPrefix(req.AuthKey, "credential:")
+					credID := parseUint(credIDStr)
+					if credID > 0 {
+						privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
+						if keyErr != nil {
+							return map[string]string{"status": "failed", "error": "failed to load credential: " + keyErr.Error()}, nil
+						}
+						err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, privateKey, passphrase)
+					} else {
+						err = fmt.Errorf("invalid credential ID")
+					}
+				} else {
+					// 直接使用私钥内容
+					err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, req.AuthKey, req.AuthSecret)
 				}
-				err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, privateKey, passphrase)
-			} else {
-				err = fmt.Errorf("invalid credential ID")
+			case "ssh_local":
+				// 本地 SSH 密钥文件
+				err = gitSvc.TestRemoteConnectionWithLocalKey(req.Url, req.AuthKey, req.AuthSecret)
+			case "http", "https":
+				// HTTP/HTTPS 认证
+				err = gitSvc.TestRemoteConnectionWithHTTP(req.Url, req.AuthKey, req.AuthSecret)
+			default:
+				// 无认证或自动检测
+				err = gitSvc.TestRemoteConnection(req.Url)
 			}
-		} else {
-			// 直接使用私钥内容
-			err = gitSvc.TestRemoteConnectionWithDBKey(req.Url, req.AuthKey, req.AuthSecret)
-		}
-	case "ssh_local":
-		// 本地 SSH 密钥文件
-		err = gitSvc.TestRemoteConnectionWithLocalKey(req.Url, req.AuthKey, req.AuthSecret)
-	case "http", "https":
-		// HTTP/HTTPS 认证
-		err = gitSvc.TestRemoteConnectionWithHTTP(req.Url, req.AuthKey, req.AuthSecret)
-	default:
-		// 无认证或自动检测
-		err = gitSvc.TestRemoteConnection(req.Url)
-	}
 
-	if err != nil {
-		response.Success(c, map[string]string{"status": "failed", "error": err.Error()})
-		return
-	}
+			if err != nil {
+				return map[string]string{"status": "failed", "error": err.Error()}, nil
+			}
 
-	response.Success(c, map[string]string{"status": "success"})
+			return map[string]string{"status": "success"}, nil
+		},
+	)
 }
 
 // parseUint 解析 uint
@@ -257,60 +251,53 @@ func GetRepoGitConfig(ctx context.Context, c *app.RequestContext) {
 // SubmitChanges .
 // @router /api/v1/system/repo/submit [POST]
 func SubmitChanges(ctx context.Context, c *app.RequestContext) {
-	var req systemModel.SubmitChangesRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *systemModel.SubmitChangesRequest) (map[string]string, error) {
+			if req.Message == "" {
+				return nil, handler.ErrBadRequest("commit message is required")
+			}
 
-	if req.Message == "" {
-		response.BadRequest(c, "commit message is required")
-		return
-	}
+			repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
+			if err != nil {
+				return nil, handler.ErrNotFound("repo not found")
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.RepoKey)
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			gitSvc := git.NewGitService()
 
-	gitSvc := git.NewGitService()
+			// Selective file staging or add all
+			if len(req.Files) > 0 {
+				if err := gitSvc.AddFiles(repo.Path, req.Files); err != nil {
+					return nil, handler.ErrInternal("Failed to stage files: " + err.Error())
+				}
+			} else {
+				if err := gitSvc.AddAll(repo.Path); err != nil {
+					return nil, handler.ErrInternal("Failed to stage files: " + err.Error())
+				}
+			}
 
-	// Selective file staging or add all
-	if len(req.Files) > 0 {
-		if err := gitSvc.AddFiles(repo.Path, req.Files); err != nil {
-			response.InternalServerError(c, "Failed to stage files: "+err.Error())
-			return
-		}
-	} else {
-		if err := gitSvc.AddAll(repo.Path); err != nil {
-			response.InternalServerError(c, "Failed to stage files: "+err.Error())
-			return
-		}
-	}
+			status, _ := gitSvc.GetStatus(repo.Path)
+			fullMsg := fmt.Sprintf("%s\n\nGit Status Snapshot:\n%s", req.Message, status)
 
-	status, _ := gitSvc.GetStatus(repo.Path)
-	fullMsg := fmt.Sprintf("%s\n\nGit Status Snapshot:\n%s", req.Message, status)
+			if err := gitSvc.Commit(repo.Path, fullMsg, req.AuthorName, req.AuthorEmail); err != nil {
+				_ = gitSvc.Reset(repo.Path)
+				return nil, handler.ErrInternal("Failed to commit: " + err.Error())
+			}
 
-	if err := gitSvc.Commit(repo.Path, fullMsg, req.AuthorName, req.AuthorEmail); err != nil {
-		_ = gitSvc.Reset(repo.Path)
-		response.InternalServerError(c, "Failed to commit: "+err.Error())
-		return
-	}
+			msg := "Committed successfully"
 
-	msg := "Committed successfully"
+			if req.Push {
+				if err := gitSvc.PushCurrent(repo.Path); err != nil {
+					msg += ", but push failed: " + err.Error()
+					c.Set("audit_target", "repo:"+repo.Key)
+					return map[string]string{"message": msg, "warning": "push_failed"}, nil
+				}
+				msg += " and pushed to remote"
+			}
 
-	if req.Push {
-		if err := gitSvc.PushCurrent(repo.Path); err != nil {
-			msg += ", but push failed: " + err.Error()
-			response.Success(c, map[string]string{"message": msg, "warning": "push_failed"})
-			return
-		}
-		msg += " and pushed to remote"
-	}
-
-	c.Set("audit_target", "repo:"+repo.Key)
-	response.Success(c, map[string]string{"message": msg})
+			c.Set("audit_target", "repo:"+repo.Key)
+			return map[string]string{"message": msg}, nil
+		},
+	)
 }
 
 // GetAppInfo 获取应用版本信息

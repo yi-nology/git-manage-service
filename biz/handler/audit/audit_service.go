@@ -8,54 +8,45 @@ import (
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	auditModel "github.com/yi-nology/git-manage-service/biz/model/audit"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
 // List .
 // @router /api/v1/audit/logs [GET]
 func List(ctx context.Context, c *app.RequestContext) {
-	var req auditModel.ListAuditLogRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c, func(req *auditModel.ListAuditLogRequest) (map[string]interface{}, error) {
+		page := int(req.Page)
+		if page < 1 {
+			page = 1
+		}
+		pageSize := int(req.PageSize)
+		if pageSize < 1 {
+			pageSize = 20
+		}
 
-	page := int(req.Page)
-	if page < 1 {
-		page = 1
-	}
-	pageSize := int(req.PageSize)
-	if pageSize < 1 {
-		pageSize = 20
-	}
+		dao := db.NewAuditLogDAO()
+		logs, err := dao.FindPageWithFilters(page, pageSize, req.Action, req.Target, req.StartDate, req.EndDate)
+		if err != nil {
+			return nil, handler.ErrInternal(err.Error())
+		}
 
-	dao := db.NewAuditLogDAO()
-	logs, err := dao.FindPageWithFilters(page, pageSize, req.Action, req.Target, req.StartDate, req.EndDate)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
+		total, _ := dao.CountWithFilters(req.Action, req.Target, req.StartDate, req.EndDate)
 
-	total, _ := dao.CountWithFilters(req.Action, req.Target, req.StartDate, req.EndDate)
+		dtos := make([]*auditModel.AuditLog, len(logs))
+		for i, log := range logs {
+			dtos[i] = convertToProtoAuditLog(&log)
+		}
 
-	dtos := make([]*auditModel.AuditLog, len(logs))
-	for i, log := range logs {
-		dtos[i] = convertToProtoAuditLog(&log)
-	}
-
-	c.JSON(consts.StatusOK, map[string]interface{}{
-		"code": 0,
-		"msg":  "success",
-		"data": map[string]interface{}{
+		return map[string]interface{}{
 			"items": dtos,
 			"total": total,
 			"page":  page,
 			"size":  pageSize,
-		},
+		}, nil
 	})
 }
 

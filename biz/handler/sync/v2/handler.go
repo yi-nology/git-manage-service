@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 	gitsyncmodel "github.com/yi-nology/git-sync-service/sync/model"
 )
@@ -59,36 +60,16 @@ func GetTask(ctx context.Context, c *app.RequestContext) {
 
 // CreateTask 创建任务
 func CreateTask(ctx context.Context, c *app.RequestContext) {
-	var req gitsyncmodel.CreateTaskRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	task, err := svc.CreateTask(ctx, &req)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, task)
+	handler.BindAndDo(c, func(req *gitsyncmodel.CreateTaskRequest) (*gitsyncmodel.SyncTask, error) {
+		return svc.CreateTask(ctx, req)
+	})
 }
 
 // UpdateTask 更新任务
 func UpdateTask(ctx context.Context, c *app.RequestContext) {
-	var req gitsyncmodel.UpdateTaskRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	task, err := svc.UpdateTask(ctx, &req)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, task)
+	handler.BindAndDo(c, func(req *gitsyncmodel.UpdateTaskRequest) (*gitsyncmodel.SyncTask, error) {
+		return svc.UpdateTask(ctx, req)
+	})
 }
 
 // DeleteTask 删除任务
@@ -248,36 +229,16 @@ func GetRule(ctx context.Context, c *app.RequestContext) {
 
 // CreateRule 创建规则
 func CreateRule(ctx context.Context, c *app.RequestContext) {
-	var req gitsyncmodel.CreateRuleRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	rule, err := svc.CreateRule(ctx, &req)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, rule)
+	handler.BindAndDo(c, func(req *gitsyncmodel.CreateRuleRequest) (*gitsyncmodel.WebhookRule, error) {
+		return svc.CreateRule(ctx, req)
+	})
 }
 
 // UpdateRule 更新规则
 func UpdateRule(ctx context.Context, c *app.RequestContext) {
-	var req gitsyncmodel.UpdateRuleRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	rule, err := svc.UpdateRule(ctx, &req)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, rule)
+	handler.BindAndDo(c, func(req *gitsyncmodel.UpdateRuleRequest) (*gitsyncmodel.WebhookRule, error) {
+		return svc.UpdateRule(ctx, req)
+	})
 }
 
 // DeleteRule 删除规则

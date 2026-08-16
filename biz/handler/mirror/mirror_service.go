@@ -10,6 +10,7 @@ import (
 	mirrorModel "github.com/yi-nology/git-manage-service/biz/model/mirror"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	mirrorSvc "github.com/yi-nology/git-manage-service/biz/service/mirror"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -340,25 +341,20 @@ func BatchTriggerSync(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var req struct {
-		MirrorIDs   []uint `json:"mirror_ids"`
-		TriggerType string `json:"trigger_type"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	if req.TriggerType == "" {
-		req.TriggerType = po.TriggerTypeManual
-	}
-
-	if err := svc.BatchTriggerSync(req.MirrorIDs, req.TriggerType); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Accepted(c, "batch sync triggered", nil)
+	handler.Do(c,
+		func(req *struct {
+			MirrorIDs   []uint `json:"mirror_ids"`
+			TriggerType string `json:"trigger_type"`
+		}) error {
+			if req.TriggerType == "" {
+				req.TriggerType = po.TriggerTypeManual
+			}
+			if err := svc.BatchTriggerSync(req.MirrorIDs, req.TriggerType); err != nil {
+				return handler.ErrInternal(err.Error())
+			}
+			return nil
+		},
+	)
 }
 
 func PreviewSync(ctx context.Context, c *app.RequestContext) {
@@ -518,21 +514,18 @@ func AnalyzeRemote(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var req struct {
-		RemoteURL    string `json:"remote_url"`
-		CredentialID int64  `json:"credential_id"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	result, err := svc.AnalyzeRemote(ctx, req.RemoteURL)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-	response.Success(c, result)
+	handler.BindAndDo(c,
+		func(req *struct {
+			RemoteURL    string `json:"remote_url"`
+			CredentialID int64  `json:"credential_id"`
+		}) (*mirrorSvc.AnalyzeResult, error) {
+			result, err := svc.AnalyzeRemote(ctx, req.RemoteURL)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			return result, nil
+		},
+	)
 }
 
 func ValidateCredential(ctx context.Context, c *app.RequestContext) {
@@ -542,19 +535,18 @@ func ValidateCredential(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var req struct {
-		CredentialID uint   `json:"credential_id"`
-		RemoteURL    string `json:"remote_url"`
-	}
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	response.Success(c, map[string]interface{}{
-		"valid":   true,
-		"message": "credential validation not yet implemented",
-	})
+	handler.BindAndDo(c,
+		func(req *struct {
+			CredentialID uint   `json:"credential_id"`
+			RemoteURL    string `json:"remote_url"`
+		}) (map[string]interface{}, error) {
+			_ = svc
+			return map[string]interface{}{
+				"valid":   true,
+				"message": "credential validation not yet implemented",
+			}, nil
+		},
+	)
 }
 
 func HandleWebhook(ctx context.Context, c *app.RequestContext) {

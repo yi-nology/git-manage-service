@@ -9,50 +9,43 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/webhookevent"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )
 
 func List(ctx context.Context, c *app.RequestContext) {
-	var req api.ListWebhookEventsReq
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.Page == 0 {
-		req.Page = 1
-	}
-	if req.PageSize == 0 {
-		req.PageSize = 20
-	}
-	events, total, err := webhookevent.List(req.EventType, req.Source, req.Status, req.Page, req.PageSize)
-	if err != nil {
-		pkgresponse.InternalServerError(c, "Failed to list webhook events: "+err.Error())
-		return
-	}
-	pkgresponse.Success(c, map[string]interface{}{
-		"items": events,
-		"total": total,
+	handler.BindAndDo(c, func(req *api.ListWebhookEventsReq) (map[string]interface{}, error) {
+		if req.Page == 0 {
+			req.Page = 1
+		}
+		if req.PageSize == 0 {
+			req.PageSize = 20
+		}
+		events, total, err := webhookevent.List(req.EventType, req.Source, req.Status, req.Page, req.PageSize)
+		if err != nil {
+			return nil, handler.ErrInternal("Failed to list webhook events: " + err.Error())
+		}
+		return map[string]interface{}{
+			"items": events,
+			"total": total,
+		}, nil
 	})
 }
 
 func Retry(ctx context.Context, c *app.RequestContext) {
-	var req struct {
+	type retryReq struct {
 		EventID uint `json:"event_id"`
 	}
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.EventID == 0 {
-		pkgresponse.BadRequest(c, "event_id is required")
-		return
-	}
-	if err := webhookevent.Retry(req.EventID); err != nil {
-		pkgresponse.InternalServerError(c, "Failed to retry event: "+err.Error())
-		return
-	}
-	c.Set("audit_target", fmt.Sprintf("webhook_event:%d", req.EventID))
-	pkgresponse.Success(c, map[string]string{"message": "Event retried"})
+	handler.BindAndDo(c, func(req *retryReq) (map[string]string, error) {
+		if req.EventID == 0 {
+			return nil, handler.ErrBadRequest("event_id is required")
+		}
+		if err := webhookevent.Retry(req.EventID); err != nil {
+			return nil, handler.ErrInternal("Failed to retry event: " + err.Error())
+		}
+		c.Set("audit_target", fmt.Sprintf("webhook_event:%d", req.EventID))
+		return map[string]string{"message": "Event retried"}, nil
+	})
 }
 
 // webhookRuleRequest is the create/update payload for a webhook rule.
@@ -124,22 +117,17 @@ func ListRules(ctx context.Context, c *app.RequestContext) {
 
 // CreateRule creates a webhook rule.
 func CreateRule(ctx context.Context, c *app.RequestContext) {
-	var req webhookRuleRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		pkgresponse.BadRequest(c, err.Error())
-		return
-	}
-	if req.Name == "" || req.Action == "" {
-		pkgresponse.BadRequest(c, "name and action are required")
-		return
-	}
-	rule := req.toPO()
-	if err := db.NewWebhookRuleDAO().Create(rule); err != nil {
-		pkgresponse.InternalServerError(c, "Failed to create webhook rule: "+err.Error())
-		return
-	}
-	c.Set("audit_target", "webhook_rule:"+rule.Name)
-	pkgresponse.Success(c, toRuleDTO(rule))
+	handler.BindAndDo(c, func(req *webhookRuleRequest) (webhookRuleDTO, error) {
+		if req.Name == "" || req.Action == "" {
+			return webhookRuleDTO{}, handler.ErrBadRequest("name and action are required")
+		}
+		rule := req.toPO()
+		if err := db.NewWebhookRuleDAO().Create(rule); err != nil {
+			return webhookRuleDTO{}, handler.ErrInternal("Failed to create webhook rule: " + err.Error())
+		}
+		c.Set("audit_target", "webhook_rule:"+rule.Name)
+		return toRuleDTO(rule), nil
+	})
 }
 
 // UpdateRule updates a webhook rule by id.

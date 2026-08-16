@@ -16,6 +16,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/auth"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
@@ -126,154 +127,107 @@ func runMaintenanceTask(repo *po.Repo, taskID, kind, paramsJSON string, op func(
 }
 
 func Slim(ctx context.Context, c *app.RequestContext) {
-	var req maintenance.SlimRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepo(c,
+		func(req *maintenance.SlimRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *maintenance.SlimRequest) (any, error) {
+			paths := req.GetPaths()
+			if len(paths) == 0 {
+				return nil, handler.ErrBadRequest("paths is required")
+			}
 
-	paths := req.GetPaths()
-	if len(paths) == 0 {
-		response.BadRequest(c, "paths is required")
-		return
-	}
+			paramsJSON, _ := json.Marshal(map[string]interface{}{
+				"paths":        paths,
+				"addGitignore": req.GetAddGitignore(),
+			})
+			addGitignore := req.GetAddGitignore()
+			taskID := uuid.New().String()
+			if err := runMaintenanceTask(repo, taskID, "slim", string(paramsJSON), func(svc *git.MaintenanceService) error {
+				return svc.SlimHistory(repo.Path, paths, addGitignore, taskID)
+			}); err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	paramsJSON, _ := json.Marshal(map[string]interface{}{
-		"paths":        paths,
-		"addGitignore": req.GetAddGitignore(),
-	})
-	addGitignore := req.GetAddGitignore()
-	taskID := uuid.New().String()
-	if err := runMaintenanceTask(repo, taskID, "slim", string(paramsJSON), func(svc *git.MaintenanceService) error {
-		return svc.SlimHistory(repo.Path, paths, addGitignore, taskID)
-	}); err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	response.Success(c, &maintenance.MaintenanceTaskResponse{TaskId: &taskID})
+			return &maintenance.MaintenanceTaskResponse{TaskId: &taskID}, nil
+		},
+	)
 }
 
 func GC(ctx context.Context, c *app.RequestContext) {
-	var req maintenance.HealthRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	taskID := uuid.New().String()
-	if err := runMaintenanceTask(repo, taskID, "gc", "", func(svc *git.MaintenanceService) error {
-		return svc.GarbageCollect(repo.Path, taskID)
-	}); err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	response.Success(c, &maintenance.MaintenanceTaskResponse{TaskId: &taskID})
+	handler.DoWithRepo(c,
+		func(req *maintenance.HealthRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *maintenance.HealthRequest) (any, error) {
+			taskID := uuid.New().String()
+			if err := runMaintenanceTask(repo, taskID, "gc", "", func(svc *git.MaintenanceService) error {
+				return svc.GarbageCollect(repo.Path, taskID)
+			}); err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			return &maintenance.MaintenanceTaskResponse{TaskId: &taskID}, nil
+		},
+	)
 }
 
 func Gitignore(ctx context.Context, c *app.RequestContext) {
-	var req maintenance.GitignoreRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	paths := req.GetPaths()
-	if len(paths) == 0 {
-		response.BadRequest(c, "paths is required")
-		return
-	}
-
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	svc := git.NewMaintenanceService()
-	if err := svc.AddToGitignore(repo.Path, paths); err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	response.Success(c, api.MessageResponse{Message: "已添加到 .gitignore"})
+	handler.DoWithRepo(c,
+		func(req *maintenance.GitignoreRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *maintenance.GitignoreRequest) (any, error) {
+			paths := req.GetPaths()
+			if len(paths) == 0 {
+				return nil, handler.ErrBadRequest("paths is required")
+			}
+			if err := git.NewMaintenanceService().AddToGitignore(repo.Path, paths); err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			return api.MessageResponse{Message: "已添加到 .gitignore"}, nil
+		},
+	)
 }
 
 func ListRecords(ctx context.Context, c *app.RequestContext) {
-	var req maintenance.ListRecordsRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.DoWithRepo(c,
+		func(req *maintenance.ListRecordsRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *maintenance.ListRecordsRequest) (any, error) {
+			page := int(req.GetPage())
+			pageSize := int(req.GetPageSize())
+			if page <= 0 {
+				page = 1
+			}
+			if pageSize <= 0 {
+				pageSize = 10
+			}
 
-	repo, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
+			records, total, err := db.NewMaintenanceDAO().ListByRepoID(repo.ID, page, pageSize)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
 
-	page := int(req.GetPage())
-	pageSize := int(req.GetPageSize())
-	if page <= 0 {
-		page = 1
-	}
-	if pageSize <= 0 {
-		pageSize = 10
-	}
+			dtos := make([]api.MaintenanceRecordDTO, 0, len(records))
+			for _, r := range records {
+				dto := convertRecordToDTO(&r)
+				dtos = append(dtos, dto)
+			}
 
-	records, total, err := db.NewMaintenanceDAO().ListByRepoID(repo.ID, page, pageSize)
-	if err != nil {
-		response.InternalError(c, err)
-		return
-	}
-
-	dtos := make([]api.MaintenanceRecordDTO, 0, len(records))
-	for _, r := range records {
-		dto := convertRecordToDTO(&r)
-		dtos = append(dtos, dto)
-	}
-
-	response.Success(c, api.MaintenanceRecordListResponse{
-		Records:  dtos,
-		Total:    total,
-		Page:     page,
-		PageSize: pageSize,
-	})
+			return api.MaintenanceRecordListResponse{
+				Records:  dtos,
+				Total:    total,
+				Page:     page,
+				PageSize: pageSize,
+			}, nil
+		},
+	)
 }
 
 func GetRecord(ctx context.Context, c *app.RequestContext) {
-	var req maintenance.GetRecordRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	_, err := db.NewRepoDAO().FindByKey(req.GetRepoKey())
-	if err != nil {
-		response.NotFound(c, "repo not found")
-		return
-	}
-
-	record, err := db.NewMaintenanceDAO().FindByID(uint(req.GetId()))
-	if err != nil {
-		response.NotFound(c, "record not found")
-		return
-	}
-
-	response.Success(c, convertRecordToDTO(record))
+	handler.DoWithRepo(c,
+		func(req *maintenance.GetRecordRequest) string { return req.GetRepoKey() },
+		func(repo *po.Repo, req *maintenance.GetRecordRequest) (any, error) {
+			record, err := db.NewMaintenanceDAO().FindByID(uint(req.GetId()))
+			if err != nil {
+				return nil, handler.ErrNotFound("record not found")
+			}
+			return convertRecordToDTO(record), nil
+		},
+	)
 }
 
 func convertRecordToDTO(r *po.MaintenanceRecord) api.MaintenanceRecordDTO {

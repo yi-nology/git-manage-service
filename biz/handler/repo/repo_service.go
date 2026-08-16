@@ -18,6 +18,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/biz/service/stats"
 	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
+	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
@@ -157,39 +158,35 @@ func Get(ctx context.Context, c *app.RequestContext) {
 // Create .
 // @router /api/v1/repo/create [POST]
 func Create(ctx context.Context, c *app.RequestContext) {
-	var req api.RegisterRepoReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *api.RegisterRepoReq) (*repoModel.RepoDTO, error) {
+			gitSvc := git.NewGitService()
+			if !gitSvc.IsGitRepo(req.Path) {
+				return nil, handler.ErrBadRequest("path is not a valid git repository")
+			}
 
-	gitSvc := git.NewGitService()
-	if !gitSvc.IsGitRepo(req.Path) {
-		response.BadRequest(c, "path is not a valid git repository")
-		return
-	}
+			syncRemotes(req.Path, req.Remotes)
 
-	syncRemotes(req.Path, req.Remotes)
+			repo := po.Repo{
+				Key:                 uuid.New().String(),
+				Name:                req.Name,
+				Path:                req.Path,
+				RemoteURL:           req.RemoteURL,
+				AuthType:            req.AuthType,
+				AuthKey:             req.AuthKey,
+				AuthSecret:          req.AuthSecret,
+				RemoteAuths:         req.RemoteAuths,
+				DefaultCredentialID: req.DefaultCredentialID,
+				RemoteCredentials:   req.RemoteCredentials,
+			}
+			if err := db.NewRepoDAO().Create(&repo); err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
+			stats.StatsSvc.SyncRepoHeadStatsAsync(repo.ID, repo.Path)
 
-	repo := po.Repo{
-		Key:                 uuid.New().String(),
-		Name:                req.Name,
-		Path:                req.Path,
-		RemoteURL:           req.RemoteURL,
-		AuthType:            req.AuthType,
-		AuthKey:             req.AuthKey,
-		AuthSecret:          req.AuthSecret,
-		RemoteAuths:         req.RemoteAuths,
-		DefaultCredentialID: req.DefaultCredentialID,
-		RemoteCredentials:   req.RemoteCredentials,
-	}
-	if err := db.NewRepoDAO().Create(&repo); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-	stats.StatsSvc.SyncRepoHeadStatsAsync(repo.ID, repo.Path)
-
-	response.Success(c, toProtoRepo(repo))
+			return toProtoRepo(repo), nil
+		},
+	)
 }
 
 // Update .
@@ -305,26 +302,22 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 // Scan .
 // @router /api/v1/repo/scan [POST]
 func Scan(ctx context.Context, c *app.RequestContext) {
-	var req api.ScanRepoReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
+	handler.BindAndDo(c,
+		func(req *api.ScanRepoReq) (*domain.GitRepoConfig, error) {
+			gitSvc := git.NewGitService()
+			if !gitSvc.IsGitRepo(req.Path) {
+				return nil, handler.ErrBadRequest("path is not a valid git repository")
+			}
 
-	gitSvc := git.NewGitService()
-	if !gitSvc.IsGitRepo(req.Path) {
-		response.BadRequest(c, "path is not a valid git repository")
-		return
-	}
+			config, err := gitSvc.GetRepoConfig(req.Path)
+			if err != nil {
+				return nil, handler.ErrInternal(err.Error())
+			}
 
-	config, err := gitSvc.GetRepoConfig(req.Path)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	c.Set("audit_details", map[string]string{"path": req.Path})
-	response.Success(c, config)
+			c.Set("audit_details", map[string]string{"path": req.Path})
+			return config, nil
+		},
+	)
 }
 
 // ScanDirectory .
