@@ -6,8 +6,8 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
-	"github.com/yi-nology/git-manage-service/biz/model/po"
 	patchModel "github.com/yi-nology/git-manage-service/biz/model/patch"
+	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
@@ -161,7 +161,9 @@ func CheckPatch(ctx context.Context, c *app.RequestContext) {
 		func(req *struct {
 			RepoKey   string `json:"repo_key" form:"repo_key"`
 			PatchPath string `json:"patch_path" form:"patch_path"`
-		}) string { return req.RepoKey },
+		}) string {
+			return req.RepoKey
+		},
 		func(repo *po.Repo, req *struct {
 			RepoKey   string `json:"repo_key" form:"repo_key"`
 			PatchPath string `json:"patch_path" form:"patch_path"`
