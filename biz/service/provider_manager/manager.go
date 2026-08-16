@@ -3,6 +3,7 @@ package provider_manager
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	sdkprov "github.com/yi-nology/git-platform-sdk/provider"
 
@@ -15,31 +16,26 @@ var (
 	once     sync.Once
 )
 
+// ProviderManager wraps the SDK's caching Manager with DB-aware config
+// resolution. It maps configID → sdkprov.Config so that Invalidate() can
+// remove the correct cache entry.
 type ProviderManager struct {
-	mu    sync.RWMutex
-	cache map[uint]sdkprov.Provider
+	mgr     *sdkprov.Manager
+	configs map[uint]sdkprov.Config // configID → last known config
+	mu      sync.RWMutex
 }
 
 func GetManager() *ProviderManager {
 	once.Do(func() {
 		instance = &ProviderManager{
-			cache: make(map[uint]sdkprov.Provider),
+			mgr:     sdkprov.NewManager(30*time.Minute, sdkprov.WithMaxSize(200)),
+			configs: make(map[uint]sdkprov.Config),
 		}
 	})
 	return instance
 }
 
 func (m *ProviderManager) GetProvider(configID uint) (sdkprov.Provider, error) {
-	m.mu.RLock()
-	if p, ok := m.cache[configID]; ok {
-		m.mu.RUnlock()
-		return p, nil
-	}
-	m.mu.RUnlock()
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	dao := db.NewProviderConfigDAO()
 	cfg, err := dao.FindByID(configID)
 	if err != nil {
@@ -51,41 +47,36 @@ func (m *ProviderManager) GetProvider(configID uint) (sdkprov.Provider, error) {
 		return nil, fmt.Errorf("credential not found: %w", err)
 	}
 
-	p, err := newProvider(cfg, cred)
+	sdkCfg := sdkprov.Config{
+		Platform: sdkprov.Platform(cfg.Platform),
+		BaseURL:  cfg.BaseURL,
+		Token:    cred.Secret,
+		SkipTLS:  cfg.SkipTLS,
+	}
+
+	p, err := m.mgr.Get(sdkCfg)
 	if err != nil {
 		return nil, err
 	}
-	m.cache[configID] = p
+
+	// Store config mapping for invalidation.
+	m.mu.Lock()
+	m.configs[configID] = sdkCfg
+	m.mu.Unlock()
+
 	return p, nil
 }
 
 func (m *ProviderManager) Invalidate(configID uint) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.cache, configID)
-}
-
-func (m *ProviderManager) DetectAndCreate(remoteURL string, credentialID uint) (sdkprov.Provider, *sdkprov.DetectResult, error) {
-	result, err := sdkprov.DetectPlatform(remoteURL)
-	if err != nil {
-		return nil, nil, err
+	m.mu.RLock()
+	cfg, ok := m.configs[configID]
+	m.mu.RUnlock()
+	if ok {
+		m.mgr.Remove(cfg)
+		m.mu.Lock()
+		delete(m.configs, configID)
+		m.mu.Unlock()
 	}
-
-	cred, err := resolveCredential(credentialID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	p, err := sdkprov.NewProvider(sdkprov.Config{
-		Platform: result.Platform,
-		BaseURL:  result.BaseURL,
-		Token:    cred.Secret,
-		SkipTLS:  false,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	return p, result, nil
 }
 
 func resolveCredential(credentialID uint) (*po.Credential, error) {
@@ -105,13 +96,4 @@ func resolveCredential(credentialID uint) (*po.Credential, error) {
 	}
 
 	return cred, nil
-}
-
-func newProvider(cfg *po.ProviderConfig, cred *po.Credential) (sdkprov.Provider, error) {
-	return sdkprov.NewProvider(sdkprov.Config{
-		Platform: sdkprov.Platform(cfg.Platform),
-		BaseURL:  cfg.BaseURL,
-		Token:    cred.Secret,
-		SkipTLS:  cfg.SkipTLS,
-	})
 }
