@@ -1,9 +1,10 @@
 package rag
 
 import (
+	"cmp"
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -68,8 +69,8 @@ func (s *VectorStore) Search(repoKey string, query []float64, topK int, minScore
 		}
 	}
 
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Score > results[j].Score
+	slices.SortFunc(results, func(a, b *SearchResult) int {
+		return cmp.Compare(b.Score, a.Score)
 	})
 
 	if len(results) > topK {

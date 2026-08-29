@@ -1,7 +1,6 @@
 package mirror
 
 import (
-	"math"
 	"time"
 )
 
@@ -31,7 +30,10 @@ func (r *RetryStrategy) GetNextRetryDelay(retryCount int) time.Duration {
 	case 4:
 		return 2 * time.Hour
 	default:
-		return time.Duration(math.Pow(2, float64(retryCount))) * time.Hour
+		// 保留原有小时级指数阶梯；封顶 7 天并限制移位位数，
+		// 防止大 retryCount 时溢出为负的 Duration。
+		const maxDelay = 168 * time.Hour
+		return min((1<<uint(min(retryCount, 30)))*time.Hour, maxDelay)
 	}
 }
 

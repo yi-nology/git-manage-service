@@ -3,12 +3,14 @@ package syncv2
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	gitsync "github.com/yi-nology/git-sync-service/sync"
 	gitsyncmodel "github.com/yi-nology/git-sync-service/sync/model"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -125,12 +127,11 @@ func (s *SyncServiceV2) FindTaskByWebhookToken(ctx context.Context, token string
 	if err != nil {
 		return nil, err
 	}
-	for _, t := range tasks {
-		if t.WebhookToken == token {
-			return t, nil
-		}
+	i := slices.IndexFunc(tasks, func(t *gitsyncmodel.SyncTask) bool { return t.WebhookToken == token })
+	if i < 0 {
+		return nil, nil
 	}
-	return nil, nil
+	return tasks[i], nil
 }
 
 // CreateTask 创建任务
@@ -153,14 +154,16 @@ func (s *SyncServiceV2) RunTask(ctx context.Context, taskKey string) error {
 	return s.core.RunTask(ctx, taskKey)
 }
 
-// BatchRunTasks 批量运行任务
+// BatchRunTasks 批量运行任务，最多 8 个任务并发执行
 func (s *SyncServiceV2) BatchRunTasks(ctx context.Context, taskKeys []string) error {
+	g := new(errgroup.Group)
+	g.SetLimit(8)
 	for _, key := range taskKeys {
-		go func(k string) {
-			_ = s.core.RunTask(context.Background(), k)
-		}(key)
+		g.Go(func() error {
+			return s.core.RunTask(context.Background(), key)
+		})
 	}
-	return nil
+	return g.Wait()
 }
 
 // PreviewSync 预览同步

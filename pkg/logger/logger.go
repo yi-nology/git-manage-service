@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/sirupsen/logrus"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 var (
@@ -37,11 +38,11 @@ func Init(cfg *Config) {
 		// 设置日志格式
 		if cfg.Format == "json" {
 			log.SetFormatter(&logrus.JSONFormatter{
-				TimestampFormat: "2006-01-02 15:04:05",
+				TimestampFormat: timefmt.LayoutDateTime,
 			})
 		} else {
 			log.SetFormatter(&logrus.TextFormatter{
-				TimestampFormat: "2006-01-02 15:04:05",
+				TimestampFormat: timefmt.LayoutDateTime,
 				FullTimestamp:   true,
 			})
 		}

@@ -19,6 +19,7 @@ import (
 	specService "github.com/yi-nology/git-manage-service/biz/service/spec"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 type SpecConfigResponse struct {
@@ -701,39 +702,28 @@ func SaveSpecConfig(ctx context.Context, c *app.RequestContext) {
 }
 
 func buildSpecTree(repoPath string) ([]*spec.SpecFile, error) {
-	nodes := make(map[string]*spec.SpecFile)
-
-	err := filepath.Walk(repoPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() && info.Name() == ".git" {
-			return filepath.SkipDir
-		}
-
-		relPath, _ := filepath.Rel(repoPath, path)
-
-		if strings.HasSuffix(info.Name(), ".spec") || info.IsDir() {
-			name := info.Name()
-			p := relPath
-			isDir := info.IsDir()
-			size := info.Size()
-			modTime := info.ModTime().Format("2006-01-02T15:04:05Z")
-			nodes[relPath] = &spec.SpecFile{
-				Name:    &name,
-				Path:    &p,
-				IsDir:   &isDir,
-				Size:    &size,
-				ModTime: &modTime,
-			}
-		}
-
-		return nil
+	entries, err := specService.WalkSpecEntries(repoPath, specService.SpecWalkOptions{
+		IncludeDirs:    true,
+		SkipAnyGitPath: false,
 	})
-
 	if err != nil {
 		return nil, err
+	}
+
+	nodes := make(map[string]*spec.SpecFile, len(entries))
+	for _, e := range entries {
+		name := e.Name
+		p := e.Path
+		isDir := e.IsDir
+		size := e.Size
+		modTime := e.ModTime.Format(timefmt.LayoutAPITime)
+		nodes[e.Path] = &spec.SpecFile{
+			Name:    &name,
+			Path:    &p,
+			IsDir:   &isDir,
+			Size:    &size,
+			ModTime: &modTime,
+		}
 	}
 
 	childrenMap := make(map[string][]*spec.SpecFile)
@@ -800,7 +790,7 @@ func createDirChain(pathMap map[string]*spec.SpecFile, path string, repoPath str
 	name := filepath.Base(path)
 	p := path
 	isDir := true
-	modTime := info.ModTime().Format("2006-01-02T15:04:05Z")
+	modTime := info.ModTime().Format(timefmt.LayoutAPITime)
 	dir := &spec.SpecFile{
 		Name:    &name,
 		Path:    &p,

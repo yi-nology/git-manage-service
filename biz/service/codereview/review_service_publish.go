@@ -258,13 +258,6 @@ func runLLMReview(ctx context.Context, files []*FileDiff, repoName, owner, provi
 	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func isValidLLMFinding(files []*FileDiff, finding llm.LLMFinding) bool {
 	if finding.FilePath == "" {
 		return false

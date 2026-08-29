@@ -1,8 +1,9 @@
 package spec
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -212,29 +213,20 @@ func flushDeps(result *[]string, groups map[string][]string, order []string, cha
 }
 
 func sortUniq(items []string) []string {
-	seen := make(map[string]bool)
 	var result []string
 	for _, item := range items {
-		normalized := strings.TrimSpace(item)
-		if normalized == "" {
-			continue
-		}
-		if !seen[normalized] {
-			seen[normalized] = true
+		if normalized := strings.TrimSpace(item); normalized != "" {
 			result = append(result, normalized)
 		}
 	}
-	sort.Strings(result)
-	return result
+	slices.Sort(result)
+	return slices.Compact(result)
 }
 
 func isDepTag(line string) bool {
-	for _, prefix := range depTagPrefixes {
-		if strings.HasPrefix(line, prefix) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(depTagPrefixes, func(prefix string) bool {
+		return strings.HasPrefix(line, prefix)
+	})
 }
 
 func (f *SpecFormatter) normalizeDepOps(dep string) string {
@@ -312,18 +304,20 @@ func (f *SpecFormatter) orderPreamble(lines []string, changes *[]FormatChange) [
 		entries = append(entries, entry)
 	}
 
-	sort.SliceStable(entries, func(i, j int) bool {
-		a, b := entries[i], entries[j]
-		if a.isDefine != b.isDefine {
-			return a.isDefine
+	// rankTrueFirst orders true before false: %define/%global come first, then %bcond_.
+	rankTrueFirst := func(flag bool) int {
+		if flag {
+			return 0
 		}
-		if a.isBcond != b.isBcond {
-			return a.isBcond
-		}
-		if a.tagOrder != b.tagOrder {
-			return a.tagOrder < b.tagOrder
-		}
-		return a.original < b.original
+		return 1
+	}
+	slices.SortStableFunc(entries, func(a, b preambleEntry) int {
+		return cmp.Or(
+			cmp.Compare(rankTrueFirst(a.isDefine), rankTrueFirst(b.isDefine)),
+			cmp.Compare(rankTrueFirst(a.isBcond), rankTrueFirst(b.isBcond)),
+			cmp.Compare(a.tagOrder, b.tagOrder),
+			cmp.Compare(a.original, b.original),
+		)
 	})
 
 	reordered := false

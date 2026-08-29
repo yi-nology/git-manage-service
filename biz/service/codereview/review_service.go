@@ -22,6 +22,12 @@ import (
 
 var runningTasks sync.Map
 
+func runReviewAsync(taskID uint) {
+	go func() {
+		_ = RunReview(context.Background(), taskID)
+	}()
+}
+
 type reviewParams struct {
 	p          provider.Provider
 	owner      string
@@ -63,9 +69,7 @@ func CreateTask(ctx context.Context, repoKey string, providerConfigID uint, mrII
 		return nil, fmt.Errorf("failed to create review task: %w", err)
 	}
 
-	go func() {
-		_ = RunReview(context.Background(), task.ID)
-	}()
+	runReviewAsync(task.ID)
 
 	return task, nil
 }
@@ -94,9 +98,7 @@ func CreateTaskByProvider(ctx context.Context, providerConfigID uint, owner, rep
 		return nil, fmt.Errorf("failed to create review task: %w", err)
 	}
 
-	go func() {
-		_ = RunReview(context.Background(), task.ID)
-	}()
+	runReviewAsync(task.ID)
 
 	return task, nil
 }
@@ -135,9 +137,7 @@ func RetryTask(ctx context.Context, id uint, owner, repo string) (*po.ReviewTask
 		return nil, fmt.Errorf("failed to update task: %w", err)
 	}
 
-	go func() {
-		_ = RunReview(context.Background(), id)
-	}()
+	runReviewAsync(id)
 
 	return task, nil
 }
@@ -182,8 +182,7 @@ func RunReview(ctx context.Context, taskID uint) (retErr error) {
 	}
 	broadcastReviewStatus(task, repoKey, "running")
 
-	params, err := resolveReviewParams(task)
-	if err != nil {
+	failTask := func(err error) error {
 		task.Status = "failed"
 		task.ErrorMessage = err.Error()
 		taskDAO.Save(task)
@@ -191,13 +190,14 @@ func RunReview(ctx context.Context, taskID uint) (retErr error) {
 		return err
 	}
 
+	params, err := resolveReviewParams(task)
+	if err != nil {
+		return failTask(err)
+	}
+
 	result, rawDiff, err := executeReview(ctx, task, params, taskDAO)
 	if err != nil {
-		task.Status = "failed"
-		task.ErrorMessage = err.Error()
-		taskDAO.Save(task)
-		broadcastReviewStatus(task, repoKey, "failed")
-		return err
+		return failTask(err)
 	}
 
 	finalizeReview(ctx, task, result, rawDiff, params, taskDAO, repoKey)
@@ -205,6 +205,12 @@ func RunReview(ctx context.Context, taskID uint) (retErr error) {
 }
 
 func resolveReviewParams(task *po.ReviewTask) (*reviewParams, error) {
+	if task.RepoID == 0 && task.ProviderConfigID == 0 {
+		return nil, fmt.Errorf("task %d has no repo_id and no provider_config_id", task.ID)
+	}
+
+	var owner, name, repoKey string
+	var repoID uint
 	if task.RepoID > 0 {
 		repo, err := db.NewRepoDAO().FindByID(task.RepoID)
 		if err != nil {
@@ -213,36 +219,28 @@ func resolveReviewParams(task *po.ReviewTask) (*reviewParams, error) {
 		if repo.PlatformOwner == "" || repo.PlatformRepo == "" {
 			return nil, fmt.Errorf("repo %d missing platform owner/repo", task.RepoID)
 		}
-		p, err := provider_manager.GetManager().GetProvider(task.ProviderConfigID)
-		if err != nil {
-			return nil, fmt.Errorf("provider not found: %w", err)
-		}
-		return &reviewParams{
-			p: p, owner: repo.PlatformOwner, repo: repo.PlatformRepo,
-			repoKey: repo.Key, repoID: repo.ID, providerID: task.ProviderConfigID,
-		}, nil
+		owner, name, repoKey, repoID = repo.PlatformOwner, repo.PlatformRepo, repo.Key, repo.ID
+	} else {
+		owner, name = task.PlatformOwner, task.PlatformRepo
 	}
 
-	if task.ProviderConfigID == 0 {
-		return nil, fmt.Errorf("task %d has no repo_id and no provider_config_id", task.ID)
-	}
 	p, err := provider_manager.GetManager().GetProvider(task.ProviderConfigID)
 	if err != nil {
 		return nil, fmt.Errorf("provider not found: %w", err)
 	}
 	return &reviewParams{
-		p: p, owner: task.PlatformOwner, repo: task.PlatformRepo,
-		repoKey: "", repoID: 0, providerID: task.ProviderConfigID,
+		p: p, owner: owner, repo: name,
+		repoKey: repoKey, repoID: repoID, providerID: task.ProviderConfigID,
 	}, nil
 }
 
 func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParams, taskDAO *db.ReviewTaskDAO) (*AggregatedResult, string, error) {
 	var processLog []*ProcessStep
-	processLog = append(processLog, &ProcessStep{
-		Name:   "Resolve Provider",
-		Status: "ok",
-		Detail: fmt.Sprintf("owner=%s, repo=%s", params.owner, params.repo),
-	})
+	addStep := func(name, status, detail string) {
+		processLog = append(processLog, &ProcessStep{Name: name, Status: status, Detail: detail})
+	}
+
+	addStep("Resolve Provider", "ok", fmt.Sprintf("owner=%s, repo=%s", params.owner, params.repo))
 
 	mergeDiff, err := params.p.GetCRDiff(ctx, params.owner, params.repo, task.MRIID)
 	if err != nil {
@@ -253,25 +251,13 @@ func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParam
 	}
 	rawDiff := mergeDiff.RawDiff
 
-	processLog = append(processLog, &ProcessStep{
-		Name:   "Fetch Diff",
-		Status: "ok",
-		Detail: fmt.Sprintf("fetched %d changed files from remote, RawDiff length=%d", len(mergeDiff.Files), len(mergeDiff.RawDiff)),
-	})
+	addStep("Fetch Diff", "ok", fmt.Sprintf("fetched %d changed files from remote, RawDiff length=%d", len(mergeDiff.Files), len(mergeDiff.RawDiff)))
 
 	files := ParseDiff(mergeDiff.RawDiff)
 	if len(files) == 0 && len(mergeDiff.Files) > 0 {
-		processLog = append(processLog, &ProcessStep{
-			Name:   "Parse Diff",
-			Status: "warn",
-			Detail: fmt.Sprintf("ParseDiff(RawDiff) returned 0 files, but provider reported %d files; RawDiff may be empty or unsupported format", len(mergeDiff.Files)),
-		})
+		addStep("Parse Diff", "warn", fmt.Sprintf("ParseDiff(RawDiff) returned 0 files, but provider reported %d files; RawDiff may be empty or unsupported format", len(mergeDiff.Files)))
 	} else {
-		processLog = append(processLog, &ProcessStep{
-			Name:   "Parse Diff",
-			Status: "ok",
-			Detail: fmt.Sprintf("parsed %d files from diff", len(files)),
-		})
+		addStep("Parse Diff", "ok", fmt.Sprintf("parsed %d files from diff", len(files)))
 	}
 
 	ruleCtx := &RuleContext{
@@ -286,29 +272,18 @@ func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParam
 	var allFindings []*Finding
 	enabledIDs, _ := db.NewReviewRuleDAO().FindEnabledIDs()
 	for _, rule := range GetRules() {
+		name := fmt.Sprintf("Rule: %s", rule.ID())
 		if enabledIDs != nil && !enabledIDs[rule.ID()] {
-			processLog = append(processLog, &ProcessStep{
-				Name:   fmt.Sprintf("Rule: %s", rule.ID()),
-				Status: "skip",
-				Detail: "disabled in settings",
-			})
+			addStep(name, "skip", "disabled in settings")
 			continue
 		}
 		findings, rErr := rule.Check(ruleCtx)
 		if rErr != nil {
 			logger.ErrorWithErr("Rule check failed", rErr, logrus.Fields{"rule": rule.ID()})
-			processLog = append(processLog, &ProcessStep{
-				Name:   fmt.Sprintf("Rule: %s", rule.ID()),
-				Status: "error",
-				Detail: rErr.Error(),
-			})
+			addStep(name, "error", rErr.Error())
 			continue
 		}
-		processLog = append(processLog, &ProcessStep{
-			Name:   fmt.Sprintf("Rule: %s", rule.ID()),
-			Status: "ok",
-			Detail: fmt.Sprintf("%d findings", len(findings)),
-		})
+		addStep(name, "ok", fmt.Sprintf("%d findings", len(findings)))
 		allFindings = append(allFindings, findings...)
 	}
 
@@ -316,11 +291,7 @@ func executeReview(ctx context.Context, task *po.ReviewTask, params *reviewParam
 
 	var llmFindings []*Finding
 	if len(files) == 0 {
-		processLog = append(processLog, &ProcessStep{
-			Name:   "LLM Review",
-			Status: "skip",
-			Detail: "skipped: no diff files to review",
-		})
+		addStep("LLM Review", "skip", "skipped: no diff files to review")
 	} else {
 		var llmStep *ProcessStep
 		llmFindings, llmStep = runLLMReview(ctx, files, params.repo, params.owner, cfg.LLMProvider, params.repoID, resolveRepoConfig(params))

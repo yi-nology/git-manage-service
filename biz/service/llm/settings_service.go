@@ -10,6 +10,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	settingsModel "github.com/yi-nology/git-manage-service/biz/model/settings"
 	servicePkg "github.com/yi-nology/git-manage-service/pkg/service"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 	"gorm.io/gorm"
 )
 
@@ -209,8 +210,8 @@ func convertToProtoLLMProvider(p *po.LLMProvider) *settingsModel.LLMProviderInfo
 		EmbeddingModel: p.EmbeddingModel,
 		PresetId:       p.PresetID,
 		Protocol:       p.Protocol,
-		CreatedAt:      p.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:      p.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt:      p.CreatedAt.Format(timefmt.LayoutAPITime),
+		UpdatedAt:      p.UpdatedAt.Format(timefmt.LayoutAPITime),
 	}
 }
 

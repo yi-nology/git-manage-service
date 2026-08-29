@@ -1,13 +1,16 @@
 package git
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
+
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 // PatchInfo patch 文件信息
@@ -159,14 +162,14 @@ func (s *GitService) ListPatches(path string) ([]PatchInfo, error) {
 			Name:     entry.Name(),
 			Path:     filepath.Join(patchesDir, entry.Name()),
 			Size:     info.Size(),
-			ModTime:  info.ModTime().Format("2006-01-02 15:04:05"),
+			ModTime:  info.ModTime().Format(timefmt.LayoutDateTime),
 			Sequence: sequence,
 		})
 	}
 
 	// 按序号排序
-	sort.Slice(patches, func(i, j int) bool {
-		return patches[i].Sequence < patches[j].Sequence
+	slices.SortFunc(patches, func(a, b PatchInfo) int {
+		return cmp.Compare(a.Sequence, b.Sequence)
 	})
 
 	// 标记已应用的 patch

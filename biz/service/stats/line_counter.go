@@ -2,12 +2,13 @@ package stats
 
 import (
 	"bufio"
+	"cmp"
 	"crypto/md5"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -127,8 +128,8 @@ func (lc *LineCounter) computeStats(repoPath string, config CountConfig, cacheKe
 	}
 
 	// 按代码行数排序
-	sort.Slice(languages, func(i, j int) bool {
-		return languages[i].Code > languages[j].Code
+	slices.SortFunc(languages, func(a, b *api.LanguageStat) int {
+		return cmp.Compare(b.Code, a.Code)
 	})
 
 	response := &api.LineStatsResponse{

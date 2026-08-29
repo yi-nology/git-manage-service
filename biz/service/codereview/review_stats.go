@@ -1,10 +1,12 @@
 package codereview
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 func GetReviewStats(repoID uint, period string) map[string]interface{} {
@@ -50,7 +52,7 @@ func GetReviewStats(repoID uint, period string) map[string]interface{} {
 		}
 		riskCounts[t.RiskLevel]++
 
-		day := t.CreatedAt.Format("2006-01-02")
+		day := t.CreatedAt.Format(timefmt.LayoutDate)
 		bucket := dailyData[day]
 		if bucket == nil {
 			bucket = &dayBucket{Date: day}
@@ -116,7 +118,7 @@ func parsePeriod(period string) time.Time {
 func sortedDailyTrend(data map[string]*dayBucket, since time.Time) []map[string]interface{} {
 	result := make([]map[string]interface{}, 0)
 	for d := since; !d.After(time.Now()); d = d.AddDate(0, 0, 1) {
-		key := d.Format("2006-01-02")
+		key := d.Format(timefmt.LayoutDate)
 		bucket := data[key]
 		if bucket == nil {
 			result = append(result, map[string]interface{}{
@@ -146,7 +148,7 @@ func topN(m map[string]int, n int) []map[string]interface{} {
 	for k, v := range m {
 		sorted = append(sorted, kv{k, v})
 	}
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Value > sorted[j].Value })
+	slices.SortFunc(sorted, func(a, b kv) int { return cmp.Compare(b.Value, a.Value) })
 	if len(sorted) > n {
 		sorted = sorted[:n]
 	}

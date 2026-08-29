@@ -2,6 +2,7 @@ package codereview
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
@@ -75,14 +76,7 @@ func findLinkedRepos(providerConfigID uint, platformOwner, platformRepo string) 
 	allBindings, _ := bindingDAO.FindByProviderConfigID(providerConfigID)
 	for _, b := range allBindings {
 		if b.PlatformOwner == platformOwner && b.PlatformRepo == platformRepo && b.RepoID > 0 {
-			exists := false
-			for _, r := range repos {
-				if r.ID == b.RepoID {
-					exists = true
-					break
-				}
-			}
-			if !exists {
+			if !slices.ContainsFunc(repos, func(r api.LinkedRepoDTO) bool { return r.ID == b.RepoID }) {
 				repoDAO := db.NewRepoDAO()
 				if r, err := repoDAO.FindByID(b.RepoID); err == nil {
 					repos = append(repos, api.LinkedRepoDTO{ID: r.ID, Key: r.Key, Name: r.Name})

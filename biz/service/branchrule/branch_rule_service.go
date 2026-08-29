@@ -3,6 +3,7 @@ package branchrule
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
@@ -131,14 +132,7 @@ func ValidateBranchName(repoKey, branchName, baseRef string, skipRules bool) (*s
 		}
 
 		if baseRef != "" && len(rule.GetSourceBranches()) > 0 {
-			baseMatch := false
-			for _, src := range rule.GetSourceBranches() {
-				if baseRef == src {
-					baseMatch = true
-					break
-				}
-			}
-			if !baseMatch {
+			if !slices.Contains(rule.GetSourceBranches(), baseRef) {
 				return &settingsModel.ValidateBranchNameResponse{
 					Valid:   false,
 					Message: fmt.Sprintf("%s 分支应来源于 %s，当前来源为 %s", rule.Prefix, strings.Join(rule.GetSourceBranches(), "/"), baseRef),

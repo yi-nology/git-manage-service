@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
@@ -311,7 +312,7 @@ func timePtr(t time.Time) *time.Time {
 }
 
 func generateToken() string {
-	return fmt.Sprintf("mirror_%d_%d", time.Now().UnixNano(), time.Now().Nanosecond())
+	return uuid.NewString()
 }
 
 func analyzeRemote(ctx context.Context, backend gitbackend.GitBackend, remoteURL string) (*AnalyzeResult, error) {

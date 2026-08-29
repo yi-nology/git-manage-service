@@ -2,10 +2,11 @@ package stats
 
 import (
 	"bufio"
+	"cmp"
 	"fmt"
 	"log"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 type StatsStatus string
@@ -222,8 +224,8 @@ func (s *StatsService) ParseCommits(raw string) []domain.Commit {
 	}
 
 	// Sort by Timestamp Descending (Newest First)
-	sort.Slice(commits, func(i, j int) bool {
-		return commits[i].Timestamp > commits[j].Timestamp
+	slices.SortFunc(commits, func(a, b domain.Commit) int {
+		return cmp.Compare(b.Timestamp, a.Timestamp)
 	})
 
 	return commits
@@ -297,10 +299,10 @@ func (s *StatsService) calculateStatsFast(path, branch, since, until, cacheKey s
 	// Parse dates
 	var sinceTime, untilTime time.Time
 	if since != "" {
-		sinceTime, _ = time.Parse("2006-01-02", since)
+		sinceTime, _ = time.Parse(timefmt.LayoutDate, since)
 	}
 	if until != "" {
-		untilTime, _ = time.Parse("2006-01-02", until)
+		untilTime, _ = time.Parse(timefmt.LayoutDate, until)
 		// Set until to end of day
 		untilTime = untilTime.Add(24*time.Hour - time.Nanosecond)
 	}
@@ -400,7 +402,7 @@ func (s *StatsService) calculateStatsFast(path, branch, since, until, cacheKey s
 		stat.TotalLines += (added - deleted)
 		stat.FileTypes[ext] += (added - deleted)
 
-		dateStr := currentDate.Format("2006-01-02")
+		dateStr := currentDate.Format(timefmt.LayoutDate)
 		stat.TimeTrend[dateStr] += (added - deleted)
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 // ListDBSSHKeys .
@@ -33,8 +34,8 @@ func ListDBSSHKeys(ctx context.Context, c *app.RequestContext) {
 			PublicKey:     key.PublicKey,
 			KeyType:       key.KeyType,
 			HasPassphrase: key.HasPassphraseSet(),
-			CreatedAt:     key.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     key.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			CreatedAt:     key.CreatedAt.Format(timefmt.LayoutAPITime),
+			UpdatedAt:     key.UpdatedAt.Format(timefmt.LayoutAPITime),
 		})
 	}
 
@@ -97,8 +98,8 @@ func CreateDBSSHKey(ctx context.Context, c *app.RequestContext) {
 			PublicKey:     sshKey.PublicKey,
 			KeyType:       sshKey.KeyType,
 			HasPassphrase: sshKey.HasPassphraseSet(),
-			CreatedAt:     sshKey.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     sshKey.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			CreatedAt:     sshKey.CreatedAt.Format(timefmt.LayoutAPITime),
+			UpdatedAt:     sshKey.UpdatedAt.Format(timefmt.LayoutAPITime),
 		}, nil
 	})
 }
@@ -120,8 +121,8 @@ func GetDBSSHKey(ctx context.Context, c *app.RequestContext) {
 			PublicKey:     key.PublicKey,
 			KeyType:       key.KeyType,
 			HasPassphrase: key.HasPassphraseSet(),
-			CreatedAt:     key.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     key.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			CreatedAt:     key.CreatedAt.Format(timefmt.LayoutAPITime),
+			UpdatedAt:     key.UpdatedAt.Format(timefmt.LayoutAPITime),
 		}, nil
 	})
 }
@@ -171,8 +172,8 @@ func UpdateDBSSHKey(ctx context.Context, c *app.RequestContext) {
 			PublicKey:     key.PublicKey,
 			KeyType:       key.KeyType,
 			HasPassphrase: key.HasPassphraseSet(),
-			CreatedAt:     key.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     key.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			CreatedAt:     key.CreatedAt.Format(timefmt.LayoutAPITime),
+			UpdatedAt:     key.UpdatedAt.Format(timefmt.LayoutAPITime),
 		}, nil
 	})
 }

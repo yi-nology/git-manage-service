@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -92,8 +92,8 @@ func ListDirs(ctx context.Context, c *app.RequestContext) {
 				}
 			}
 
-			sort.Slice(dirs, func(i, j int) bool {
-				return dirs[i].Name < dirs[j].Name
+			slices.SortFunc(dirs, func(a, b *systemModel.DirEntry) int {
+				return strings.Compare(a.Name, b.Name)
 			})
 
 			parent := filepath.Dir(currentPath)

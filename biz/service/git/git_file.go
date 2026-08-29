@@ -3,11 +3,13 @@
 package git
 
 import (
+	"bytes"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"unicode/utf8"
 )
@@ -105,11 +107,14 @@ func (s *GitService) GetWorktree(repoPath, dirPath string) ([]TreeEntry, error) 
 		}
 	}
 
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].Type != result[j].Type {
-			return result[i].Type == "dir"
+	dirRank := func(t string) int {
+		if t == "dir" {
+			return 0
 		}
-		return result[i].Name < result[j].Name
+		return 1
+	}
+	slices.SortFunc(result, func(a, b TreeEntry) int {
+		return cmp.Or(cmp.Compare(dirRank(a.Type), dirRank(b.Type)), strings.Compare(a.Name, b.Name))
 	})
 
 	return result, nil
@@ -184,12 +189,7 @@ func (s *GitService) GetFileHistory(repoPath, ref, filePath string, limit int) (
 
 // containsNullByte 检查是否包含空字节
 func containsNullByte(data []byte) bool {
-	for _, b := range data {
-		if b == 0 {
-			return true
-		}
-	}
-	return false
+	return bytes.IndexByte(data, 0) >= 0
 }
 
 // getMimeType 根据文件扩展名获取MIME类型

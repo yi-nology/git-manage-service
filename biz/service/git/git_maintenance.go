@@ -1,12 +1,14 @@
 package git
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -247,15 +249,15 @@ func (s *MaintenanceService) FindLargeFiles(repoPath string, threshold int64) ([
 	for path, shas := range fileBlobs {
 		var maxSz int64
 		for _, sha := range shas {
-			if sz, ok := blobSize[sha]; ok && sz > maxSz {
-				maxSz = sz
+			if sz, ok := blobSize[sha]; ok {
+				maxSz = max(maxSz, sz)
 			}
 		}
 		if maxSz >= threshold {
 			stats = append(stats, fileStat{path: path, maxSize: maxSz, count: len(shas)})
 		}
 	}
-	sort.Slice(stats, func(i, j int) bool { return stats[i].maxSize > stats[j].maxSize })
+	slices.SortFunc(stats, func(a, b fileStat) int { return cmp.Compare(b.maxSize, a.maxSize) })
 	if len(stats) > 50 {
 		stats = stats[:50]
 	}
@@ -836,11 +838,15 @@ func appendToGitignore(repoPath string, paths []string) error {
 
 func dirSize(path string) (int64, error) {
 	var size int64
-	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(path, func(_ string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() {
+		if !d.IsDir() {
+			info, infoErr := d.Info()
+			if infoErr != nil {
+				return infoErr
+			}
 			size += info.Size()
 		}
 		return nil
@@ -889,14 +895,9 @@ func (s *MaintenanceService) FindByPrefix(repoPath string, prefixes []string) ([
 		}
 		sha := fields[0]
 		path := fields[1]
-		matched := false
-		for _, prefix := range prefixes {
-			if strings.HasPrefix(path, prefix) {
-				matched = true
-				break
-			}
-		}
-		if !matched {
+		if !slices.ContainsFunc(prefixes, func(prefix string) bool {
+			return strings.HasPrefix(path, prefix)
+		}) {
 			continue
 		}
 		size, ok := blobSize[sha]
@@ -926,8 +927,8 @@ func (s *MaintenanceService) FindByPrefix(repoPath string, prefixes []string) ([
 		})
 	}
 
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].SizeBytes > result[j].SizeBytes
+	slices.SortFunc(result, func(a, b api.PrefixFileEntry) int {
+		return cmp.Compare(b.SizeBytes, a.SizeBytes)
 	})
 
 	return result, nil

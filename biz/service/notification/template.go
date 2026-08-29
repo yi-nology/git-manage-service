@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/model/po"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 // TemplateData 模板变量数据
@@ -130,7 +131,7 @@ func RenderTitleAndContent(titleTmpl, contentTmpl string, data *TemplateData) (t
 // fillDefaults 填充 TemplateData 的默认值
 func fillDefaults(data *TemplateData) {
 	if data.Timestamp == "" {
-		data.Timestamp = time.Now().Format("2006-01-02 15:04:05")
+		data.Timestamp = time.Now().Format(timefmt.LayoutDateTime)
 	}
 
 	if data.StatusText == "" {

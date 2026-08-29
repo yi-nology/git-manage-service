@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 type BlameLineInfo struct {
@@ -111,14 +113,14 @@ func (lc *LineCounter) shouldCountLine(info *BlameLineInfo, config CountConfig) 
 	}
 
 	if config.Since != "" {
-		sinceTime, err := time.Parse("2006-01-02", config.Since)
+		sinceTime, err := time.Parse(timefmt.LayoutDate, config.Since)
 		if err == nil && info.Timestamp < sinceTime.Unix() {
 			return false
 		}
 	}
 
 	if config.Until != "" {
-		untilTime, err := time.Parse("2006-01-02", config.Until)
+		untilTime, err := time.Parse(timefmt.LayoutDate, config.Until)
 		if err == nil {
 			untilTime = untilTime.Add(24 * time.Hour)
 			if info.Timestamp >= untilTime.Unix() {

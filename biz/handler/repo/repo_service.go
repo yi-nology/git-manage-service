@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -20,7 +21,7 @@ import (
 	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 // describeScannedRepo builds a ScannedRepo with git metadata (remotes, branch,
@@ -63,14 +64,7 @@ func syncRemotes(repoPath string, remotes []domain.GitRemote) {
 		return
 	}
 	for _, existing := range existingConfig.Remotes {
-		found := false
-		for _, r := range remotes {
-			if r.Name == existing.Name {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.ContainsFunc(remotes, func(r domain.GitRemote) bool { return r.Name == existing.Name }) {
 			gitSvc.RemoveRemote(repoPath, existing.Name)
 		}
 	}
@@ -105,8 +99,8 @@ func toProtoRepo(r po.Repo) *repoModel.RepoDTO {
 		PlatformRepoId:      r.PlatformRepoID,
 		PlatformOwner:       r.PlatformOwner,
 		PlatformRepo:        r.PlatformRepo,
-		CreatedAt:           r.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:           r.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt:           r.CreatedAt.Format(timefmt.LayoutAPITime),
+		UpdatedAt:           r.UpdatedAt.Format(timefmt.LayoutAPITime),
 	}
 }
 
@@ -596,34 +590,15 @@ func Fetch(ctx context.Context, c *app.RequestContext) {
 					continue
 				}
 
-				authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
-					repo.RemoteCredentials,
-					repo.DefaultCredentialID,
-					nil,
-					remoteName,
-					"", "", "",
-				)
-
-				if resolveErr != nil {
-					errors = append(errors, fmt.Sprintf("%s: failed to resolve auth: %v", remoteName, resolveErr))
+				authPlan, prepErr := git.PrepareRemoteAuth(authSvc, repo.RemoteCredentials, repo.DefaultCredentialID, remoteName)
+				if prepErr != nil {
+					errors = append(errors, fmt.Sprintf("%s: %v", remoteName, prepErr))
 					continue
 				}
 
 				var fetchErr error
-				if isDBKey {
-					credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, remoteName)
-					if credID > 0 {
-						privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
-						if keyErr != nil {
-							errors = append(errors, fmt.Sprintf("%s: failed to load SSH key: %v", remoteName, keyErr))
-							continue
-						}
-						fetchErr = gitSvc.FetchWithDBKey(repo.Path, remoteURL, privateKey, passphrase, nil)
-					} else {
-						fetchErr = gitSvc.Fetch(repo.Path, remoteName, nil)
-					}
-				} else if authMethod.Type != gitbackend.AuthNone {
-					fetchErr = gitSvc.Fetch(repo.Path, remoteName, nil)
+				if authPlan.HasDBKeyContent() {
+					fetchErr = gitSvc.FetchWithDBKey(repo.Path, remoteURL, authPlan.PrivateKey, authPlan.Passphrase, nil)
 				} else {
 					fetchErr = gitSvc.Fetch(repo.Path, remoteName, nil)
 				}

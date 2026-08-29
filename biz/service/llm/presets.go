@@ -1,5 +1,7 @@
 package llm
 
+import "slices"
+
 type ModelOption struct {
 	ID          string `json:"id"`
 	DisplayName string `json:"display_name"`
@@ -297,10 +299,8 @@ func GetPresetsByCategory(category string) []ProviderPreset {
 }
 
 func GetPresetByID(id string) *ProviderPreset {
-	for i := range Presets {
-		if Presets[i].ID == id {
-			return &Presets[i]
-		}
+	if i := slices.IndexFunc(Presets, func(p ProviderPreset) bool { return p.ID == id }); i >= 0 {
+		return &Presets[i]
 	}
 	return nil
 }

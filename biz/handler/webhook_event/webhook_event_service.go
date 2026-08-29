@@ -11,6 +11,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/webhookevent"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 func List(ctx context.Context, c *app.RequestContext) {
@@ -96,8 +97,8 @@ func toRuleDTO(r *po.WebhookRule) webhookRuleDTO {
 		Action:           r.Action,
 		ActionConfig:     r.ActionConfig,
 		Enabled:          r.Enabled,
-		CreatedAt:        r.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:        r.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt:        r.CreatedAt.Format(timefmt.LayoutAPITime),
+		UpdatedAt:        r.UpdatedAt.Format(timefmt.LayoutAPITime),
 	}
 }
 

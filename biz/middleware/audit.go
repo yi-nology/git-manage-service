@@ -267,6 +267,17 @@ func applyNamedPattern(path, prefix, repl string, whole bool) string {
 	return prefix + repl + subPath
 }
 
+// targetSourceExtractors maps a cfg.TargetSource prefix to the function
+// reading the field value from that source. The four sources were previously
+// an identical-shaped switch: trim the prefix, read the field as a string,
+// and fall back to TargetType + ":unknown" when empty.
+var targetSourceExtractors = map[string]func(*app.RequestContext, string) string{
+	"body:":     extractFromBody,
+	"query:":    (*app.RequestContext).Query,
+	"param:":    (*app.RequestContext).Param,
+	"response:": extractFromResponse,
+}
+
 func extractTarget(c *app.RequestContext, cfg *AuditConfig) string {
 	if t, ok := c.Get("audit_target"); ok {
 		if s, ok := t.(string); ok && s != "" {
@@ -274,34 +285,15 @@ func extractTarget(c *app.RequestContext, cfg *AuditConfig) string {
 		}
 	}
 
-	switch {
-	case strings.HasPrefix(cfg.TargetSource, "body:"):
-		field := strings.TrimPrefix(cfg.TargetSource, "body:")
-		val := extractFromBody(c, field)
-		if val != "" {
+	for prefix, fetch := range targetSourceExtractors {
+		if !strings.HasPrefix(cfg.TargetSource, prefix) {
+			continue
+		}
+		field := strings.TrimPrefix(cfg.TargetSource, prefix)
+		if val := fetch(c, field); val != "" {
 			return cfg.TargetType + ":" + val
 		}
-
-	case strings.HasPrefix(cfg.TargetSource, "query:"):
-		field := strings.TrimPrefix(cfg.TargetSource, "query:")
-		val := c.Query(field)
-		if val != "" {
-			return cfg.TargetType + ":" + val
-		}
-
-	case strings.HasPrefix(cfg.TargetSource, "param:"):
-		field := strings.TrimPrefix(cfg.TargetSource, "param:")
-		val := c.Param(field)
-		if val != "" {
-			return cfg.TargetType + ":" + val
-		}
-
-	case strings.HasPrefix(cfg.TargetSource, "response:"):
-		field := strings.TrimPrefix(cfg.TargetSource, "response:")
-		val := extractFromResponse(c, field)
-		if val != "" {
-			return cfg.TargetType + ":" + val
-		}
+		break // prefix matched but value missing — same fallback as before
 	}
 
 	return cfg.TargetType + ":unknown"

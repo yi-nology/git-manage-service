@@ -18,6 +18,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/rag"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 var repoKeyPattern = regexp.MustCompile(`^[a-zA-Z0-9._/\-]{1,255}$`)
@@ -83,8 +84,8 @@ func convertToProtoReviewTask(dto api.ReviewTaskDTO) *reviewModel.ReviewTask {
 		RiskLevel:        dto.RiskLevel,
 		Summary:          dto.Summary,
 		ErrorMessage:     dto.ErrorMessage,
-		CreatedAt:        dto.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:        dto.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt:        dto.CreatedAt.Format(timefmt.LayoutAPITime),
+		UpdatedAt:        dto.UpdatedAt.Format(timefmt.LayoutAPITime),
 	}
 }
 

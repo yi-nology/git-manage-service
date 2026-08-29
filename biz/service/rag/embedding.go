@@ -248,10 +248,7 @@ func (c *EmbeddingClient) Model() string {
 }
 
 func truncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen]
+	return s[:min(len(s), maxLen)]
 }
 
 func init() {

@@ -13,6 +13,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 	"github.com/yi-nology/git-platform-sdk/provider"
 )
 
@@ -25,8 +26,8 @@ func toProtoProviderConfig(cfg *po.ProviderConfig) *providerModel.ProviderConfig
 		CredentialId:  uint64(cfg.CredentialID),
 		WebhookSecret: cfg.WebhookSecret,
 		SkipTls:       cfg.SkipTLS,
-		CreatedAt:     cfg.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:     cfg.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt:     cfg.CreatedAt.Format(timefmt.LayoutAPITime),
+		UpdatedAt:     cfg.UpdatedAt.Format(timefmt.LayoutAPITime),
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	notificationSvc "github.com/yi-nology/git-manage-service/biz/service/notification"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 	"gorm.io/gorm"
 )
 
@@ -36,8 +37,8 @@ func channelToProto(ch *po.NotificationChannel) *notification.NotificationChanne
 		TriggerEvents:   ch.TriggerEvents,
 		TitleTemplate:   ch.TitleTemplate,
 		ContentTemplate: ch.ContentTemplate,
-		CreatedAt:       ch.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt:       ch.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt:       ch.CreatedAt.Format(timefmt.LayoutDateTime),
+		UpdatedAt:       ch.UpdatedAt.Format(timefmt.LayoutDateTime),
 	}
 
 	// 查询该渠道的事件模板并序列化为 JSON

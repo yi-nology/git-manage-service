@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,11 +110,11 @@ func (l *LocalStorage) ListObjects(ctx context.Context, bucket, prefix string) (
 	bucketDir := l.bucketPath(bucket)
 	var objects []ObjectInfo
 
-	err := filepath.Walk(bucketDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(bucketDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
+		if d.IsDir() {
 			return nil
 		}
 
@@ -130,6 +131,10 @@ func (l *LocalStorage) ListObjects(ctx context.Context, bucket, prefix string) (
 			return nil
 		}
 
+		info, infoErr := d.Info()
+		if infoErr != nil {
+			return infoErr
+		}
 		objects = append(objects, ObjectInfo{
 			Key:          relPath,
 			Size:         info.Size(),

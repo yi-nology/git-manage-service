@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 type SpecService struct{}
@@ -16,35 +18,26 @@ func NewSpecService() *SpecService {
 }
 
 func (s *SpecService) ListSpecFiles(repoPath string) ([]SpecFileInfo, error) {
-	var files []SpecFileInfo
-
-	err := filepath.Walk(repoPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if strings.Contains(path, ".git") {
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		if !info.IsDir() && strings.HasSuffix(info.Name(), ".spec") {
-			relPath, _ := filepath.Rel(repoPath, path)
-			files = append(files, SpecFileInfo{
-				Name:    info.Name(),
-				Path:    relPath,
-				IsDir:   false,
-				Size:    info.Size(),
-				ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
-			})
-		}
-
-		return nil
+	entries, err := WalkSpecEntries(repoPath, SpecWalkOptions{
+		IncludeDirs:    false,
+		SkipAnyGitPath: true,
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return files, err
+	var files []SpecFileInfo
+	for _, e := range entries {
+		files = append(files, SpecFileInfo{
+			Name:    e.Name,
+			Path:    e.Path,
+			IsDir:   e.IsDir,
+			Size:    e.Size,
+			ModTime: e.ModTime.Format(timefmt.LayoutAPITime),
+		})
+	}
+
+	return files, nil
 }
 
 // resolveInRepo joins repoPath with a user-supplied relative path and rejects

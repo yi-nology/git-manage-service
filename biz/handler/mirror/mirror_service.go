@@ -12,6 +12,7 @@ import (
 	mirrorSvc "github.com/yi-nology/git-manage-service/biz/service/mirror"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 func getMirrorService() *mirrorSvc.MirrorService {
@@ -37,8 +38,8 @@ func convertToProtoMirror(m po.Mirror) *mirrorModel.Mirror {
 		LastError:    m.LastError,
 		RetryCount:   int32(m.RetryCount),
 		WebhookToken: m.WebhookToken,
-		CreatedAt:    m.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:    m.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt:    m.CreatedAt.Format(timefmt.LayoutAPITime),
+		UpdatedAt:    m.UpdatedAt.Format(timefmt.LayoutAPITime),
 	}
 
 	if m.CredentialID != nil {
@@ -46,11 +47,11 @@ func convertToProtoMirror(m po.Mirror) *mirrorModel.Mirror {
 	}
 
 	if m.LastSyncAt != nil {
-		proto.LastSyncAt = m.LastSyncAt.Format("2006-01-02T15:04:05Z")
+		proto.LastSyncAt = m.LastSyncAt.Format(timefmt.LayoutAPITime)
 	}
 
 	if m.NextSyncAt != nil {
-		proto.NextSyncAt = m.NextSyncAt.Format("2006-01-02T15:04:05Z")
+		proto.NextSyncAt = m.NextSyncAt.Format(timefmt.LayoutAPITime)
 	}
 
 	if m.Repo.ID != 0 {
@@ -76,15 +77,15 @@ func convertToProtoMirrorSyncLog(l po.MirrorSyncLog) *mirrorModel.MirrorSyncLog 
 		CommitsPushed:  int32(l.CommitsPushed),
 		ErrorMessage:   l.ErrorMessage,
 		DetailLog:      l.DetailLog,
-		CreatedAt:      l.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt:      l.CreatedAt.Format(timefmt.LayoutAPITime),
 	}
 
 	if l.StartedAt != nil {
-		proto.StartedAt = l.StartedAt.Format("2006-01-02T15:04:05Z")
+		proto.StartedAt = l.StartedAt.Format(timefmt.LayoutAPITime)
 	}
 
 	if l.FinishedAt != nil {
-		proto.FinishedAt = l.FinishedAt.Format("2006-01-02T15:04:05Z")
+		proto.FinishedAt = l.FinishedAt.Format(timefmt.LayoutAPITime)
 	}
 
 	return proto
@@ -94,7 +95,7 @@ func parseTimePtr(s string) *time.Time {
 	if s == "" {
 		return nil
 	}
-	t, err := time.Parse("2006-01-02T15:04:05Z", s)
+	t, err := time.Parse(timefmt.LayoutAPITime, s)
 	if err != nil {
 		return nil
 	}

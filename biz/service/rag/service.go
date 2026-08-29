@@ -96,7 +96,7 @@ func (s *Service) IndexRepo(ctx context.Context, repoKey string) (*IndexResult, 
 
 	texts := make([]string, len(allChunks))
 	for i, c := range allChunks {
-		texts[i] = truncateForEmbedding(c.Content, 2000)
+		texts[i] = truncateString(c.Content, 2000)
 	}
 
 	embeddings, err := s.client.Embed(ctx, texts)
@@ -268,11 +268,4 @@ func filterSourceFiles(tree []git.TreeEntry) []git.TreeEntry {
 		}
 	}
 	return source
-}
-
-func truncateForEmbedding(text string, maxLen int) string {
-	if len(text) <= maxLen {
-		return text
-	}
-	return text[:maxLen]
 }

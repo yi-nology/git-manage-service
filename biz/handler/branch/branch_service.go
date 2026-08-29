@@ -179,38 +179,24 @@ func Push(ctx context.Context, c *app.RequestContext) {
 
 			var errs []string
 			for _, remote := range req.GetRemotes() {
-				authMethod, isDBKey, resolveErr := authSvc.ResolveCredentialForRemote(
-					repo.RemoteCredentials,
-					repo.DefaultCredentialID,
-					nil,
-					remote,
-					"", "", "",
-				)
-
-				if resolveErr != nil {
-					errs = append(errs, fmt.Sprintf("%s: failed to resolve auth: %v", remote, resolveErr))
+				authPlan, prepErr := git.PrepareRemoteAuth(authSvc, repo.RemoteCredentials, repo.DefaultCredentialID, remote)
+				if prepErr != nil {
+					errs = append(errs, fmt.Sprintf("%s: %v", remote, prepErr))
 					continue
 				}
 
-				if isDBKey {
-					credID := auth.GetCredentialIDForRemote(repo.RemoteCredentials, repo.DefaultCredentialID, remote)
-					if credID > 0 {
-						privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(credID)
-						if keyErr != nil {
-							errs = append(errs, fmt.Sprintf("%s: failed to load SSH key: %v", remote, keyErr))
-							continue
-						}
-						if err := gitSvc.PushBranchWithDBKey(repo.Path, remote, req.GetName(), privateKey, passphrase); err != nil {
-							errs = append(errs, fmt.Sprintf("%s: %v", remote, err))
-						}
-					} else {
-						errs = append(errs, fmt.Sprintf("%s: no credential configured", remote))
-					}
-				} else if authMethod.Type != gitbackend.AuthNone {
-					if err := gitSvc.PushBranchWithAuth(repo.Path, remote, req.GetName(), authMethod); err != nil {
+				switch {
+				case authPlan.HasDBKeyContent():
+					if err := gitSvc.PushBranchWithDBKey(repo.Path, remote, req.GetName(), authPlan.PrivateKey, authPlan.Passphrase); err != nil {
 						errs = append(errs, fmt.Sprintf("%s: %v", remote, err))
 					}
-				} else {
+				case authPlan.NoCredential():
+					errs = append(errs, fmt.Sprintf("%s: no credential configured", remote))
+				case authPlan.Method.Type != gitbackend.AuthNone:
+					if err := gitSvc.PushBranchWithAuth(repo.Path, remote, req.GetName(), authPlan.Method); err != nil {
+						errs = append(errs, fmt.Sprintf("%s: %v", remote, err))
+					}
+				default:
 					if err := gitSvc.PushBranch(repo.Path, remote, req.GetName()); err != nil {
 						errs = append(errs, fmt.Sprintf("%s: %v", remote, err))
 					}

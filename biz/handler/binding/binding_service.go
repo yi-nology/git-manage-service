@@ -9,6 +9,7 @@ import (
 	bindingsvc "github.com/yi-nology/git-manage-service/biz/service/binding"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 func convertToProtoBinding(dto api.RepoProviderBindingDTO) *bindingModel.BindingInfo {
@@ -22,8 +23,8 @@ func convertToProtoBinding(dto api.RepoProviderBindingDTO) *bindingModel.Binding
 		RemoteName:       dto.RemoteName,
 		IsPrimary:        dto.IsPrimary,
 		PlatformRepoId:   dto.PlatformRepoID,
-		CreatedAt:        dto.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:        dto.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt:        dto.CreatedAt.Format(timefmt.LayoutAPITime),
+		UpdatedAt:        dto.UpdatedAt.Format(timefmt.LayoutAPITime),
 	}
 }
 

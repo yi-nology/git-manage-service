@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"slices"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
@@ -117,12 +118,7 @@ func (s *NotificationService) shouldNotify(channel *po.NotificationChannel, msg 
 		if err := json.Unmarshal([]byte(channel.TriggerEvents), &events); err == nil && len(events) > 0 {
 			// 如果消息指定了触发事件类型，检查是否匹配
 			if msg.TriggerEvent != "" {
-				for _, event := range events {
-					if event == msg.TriggerEvent {
-						return true
-					}
-				}
-				return false
+				return slices.Contains(events, msg.TriggerEvent)
 			}
 			// 向后兼容：根据 status 推断触发事件
 			for _, event := range events {
