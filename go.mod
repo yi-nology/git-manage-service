@@ -3,8 +3,8 @@ module github.com/yi-nology/git-manage-service
 go 1.26
 
 require (
-	github.com/yi-nology/git-platform-sdk v0.43.0
-	github.com/yi-nology/git-sync-service v1.6.2
+	github.com/yi-nology/git-platform-sdk v0.45.0
+	github.com/yi-nology/git-sync-service v1.8.0
 )
 
 require (
@@ -23,6 +23,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/crypto v0.54.0
+	golang.org/x/sync v0.22.0
 	golang.org/x/text v0.40.0
 	google.golang.org/protobuf v1.36.11
 	gorm.io/driver/mysql v1.6.0
@@ -160,7 +161,7 @@ require (
 	github.com/wailsapp/go-webview2 v1.0.22 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	github.com/yi-nology/gitcode_api v0.7.0 // indirect
+	github.com/yi-nology/go-gitcode v0.7.2 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	gitlab.com/gitlab-org/api/client-go/v2 v2.55.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
@@ -169,7 +170,6 @@ require (
 	golang.org/x/arch v0.24.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto v0.0.0-20210513213006-bf773b8c8384 // indirect

@@ -347,14 +347,14 @@ func finalizeReview(ctx context.Context, task *po.ReviewTask, result *Aggregated
 		}
 	}
 
-	if task.CommitSHA != "" {
+	if csm, ok := params.p.(provider.CommitStatusManager); ok && task.CommitSHA != "" {
 		statusState := "success"
 		statusDesc := fmt.Sprintf("Review passed (%d findings)", len(result.Findings))
 		if result.Blocked {
 			statusState = "failed"
 			statusDesc = result.BlockReason
 		}
-		_ = params.p.CreateCommitStatus(ctx, params.owner, params.repo, task.CommitSHA, provider.CommitStatusOptions{
+		_ = csm.CreateCommitStatus(ctx, params.owner, params.repo, task.CommitSHA, provider.CommitStatusOptions{
 			State:       statusState,
 			Context:     "code-review/git-manage-service/" + params.repoKey,
 			Description: statusDesc,
