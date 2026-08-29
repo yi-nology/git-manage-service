@@ -2,6 +2,7 @@ package branch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -525,6 +526,17 @@ func Merge(ctx context.Context, c *app.RequestContext) {
 			}
 
 			if err := gitSvc.Merge(repo.Path, req.GetSource(), req.GetTarget(), req.GetMessage(), req.GetNoFf(), req.GetSquash()); err != nil {
+				var conflictErr *git.MergeConflictError
+				if errors.As(err, &conflictErr) {
+					c.JSON(200, response.Response{
+						Code: 409,
+						Msg:  "Merge conflict detected",
+						Data: map[string]interface{}{
+							"conflicts": conflictErr.Files,
+						},
+					})
+					return nil
+				}
 				return handler.ErrInternal("Merge execution failed: " + err.Error())
 			}
 

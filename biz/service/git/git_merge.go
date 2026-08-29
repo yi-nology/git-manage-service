@@ -2,6 +2,7 @@ package git
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -140,6 +141,26 @@ func (s *GitService) MergeDryRun(path, source, target string) (*MergeResult, err
 	}, nil
 }
 
+// MergeConflictError 表示真实合并阶段发生冲突（MergeDryRun 的启发式
+// 可能漏报）。Files 是 abort 前收集到的未合并文件列表。
+type MergeConflictError struct {
+	Files []string
+}
+
+func (e *MergeConflictError) Error() string {
+	return fmt.Sprintf("merge conflicts in %d file(s)", len(e.Files))
+}
+
+// unmergedFiles 返回当前处于未合并（conflicted）状态的文件；必须在
+// merge --abort 之前调用。
+func (s *GitService) unmergedFiles(path string) []string {
+	out, err := s.RunCommand(path, "diff", "--name-only", "--diff-filter=U")
+	if err != nil || strings.TrimSpace(out) == "" {
+		return nil
+	}
+	return strings.Split(strings.TrimSpace(out), "\n")
+}
+
 // Merge performs the actual merge
 func (s *GitService) Merge(path, source, target, message string, noFF, squash bool) error {
 	// Checkout target
@@ -158,8 +179,15 @@ func (s *GitService) Merge(path, source, target, message string, noFF, squash bo
 
 	err := s.backend.Merge(context.Background(), path, source, opts)
 	if err != nil {
+		var conflict *MergeConflictError
+		if errors.Is(err, gitbackend.ErrMergeConflict) {
+			conflict = &MergeConflictError{Files: s.unmergedFiles(path)}
+		}
 		// Abort merge on failure
 		_, _ = s.RunCommand(path, "merge", "--abort")
+		if conflict != nil {
+			return conflict
+		}
 		return fmt.Errorf("merge failed (aborted): %v", err)
 	}
 

@@ -67,6 +67,7 @@ func (s *GitService) UpdateBranchFastForwardWithAuth(path, remote, branch, remot
 	_, err := s.backend.Fetch(context.Background(), gitbackend.FetchOptions{
 		RepoPath:        path,
 		Remote:          remote,
+		Branches:        []string{remoteBranch},
 		InsecureSkipTLS: insecure,
 		Auth:            auth,
 	})
