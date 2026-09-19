@@ -15,10 +15,6 @@ func NewRetryStrategy(maxRetry int) *RetryStrategy {
 	return &RetryStrategy{MaxRetry: maxRetry}
 }
 
-func (r *RetryStrategy) ShouldRetry(retryCount int) bool {
-	return retryCount < r.MaxRetry
-}
-
 func (r *RetryStrategy) GetNextRetryDelay(retryCount int) time.Duration {
 	switch retryCount {
 	case 1:

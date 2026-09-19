@@ -27,7 +27,3 @@ func (r *ProviderResolver) Resolve(sel ProviderSelection) (llm.Provider, error) 
 	}
 	return llm.GetDefaultProvider()
 }
-
-func HasAvailableProvider() bool {
-	return llm.HasDefaultProvider()
-}

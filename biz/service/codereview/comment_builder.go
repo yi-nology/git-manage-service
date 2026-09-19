@@ -3,9 +3,6 @@ package codereview
 import (
 	"fmt"
 	"strings"
-
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 func BuildSummaryComment(result *AggregatedResult) string {
@@ -80,7 +77,7 @@ func BuildSummaryComment(result *AggregatedResult) string {
 		if !ok || len(findings) == 0 {
 			continue
 		}
-		b.WriteString(fmt.Sprintf("### %s\n\n", cases.Title(language.English).String(string(sev))))
+		b.WriteString(fmt.Sprintf("### %s\n\n", titleCase(string(sev))))
 		for _, f := range findings {
 			b.WriteString(formatFinding(f))
 		}
@@ -129,4 +126,13 @@ func groupFindingsBySeverity(findings []*Finding) map[Severity][]*Finding {
 		m[f.Severity] = append(m[f.Severity], f)
 	}
 	return m
+}
+
+// titleCase 与标准库 cases.Title(language.English) 对单词输入等价；
+// severity 取值均为单一小写单词（critical/high/medium/low/info）。
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }

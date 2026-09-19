@@ -42,10 +42,6 @@ func (p *WorkerPool) Stop() {
 	p.wg.Wait()
 }
 
-func (p *WorkerPool) ActiveWorkers() int32 {
-	return atomic.LoadInt32(&p.activeCount)
-}
-
 func (p *WorkerPool) worker() {
 	defer p.wg.Done()
 	ticker := time.NewTicker(100 * time.Millisecond)

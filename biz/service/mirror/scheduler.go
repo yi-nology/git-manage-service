@@ -71,16 +71,6 @@ func (s *Scheduler) Stop() {
 	log.Println("[MirrorScheduler] stopped")
 }
 
-func (s *Scheduler) Reload() {
-	s.cronMu.Lock()
-	for id, entryID := range s.cronMap {
-		s.cron.Remove(entryID)
-		delete(s.cronMap, id)
-	}
-	s.cronMu.Unlock()
-	s.loadCronMirrors()
-}
-
 func (s *Scheduler) AddCronMirror(mirror *po.Mirror) {
 	if mirror.CronExpr == "" || !mirror.Enabled {
 		return

@@ -3,7 +3,6 @@ package git
 import (
 	"context"
 	"fmt"
-	"os/exec"
 
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
 )
@@ -29,15 +28,6 @@ func (s *GitService) PushBranchWithAuth(path, remote, branch string, auth gitbac
 		Auth:            auth,
 	})
 	return err
-}
-
-func (s *GitService) pushBranchCLI(path, remote, branch string) error {
-	cmd := exec.Command("git", "-C", path, "-c", "http.sslVerify=false", "push", remote, branch)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git push %s %s: %s: %w", remote, branch, string(output), err)
-	}
-	return nil
 }
 
 func (s *GitService) PullBranch(path, remote, branch string, skipTLS ...bool) error {

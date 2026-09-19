@@ -3,7 +3,6 @@ package mirror
 import (
 	"context"
 	"strconv"
-	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
@@ -89,25 +88,6 @@ func convertToProtoMirrorSyncLog(l po.MirrorSyncLog) *mirrorModel.MirrorSyncLog 
 	}
 
 	return proto
-}
-
-func parseTimePtr(s string) *time.Time {
-	if s == "" {
-		return nil
-	}
-	t, err := time.Parse(timefmt.LayoutAPITime, s)
-	if err != nil {
-		return nil
-	}
-	return &t
-}
-
-func parseUintPtr(v int64) *uint {
-	if v == 0 {
-		return nil
-	}
-	u := uint(v)
-	return &u
 }
 
 func ListMirrors(ctx context.Context, c *app.RequestContext) {

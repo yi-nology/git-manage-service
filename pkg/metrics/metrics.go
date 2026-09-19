@@ -62,19 +62,3 @@ func init() {
 	Registry.MustRegister(ActiveWebhooks)
 	Registry.MustRegister(WebhookEventsTotal)
 }
-
-func RecordGitOperation(op string) {
-	GitOperationTotal.WithLabelValues(op).Inc()
-}
-
-func RecordSyncTask(durationSeconds float64, success bool) {
-	SyncTaskTotal.Inc()
-	SyncTaskDuration.Observe(durationSeconds)
-	if !success {
-		SyncTaskFailures.Inc()
-	}
-}
-
-func RecordWebhookEvent(eventType string) {
-	WebhookEventsTotal.WithLabelValues(eventType).Inc()
-}

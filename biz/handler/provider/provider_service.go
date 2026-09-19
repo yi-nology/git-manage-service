@@ -31,17 +31,6 @@ func toProtoProviderConfig(cfg *po.ProviderConfig) *providerModel.ProviderConfig
 	}
 }
 
-func toProviderConfigDTO(cfg *po.ProviderConfig) api.ProviderConfigDTO {
-	return api.ProviderConfigDTO{
-		ID: cfg.ID, Name: cfg.Name, Platform: cfg.Platform,
-		BaseURL: cfg.BaseURL, CredentialID: cfg.CredentialID,
-		HasWebhookSecret: cfg.WebhookSecret != "",
-		WebhookEndpoint:  cfg.WebhookEndpoint,
-		SkipTLS:          cfg.SkipTLS,
-		CreatedAt:        cfg.CreatedAt, UpdatedAt: cfg.UpdatedAt,
-	}
-}
-
 // List .
 // @router /api/v1/providers [GET]
 func List(ctx context.Context, c *app.RequestContext) {

@@ -395,12 +395,6 @@ func findOrCreateCredentialFromAuth(credDAO *CredentialDAO, authType, authKey, a
 	return 0
 }
 
-func MigrateRepoProviderBindings() {
-	if err := migrateRepoProviderBindings(DB); err != nil {
-		log.Printf("Warning: repo-provider binding migration failed: %v", err)
-	}
-}
-
 func migrateRepoProviderBindings(gdb *gorm.DB) error {
 	if gdb == nil {
 		return fmt.Errorf("database is not initialized")
