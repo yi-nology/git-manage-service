@@ -364,6 +364,19 @@ func SelectDirectory(ctx context.Context, c *app.RequestContext) {
 	if title == "" {
 		title = "选择目录"
 	}
+	// title 会被拼进 AppleScript / PowerShell 源码，先做长度与字符白名单限制，
+	// 否则请求方可闭合引号注入任意脚本。
+	if len(title) > 200 {
+		title = title[:200]
+	}
+	if strings.ContainsAny(title, "\"'`$;|&<>(){}[]!\\") {
+		title = strings.Map(func(r rune) rune {
+			if strings.ContainsRune("\"'`$;|&<>(){}[]!\\", r) {
+				return ' '
+			}
+			return r
+		}, title)
+	}
 
 	// 尝试根据操作系统打开目录选择对话框
 	var result string

@@ -7,6 +7,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -63,8 +64,20 @@ func (s *GitService) GetTree(repoPath, ref, dirPath string, recursive bool) ([]T
 	return entries, nil
 }
 
+// withinRepo 校验 join 后的路径没有通过 .. 逃逸出仓库根目录。
+func withinRepo(root, target string) bool {
+	rel, err := filepath.Rel(root, target)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
 func (s *GitService) GetWorktree(repoPath, dirPath string) ([]TreeEntry, error) {
 	fullPath := filepath.Join(repoPath, dirPath)
+	if !withinRepo(repoPath, fullPath) {
+		return nil, fmt.Errorf("path escapes repository root: %s", dirPath)
+	}
 	entries, err := os.ReadDir(fullPath)
 	if err != nil {
 		return nil, err
@@ -137,6 +150,9 @@ func (s *GitService) GetBlob(repoPath, ref, filePath string) (*BlobContent, erro
 
 func (s *GitService) GetWorktreeBlob(repoPath, filePath string) (*BlobContent, error) {
 	fullPath := filepath.Join(repoPath, filePath)
+	if !withinRepo(repoPath, fullPath) {
+		return nil, fmt.Errorf("path escapes repository root: %s", filePath)
+	}
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return nil, err

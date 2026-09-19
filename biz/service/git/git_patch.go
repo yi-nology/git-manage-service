@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
@@ -65,17 +66,19 @@ func (s *GitService) SavePatch(repoPath, patchContent, patchName, customPath str
 	var patchesDir string
 
 	if customPath != "" {
-		// 使用用户指定的路径（可以是绝对路径或相对路径）
-		if filepath.IsAbs(customPath) {
-			patchesDir = customPath
-		} else {
-			// 相对路径，相对于仓库根目录
-			patchesDir = filepath.Join(repoPath, customPath)
+		// 相对路径且不得逃逸出仓库根目录：customPath 来自请求，
+		// 绝对路径等于允许在任意位置写文件。
+		patchesDir = filepath.Join(repoPath, customPath)
+		if !withinRepo(repoPath, patchesDir) {
+			return "", fmt.Errorf("custom path escapes repository root: %s", customPath)
 		}
 	} else {
 		// 默认保存在仓库的 patches 目录
 		patchesDir = filepath.Join(repoPath, "patches")
 	}
+
+	// patchName 来自请求，取 Base 防止 ../ 逃逸
+	patchName = filepath.Base(patchName)
 
 	// 确保目录存在
 	if err := os.MkdirAll(patchesDir, 0755); err != nil {
@@ -253,8 +256,35 @@ func (s *GitService) canApplyPatch(patches []PatchInfo, index int) bool {
 	return true
 }
 
+// ensurePatchPathAccessible 限制 patch 读/删/应用路径必须落在某个已注册仓库
+// 目录内，防止 HTTP 传入的 path 被用于读取、删除仓库之外的任意文件。
+func (s *GitService) ensurePatchPathAccessible(path string) error {
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("patch path must be absolute: %q", path)
+	}
+	clean := filepath.Clean(path)
+	if clean != path {
+		return fmt.Errorf("patch path is not canonical: %q", path)
+	}
+	if !strings.HasSuffix(clean, ".patch") {
+		return fmt.Errorf("not a patch file: %q", path)
+	}
+	repos, err := db.NewRepoDAO().FindAll()
+	if err == nil {
+		for _, r := range repos {
+			if withinRepo(r.Path, clean) {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("patch path is outside any managed repository: %q", path)
+}
+
 // GetPatchContent 读取 patch 文件内容
 func (s *GitService) GetPatchContent(path string) (string, error) {
+	if err := s.ensurePatchPathAccessible(path); err != nil {
+		return "", err
+	}
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to read patch file: %v", err)
@@ -264,6 +294,9 @@ func (s *GitService) GetPatchContent(path string) (string, error) {
 
 // DeletePatch 删除 patch 文件
 func (s *GitService) DeletePatch(path string) error {
+	if err := s.ensurePatchPathAccessible(path); err != nil {
+		return err
+	}
 	if err := os.Remove(path); err != nil {
 		return fmt.Errorf("failed to delete patch file: %v", err)
 	}
@@ -274,6 +307,9 @@ func (s *GitService) DeletePatch(path string) error {
 // signOff: 是否添加 Signed-off-by
 // commitMessage: 应用后自动提交的消息（为空则不自动提交）
 func (s *GitService) ApplyPatch(repoPath, patchPath string, signOff bool, commitMessage string) error {
+	if err := s.ensurePatchPathAccessible(patchPath); err != nil {
+		return err
+	}
 	// 使用 git apply 应用 patch
 	cmd := exec.Command("git", "apply", patchPath)
 	cmd.Dir = repoPath

@@ -512,7 +512,32 @@ func (s *MaintenanceService) FindReflogLargeObjects(repoPath string, threshold i
 	return result
 }
 
+// validateSlimPath 限制能进入 filter-branch index-filter 的路径。
+// filter-branch 会对 filter 脚本做 shell eval，不受限的路径等于任意命令执行。
+func validateSlimPath(p string) error {
+	if p == "" || len(p) > 4096 {
+		return fmt.Errorf("invalid path %q", p)
+	}
+	if filepath.IsAbs(p) || strings.HasPrefix(p, "-") {
+		return fmt.Errorf("path must be repo-relative and must not start with '-': %q", p)
+	}
+	if strings.ContainsAny(p, "'\"`$;&|<>(){}[]!\\*?\n\r") {
+		return fmt.Errorf("path contains forbidden characters: %q", p)
+	}
+	for _, seg := range strings.Split(filepath.ToSlash(p), "/") {
+		if seg == ".." {
+			return fmt.Errorf("path must not contain '..': %q", p)
+		}
+	}
+	return nil
+}
+
 func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGitignore bool, taskID string) error {
+	for _, p := range paths {
+		if err := validateSlimPath(p); err != nil {
+			return err
+		}
+	}
 	tm := GlobalTaskManager
 	dao := db.NewMaintenanceDAO()
 	appendLog := func(msg string) {
@@ -549,7 +574,13 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 	}
 
 	appendLog("执行 filter-branch 清除历史文件...")
-	indexFilter := "git rm --cached --ignore-unmatch " + strings.Join(paths, " ")
+	// 每个路径单独单引号包裹：filter-branch 内部会 eval filter 脚本，
+	// 不加引号时路径中的元字符会被当作命令执行。
+	quoted := make([]string, len(paths))
+	for i, p := range paths {
+		quoted[i] = "'" + strings.ReplaceAll(p, "'", "'\\''") + "'"
+	}
+	indexFilter := "git rm --cached --ignore-unmatch -- " + strings.Join(quoted, " ")
 	cmdStr := "git filter-branch --force --index-filter '" + strings.ReplaceAll(indexFilter, "'", "'\\''") + "' --prune-empty -- --all"
 	cmd := exec.Command("bash", "-c", cmdStr)
 	cmd.Dir = repoPath
