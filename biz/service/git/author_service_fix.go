@@ -291,7 +291,11 @@ func StartAuthorFixTask(repoID uint, repoPath string, commitHashes []string, pus
 	running := false
 	GlobalTaskManager.tasks.Range(func(key, value interface{}) bool {
 		t := value.(*Task)
-		if t.Status == "running" {
+		// Status 由 UpdateStatus 在 t.mu 内写入，读侧必须同样持锁
+		t.mu.Lock()
+		status := t.Status
+		t.mu.Unlock()
+		if status == "running" {
 			running = true
 			return false
 		}

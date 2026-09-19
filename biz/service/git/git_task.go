@@ -12,6 +12,7 @@ type TaskManager struct {
 	runningTasks  int
 	mutex         sync.Mutex
 	taskQueue     chan *Task
+	slots         chan struct{} // 容量 = maxConcurrent 的信号量，容量闸门以此为准
 	cleanupTicker *time.Ticker
 }
 
@@ -46,6 +47,7 @@ var GlobalTaskManager = &TaskManager{
 }
 
 func (tm *TaskManager) Init() {
+	tm.slots = make(chan struct{}, tm.maxConcurrent)
 	go tm.processTaskQueue()
 	tm.cleanupTicker = time.NewTicker(time.Hour)
 	go tm.cleanupTasks()
@@ -53,15 +55,9 @@ func (tm *TaskManager) Init() {
 
 func (tm *TaskManager) processTaskQueue() {
 	for task := range tm.taskQueue {
-		tm.mutex.Lock()
-		if tm.runningTasks >= tm.maxConcurrent {
-			tm.mutex.Unlock()
-			time.Sleep(100 * time.Millisecond)
-			tm.taskQueue <- task
-			continue
-		}
-		tm.runningTasks++
-		tm.mutex.Unlock()
+		// 阻塞获取槽位：队列满时上游 AddTask 依赖本队列缓冲排队，
+		// 这里绝不回投（回投会让唯一消费者等自己，造成死锁）。
+		tm.slots <- struct{}{}
 		log.Printf("[INFO] Starting task: %s", task.ID)
 	}
 }
@@ -73,6 +69,9 @@ func (tm *TaskManager) AddTask(id string) *Task {
 		Progress:  []string{},
 		StartTime: time.Now(),
 	}
+	tm.mutex.Lock()
+	tm.runningTasks++
+	tm.mutex.Unlock()
 	tm.tasks.Store(id, t)
 	tm.taskQueue <- t
 	return t
@@ -108,6 +107,7 @@ func (tm *TaskManager) UpdateStatus(id string, status string, errStr string) {
 			tm.mutex.Lock()
 			tm.runningTasks--
 			tm.mutex.Unlock()
+			<-tm.slots
 			log.Printf("[INFO] Task %s completed with status: %s", id, status)
 		}
 	}

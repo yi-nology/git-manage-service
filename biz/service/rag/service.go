@@ -234,6 +234,7 @@ func filterSourceFiles(tree []git.TreeEntry) []git.TreeEntry {
 		"target": true, ".gradle": true, ".idea": true, ".vscode": true,
 	}
 
+	seen := make(map[string]bool)
 	for _, entry := range tree {
 		if entry.Type != "file" {
 			continue
@@ -254,6 +255,7 @@ func filterSourceFiles(tree []git.TreeEntry) []git.TreeEntry {
 		for ext := range sourceExts {
 			if strings.HasSuffix(strings.ToLower(entry.Path), ext) {
 				source = append(source, entry)
+				seen[entry.Path] = true
 				break
 			}
 		}
@@ -264,7 +266,10 @@ func filterSourceFiles(tree []git.TreeEntry) []git.TreeEntry {
 		}
 		switch strings.ToLower(name) {
 		case "makefile", "dockerfile", "jenkinsfile", "vagrantfile", "readme", "license":
-			source = append(source, entry)
+			// README 等已按扩展名收录过，避免重复进入向量库
+			if !seen[entry.Path] {
+				source = append(source, entry)
+			}
 		}
 	}
 	return source

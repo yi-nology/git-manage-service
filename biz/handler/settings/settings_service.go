@@ -103,7 +103,7 @@ func SetDefaultLLMProvider(ctx context.Context, c *app.RequestContext) {
 
 func TestLLMProvider(ctx context.Context, c *app.RequestContext) {
 	handler.BindAndDo(c, func(req *settings.TestLLMProviderRequest) (map[string]string, error) {
-		if err := llm.TestProvider(uint(req.Id)); err != nil {
+		if err := llm.TestProvider(ctx, uint(req.Id)); err != nil {
 			return nil, handler.ErrInternal(err.Error())
 		}
 		return map[string]string{"status": "ok", "message": "连接测试成功"}, nil
@@ -129,7 +129,7 @@ func TestEmbedding(ctx context.Context, c *app.RequestContext) {
 			}
 		}
 		client := rag.NewEmbeddingClient(provider.BaseUrl, provider.ApiKey, model, provider.Type)
-		_, err = client.EmbedQuery(context.Background(), "Hello, world!")
+		_, err = client.EmbedQuery(ctx, "Hello, world!")
 		if err != nil {
 			return nil, handler.ErrInternal("Embedding test failed: " + err.Error())
 		}

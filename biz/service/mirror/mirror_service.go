@@ -13,7 +13,6 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/lock"
 	"github.com/yi-nology/git-manage-service/pkg/queue"
 	"github.com/yi-nology/git-platform-sdk/gitbackend"
-	"github.com/yi-nology/git-platform-sdk/pkg/branchfilter"
 )
 
 var GlobalMirrorService *MirrorService
@@ -162,10 +161,6 @@ func (s *MirrorService) ProcessSyncRequest(req queue.SyncRequest) {
 		logs.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("15:04:05"), msg))
 	}
 
-	var execResult interface {
-		getBranchesSynced() int
-		getCommits() int
-	}
 	var syncErr error
 
 	switch mirror.MirrorType {
@@ -175,7 +170,6 @@ func (s *MirrorService) ProcessSyncRequest(req queue.SyncRequest) {
 		if r != nil {
 			syncLog.BranchesSynced = r.BranchesSynced
 			syncLog.CommitsPushed = r.CommitsPulled
-			_ = execResult
 		}
 	case po.MirrorTypePush:
 		r, err := s.pushExec.Execute(ctx, mirror, logf)
@@ -183,8 +177,10 @@ func (s *MirrorService) ProcessSyncRequest(req queue.SyncRequest) {
 		if r != nil {
 			syncLog.BranchesSynced = r.BranchesSynced
 			syncLog.CommitsPushed = r.CommitsPushed
-			_ = execResult
 		}
+	default:
+		// 未知类型不能标记成功，否则会错误地重置重试计数、掩盖故障
+		syncErr = fmt.Errorf("unknown mirror type: %s", mirror.MirrorType)
 	}
 
 	now := time.Now()
@@ -330,18 +326,4 @@ func analyzeRemote(ctx context.Context, backend gitbackend.GitBackend, remoteURL
 	}
 
 	return result, nil
-}
-
-func (s *MirrorService) ValidateCredentialForMirror(mirrorID uint) error {
-	mirror, err := s.mirrorDAO.FindByID(mirrorID)
-	if err != nil {
-		return err
-	}
-
-	if mirror.Credential == nil {
-		return nil
-	}
-
-	_ = branchfilter.New(mirror.BranchFilter)
-	return nil
 }

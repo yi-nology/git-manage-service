@@ -157,7 +157,7 @@ func SetDefaultProvider(id uint) error {
 	return dao.SetDefault(id)
 }
 
-func TestProvider(id uint) error {
+func TestProvider(ctx context.Context, id uint) error {
 	p, err := db.NewLLMProviderDAO().FindByID(id)
 	if err != nil {
 		return fmt.Errorf("provider not found: %w", err)
@@ -177,7 +177,7 @@ func TestProvider(id uint) error {
 		return fmt.Errorf("unknown provider type: %s", p.Type)
 	}
 
-	_, err = provider.Chat(context.Background(), &ChatRequest{
+	_, err = provider.Chat(ctx, &ChatRequest{
 		Messages:     []ChatMessage{{Role: "user", Content: "Hi, reply with OK."}},
 		MaxTokens:    16,
 		SystemPrompt: "Reply with exactly: OK",

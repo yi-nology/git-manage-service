@@ -248,6 +248,9 @@ func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsRe
 		if time.Since(created) < time.Hour {
 			return data, status, err, progress
 		}
+		// 过期条目必须先淘汰：否则下面的 LoadOrStore 会拿回旧条目，
+		// 统计被永久冻结（失败状态也无法重试）。
+		s.cache.CompareAndDelete(key, val)
 	}
 
 	// 2. Initialize cache item (Processing)

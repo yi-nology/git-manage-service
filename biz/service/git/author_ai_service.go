@@ -216,10 +216,14 @@ func (s *AuthorAIService) SuggestMerges(identities []api.AuthorIdentityDTO) (*ap
 }
 
 func (s *AuthorAIService) AssessRisk(commits []api.MismatchedCommit, repoPath string) (*api.RiskAssessmentResult, error) {
-	branches, _ := exec.Command("git", "branch", "-a").CombinedOutput()
+	branchCmd := exec.Command("git", "branch", "-a")
+	branchCmd.Dir = repoPath
+	branches, _ := branchCmd.CombinedOutput()
 	branchCount := len(strings.Split(strings.TrimSpace(string(branches)), "\n"))
 
-	remotes, _ := exec.Command("git", "remote").CombinedOutput()
+	remoteCmd := exec.Command("git", "remote")
+	remoteCmd.Dir = repoPath
+	remotes, _ := remoteCmd.CombinedOutput()
 	remoteList := strings.TrimSpace(string(remotes))
 	hasRemote := remoteList != ""
 

@@ -101,16 +101,31 @@ func (s *SyncServiceV2) GetCore() *gitsync.Service {
 	return s.core
 }
 
+// coreReady 在底层同步核心未初始化（如初始化失败或 desktop 构建）时
+// 返回错误，避免对 nil 接口调用导致 panic。
+func (s *SyncServiceV2) coreReady() error {
+	if s.core == nil {
+		return fmt.Errorf("sync service not initialized")
+	}
+	return nil
+}
+
 // ==================== Task API ====================
 
 // ListTasks 获取任务列表
 func (s *SyncServiceV2) ListTasks(ctx context.Context, repoKey string) ([]*gitsyncmodel.SyncTask, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	tasks, _, err := s.core.ListTasks(ctx, repoKey, 0, 1000)
 	return tasks, err
 }
 
 // GetTask 获取任务详情
 func (s *SyncServiceV2) GetTask(ctx context.Context, key string) (*gitsyncmodel.SyncTask, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	return s.core.GetTask(ctx, key)
 }
 
@@ -136,26 +151,41 @@ func (s *SyncServiceV2) FindTaskByWebhookToken(ctx context.Context, token string
 
 // CreateTask 创建任务
 func (s *SyncServiceV2) CreateTask(ctx context.Context, req *gitsyncmodel.CreateTaskRequest) (*gitsyncmodel.SyncTask, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	return s.core.CreateTask(ctx, req)
 }
 
 // UpdateTask 更新任务
 func (s *SyncServiceV2) UpdateTask(ctx context.Context, req *gitsyncmodel.UpdateTaskRequest) (*gitsyncmodel.SyncTask, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	return s.core.UpdateTask(ctx, req)
 }
 
 // DeleteTask 删除任务
 func (s *SyncServiceV2) DeleteTask(ctx context.Context, key string) error {
+	if err := s.coreReady(); err != nil {
+		return err
+	}
 	return s.core.DeleteTask(ctx, key)
 }
 
 // RunTask 运行任务
 func (s *SyncServiceV2) RunTask(ctx context.Context, taskKey string) error {
+	if err := s.coreReady(); err != nil {
+		return err
+	}
 	return s.core.RunTask(ctx, taskKey)
 }
 
 // BatchRunTasks 批量运行任务，最多 8 个任务并发执行
 func (s *SyncServiceV2) BatchRunTasks(ctx context.Context, taskKeys []string) error {
+	if err := s.coreReady(); err != nil {
+		return err
+	}
 	g := new(errgroup.Group)
 	g.SetLimit(8)
 	for _, key := range taskKeys {
@@ -168,6 +198,9 @@ func (s *SyncServiceV2) BatchRunTasks(ctx context.Context, taskKeys []string) er
 
 // PreviewSync 预览同步
 func (s *SyncServiceV2) PreviewSync(ctx context.Context, req *gitsyncmodel.PreviewSyncRequest) (*gitsyncmodel.PreviewSyncResult, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	return s.core.PreviewSync(ctx, req)
 }
 
@@ -175,18 +208,27 @@ func (s *SyncServiceV2) PreviewSync(ctx context.Context, req *gitsyncmodel.Previ
 
 // ListHistoryByTask 获取指定任务的执行历史
 func (s *SyncServiceV2) ListHistoryByTask(ctx context.Context, taskKey string, limit int) ([]*gitsyncmodel.SyncRun, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	runs, _, err := s.core.ListHistory(ctx, taskKey, 0, limit)
 	return runs, err
 }
 
 // ListRecentHistory 获取最近的执行历史
 func (s *SyncServiceV2) ListRecentHistory(ctx context.Context, limit int) ([]*gitsyncmodel.SyncRun, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	runs, _, err := s.core.ListHistory(ctx, "", 0, limit)
 	return runs, err
 }
 
 // DeleteHistory 删除历史记录
 func (s *SyncServiceV2) DeleteHistory(ctx context.Context, id uint) error {
+	if err := s.coreReady(); err != nil {
+		return err
+	}
 	return s.core.DeleteHistory(ctx, id)
 }
 
@@ -194,6 +236,9 @@ func (s *SyncServiceV2) DeleteHistory(ctx context.Context, id uint) error {
 
 // GetStats 获取统计数据
 func (s *SyncServiceV2) GetStats(ctx context.Context) (*SyncStats, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	tasks, _, err := s.core.ListTasks(ctx, "", 0, 1000)
 	if err != nil {
 		return nil, err
@@ -219,26 +264,41 @@ func (s *SyncServiceV2) GetStats(ctx context.Context) (*SyncStats, error) {
 
 // ListRules 获取 Webhook 规则列表
 func (s *SyncServiceV2) ListRules(ctx context.Context, repoKey string) ([]*gitsyncmodel.WebhookRule, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	return s.core.ListRules(ctx, repoKey)
 }
 
 // GetRule 获取规则详情
 func (s *SyncServiceV2) GetRule(ctx context.Context, id uint) (*gitsyncmodel.WebhookRule, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	return s.core.GetRule(ctx, id)
 }
 
 // CreateRule 创建规则
 func (s *SyncServiceV2) CreateRule(ctx context.Context, req *gitsyncmodel.CreateRuleRequest) (*gitsyncmodel.WebhookRule, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	return s.core.CreateRule(ctx, req)
 }
 
 // UpdateRule 更新规则
 func (s *SyncServiceV2) UpdateRule(ctx context.Context, req *gitsyncmodel.UpdateRuleRequest) (*gitsyncmodel.WebhookRule, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	return s.core.UpdateRule(ctx, req)
 }
 
 // DeleteRule 删除规则
 func (s *SyncServiceV2) DeleteRule(ctx context.Context, id uint) error {
+	if err := s.coreReady(); err != nil {
+		return err
+	}
 	return s.core.DeleteRule(ctx, id)
 }
 
@@ -246,12 +306,18 @@ func (s *SyncServiceV2) DeleteRule(ctx context.Context, id uint) error {
 
 // ListEvents 获取 Webhook 事件列表
 func (s *SyncServiceV2) ListEvents(ctx context.Context, repoKey string, limit int) ([]*gitsyncmodel.WebhookEvent, error) {
+	if err := s.coreReady(); err != nil {
+		return nil, err
+	}
 	events, _, err := s.core.ListEvents(ctx, repoKey, 0, limit)
 	return events, err
 }
 
 // RetryEvent 重试事件
 func (s *SyncServiceV2) RetryEvent(ctx context.Context, id uint) error {
+	if err := s.coreReady(); err != nil {
+		return err
+	}
 	return s.core.RetryEvent(ctx, id)
 }
 
@@ -272,7 +338,8 @@ func countEnabled(tasks []*gitsyncmodel.SyncTask) int {
 }
 
 func countTodayRuns(runs []*gitsyncmodel.SyncRun) int {
-	today := time.Now().Truncate(24 * time.Hour)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	count := 0
 	for _, r := range runs {
 		if r.StartTime.After(today) {
