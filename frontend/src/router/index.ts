@@ -44,7 +44,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'webhook/events',
-        name: 'WebhookEvents',
+        name: 'WebhookEventsLog',
         component: () => import('@/views/webhook/WebhookEventsLog.vue'),
         meta: { title: 'Webhook 事件日志' },
       },

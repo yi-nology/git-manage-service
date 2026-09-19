@@ -35,13 +35,13 @@
       </el-form-item>
       <el-form-item label="分支过滤">
         <el-select
-          v-model="selectedBranches"
+          :model-value="selectedBranches"
           multiple
           filterable
           allow-create
           placeholder="选择或输入分支"
           style="width: 100%"
-          @change="onBranchesChange"
+          @update:model-value="onBranchesChange"
         >
           <el-option v-for="b in repoBranches" :key="b" :label="b" :value="b" />
         </el-select>
