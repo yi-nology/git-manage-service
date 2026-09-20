@@ -325,11 +325,16 @@ func finalizeReview(ctx context.Context, task *po.ReviewTask, result *Aggregated
 			statusState = "failed"
 			statusDesc = result.BlockReason
 		}
-		_ = csm.CreateCommitStatus(ctx, params.owner, params.repo, task.CommitSHA, provider.CommitStatusOptions{
+		if err := csm.CreateCommitStatus(ctx, params.owner, params.repo, task.CommitSHA, provider.CommitStatusOptions{
 			State:       statusState,
 			Context:     "code-review/git-manage-service/" + params.repoKey,
 			Description: statusDesc,
-		})
+		}); err != nil {
+			// 平台侧（如 Gitee Checks）写失败目前只影响展示，不阻断审查流程
+			logger.ErrorWithErr("Failed to update commit status", err, logrus.Fields{
+				"task_id": task.ID, "repo": params.repoKey, "sha": task.CommitSHA,
+			})
+		}
 	}
 
 	if err := ApplyPolicy(result, task); err != nil {

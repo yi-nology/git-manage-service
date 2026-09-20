@@ -3,6 +3,7 @@ package git
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
@@ -59,16 +60,36 @@ func (s *GitService) RenameBranch(path, oldName, newName string) error {
 	return s.backend.RenameBranch(context.Background(), path, oldName, newName)
 }
 
+// validateBranchRefName 拒绝会破坏 git config 位置参数解析的分支名。
+func validateBranchRefName(branch string) error {
+	if branch == "" || strings.HasPrefix(branch, "-") {
+		return fmt.Errorf("invalid branch name: %q", branch)
+	}
+	return nil
+}
+
 func (s *GitService) SetBranchDescription(path, branch, desc string) error {
-	return s.backend.SetConfig(context.Background(), path, fmt.Sprintf("branch.%s.description", branch), desc)
+	if err := validateBranchRefName(branch); err != nil {
+		return err
+	}
+	// SDK v0.62 起 SetConfig 只接受 2/3 段 key，分支名含点号（如 release/1.2.3）
+	// 会构成 4+ 段被拒；git CLI 本身支持多段 subsection，走 RunRaw。
+	key := "branch." + branch + ".description"
+	_, _, err := s.backend.RunRaw(context.Background(), path, []string{"config", "--local", "--", key, desc})
+	return err
 }
 
 func (s *GitService) GetBranchDescription(path, branch string) (string, error) {
-	val, err := s.backend.GetConfig(context.Background(), path, fmt.Sprintf("branch.%s.description", branch))
-	if err != nil {
-		return "", nil
+	if err := validateBranchRefName(branch); err != nil {
+		return "", err
 	}
-	return val, nil
+	key := "branch." + branch + ".description"
+	// --default "" 让「未设置」不再是 exit 1，从而能与真实读取错误区分
+	val, _, err := s.backend.RunRaw(context.Background(), path, []string{"config", "--local", "--default", "", "--get", key})
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(val), nil
 }
 
 // GetBranchMetrics returns simple metrics: commit count
