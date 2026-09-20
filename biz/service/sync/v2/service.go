@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/yi-nology/git-manage-service/pkg/configs"
-	gitsync "github.com/yi-nology/git-sync-service/sync"
-	gitsyncmodel "github.com/yi-nology/git-sync-service/sync/model"
+	gitsyncmodel "github.com/yi-nology/git-sync-core/model"
+	gitsync "github.com/yi-nology/git-sync-core/service"
 	"golang.org/x/sync/errgroup"
 )
 
