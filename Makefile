@@ -356,6 +356,21 @@ desktop-linux:
 	CGO_ENABLED=1 wails build -platform linux/amd64 -clean -appimage
 	@echo "✓ Linux builds complete: build/bin/"
 
+# 在 Ubuntu 20.04 容器中编译，glibc 2.31 兼容麒麟桌面系统
+desktop-linux-kylin:
+	@echo "Building Linux AppImage for Kylin (glibc 2.31)..."
+	@echo "Building cross-compile Docker image..."
+	docker build -f Dockerfile.desktop-cross -t git-manage-desktop-cross .
+	@echo "Building frontend..."
+	docker run --rm -v $(CURDIR):/app -w /app/frontend \
+		git-manage-desktop-cross bash -c "npm install && npm run build"
+	@echo "Building AppImage (glibc 2.31)..."
+	docker run --rm -v $(CURDIR):/app -w /app \
+		-e GONOSUMCHECK=git.enjoye.top/* \
+		git-manage-desktop-cross bash -c \
+		"wails build -platform linux/amd64 -clean -appimage"
+	@echo "✓ Kylin-compatible AppImage ready: build/bin/"
+
 desktop-all:
 	@echo "========================================"
 	@echo "Building All Desktop Platforms..."

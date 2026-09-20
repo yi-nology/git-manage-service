@@ -166,9 +166,66 @@ jobs:
           name: linux-app
           path: build/bin/GitManageService-Linux.tar.gz
 
+  # 在 Ubuntu 20.04 容器中编译，glibc 2.31 兼容麒麟桌面系统
+  build-linux-kylin:
+    name: Build Linux (Kylin Compatible)
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
+      options: --privileged
+    steps:
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            build-essential pkg-config \
+            libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev \
+            wget curl git ca-certificates
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build AppImage (glibc 2.31)
+        run: |
+          export WAILS_BUILD=1
+          export GONOSUMCHECK=git.enjoye.top/*
+          wails build -platform linux/amd64 -skipbindings -appimage
+          cd build/bin
+          mv *.AppImage GitManageService-Linux-Kylin.AppImage 2>/dev/null || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-kylin-app
+          path: build/bin/GitManageService-Linux-Kylin.AppImage
+
   release:
     name: Create Desktop Release
-    needs: [build-macos, build-windows, build-linux]
+    needs: [build-macos, build-windows, build-linux, build-linux-kylin]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     
@@ -195,7 +252,8 @@ jobs:
             
             - **macOS**: `GitManageService-macOS.zip` (Universal Binary)
             - **Windows**: `GitManageService-Windows.zip` (64-bit)
-            - **Linux**: `GitManageService-Linux.tar.gz` (64-bit)
+            - **Linux**: `GitManageService-Linux.tar.gz` (64-bit, glibc ≥ 2.35)
+            - **Linux (麒麟)**: `GitManageService-Linux-Kylin.AppImage` (64-bit, glibc 2.31)
             
             ### 🚀 快速开始
             
@@ -213,6 +271,12 @@ jobs:
             tar -xzf GitManageService-Linux.tar.gz
             chmod +x git-manage-desktop
             ./git-manage-desktop
+            ```
+
+            #### Linux (麒麟/国产系统)
+            ```bash
+            chmod +x GitManageService-Linux-Kylin.AppImage
+            ./GitManageService-Linux-Kylin.AppImage
             ```
             
             ### 📝 功能说明
