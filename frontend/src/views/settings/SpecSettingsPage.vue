@@ -37,6 +37,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
 import LintRulesTab from '@/components/settings/LintRulesTab.vue'
@@ -71,7 +72,7 @@ async function saveTemplate() {
     await saveSpecConfig({ defaultTemplate: templateContent.value })
     ElMessage.success('模板已保存')
   } catch (e: any) {
-    ElMessage.error('保存失败: ' + (e?.message || ''))
+    toastApiError(e, '保存失败: ', '')
   } finally { saving.value = false }
 }
 

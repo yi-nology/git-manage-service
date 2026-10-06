@@ -1,4 +1,5 @@
 import { ElMessage, ElNotification } from 'element-plus'
+import { isHandledError } from '@/api/error'
 
 /**
  * 统一的通知管理 composable
@@ -115,4 +116,16 @@ export function useNotification() {
     notifyWarning,
     notifyInfo,
   }
+}
+
+/**
+ * API 错误的统一弹错入口。拦截器弹出过的错误（handled 标记）不再重复弹，
+ * 避免「拦截器 + 调用方」同一次失败弹两个错误框；本地（非 HTTP）错误
+ * 带上下文弹一次。context 容忍调用方带尾部冒号/空格（历史拼接习惯）。
+ */
+export function toastApiError(e: unknown, context: string, fallback = '未知错误') {
+  if (isHandledError(e)) return
+  const ctx = context.replace(/[:：]\s*$/, '')
+  const msg = e instanceof Error && e.message ? e.message : fallback
+  ElMessage.error({ message: `${ctx}: ${msg}`, duration: 5000, showClose: true })
 }

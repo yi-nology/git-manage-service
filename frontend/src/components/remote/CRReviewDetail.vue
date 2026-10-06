@@ -27,9 +27,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { getReviewTask, listReviewFindings, retryReviewTask, type ReviewTaskDTO, type ReviewFindingDTO } from '@/api/modules/review'
+import { usePolling } from '@/composables/usePolling'
 import DetailHeader from './cr-detail/DetailHeader.vue'
 import TaskMetaInfo from './cr-detail/TaskMetaInfo.vue'
 import ReviewSummary from './cr-detail/ReviewSummary.vue'
@@ -51,7 +53,6 @@ const loading = ref(false)
 const retrying = ref(false)
 const findings = ref<ReviewFindingDTO[]>([])
 const currentTask = ref<ReviewTaskDTO>({ ...props.task })
-let pollTimer: ReturnType<typeof setInterval> | null = null
 
 async function loadFindings() {
   loading.value = true
@@ -69,27 +70,27 @@ async function loadFindings() {
   }
 }
 
-function startPolling() {
-  stopPolling()
-  pollTimer = setInterval(async () => {
-    if (currentTask.value.status === 'pending' || currentTask.value.status === 'running') {
-      try {
-        const taskRes = await getReviewTask(currentTask.value.id)
-        if (taskRes) currentTask.value = taskRes
-        if (taskRes && taskRes.status !== 'pending' && taskRes.status !== 'running') {
-          const findingsRes = await listReviewFindings(currentTask.value.id)
-          findings.value = findingsRes || []
-        }
-      } catch { /* ignore */ }
+const poll = usePolling({
+  interval: 3000,
+  tick: async () => {
+    if (currentTask.value.status !== 'pending' && currentTask.value.status !== 'running') {
+      return false
     }
-  }, 3000)
-}
+    const taskRes = await getReviewTask(currentTask.value.id)
+    if (taskRes) currentTask.value = taskRes
+    if (taskRes && taskRes.status !== 'pending' && taskRes.status !== 'running') {
+      const findingsRes = await listReviewFindings(currentTask.value.id)
+      findings.value = findingsRes || []
+      return false
+    }
+    return true
+  },
+  // 查询任务状态偶发失败不终止轮询（保持原行为），由下一轮重试。
+  onError: () => true,
+})
 
-function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
+function startPolling() {
+  poll.start()
 }
 
 async function handleRetry() {
@@ -104,7 +105,7 @@ async function handleRetry() {
     emit('retried', currentTask.value)
     startPolling()
   } catch (e: any) {
-    ElMessage.error('重试失败: ' + (e?.message || ''))
+    toastApiError(e, '重试失败: ', '')
   } finally {
     retrying.value = false
   }
@@ -115,7 +116,7 @@ onMounted(() => {
   startPolling()
 })
 
-onUnmounted(stopPolling)
+// usePolling 在组件卸载时自动停止
 </script>
 
 <style scoped>

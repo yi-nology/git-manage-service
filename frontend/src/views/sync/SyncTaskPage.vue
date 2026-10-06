@@ -209,6 +209,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus, Edit, Delete, VideoPlay, Clock, Right, Top, Bottom } from '@element-plus/icons-vue'
 import { syncV2Api } from '@/api/modules/sync_v2'
@@ -293,9 +294,7 @@ async function loadTasks() {
   try {
     const data = await syncV2Api.list_tasks()
     tasks.value = data || []
-  } catch (e) {
-    ElMessage.error('加载任务列表失败')
-  } finally {
+  } catch (e) { toastApiError(e, '加载任务列表失败') } finally {
     loading.value = false
   }
 }
@@ -351,7 +350,7 @@ async function submitTask() {
     loadTasks()
     loadStats()
   } catch (e) {
-    ElMessage.error(isEditMode.value ? '更新失败' : '创建失败')
+    toastApiError(e, isEditMode.value ? '更新失败' : '创建失败')
   } finally {
     submitting.value = false
   }
@@ -362,9 +361,7 @@ async function run_task(row: SyncTask) {
   try {
     await syncV2Api.run_task(row.key)
     ElMessage.success('任务已触发执行')
-  } catch (e) {
-    ElMessage.error('任务触发失败')
-  } finally {
+  } catch (e) { toastApiError(e, '任务触发失败') } finally {
     runningKeys.value.delete(row.key)
   }
 }
@@ -380,7 +377,7 @@ async function delete_task(row: SyncTask) {
     loadStats()
   } catch (e) {
     if (e !== 'cancel') {
-      ElMessage.error('删除失败')
+      toastApiError(e, '删除失败')
     }
   }
 }

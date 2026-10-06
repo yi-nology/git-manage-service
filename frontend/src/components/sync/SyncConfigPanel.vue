@@ -83,6 +83,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Plus, Download, Upload } from '@element-plus/icons-vue'
 import * as mirrorApi from '@/api/modules/mirror'
@@ -154,7 +155,7 @@ async function loadMirrors() {
     const all = await mirrorApi.getMirrors(currentRepoId.value || undefined)
     mirrors.value = all || []
   } catch (e: any) {
-    ElMessage.error('加载镜像列表失败: ' + e.message)
+    toastApiError(e, '加载镜像列表失败: ')
   } finally {
     loading.value = false
   }
@@ -273,7 +274,7 @@ async function submitForm() {
     dialogVisible.value = false
     loadMirrors()
   } catch (e: any) {
-    ElMessage.error('操作失败: ' + e.message)
+    toastApiError(e, '操作失败: ')
   } finally {
     saving.value = false
   }
@@ -300,7 +301,7 @@ async function triggerSync(mirror: MirrorDTO) {
       }
     }, 2000)
   } catch (e: any) {
-    ElMessage.error('触发失败: ' + e.message)
+    toastApiError(e, '触发失败: ')
   } finally {
     setTimeout(() => {
       syncingId.value = null
@@ -321,7 +322,7 @@ async function toggleEnabled(mirror: MirrorDTO) {
     ElMessage.success('状态已更新')
     loadMirrors()
   } catch (e: any) {
-    ElMessage.error('更新失败: ' + e.message)
+    toastApiError(e, '更新失败: ')
     mirror.enabled = !mirror.enabled
   } finally {
     updatingId.value = null
@@ -339,9 +340,7 @@ async function loadSyncLogs() {
   logLoading.value = true
   try {
     syncLogs.value = await mirrorApi.getMirrorSyncLogs(currentLogMirrorId.value, 50)
-  } catch (e: any) {
-    ElMessage.error('加载日志失败')
-  } finally {
+  } catch (e) { toastApiError(e, '加载日志失败') } finally {
     logLoading.value = false
   }
 }

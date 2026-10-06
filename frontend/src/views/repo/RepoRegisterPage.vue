@@ -57,7 +57,7 @@
       </div>
 
       <div class="form-actions">
-        <ActionPill variant="outline" @click="router.push('/local-repos')">取消</ActionPill>
+        <ActionPill variant="outline" @click="router.push(ROUTES.RepoList)">取消</ActionPill>
         <ActionPill variant="primary" :icon="Check" @click="handleRegisterSingle" :disabled="registering">
           {{ registering ? '注册中...' : '注册仓库' }}
         </ActionPill>
@@ -70,6 +70,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRouter } from 'vue-router'
 import { Check } from '@element-plus/icons-vue'
 import { selectDirectory, scanDirectory, createRepo } from '@/api/modules/repo'
@@ -167,7 +168,7 @@ async function handleRegisterSingle() {
       default_credential_id: singleForm.credential_id,
     })
     showSuccess(`仓库 "${name}" 注册成功`)
-    router.push('/local-repos')
+    router.push(ROUTES.RepoList)
   } catch (e: any) {
     showError('注册失败', e)
   } finally {

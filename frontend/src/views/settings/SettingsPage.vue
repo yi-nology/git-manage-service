@@ -16,18 +16,19 @@
 
 <script setup lang="ts">
 import { Key, Lock, Bell, Connection, MagicStick, SetUp, Cpu, User, Document } from '@element-plus/icons-vue'
+import { ROUTES } from '@/router/paths'
 import PageHeader from '@/components/common/PageHeader.vue'
 
 const cards = [
-  { title: 'LLM 配置', desc: '管理大模型提供商，用于代码审查、Spec 辅助等 AI 功能', icon: Cpu, color: 'violet', route: '/settings/llm' },
-  { title: '代码审查', desc: '配置代码审查行为和审查规则', icon: MagicStick, color: 'purple', route: '/settings/code-review' },
-  { title: 'SSH 密钥', desc: '管理 SSH 密钥，用于 Git 仓库认证', icon: Key, color: 'red', route: '/settings/ssh-keys' },
-  { title: '凭证管理', desc: '管理平台访问凭证和 Token', icon: Lock, color: 'indigo', route: '/settings/credentials' },
-  { title: '通知渠道', desc: '配置邮件、钉钉、微信等通知方式', icon: Bell, color: 'amber', route: '/settings/notification-channels' },
-  { title: '平台配置', desc: '管理 GitLab/GitHub/Gitea/Gitee/Forgejo/腾讯工蜂平台集成', icon: Connection, color: 'blue', route: '/settings/platforms' },
-  { title: '分支规则', desc: '定义分支命名前缀和保护规则', icon: SetUp, color: 'teal', route: '/settings/branch-rules' },
-  { title: 'Git 作者', desc: '管理 Git 提交身份和别名，修复历史提交作者', icon: User, color: 'green', route: '/settings/author' },
-  { title: 'Spec 全局配置', desc: '管理 Spec 文件的默认模板、Lint 规则、格式化选项和 AI 辅助配置', icon: Document, color: 'indigo', route: '/settings/spec' },
+  { title: 'LLM 配置', desc: '管理大模型提供商，用于代码审查、Spec 辅助等 AI 功能', icon: Cpu, color: 'violet', route: ROUTES.LLMSettings },
+  { title: '代码审查', desc: '配置代码审查行为和审查规则', icon: MagicStick, color: 'purple', route: ROUTES.CodeReviewSettings },
+  { title: 'SSH 密钥', desc: '管理 SSH 密钥，用于 Git 仓库认证', icon: Key, color: 'red', route: ROUTES.SSHKeys },
+  { title: '凭证管理', desc: '管理平台访问凭证和 Token', icon: Lock, color: 'indigo', route: ROUTES.Credentials },
+  { title: '通知渠道', desc: '配置邮件、钉钉、微信等通知方式', icon: Bell, color: 'amber', route: ROUTES.NotificationChannels },
+  { title: '平台配置', desc: '管理 GitLab/GitHub/Gitea/Gitee/Forgejo/腾讯工蜂平台集成', icon: Connection, color: 'blue', route: ROUTES.PlatformConfig },
+  { title: '分支规则', desc: '定义分支命名前缀和保护规则', icon: SetUp, color: 'teal', route: ROUTES.BranchRuleSettings },
+  { title: 'Git 作者', desc: '管理 Git 提交身份和别名，修复历史提交作者', icon: User, color: 'green', route: ROUTES.AuthorSettings },
+  { title: 'Spec 全局配置', desc: '管理 Spec 文件的默认模板、Lint 规则、格式化选项和 AI 辅助配置', icon: Document, color: 'indigo', route: ROUTES.SpecSettings },
 ]
 </script>
 

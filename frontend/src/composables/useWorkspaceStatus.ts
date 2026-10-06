@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { toastApiError } from './useNotification'
 import {
   getWorkspaceStatus,
   getWorkspaceDiff,
@@ -78,7 +79,7 @@ export function useWorkspaceStatus(repo_key: string) {
       await stageFiles(repo_key, [file])
       await onRefresh()
     } catch (e: any) {
-      ElMessage.error(e?.message || '暂存失败')
+      toastApiError(e, '暂存失败')
     }
   }
 
@@ -87,7 +88,7 @@ export function useWorkspaceStatus(repo_key: string) {
       await unstageFiles(repo_key, [file])
       await onRefresh()
     } catch (e: any) {
-      ElMessage.error(e?.message || '取消暂存失败')
+      toastApiError(e, '取消暂存失败')
     }
   }
 
@@ -97,7 +98,7 @@ export function useWorkspaceStatus(repo_key: string) {
       await onRefresh()
       ElMessage.success('全部已暂存')
     } catch (e: any) {
-      ElMessage.error(e?.message || '暂存失败')
+      toastApiError(e, '暂存失败')
     }
   }
 
@@ -107,7 +108,7 @@ export function useWorkspaceStatus(repo_key: string) {
       await onRefresh()
       ElMessage.success('已取消全部暂存')
     } catch (e: any) {
-      ElMessage.error(e?.message || '取消暂存失败')
+      toastApiError(e, '取消暂存失败')
     }
   }
 
@@ -130,7 +131,7 @@ export function useWorkspaceStatus(repo_key: string) {
       await onRefresh()
       ElMessage.success('已取消跟踪')
     } catch (e: any) {
-      ElMessage.error(e?.message || '取消跟踪失败')
+      toastApiError(e, '取消跟踪失败')
     }
   }
 

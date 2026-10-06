@@ -17,6 +17,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { ROUTES } from '@/router/paths'
 import { InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Search, Box, Link, DocumentCopy, Checked } from '@element-plus/icons-vue'
 
 const props = defineProps<{
@@ -42,17 +43,17 @@ const sidebarItems = [
 
 function handleClick(item: { key: string }) {
   const routeMap: Record<string, string> = {
-    info: `/local-repos/${props.repoKey}`,
-    spec: `/local-repos/${props.repoKey}`,
-    stats: `/local-repos/${props.repoKey}`,
-    lines: `/local-repos/${props.repoKey}`,
-    versions: `/local-repos/${props.repoKey}`,
-    files: `/local-repos/${props.repoKey}`,
-    commits: `/local-repos/${props.repoKey}`,
-    stash: `/local-repos/${props.repoKey}`,
-    submodules: `/local-repos/${props.repoKey}`,
-    patches: `/local-repos/${props.repoKey}`,
-    review: `/local-repos/${props.repoKey}/review`,
+    info: ROUTES.RepoDetail(props.repoKey),
+    spec: ROUTES.RepoDetail(props.repoKey),
+    stats: ROUTES.RepoDetail(props.repoKey),
+    lines: ROUTES.RepoDetail(props.repoKey),
+    versions: ROUTES.RepoDetail(props.repoKey),
+    files: ROUTES.RepoDetail(props.repoKey),
+    commits: ROUTES.RepoDetail(props.repoKey),
+    stash: ROUTES.RepoDetail(props.repoKey),
+    submodules: ROUTES.RepoDetail(props.repoKey),
+    patches: ROUTES.RepoDetail(props.repoKey),
+    review: ROUTES.ReviewDashboard(props.repoKey),
   }
   const target = routeMap[item.key]
   if (target) router.push(target)

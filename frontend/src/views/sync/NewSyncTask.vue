@@ -149,6 +149,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRouter } from 'vue-router'
 import { Back, ArrowLeft, ArrowRight, Check } from '@element-plus/icons-vue'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -200,7 +201,7 @@ function prevStep() {
 
 function submitForm() {
   console.log('Submit form:', form)
-  router.push('/sync')
+  router.push(ROUTES.SyncTask)
 }
 </script>
 

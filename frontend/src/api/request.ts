@@ -1,6 +1,9 @@
 import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosError } from 'axios'
 import type { ApiResponse } from '@/types/common'
 import { useNotification } from '@/composables/useNotification'
+import { handledError } from '@/api/error'
+
+export { isHandledError, type HandledError } from '@/api/error'
 
 // 动态设置 baseURL
 // Wails 桌面应用: http://localhost:12345/api/v1 (直接访问后端)
@@ -96,7 +99,7 @@ service.interceptors.response.use(
     const res = response.data as ApiResponse
     if (res.code !== 0) {
       showError(res.msg || '请求失败')
-      return Promise.reject(new Error(res.msg || '请求失败'))
+      return Promise.reject(handledError(new Error(res.msg || '请求失败')))
     }
 
     return response.data ? res.data : response
@@ -154,7 +157,7 @@ service.interceptors.response.use(
 
     showError(message)
     console.error('Response error:', error)
-    return Promise.reject(error)
+    return Promise.reject(handledError(error))
   }
 )
 

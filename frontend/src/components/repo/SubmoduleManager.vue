@@ -84,6 +84,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { Plus, Download, Refresh, CircleCheck, Connection, Delete } from '@element-plus/icons-vue'
 import { listSubmodules, addSubmodule, initSubmodule, updateSubmodule, syncSubmodule, removeSubmodule } from '@/api/modules/submodule'
@@ -114,9 +115,7 @@ async function loadSubmodules() {
   try {
     const res = await listSubmodules(props.repoKey)
     submodules.value = res?.submodules || []
-  } catch {
-    ElMessage.error('加载 Submodule 列表失败')
-  } finally {
+  } catch (e) { toastApiError(e, '加载 Submodule 列表失败') } finally {
     loading.value = false
   }
 }
@@ -161,7 +160,7 @@ async function handleAdd() {
     await loadSubmodules()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('添加失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '添加失败: ', '未知错误')
   } finally {
     adding.value = false
   }
@@ -174,7 +173,7 @@ async function handleInit(path: string) {
     await loadSubmodules()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('初始化失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '初始化失败: ', '未知错误')
   }
 }
 
@@ -185,7 +184,7 @@ async function handleUpdate(path: string) {
     await loadSubmodules()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('更新失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '更新失败: ', '未知错误')
   }
 }
 
@@ -197,7 +196,7 @@ async function handleUpdateAll() {
     await loadSubmodules()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('更新失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '更新失败: ', '未知错误')
   } finally {
     updating.value = false
   }
@@ -209,7 +208,7 @@ async function handleSync(path: string) {
     ElMessage.success('Submodule URL 同步成功')
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('同步失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '同步失败: ', '未知错误')
   }
 }
 
@@ -220,7 +219,7 @@ async function handleRemove(path: string) {
     await loadSubmodules()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('移除失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '移除失败: ', '未知错误')
   }
 }
 </script>

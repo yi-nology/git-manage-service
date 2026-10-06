@@ -177,6 +177,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, CircleCheck, Clock, Warning, ArrowRight, Finished } from '@element-plus/icons-vue'
 import {
@@ -377,7 +378,7 @@ async function applyAllPending() {
           commit_message: `feat: apply patch ${patch.name}`,
         })
       } catch (e: any) {
-        ElMessage.error(`应用 ${patch.name} 失败: ${e.message || e}`)
+        toastApiError(e, `应用 ${patch.name} 失败`)
         break
       }
     }

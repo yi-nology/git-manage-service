@@ -106,6 +106,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, type VNodeRef } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { MagicStick, User, Delete, Close, Link } from '@element-plus/icons-vue'
 import { marked } from 'marked'
@@ -254,9 +255,7 @@ const sendFeedback = async (msg: AIMessage, feedback: string) => {
     await aiApi.submit_feedback({ invocation_id: msg.invocation_id, feedback })
     msg.feedback = feedback
     ElMessage.success('反馈已提交')
-  } catch (e) {
-    ElMessage.error('反馈提交失败，请重试')
-  }
+  } catch (e) { toastApiError(e, '反馈提交失败，请重试') }
 }
 
 defineExpose({

@@ -1,34 +1,34 @@
 <template>
   <el-container class="app-layout">
     <el-header class="app-header">
-      <router-link to="/" class="logo">
+      <router-link :to="ROUTES.Home" class="logo">
         <el-icon class="logo-icon"><Connection /></el-icon>
         <span class="logo-text">Git Manage Service</span>
       </router-link>
       <nav class="header-nav">
-        <router-link to="/" class="nav-item" :class="{ active: isActive('/') }">
+        <router-link :to="ROUTES.Home" class="nav-item" :class="{ active: isActive('/') }">
           <el-icon><HomeFilled /></el-icon><span>首页</span>
         </router-link>
         <!-- 同步任务和 Webhook 已迁移到 V2，暂不显示 -->
-        <!-- <router-link to="/sync" class="nav-item" :class="{ active: isActive('/sync') }">
+        <!-- <router-link :to="ROUTES.SyncTask" class="nav-item" :class="{ active: isActive(ROUTES.SyncTask) }">
           <el-icon><RefreshRight /></el-icon><span>同步任务</span>
         </router-link>
-        <router-link to="/webhook/rules" class="nav-item" :class="{ active: isActive('/webhook') }">
+        <router-link :to="ROUTES.WebhookRules" class="nav-item" :class="{ active: isActive('/webhook') }">
           <el-icon><Link /></el-icon><span>Webhook</span>
         </router-link> -->
-        <router-link to="/local-repos" class="nav-item" :class="{ active: isActive('/local-repos') }">
+        <router-link :to="ROUTES.RepoList" class="nav-item" :class="{ active: isActive(ROUTES.RepoList) }">
           <el-icon><FolderOpened /></el-icon><span>本地仓库</span>
         </router-link>
-        <router-link to="/remote-repos" class="nav-item" :class="{ active: isActive('/remote-repos') }">
+        <router-link :to="ROUTES.RemoteRepos" class="nav-item" :class="{ active: isActive(ROUTES.RemoteRepos) }">
           <el-icon><Monitor /></el-icon><span>远端仓库</span>
         </router-link>
-        <router-link to="/audit" class="nav-item" :class="{ active: isActive('/audit') }">
+        <router-link :to="ROUTES.AuditLog" class="nav-item" :class="{ active: isActive(ROUTES.AuditLog) }">
           <el-icon><Warning /></el-icon><span>审计日志</span>
         </router-link>
-        <router-link to="/settings" class="nav-item" :class="{ active: isActive('/settings') }">
+        <router-link :to="ROUTES.Settings" class="nav-item" :class="{ active: isActive(ROUTES.Settings) }">
           <el-icon><Setting /></el-icon><span>设置</span>
         </router-link>
-        <router-link to="/mcp" class="nav-item" :class="{ active: isActive('/mcp') }">
+        <router-link :to="ROUTES.MCP" class="nav-item" :class="{ active: isActive(ROUTES.MCP) }">
           <el-icon><Connection /></el-icon><span>MCP</span>
         </router-link>
       </nav>
@@ -44,6 +44,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRoute } from 'vue-router'
 import { Connection, HomeFilled, FolderOpened, Setting, Warning, Monitor } from '@element-plus/icons-vue'
 import { useUIStore } from '@/stores/useUIStore'
@@ -57,7 +58,7 @@ useKeyboard()
 
 function isActive(path: string) {
   if (path === '/') return route.path === '/'
-  if (path === '/sync') return route.path.startsWith('/sync')
+  if (path === ROUTES.SyncTask) return route.path.startsWith(ROUTES.SyncTask)
   if (path === '/webhook') return route.path.startsWith('/webhook')
   return route.path.startsWith(path)
 }

@@ -8,7 +8,7 @@
 
     <EmptyState v-if="providers.length === 0 && !loading" title="暂无平台配置" description="请先在「设置 → 平台配置」中添加 GitLab/GitHub/Gitea 平台">
       <template #action>
-        <ActionPill variant="primary" :icon="Setting" @click="$router.push('/settings/platforms')">前往设置</ActionPill>
+        <ActionPill variant="primary" :icon="Setting" @click="$router.push(ROUTES.PlatformConfig)">前往设置</ActionPill>
       </template>
     </EmptyState>
 
@@ -73,6 +73,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh, Setting, FolderOpened, Download, View, Link } from '@element-plus/icons-vue'
@@ -199,7 +200,7 @@ function handleClone(repo: RemoteRepo) {
     if (activeProviderId.value) query.provider_config_id = String(activeProviderId.value)
     if (owner) query.platform_owner = owner
     if (name) query.platform_repo = name
-    router.push({ path: '/local-repos/clone', query })
+    router.push({ path: ROUTES.RepoClone, query })
   } else {
     ElMessage.warning('未找到仓库 URL')
   }

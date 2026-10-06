@@ -2,7 +2,7 @@
   <div class="credential-page">
     <PageHeader title="凭证管理" subtitle="统一管理 Git 仓库认证凭证">
       <template #actions>
-        <ActionPill variant="primary" :icon="Plus" @click="router.push('/settings/credentials/add')">
+        <ActionPill variant="primary" :icon="Plus" @click="router.push(ROUTES.AddCredential)">
           添加凭证
         </ActionPill>
       </template>
@@ -63,6 +63,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, InfoFilled, CircleCheck, CircleClose } from '@element-plus/icons-vue'
@@ -96,7 +98,7 @@ async function loadCredentials() {
 }
 
 function handleEdit(cred: CredentialDTO) {
-  router.push(`/settings/credentials/${cred.id}/edit`)
+  router.push(ROUTES.EditCredential(cred.id))
 }
 
 async function handleDelete(cred: CredentialDTO) {
@@ -105,7 +107,7 @@ async function handleDelete(cred: CredentialDTO) {
     ElMessage.success('凭证已删除')
     loadCredentials()
   } catch (e: any) {
-    ElMessage.error(e?.message || '删除失败')
+    toastApiError(e, '删除失败')
   }
 }
 

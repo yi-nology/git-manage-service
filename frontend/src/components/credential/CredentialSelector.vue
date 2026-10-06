@@ -38,7 +38,7 @@
       </el-option-group>
       <template #empty>
         <div class="empty-hint">
-          暂无凭证，<el-link type="primary" @click="$router.push('/settings/credentials')">去创建</el-link>
+          暂无凭证，<el-link type="primary" @click="$router.push(ROUTES.Credentials)">去创建</el-link>
         </div>
       </template>
     </el-select>
@@ -47,6 +47,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { listCredentials, matchCredentials } from '@/api/modules/credential'
 import type { CredentialDTO, CredentialType } from '@/types/credential'
 

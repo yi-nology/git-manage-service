@@ -1,5 +1,6 @@
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { toastApiError } from './useNotification'
 import {
   listIdentities,
   createIdentity,
@@ -16,6 +17,7 @@ import {
 } from '@/api/modules/author'
 import type { AuthorIdentityDTO, AliasEntry, RepoAuthorConfigDTO, MismatchedCommit, AliasSuggestionResult, MergeSuggestionResult, RiskAssessmentResult, ChatMessageDTO } from '@/api/modules/author'
 import { getTaskStatus } from '@/api/modules/maintenance'
+import { usePolling } from '@/composables/usePolling'
 
 export function useAuthorIdentity() {
   const identities = ref<AuthorIdentityDTO[]>([])
@@ -35,7 +37,7 @@ export function useAuthorIdentity() {
       ElMessage.success('身份创建成功')
       await loadIdentities()
     } catch (e: any) {
-      ElMessage.error('创建失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '创建失败', '未知错误')
     }
   }
 
@@ -45,7 +47,7 @@ export function useAuthorIdentity() {
       ElMessage.success('身份更新成功')
       await loadIdentities()
     } catch (e: any) {
-      ElMessage.error('更新失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '更新失败', '未知错误')
     }
   }
 
@@ -58,7 +60,7 @@ export function useAuthorIdentity() {
       ElMessage.success('删除成功')
       await loadIdentities()
     } catch (e: any) {
-      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '删除失败', '未知错误')
     }
   }
 
@@ -68,7 +70,7 @@ export function useAuthorIdentity() {
       ElMessage.success('已激活并更新 ~/.gitconfig')
       await loadIdentities()
     } catch (e: any) {
-      ElMessage.error('激活失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '激活失败', '未知错误')
     }
   }
 
@@ -97,13 +99,24 @@ export function useAuthorFix(repo_key: string) {
   const taskLogs = ref<string[]>([])
   const taskError = ref('')
 
-  let pollTimer: ReturnType<typeof setInterval> | null = null
+  const taskPoll = usePolling({
+    interval: 2000,
+    tick: async () => {
+      const task = (await getTaskStatus(task_id.value)) as any
+      task_status.value = task?.status || ''
+      taskLogs.value = task?.progress || []
+      taskError.value = task?.error || ''
+      if (task?.status === 'success') {
+        ElMessage.success('作者修复完成')
+        scan()
+      }
+      return task?.status !== 'success' && task?.status !== 'failed'
+    },
+    // 查询失败即停（与原行为一致），错误提示由拦截器统一弹出。
+  })
 
-  function stopPolling() {
-    if (pollTimer) {
-      clearInterval(pollTimer)
-      pollTimer = null
-    }
+  function startPolling() {
+    taskPoll.start()
   }
 
   async function loadRepoConfig() {
@@ -124,7 +137,7 @@ export function useAuthorFix(repo_key: string) {
       ElMessage.success('仓库作者身份已更新')
       await loadRepoConfig()
     } catch (e: any) {
-      ElMessage.error('设置失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '设置失败', '未知错误')
     }
   }
 
@@ -135,7 +148,7 @@ export function useAuthorFix(repo_key: string) {
       scanResult.value = result?.commits || []
       total_commits.value = result?.total_commits || 0
     } catch (e: any) {
-      ElMessage.error('扫描失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '扫描失败', '未知错误')
     } finally {
       scanLoading.value = false
     }
@@ -150,7 +163,7 @@ export function useAuthorFix(repo_key: string) {
       taskError.value = ''
       startPolling()
     } catch (e: any) {
-      ElMessage.error('修复失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '修复失败', '未知错误')
     }
   }
 
@@ -168,38 +181,13 @@ export function useAuthorFix(repo_key: string) {
       taskError.value = ''
       startPolling()
     } catch (e: any) {
-      ElMessage.error('修复失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '修复失败', '未知错误')
     }
-  }
-
-  function startPolling() {
-    stopPolling()
-    pollTimer = setInterval(async () => {
-      try {
-        const task = (await getTaskStatus(task_id.value)) as any
-        task_status.value = task?.status || ''
-        taskLogs.value = task?.progress || []
-        taskError.value = task?.error || ''
-        if (task?.status === 'success' || task?.status === 'failed') {
-          stopPolling()
-          if (task.status === 'success') {
-            ElMessage.success('作者修复完成')
-            scan()
-          }
-        }
-      } catch {
-        stopPolling()
-      }
-    }, 2000)
   }
 
   function handleSelection(rows: MismatchedCommit[]) {
     selectedCommits.value = rows
   }
-
-  onUnmounted(() => {
-    stopPolling()
-  })
 
   return {
     repoConfig, configLoading, scanResult, scanLoading, total_commits, selectedCommits,
@@ -225,7 +213,7 @@ export function useAuthorAI(repo_key: string) {
       const res = (await authorAI(repo_key, 'suggest')) as any
       aiSuggestion.value = res?.suggest || null
     } catch (e: any) {
-      ElMessage.error('AI 推荐失败: ' + (e.message || '请检查 LLM 配置'))
+      toastApiError(e, 'AI 推荐失败', '请检查 LLM 配置')
     } finally {
       aiLoading.value = false
     }
@@ -238,7 +226,7 @@ export function useAuthorAI(repo_key: string) {
       const res = (await authorAI(repo_key, 'analyze', { scan: scanData })) as any
       aiAnalysis.value = res?.result || ''
     } catch (e: any) {
-      ElMessage.error('AI 分析失败: ' + (e.message || '请检查 LLM 配置'))
+      toastApiError(e, 'AI 分析失败', '请检查 LLM 配置')
     } finally {
       aiLoading.value = false
     }
@@ -251,7 +239,7 @@ export function useAuthorAI(repo_key: string) {
       const res = (await authorAI(repo_key, 'merge')) as any
       aiMerge.value = res?.merge || null
     } catch (e: any) {
-      ElMessage.error('AI 分析失败: ' + (e.message || '请检查 LLM 配置'))
+      toastApiError(e, 'AI 分析失败', '请检查 LLM 配置')
     } finally {
       aiLoading.value = false
     }
@@ -264,7 +252,7 @@ export function useAuthorAI(repo_key: string) {
       const res = (await authorAI(repo_key, 'risk', { commits })) as any
       aiRisk.value = res?.risk || null
     } catch (e: any) {
-      ElMessage.error('AI 风险评估失败: ' + (e.message || '请检查 LLM 配置'))
+      toastApiError(e, 'AI 风险评估失败', '请检查 LLM 配置')
     } finally {
       aiLoading.value = false
     }

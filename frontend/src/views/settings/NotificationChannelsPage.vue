@@ -2,7 +2,7 @@
   <div class="notification-page">
     <PageHeader title="通知渠道管理" subtitle="配置同步任务的消息通知渠道">
       <template #actions>
-        <ActionPill variant="primary" :icon="Plus" @click="router.push('/settings/notification-channels/add')">
+        <ActionPill variant="primary" :icon="Plus" @click="router.push(ROUTES.AddChannel)">
           添加渠道
         </ActionPill>
         <ActionPill variant="outline" :icon="Refresh" :disabled="loading" @click="loadChannels">
@@ -46,7 +46,7 @@
       <template #cell-actions="{ row }">
         <div class="action-btns">
           <ActionPill variant="green" small :icon="Promotion" :disabled="testingId === row.id" @click="handleTest(row.id)" />
-          <ActionPill variant="primary" small :icon="Edit" @click="router.push(`/settings/notification-channels/${row.id}/edit`)" />
+          <ActionPill variant="primary" small :icon="Edit" @click="router.push(ROUTES.EditChannel(row.id))" />
           <el-popconfirm title="确定删除此渠道?" @confirm="handleDelete(row.id)">
             <template #reference>
               <ActionPill variant="danger" small :icon="Delete" />
@@ -60,6 +60,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Refresh, Promotion, Edit, Delete } from '@element-plus/icons-vue'
@@ -132,8 +134,8 @@ async function loadChannels() {
   loading.value = true
   try {
     channels.value = await listChannels() || []
-  } catch {
-    ElMessage.error('加载通知渠道失败')
+  } catch (e) {
+    toastApiError(e, '加载通知渠道失败')
     channels.value = []
   } finally {
     loading.value = false
@@ -147,7 +149,7 @@ async function handleDelete(id: number) {
     await loadChannels()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('删除失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '删除失败: ', '未知错误')
   }
 }
 
@@ -162,7 +164,7 @@ async function handleTest(id: number) {
     }
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('测试失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '测试失败: ', '未知错误')
   } finally {
     testingId.value = null
   }

@@ -67,6 +67,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { listRemoteCRs, createRemoteCR, mergeRemoteCR, closeRemoteCR } from '@/api/modules/cr'
@@ -181,7 +182,7 @@ async function handleSyncCRs() {
     crs.value = res?.items || []
     await loadReviewTasks()
     ElMessage.success(`已刷新，共 ${crs.value.length} 个 CR`)
-  } catch (e: any) { ElMessage.error('刷新失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, '刷新失败: ', '') }
   finally { crSyncing.value = false }
 }
 
@@ -191,7 +192,7 @@ async function handleMergeCR(cr: CRDTO) {
     await mergeRemoteCR(props.providerId, props.repoOwner, props.repoName, cr.cr_number)
     ElMessage.success('合并成功')
     loadCRs()
-  } catch (e: any) { ElMessage.error('合并失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, '合并失败: ', '') }
 }
 
 async function handleCloseCR(cr: CRDTO) {
@@ -200,7 +201,7 @@ async function handleCloseCR(cr: CRDTO) {
     await closeRemoteCR(props.providerId, props.repoOwner, props.repoName, cr.cr_number)
     ElMessage.success('已关闭')
     loadCRs()
-  } catch (e: any) { ElMessage.error('关闭失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, '关闭失败: ', '') }
 }
 
 async function handleTriggerReview(cr: CRDTO) {
@@ -216,7 +217,7 @@ async function handleTriggerReview(cr: CRDTO) {
     ElMessage.success(`已触发 MR #${cr.cr_number} 的代码审查`)
     setTimeout(loadReviewTasks, 2000)
   } catch (e: any) {
-    ElMessage.error('触发审查失败: ' + (e?.message || ''))
+    toastApiError(e, '触发审查失败: ', '')
   } finally {
     reviewTriggering.value = false
   }
@@ -248,7 +249,7 @@ async function handleCreateCR() {
     createCRForm.value = { title: '', description: '', source_branch: '', target_branch: '', labels: '' }
     loadCRs()
   } catch (e: any) {
-    ElMessage.error('创建失败: ' + (e?.message || ''))
+    toastApiError(e, '创建失败: ', '')
   } finally {
     createCRLoading.value = false
   }

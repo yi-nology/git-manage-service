@@ -72,6 +72,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { ProviderConfigDTO } from '@/api/modules/provider'
@@ -156,7 +157,7 @@ async function handleSubmit() {
     visible.value = false
     emit('created')
   } catch (e: any) {
-    ElMessage.error(e?.message || '创建关联失败')
+    toastApiError(e, '创建关联失败')
   } finally {
     submitting.value = false
   }

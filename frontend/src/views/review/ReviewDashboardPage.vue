@@ -2,7 +2,7 @@
   <div class="review-page-wrapper">
     <PageHeader
       :title="`代码审查 · ${repo_name}`"
-      :back-route="`/local-repos/${repo_key}`"
+      :back-route="ROUTES.RepoDetail(repo_key)"
       :show-back="true"
     >
       <template #actions>
@@ -86,6 +86,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -196,7 +197,7 @@ function timeAgo(dateStr: string) {
 }
 
 function goDetail(task_id: number) {
-  router.push(`/local-repos/${repo_key}/review/tasks/${task_id}`)
+  router.push(ROUTES.ReviewTaskDetail(repo_key, task_id))
 }
 
 async function loadData() {

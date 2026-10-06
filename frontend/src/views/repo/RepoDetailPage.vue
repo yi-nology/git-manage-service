@@ -131,6 +131,8 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, defineAsyncComponent, onMounted, watch, nextTick } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Search, InfoFilled, Document, DataAnalysis, Files, Timer, Folder, Box, Link, Share, Operation, User, DocumentCopy, MagicStick } from '@element-plus/icons-vue'
@@ -323,7 +325,7 @@ async function handleSetPrimaryBinding(id: number) {
     ElMessage.success('已设为主关联')
     loadBindings()
   } catch (e: any) {
-    ElMessage.error('操作失败: ' + (e?.message || ''))
+    toastApiError(e, '操作失败: ', '')
   }
 }
 
@@ -333,7 +335,7 @@ async function handleRegisterWebhook(id: number) {
     ElMessage.success('Webhook 已注册')
     loadBindings()
   } catch (e: any) {
-    ElMessage.error('注册失败: ' + (e?.message || ''))
+    toastApiError(e, '注册失败: ', '')
   }
 }
 
@@ -343,7 +345,7 @@ async function handleDeleteWebhook(id: number) {
     ElMessage.success('Webhook 已删除')
     loadBindings()
   } catch (e: any) {
-    ElMessage.error('删除失败: ' + (e?.message || ''))
+    toastApiError(e, '删除失败: ', '')
   }
 }
 
@@ -360,7 +362,8 @@ async function handleEditSaved() {
 function handleNavSelect(key: string) {
   const item = sidebarItems.find(i => i.key === key)
   if (item && (item as any).route) {
-    router.push(`/local-repos/${repo_key}/${key}`)
+    // 侧边栏的二级路由键（branches/review/...）动态拼接在详情路径上
+    router.push(ROUTES.RepoDetail(repo_key) + '/' + key)
   } else {
     activeTab.value = key
     router.replace({ query: { ...route.query, tab: key } })
@@ -435,7 +438,7 @@ async function handleAISummary(message: string) {
      )
    } catch (e) {
      aiPanelRef.value?.addResponse('AI 分析失败，请稍后重试。')
-     ElMessage.error('AI 分析失败，请稍后重试')
+     toastApiError(e, 'AI 分析失败，请稍后重试')
    } finally {
      aiLoading.value = false
    }

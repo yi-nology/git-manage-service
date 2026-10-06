@@ -13,7 +13,7 @@
       </template>
       <template #actions>
         <ActionPill v-if="!linkedRepoKey" variant="primary" :icon="Download" @click="handleClone">克隆到本地</ActionPill>
-        <ActionPill v-else variant="outline" :icon="FolderOpened" @click="$router.push(`/local-repos/${linkedRepoKey}`)">查看本地仓库</ActionPill>
+        <ActionPill v-else variant="outline" :icon="FolderOpened" @click="$router.push(ROUTES.RepoDetail(linkedRepoKey))">查看本地仓库</ActionPill>
       </template>
     </PageHeader>
 
@@ -221,6 +221,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { FolderOpened, Download, Link, Refresh } from '@element-plus/icons-vue'
@@ -326,7 +328,7 @@ function handleClone() {
     if (provider_id) query.provider_config_id = String(provider_id)
     if (repoOwner) query.platform_owner = repoOwner
     if (repo_name) query.platform_repo = repo_name
-    router.push({ path: '/local-repos/clone', query })
+    router.push({ path: ROUTES.RepoClone, query })
   }
 }
 
@@ -367,7 +369,7 @@ async function saveReviewConfig() {
     if (res) reviewCfg.value = res
     ElMessage.success('配置已保存')
   } catch (e: any) {
-    ElMessage.error('保存失败: ' + (e?.message || ''))
+    toastApiError(e, '保存失败: ', '')
   } finally {
     crCfgSaving.value = false
   }

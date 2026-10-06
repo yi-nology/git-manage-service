@@ -181,6 +181,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Share, ChatDotRound } from '@element-plus/icons-vue'
@@ -200,7 +202,7 @@ import ActionPill from '@/components/common/ActionPill.vue'
 const route = useRoute()
 const repo_key = route.params.repo_key as string
 
-const branchBackRoute = computed(() => `/local-repos/${repo_key}/branches`)
+const branchBackRoute = computed(() => ROUTES.BranchList(repo_key))
 
 const repo_name = ref('')
 const currentVersion = ref('')
@@ -288,7 +290,7 @@ async function handleCreateBranch() {
     createForm.value.name = ''
     loadData()
   } catch (e: any) {
-    ElMessage.error('创建失败: ' + (e?.message || ''))
+    toastApiError(e, '创建失败: ', '')
   } finally {
     creating.value = false
   }
@@ -311,7 +313,7 @@ async function handleDeleteBranch() {
     deleteForm.value.branch = ''
     loadData()
   } catch (e: any) {
-    ElMessage.error('删除失败: ' + (e?.message || ''))
+    toastApiError(e, '删除失败: ', '')
   } finally {
     deleting.value = false
   }
@@ -347,7 +349,7 @@ async function handleMerge() {
     }
     loadData()
   } catch (e: any) {
-    ElMessage.error('合并失败: ' + (e?.message || ''))
+    toastApiError(e, '合并失败: ', '')
   } finally {
     merging.value = false
   }
@@ -372,7 +374,7 @@ async function handleCreateMR() {
     mrForm.value.title = ''
     mrForm.value.description = ''
   } catch (e: any) {
-    ElMessage.error('创建 MR 失败: ' + (e?.message || ''))
+    toastApiError(e, '创建 MR 失败: ', '')
   } finally {
     mrCreating.value = false
   }
@@ -386,7 +388,7 @@ async function handleComment() {
     ElMessage.success('评论已提交')
     commentForm.value.content = ''
   } catch (e: any) {
-    ElMessage.error('提交失败: ' + (e?.message || ''))
+    toastApiError(e, '提交失败: ', '')
   } finally {
     commenting.value = false
   }

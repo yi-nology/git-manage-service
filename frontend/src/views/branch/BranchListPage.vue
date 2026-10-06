@@ -1,9 +1,9 @@
 <template>
   <div class="branch-list-page">
-    <PageHeader title="分支管理" show-back :back-route="`/local-repos/${repo_key}`">
+    <PageHeader title="分支管理" show-back :back-route="ROUTES.RepoDetail(repo_key)">
       <template #actions>
-        <ActionPill variant="green" :icon="SetUp" @click="$router.push(`/local-repos/${repo_key}/branch-actions`)">分支操作</ActionPill>
-        <ActionPill variant="green" :icon="Switch" @click="$router.push(`/local-repos/${repo_key}/compare`)">分支对比 & 合并</ActionPill>
+        <ActionPill variant="green" :icon="SetUp" @click="$router.push(ROUTES.BranchActions(repo_key))">分支操作</ActionPill>
+        <ActionPill variant="green" :icon="Switch" @click="$router.push(ROUTES.BranchCompare(repo_key))">分支对比 & 合并</ActionPill>
         <ActionPill variant="outline" :icon="Download" :disabled="fetchLoading" @click="handleFetchAll">刷新远端 (Fetch)</ActionPill>
         <ActionPill variant="primary" :icon="Plus" @click="showCreateDialog = true">新建分支</ActionPill>
       </template>
@@ -182,6 +182,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Edit, Select, Top, Bottom, Switch, Download, CircleCheck, PriceTag, View, RefreshRight, Close, SetUp } from '@element-plus/icons-vue'
@@ -356,7 +357,7 @@ function getLocalBranch(remote_name: string): string | null {
 }
 
 function goDetail(branchName: string) {
-  router.push(`/local-repos/${repo_key}/branches/${encodeURIComponent(branchName)}`)
+  router.push(ROUTES.BranchDetail(repo_key, encodeURIComponent(branchName)))
 }
 
 async function handleFetchAll() {

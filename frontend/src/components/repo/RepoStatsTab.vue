@@ -61,6 +61,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { Search, Download } from '@element-plus/icons-vue'
 import { getStatsAnalyze, getStatsCommits, exportStatsCsv } from '@/api/modules/stats'
@@ -119,9 +120,7 @@ async function handleExportCsv() {
     a.download = `${props.repoName || props.repoKey}-stats.csv`
     a.click()
     window.URL.revokeObjectURL(url)
-  } catch {
-    ElMessage.error('导出失败')
-  }
+  } catch (e) { toastApiError(e, '导出失败') }
 }
 </script>
 

@@ -79,7 +79,7 @@
     </div>
 
     <div v-if="selectedRepos.length > 0" class="form-actions">
-      <ActionPill variant="outline" @click="router.push('/local-repos')">取消</ActionPill>
+      <ActionPill variant="outline" @click="router.push(ROUTES.RepoList)">取消</ActionPill>
       <ActionPill variant="primary" :icon="Check" @click="handleRegister" :disabled="registering">
         {{ registering ? '注册中...' : `注册 ${selectedRepos.length} 个仓库` }}
       </ActionPill>
@@ -94,6 +94,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRouter } from 'vue-router'
 import {
   FolderChecked,
@@ -202,7 +203,7 @@ async function handleRegister() {
     }
     if (successList.length > 0) {
       showSuccess(`成功注册 ${successList.length} 个仓库`)
-      router.push('/local-repos')
+      router.push(ROUTES.RepoList)
       emit('registered')
     }
   } catch (e: any) {

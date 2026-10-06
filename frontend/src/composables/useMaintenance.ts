@@ -1,5 +1,6 @@
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { toastApiError } from './useNotification'
 import {
   getRepoHealth,
   slimRepo,
@@ -13,6 +14,7 @@ import {
   forcePushRemotes,
 } from '@/api/modules/maintenance'
 import type { RepoHealthReport, LargeFileEntry, MaintenanceRecordDTO, MaintenanceRecordListResponse, MaintenanceAIAnalysisResponse, FileAIRecommendation, PrefixSlimPreview } from '@/api/modules/maintenance'
+import { usePolling } from '@/composables/usePolling'
 
 export function useMaintenance(repo_key: string) {
   const healthLoading = ref(false)
@@ -36,11 +38,27 @@ export function useMaintenance(repo_key: string) {
   const recordsPage = ref(1)
   const recordsPageSize = ref(10)
 
-  let pollTimer: ReturnType<typeof setInterval> | null = null
-
-  onUnmounted(() => {
-    if (pollTimer) clearInterval(pollTimer)
+  // 维护任务（瘦身/GC/按前缀瘦身/强推）共用一个任务轮询。
+  const taskPoll = usePolling({
+    interval: 2000,
+    tick: async () => {
+      const task = await getTaskStatus(task_id.value) as any
+      task_status.value = task.status
+      taskLogs.value = task.progress || []
+      taskError.value = task.error || ''
+      if (task.status === 'success') {
+        ElMessage.success('操作完成')
+        loadHealth()
+        loadRecords()
+      }
+      return task.status !== 'success' && task.status !== 'failed'
+    },
+    // 查询失败即停（与原行为一致），错误提示由拦截器统一弹出。
   })
+
+  function startPolling() {
+    taskPoll.start()
+  }
 
   async function analyzeWithAI() {
     if (!healthReport.value || healthReport.value.large_files.length === 0) {
@@ -61,7 +79,7 @@ export function useMaintenance(repo_key: string) {
       }
       aiRecommendationMap.value = map
     } catch (e: any) {
-      ElMessage.error('AI 分析失败: ' + (e.message || '未知错误'))
+      toastApiError(e, 'AI 分析失败', '未知错误')
     } finally {
       aiLoading.value = false
     }
@@ -94,7 +112,7 @@ export function useMaintenance(repo_key: string) {
       const thresholdBytes = thresholdKB.value * 1024
       healthReport.value = await getRepoHealth(repo_key, thresholdBytes, excludePatterns.value) as any
     } catch (e: any) {
-      ElMessage.error('体检失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '体检失败', '未知错误')
     } finally {
       healthLoading.value = false
     }
@@ -111,7 +129,7 @@ export function useMaintenance(repo_key: string) {
       await addGitignoreApi(repo_key, paths)
       ElMessage.success(`已将 ${paths.length} 个文件添加到 .gitignore`)
     } catch (e: any) {
-      ElMessage.error('添加失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '添加失败', '未知错误')
     } finally {
       gitignoreLoading.value = false
     }
@@ -137,7 +155,7 @@ export function useMaintenance(repo_key: string) {
       taskError.value = ''
       startPolling()
     } catch (e: any) {
-      ElMessage.error('瘦身失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '瘦身失败', '未知错误')
     }
   }
 
@@ -155,34 +173,10 @@ export function useMaintenance(repo_key: string) {
       taskError.value = ''
       startPolling()
     } catch (e: any) {
-      ElMessage.error('GC 失败: ' + (e.message || '未知错误'))
+      toastApiError(e, 'GC 失败', '未知错误')
     } finally {
       gcLoading.value = false
     }
-  }
-
-  function startPolling() {
-    if (pollTimer) clearInterval(pollTimer)
-    pollTimer = setInterval(async () => {
-      try {
-        const task = await getTaskStatus(task_id.value) as any
-        task_status.value = task.status
-        taskLogs.value = task.progress || []
-        taskError.value = task.error || ''
-        if (task.status === 'success' || task.status === 'failed') {
-          if (pollTimer) clearInterval(pollTimer)
-          pollTimer = null
-          if (task.status === 'success') {
-            ElMessage.success('操作完成')
-            loadHealth()
-            loadRecords()
-          }
-        }
-      } catch {
-        if (pollTimer) clearInterval(pollTimer)
-        pollTimer = null
-      }
-    }, 2000)
   }
 
   async function loadRecords(page?: number) {
@@ -228,7 +222,7 @@ export function useMaintenance(repo_key: string) {
     try {
       prefixPreview.value = await previewPrefixSlim(repo_key, prefixTags.value) as any as PrefixSlimPreview
     } catch (e: any) {
-      ElMessage.error('预览失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '预览失败', '未知错误')
     } finally {
       prefixPreviewLoading.value = false
     }
@@ -259,7 +253,7 @@ export function useMaintenance(repo_key: string) {
       taskError.value = ''
       startPolling()
     } catch (e: any) {
-      ElMessage.error('瘦身失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '瘦身失败', '未知错误')
     }
   }
 
@@ -280,7 +274,7 @@ export function useMaintenance(repo_key: string) {
       taskError.value = ''
       startPolling()
     } catch (e: any) {
-      ElMessage.error('推送失败: ' + (e.message || '未知错误'))
+      toastApiError(e, '推送失败', '未知错误')
     }
   }
 

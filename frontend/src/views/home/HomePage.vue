@@ -10,7 +10,7 @@
         提供友好的 Web 界面，支持定时任务、Webhook 触发、多渠道消息通知以及详细的同步日志记录。
       </p>
       <div class="hero-actions">
-        <button class="hero-btn hero-btn-primary" @click="$router.push('/local-repos')">
+        <button class="hero-btn hero-btn-primary" @click="$router.push(ROUTES.RepoList)">
           开始使用
           <el-icon><ArrowRight /></el-icon>
         </button>
@@ -93,6 +93,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, type Component } from 'vue'
+import { ROUTES } from '@/router/paths'
 import {
   Connection, Refresh, Bell, Key, Coin, Setting, Link, Edit, Stamp,
   ArrowRight,

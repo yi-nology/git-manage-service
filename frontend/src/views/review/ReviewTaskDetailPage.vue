@@ -1,7 +1,7 @@
  <template>
    <div class="review-page-wrapper">
      <div class="header-bar">
-       <PageHeader :showBack="true" :backRoute="`/local-repos/${repo_key}/review/tasks`">
+       <PageHeader :showBack="true" :backRoute="ROUTES.ReviewTaskList(repo_key)">
          <template #actions>
            <ActionPill variant="ai" :icon="MagicStick" :disabled="aiLoading" @click="showAIPanel = !showAIPanel">
              AI 审查助手
@@ -17,9 +17,9 @@
       <LoadingState v-if="loading && !task" />
       <div class="detail-content" v-else>
         <div class="breadcrumb">
-          <router-link :to="`/local-repos/${repo_key}/review`">总览</router-link>
+          <router-link :to="ROUTES.ReviewDashboard(repo_key)">总览</router-link>
           <span class="sep">/</span>
-          <router-link :to="`/local-repos/${repo_key}/review/tasks`">任务</router-link>
+          <router-link :to="ROUTES.ReviewTaskList(repo_key)">任务</router-link>
           <span class="sep">/</span>
           <span class="current">审查任务 #{{ task_id }}</span>
         </div>
@@ -138,6 +138,8 @@
 
  <script setup lang="ts">
  import { ref, computed, onMounted } from 'vue'
+ import { ROUTES } from '@/router/paths'
+ import { toastApiError } from '@/composables/useNotification'
  import { useRoute } from 'vue-router'
  import { ElMessage } from 'element-plus'
  import { Refresh, MagicStick } from '@element-plus/icons-vue'
@@ -277,7 +279,7 @@ function formatReviewAIResponse(response: Awaited<ReturnType<typeof aiApi.code_r
      aiPanelRef.value?.addResponse(contextInfo + '\n\n' + formatReviewAIResponse(response))
    } catch (e) {
      aiPanelRef.value?.addResponse('AI 审查分析失败，请稍后重试。')
-     ElMessage.error('AI 审查分析失败，请稍后重试')
+     toastApiError(e, 'AI 审查分析失败，请稍后重试')
    } finally {
      aiLoading.value = false
    }

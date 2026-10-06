@@ -34,7 +34,7 @@
       row-key="key"
     >
       <template #cell-name="{ row }">
-        <span class="cell-name" @click="router.push(`/local-repos/${row.key}`)">{{ row.name }}</span>
+        <span class="cell-name" @click="router.push(ROUTES.RepoDetail(row.key))">{{ row.name }}</span>
       </template>
       <template #cell-path="{ row }">
         <span class="cell-mono" :title="row.path">{{ row.path }}</span>
@@ -49,13 +49,14 @@
         <span v-else style="color:var(--text-color-placeholder)">-</span>
       </template>
       <template #row-actions="{ row }">
-        <ActionPill variant="outline" small @click="router.push(`/local-repos/${row.key}`)">
+        <ActionPill variant="outline" small @click="router.push(ROUTES.RepoDetail(row.key))">
           <el-icon><View /></el-icon> 详情
         </ActionPill>
-        <ActionPill variant="outline" small @click="router.push(`/local-repos/${row.key}/branches`)">
+        <ActionPill variant="outline" small @click="router.push(ROUTES.BranchList(row.key))">
           <el-icon><Share /></el-icon> 分支
         </ActionPill>
-        <ActionPill variant="outline" small @click="router.push(`/local-repos/${row.key}/sync`)">
+        <!-- 同步是详情页内 tab（无独立路由），此前跳 /sync 是 404 死链 -->
+        <ActionPill variant="outline" small @click="router.push({ path: ROUTES.RepoDetail(row.key), query: { tab: 'sync' } })">
           <el-icon><Refresh /></el-icon> 同步
         </ActionPill>
         <ActionPill variant="danger" small @click="handleDelete(row.key, row.name)">
@@ -66,7 +67,7 @@
 
     <EmptyState v-else icon="Folder" title="暂无仓库" description="添加您的第一个仓库开始管理">
       <template #action>
-        <ActionPill :icon="Plus" @click="router.push('/local-repos/register')">添加第一个仓库</ActionPill>
+        <ActionPill :icon="Plus" @click="router.push(ROUTES.RepoRegister)">添加第一个仓库</ActionPill>
       </template>
     </EmptyState>
 
@@ -76,6 +77,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import {
@@ -157,9 +159,9 @@ const paginatedData = computed(() => {
 
 function handleAddCommand(command: string) {
   if (command === 'register') {
-    router.push('/local-repos/register')
+    router.push(ROUTES.RepoRegister)
   } else if (command === 'clone') {
-    router.push('/local-repos/clone')
+    router.push(ROUTES.RepoClone)
   }
 }
 

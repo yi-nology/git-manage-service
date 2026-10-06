@@ -53,7 +53,7 @@
       </div>
 
       <template #footer>
-        <ActionPill variant="outline" @click="$router.push('/local-repos')">取消</ActionPill>
+        <ActionPill variant="outline" @click="$router.push(ROUTES.RepoList)">取消</ActionPill>
         <ActionPill variant="primary" :icon="ArrowRight" :disabled="cloning || !form.remote_url || !form.local_path" @click="handleClone">
           {{ cloning ? '克隆中...' : '开始克隆' }}
         </ActionPill>
@@ -74,7 +74,7 @@
 
       <div v-if="task_status === 'done'" class="result-row">
         <span class="result-text">克隆成功！</span>
-        <ActionPill variant="primary" @click="$router.push('/local-repos')">查看仓库列表</ActionPill>
+        <ActionPill variant="primary" @click="$router.push(ROUTES.RepoList)">查看仓库列表</ActionPill>
       </div>
 
       <div v-if="task_status === 'failed'" class="result-row">
@@ -85,7 +85,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowRight } from '@element-plus/icons-vue'
@@ -93,6 +94,7 @@ import { cloneRepo, getCloneTask, selectDirectory } from '@/api/modules/repo'
 import type { CloneRepoReq } from '@/types/repo'
 import CredentialSelector from '@/components/credential/CredentialSelector.vue'
 import { validateGitRemoteUrl, detectGitProtocol, extractRepoName, convertGitUrl } from '@/utils/git'
+import { usePolling } from '@/composables/usePolling'
 import PageHeader from '@/components/common/PageHeader.vue'
 import FormCard from '@/components/common/FormCard.vue'
 import ActionPill from '@/components/common/ActionPill.vue'
@@ -107,7 +109,6 @@ const task_id = ref('')
 const task_status = ref('')
 const taskError = ref('')
 const progressLines = ref<string[]>([])
-let pollTimer: ReturnType<typeof setInterval> | null = null
 const urlError = ref('')
 const urlMode = ref<UrlMode>('ssh')
 
@@ -202,26 +203,23 @@ async function handleClone() {
 }
 
 function startPolling() {
-  pollTimer = setInterval(async () => {
-    if (!task_id.value) return
-    try {
-      const task = await getCloneTask(task_id.value)
-      task_status.value = task.status
-      progressLines.value = task.progress || []
-      if (task.error) taskError.value = task.error
-      if (task.status === 'done' || task.status === 'failed') {
-        stopPolling()
-        if (task.status === 'done') ElMessage.success('仓库克隆成功')
-      }
-    } catch { /* ignore */ }
-  }, 1500)
+  poll.start()
 }
 
-function stopPolling() {
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
-}
-
-onUnmounted(() => { stopPolling() })
+const poll = usePolling({
+  interval: 1500,
+  tick: async () => {
+    if (!task_id.value) return true
+    const task = await getCloneTask(task_id.value)
+    task_status.value = task.status
+    progressLines.value = task.progress || []
+    if (task.error) taskError.value = task.error
+    if (task.status === 'done') ElMessage.success('仓库克隆成功')
+    return task.status !== 'done' && task.status !== 'failed'
+  },
+  // 查询任务状态偶发失败不终止轮询（保持原行为），由下一轮重试。
+  onError: () => true,
+})
 </script>
 
 <style scoped>

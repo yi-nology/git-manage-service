@@ -74,6 +74,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { Plus, Refresh, Delete, Select, Top } from '@element-plus/icons-vue'
 import { listStash, saveStash, applyStash, popStash, dropStash, clearStash } from '@/api/modules/stash'
@@ -102,9 +103,7 @@ async function loadStashList() {
   try {
     const res = await listStash(props.repoKey)
     stashList.value = res?.stashes || []
-  } catch {
-    ElMessage.error('加载 Stash 列表失败')
-  } finally {
+  } catch (e) { toastApiError(e, '加载 Stash 列表失败') } finally {
     loading.value = false
   }
 }
@@ -124,7 +123,7 @@ async function handleSave() {
     await loadStashList()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('保存失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '保存失败: ', '未知错误')
   } finally {
     saving.value = false
   }
@@ -136,7 +135,7 @@ async function handleApply(index: number) {
     ElMessage.success(`stash@{${index}} 已应用`)
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('应用失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '应用失败: ', '未知错误')
   }
 }
 
@@ -147,7 +146,7 @@ async function handlePop(index: number) {
     await loadStashList()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('弹出失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '弹出失败: ', '未知错误')
   }
 }
 
@@ -158,7 +157,7 @@ async function handleDrop(index: number) {
     await loadStashList()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('删除失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '删除失败: ', '未知错误')
   }
 }
 
@@ -169,7 +168,7 @@ async function handleClearAll() {
     await loadStashList()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('清空失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '清空失败: ', '未知错误')
   }
 }
 </script>

@@ -1,6 +1,6 @@
 <template>
   <div class="webhook-page-wrapper">
-    <PageHeader :title="repo_name || '仓库'" showBack :backRoute="`/local-repos/${repo_key}`">
+    <PageHeader :title="repo_name || '仓库'" showBack :backRoute="ROUTES.RepoDetail(repo_key)">
       <template #title-suffix>
         <span v-if="currentVersion" class="version-tag">{{ currentVersion }}</span>
       </template>
@@ -51,6 +51,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh, TrendCharts, CircleCheck, CircleClose, Share } from '@element-plus/icons-vue'
@@ -135,7 +137,7 @@ async function handleRetry(row: WebhookEventDTO) {
     ElMessage.success('已重试')
     loadEvents()
   } catch (e: any) {
-    ElMessage.error('重试失败: ' + (e?.message || ''))
+    toastApiError(e, '重试失败: ', '')
   }
 }
 

@@ -3,7 +3,7 @@
     <PageHeader
       :title="`${repo_name} — 审查任务`"
       :show-back="true"
-      :back-route="`/local-repos/${repo_key}/review`"
+      :back-route="ROUTES.ReviewDashboard(repo_key)"
     >
       <template #actions>
         <ActionPill variant="primary" :icon="Plus" @click="showTriggerDialog = true">
@@ -16,7 +16,7 @@
       <RepoSidebar :repo-key="repo_key" active-key="review" />
       <div class="review-content">
         <div class="breadcrumb">
-          <router-link :to="`/local-repos/${repo_key}/review`">总览</router-link>
+          <router-link :to="ROUTES.ReviewDashboard(repo_key)">总览</router-link>
           <span class="sep">/</span>
           <span class="current">审查任务</span>
         </div>
@@ -97,6 +97,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -164,7 +165,7 @@ function handlePageChange(p: number) {
 }
 
 function goDetail(task_id: number) {
-  router.push(`/local-repos/${repo_key}/review/tasks/${task_id}`)
+  router.push(ROUTES.ReviewTaskDetail(repo_key, task_id))
 }
 
 async function loadData() {

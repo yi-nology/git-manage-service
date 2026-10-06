@@ -1,11 +1,11 @@
 <template>
   <div class="branch-detail-page" v-loading="loading">
-    <PageHeader :title="branchName" show-back :back-route="`/local-repos/${repo_key}/branches`">
+    <PageHeader :title="branchName" show-back :back-route="ROUTES.BranchList(repo_key)">
       <template #title-suffix>
         <StatusBadge v-if="isCurrent" variant="success" text="当前分支" :show-dot="false" />
       </template>
       <template #actions>
-        <ActionPill variant="primary" :icon="Switch" @click="$router.push(`/local-repos/${repo_key}/compare`)">对比/合并</ActionPill>
+        <ActionPill variant="primary" :icon="Switch" @click="$router.push(ROUTES.BranchCompare(repo_key))">对比/合并</ActionPill>
         <ActionPill variant="green" :icon="Top" @click="handlePush">推送远端</ActionPill>
         <ActionPill v-if="hasUncommitted" variant="amber" :icon="Upload" @click="router.push({ name: 'RepoDetail', params: { repo_key }, query: { tab: 'workspace' } })">前往工作区</ActionPill>
         <ActionPill variant="outline" :icon="Refresh" @click="loadData">刷新</ActionPill>
@@ -77,6 +77,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Switch, Top, Upload, Refresh, Delete, DataLine, Tickets, User, Files } from '@element-plus/icons-vue'
@@ -221,7 +222,7 @@ async function handleDelete() {
     await ElMessageBox.confirm(`确定要删除分支 "${branchName}" 吗？`, '确认删除', { type: 'warning' })
     await deleteBranch(repo_key, branchName)
     ElMessage.success('分支已删除')
-    router.push(`/local-repos/${repo_key}/branches`)
+    router.push(ROUTES.BranchList(repo_key))
   } catch { /* cancelled */ }
 }
 

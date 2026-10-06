@@ -40,6 +40,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Share } from '@element-plus/icons-vue'
 import { listRemoteBranches, createRemoteBranch, deleteRemoteBranch } from '@/api/modules/provider'
@@ -99,7 +100,7 @@ async function handleCheckoutRemote(branchName: string) {
   try {
     await createBranch({ repo_key: props.linkedRepoKey!, name: branchName, base_ref: `origin/${branchName}` })
     ElMessage.success(`已检出分支 ${branchName}`)
-  } catch (e: any) { ElMessage.error('检出失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, '检出失败: ', '') }
 }
 
 async function handleDeleteRemoteBranch(branchName: string) {
@@ -108,7 +109,7 @@ async function handleDeleteRemoteBranch(branchName: string) {
     await deleteRemoteBranch({ provider_id: props.providerId, owner: props.repoOwner, repo: props.repoName, branch: branchName })
     ElMessage.success(`已删除分支 ${branchName}`)
     loadRemoteBranches()
-  } catch (e: any) { ElMessage.error('删除失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, '删除失败: ', '') }
 }
 
 async function handleCreateBranch() {
@@ -122,7 +123,7 @@ async function handleCreateBranch() {
     showCreateBranchDialog.value = false
     createBranchForm.value = { branch: '', ref: '' }
     loadRemoteBranches()
-  } catch (e: any) { ElMessage.error('创建失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, '创建失败: ', '') }
   finally { createBranchLoading.value = false }
 }
 

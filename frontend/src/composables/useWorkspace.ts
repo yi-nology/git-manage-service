@@ -13,6 +13,7 @@ import {
   type WorkspaceDiff,
 } from '@/api/modules/workspace'
 import { ElMessage } from 'element-plus'
+import { toastApiError } from './useNotification'
 
 export function useWorkspace(repo_key: string) {
   const loading = ref(false)
@@ -48,7 +49,7 @@ export function useWorkspace(repo_key: string) {
       if (selectedFile.value) await loadDiff(selectedFile.value)
       ElMessage.success('全部文件已暂存')
     } catch (e: any) {
-      ElMessage.error(e?.message || '暂存失败')
+      toastApiError(e, '暂存失败')
     }
   }
 
@@ -58,7 +59,7 @@ export function useWorkspace(repo_key: string) {
       await loadStatus()
       if (selectedFile.value) await loadDiff(selectedFile.value)
     } catch (e: any) {
-      ElMessage.error(e?.message || '暂存失败')
+      toastApiError(e, '暂存失败')
     }
   }
 
@@ -68,7 +69,7 @@ export function useWorkspace(repo_key: string) {
       await loadStatus()
       if (selectedFile.value) await loadDiff(selectedFile.value)
     } catch (e: any) {
-      ElMessage.error(e?.message || '取消暂存失败')
+      toastApiError(e, '取消暂存失败')
     }
   }
 
@@ -79,7 +80,7 @@ export function useWorkspace(repo_key: string) {
       if (selectedFile.value) await loadDiff(selectedFile.value)
       ElMessage.success('已取消全部暂存')
     } catch (e: any) {
-      ElMessage.error(e?.message || '取消暂存失败')
+      toastApiError(e, '取消暂存失败')
     }
   }
 
@@ -105,7 +106,7 @@ export function useWorkspace(repo_key: string) {
       selectedFile.value = ''
       return result
     } catch (e: any) {
-      ElMessage.error(e?.message || '提交失败')
+      toastApiError(e, '提交失败')
       return null
     } finally {
       committing.value = false
@@ -126,7 +127,7 @@ export function useWorkspace(repo_key: string) {
       await loadStatus()
       return result
     } catch (e: any) {
-      ElMessage.error(e?.message || '拉取失败')
+      toastApiError(e, '拉取失败')
       return null
     } finally {
       pulling.value = false
@@ -137,7 +138,7 @@ export function useWorkspace(repo_key: string) {
     try {
       return await getConflictDetail(repo_key, file)
     } catch (e: any) {
-      ElMessage.error(e?.message || '获取冲突详情失败')
+      toastApiError(e, '获取冲突详情失败')
       return null
     }
   }
@@ -148,7 +149,7 @@ export function useWorkspace(repo_key: string) {
       ElMessage.success('冲突已解决')
       await loadStatus()
     } catch (e: any) {
-      ElMessage.error(e?.message || '解决冲突失败')
+      toastApiError(e, '解决冲突失败')
     }
   }
 
@@ -156,7 +157,7 @@ export function useWorkspace(repo_key: string) {
     try {
       return await aiResolveConflict(repo_key, file, ours_content, theirs_content, base_content, hint)
     } catch (e: any) {
-      ElMessage.error(e?.message || 'AI 解决冲突失败')
+      toastApiError(e, 'AI 解决冲突失败')
       return null
     }
   }

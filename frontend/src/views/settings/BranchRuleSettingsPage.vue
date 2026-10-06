@@ -155,6 +155,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getBranchRules, updateBranchRules } from '@/api/modules/branch-rule'
@@ -293,7 +294,7 @@ async function saveRules() {
     }
     ElMessage.success('规则已保存')
   } catch (e: any) {
-    ElMessage.error('保存失败: ' + (e?.message || ''))
+    toastApiError(e, '保存失败: ', '')
   } finally {
     saving.value = false
   }

@@ -142,6 +142,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormRules } from 'element-plus'
 import { CopyDocument, CircleCheck, CircleClose, Upload, Document } from '@element-plus/icons-vue'
@@ -299,7 +300,7 @@ async function handleCreate() {
     createDialogVisible.value = false
     emit('changed')
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.msg || '创建失败')
+    toastApiError(e, '创建失败')
   } finally {
     creating.value = false
   }
@@ -319,7 +320,7 @@ async function handleEdit() {
     editDialogVisible.value = false
     emit('changed')
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.msg || '更新失败')
+    toastApiError(e, '更新失败')
   } finally {
     editing.value = false
   }
@@ -354,9 +355,7 @@ async function handleDelete(key: DBSSHKey) {
     await deleteDBSSHKey(key.id)
     ElMessage.success('删除成功')
     emit('changed')
-  } catch {
-    ElMessage.error('删除失败')
-  }
+  } catch (e) { toastApiError(e, '删除失败') }
 }
 
 function copyPublicKey() {

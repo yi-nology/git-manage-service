@@ -3,7 +3,7 @@
     <PageHeader
       title="Patch 管理"
       :show-back="true"
-      :back-route="`/local-repos/${repo_key}`"
+      :back-route="ROUTES.RepoDetail(repo_key)"
     >
       <template #title-suffix>
         <span v-if="repo_name" class="repo-tag">{{ repo_name }}</span>
@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { useRoute } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import PatchManager from '@/components/patch/PatchManager.vue'

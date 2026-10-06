@@ -46,6 +46,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { getConflictDetail, markConflictResolved, aiResolveConflict, type ConflictDetail, type AIResolvedFile } from '@/api/modules/workspace'
 import { ElMessage } from 'element-plus'
 import { MagicStick, Check, InfoFilled } from '@element-plus/icons-vue'
@@ -71,9 +72,7 @@ onMounted(async () => {
     if (conflictDetail.value?.conflict_marker) {
       mergedContent.value = conflictDetail.value.conflict_marker
     }
-  } catch (e: any) {
-    ElMessage.error('加载冲突详情失败')
-  }
+  } catch (e) { toastApiError(e, '加载冲突详情失败') }
 })
 
 function keepOurs() {
@@ -101,7 +100,7 @@ async function doAIResolve() {
       ElMessage.success('AI 解决完成')
     }
   } catch (e: any) {
-    ElMessage.error(e?.message || 'AI 解决失败')
+    toastApiError(e, 'AI 解决失败')
   } finally {
     aiLoading.value = false
   }
@@ -113,7 +112,7 @@ async function applyResolved() {
     ElMessage.success('冲突已解决')
     emit('resolved')
   } catch (e: any) {
-    ElMessage.error(e?.message || '应用失败')
+    toastApiError(e, '应用失败')
   }
 }
 </script>

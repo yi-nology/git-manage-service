@@ -151,6 +151,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, InfoFilled, WarningFilled, Loading } from '@element-plus/icons-vue'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -252,7 +253,7 @@ async function handleFetchOllamaModels() {
       form.value.model = ollamaModels.value[0]!
     }
   } catch (e: any) {
-    ElMessage.error('获取 Ollama 模型失败: ' + (e?.message || ''))
+    toastApiError(e, '获取 Ollama 模型失败: ', '')
   } finally {
     ollamaLoading.value = false
   }
@@ -330,14 +331,14 @@ async function handleSave() {
     ElMessage.success(editingProvider.value ? '更新成功' : '添加成功')
     showDialog.value = false
     loadProviders()
-  } catch (e: any) { ElMessage.error((editingProvider.value ? '更新' : '添加') + '失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, (editingProvider.value ? '更新' : '添加') + '失败') }
   finally { saving.value = false }
 }
 
 async function handleTest(p: LLMProviderDTO) {
   testingId.value = p.id
   try { await testLLMProvider(p.id); ElMessage.success('连接测试成功') }
-  catch (e: any) { ElMessage.error('连接测试失败: ' + (e?.message || '')) }
+  catch (e: any) { toastApiError(e, '连接测试失败: ', '') }
   finally { testingId.value = null }
 }
 
@@ -346,7 +347,7 @@ async function handleTestEmbedding(p: LLMProviderDTO) {
   try {
     const res = await testEmbedding(p.id)
     ElMessage.success(`Embedding 测试成功 (模型: ${res?.model || p.embedding_model || 'default'})`)
-  } catch (e: any) { ElMessage.error('Embedding 测试失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, 'Embedding 测试失败: ', '') }
   finally { testingEmbeddingId.value = null }
 }
 
@@ -372,19 +373,19 @@ async function handleTestForm() {
       try { await testLLMProvider(created.id) } finally { await deleteLLMProvider(created.id) }
     }
     ElMessage.success('连接测试成功')
-  } catch (e: any) { ElMessage.error('连接测试失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, '连接测试失败: ', '') }
   finally { testingForm.value = false }
 }
 
 async function handleSetDefault(p: LLMProviderDTO) {
   try { await setDefaultLLMProvider(p.id); ElMessage.success('已设为默认'); loadProviders() }
-  catch (e: any) { ElMessage.error('操作失败: ' + (e?.message || '')) }
+  catch (e: any) { toastApiError(e, '操作失败: ', '') }
 }
 
 async function handleDelete(p: LLMProviderDTO) {
   try { await ElMessageBox.confirm(`确定删除提供商 "${p.name}"？`, '确认删除', { type: 'warning' }) } catch { return }
   try { await deleteLLMProvider(p.id); ElMessage.success('已删除'); loadProviders() }
-  catch (e: any) { ElMessage.error('删除失败: ' + (e?.message || '')) }
+  catch (e: any) { toastApiError(e, '删除失败: ', '') }
 }
 
 onMounted(() => { loadProviders() })

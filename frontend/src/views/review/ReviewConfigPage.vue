@@ -3,7 +3,7 @@
     <PageHeader
       :title="`审查配置 · ${repo_name}`"
       show-back
-      :back-route="`/local-repos/${repo_key}/review`"
+      :back-route="ROUTES.ReviewDashboard(repo_key)"
     />
 
     <div class="config-main">
@@ -65,6 +65,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getReviewConfig, updateReviewConfig } from '@/api/modules/review'
@@ -111,7 +113,7 @@ async function handleSave() {
   try {
     await updateReviewConfig(repo_key, JSON.stringify(form.value, null, 2))
     ElMessage.success('配置已保存')
-  } catch (e: any) { ElMessage.error('保存失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, '保存失败: ', '') }
   finally { saving.value = false }
 }
 

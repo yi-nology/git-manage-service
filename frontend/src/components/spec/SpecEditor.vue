@@ -214,6 +214,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search, Folder, Document, DocumentChecked, Download,
@@ -293,7 +294,7 @@ async function loadFileTree() {
     fileTree.value = Array.isArray(tree) ? tree : []
   } catch (e: any) {
     if (e?.code === 'ERR_CANCELED') return
-    ElMessage.error('加载文件树失败')
+    toastApiError(e, '加载文件树失败')
     fileTree.value = []
   } finally { loading.value = false }
 }
@@ -314,7 +315,7 @@ async function loadFile(path: string) {
     if (editorInstance) editorInstance.setValue(fc)
   } catch (e: any) {
     if (e?.code === 'ERR_CANCELED') return
-    ElMessage.error('加载文件失败')
+    toastApiError(e, '加载文件失败')
   } finally { loading.value = false }
 }
 
@@ -351,7 +352,7 @@ async function doLint(mode: string) {
     const result = await lintSpec(content.value, undefined, mode as any)
     lintIssues.value = (result.issues || []).map(i => ({ ...i, rule_name: i.rule_id || '', source: i.source || 'rule' }))
     updateMonacoMarkers()
-  } catch { ElMessage.error('Linting 失败') }
+  } catch (e) { toastApiError(e, 'Linting 失败') }
 }
 
 function updateMonacoMarkers() {
@@ -382,7 +383,7 @@ async function saveCurrentFile() {
     original_content.value = content.value
     is_dirty.value = false
     ElMessage.success('保存成功')
-  } catch { ElMessage.error('保存失败') }
+  } catch (e) { toastApiError(e, '保存失败') }
   finally { savingInProgress.value = false }
 }
 
@@ -412,7 +413,7 @@ async function handleCommit() {
     showCommitDialog.value = false
     commitMsg.value = ''
     ElMessage.success('提交成功')
-  } catch { ElMessage.error('提交失败') }
+  } catch (e) { toastApiError(e, '提交失败') }
   finally { committing.value = false }
 }
 
@@ -422,7 +423,7 @@ async function handleAIFix(issue: LintIssue, idx: number) {
     const res = await aiFixSpec(content.value, issue.message, issue.line, issue.severity)
     if (res?.content) { applyAIContent(res.content); ElMessage.success('修复已应用') }
     else ElMessage.warning('AI 未返回修复内容')
-  } catch (e: any) { ElMessage.error('修复失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, '修复失败: ', '') }
   finally { fixingIndex.value = null }
 }
 
@@ -462,7 +463,7 @@ async function handleInitSpec() {
     await loadFileTree()
     await loadFile(res.path)
     initForm.value = { filename: '', name: '', version: '1.0.0', release: '1', summary: '', license: 'MIT', url: '', description: '' }
-  } catch { ElMessage.error('创建失败') }
+  } catch (e) { toastApiError(e, '创建失败') }
   finally { initInProgress.value = false }
 }
 

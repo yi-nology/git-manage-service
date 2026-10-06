@@ -101,6 +101,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import {
   HomeFilled, Warning, Refresh, Download, Upload,
@@ -222,7 +223,7 @@ async function handleGenerateMsg() {
       commitMsg.value = res.message.replace(/^["']|["']$/g, '').trim()
     }
   } catch (e: any) {
-    ElMessage.error(e?.message || 'AI 生成提交信息失败')
+    toastApiError(e, 'AI 生成提交信息失败')
   } finally {
     generatingMsg.value = false
   }
@@ -250,7 +251,7 @@ async function doCommit() {
     diff.value = null
     await refreshAll()
   } catch (e: any) {
-    ElMessage.error(e?.message || '提交失败')
+    toastApiError(e, '提交失败')
   } finally {
     committing.value = false
   }

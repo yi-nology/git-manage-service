@@ -86,6 +86,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Loading } from '@element-plus/icons-vue'
 import { getLintRules, createLintRule, updateLintRule } from '@/api/modules/spec'
@@ -139,7 +140,7 @@ async function toggleRule(rule: any) {
     await updateLintRule(rule.id, { enabled: rule.enabled })
   } catch (e: any) {
     rule.enabled = !rule.enabled
-    ElMessage.error('更新失败: ' + (e?.message || ''))
+    toastApiError(e, '更新失败: ', '')
   }
 }
 
@@ -202,7 +203,7 @@ async function handleSaveRule() {
     ruleDialogVisible.value = false
     loadLintRules()
   } catch (e: any) {
-    ElMessage.error('保存失败: ' + (e?.message || ''))
+    toastApiError(e, '保存失败: ', '')
   } finally { ruleSaving.value = false }
 }
 
@@ -215,7 +216,7 @@ async function handleDeleteRule(rule: any) {
     lintRules.value = lintRules.value.filter((r: any) => r.id !== rule.id)
     ElMessage.success('规则已禁用')
   } catch (e: any) {
-    ElMessage.error('操作失败: ' + (e?.message || ''))
+    toastApiError(e, '操作失败: ', '')
   }
 }
 

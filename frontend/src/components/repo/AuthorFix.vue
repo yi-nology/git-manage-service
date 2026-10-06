@@ -21,7 +21,7 @@
             <el-option v-for="id in allIdentities" :key="id.id" :label="`${id.canonical_name} (${id.canonical_email})`" :value="id.id" />
           </el-select>
         </template>
-        <router-link v-else to="/settings/author">
+        <router-link v-else :to="ROUTES.AuthorSettings">
           <el-button size="small" type="primary" link>请先创建 Git 作者身份</el-button>
         </router-link>
       </div>
@@ -162,6 +162,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
+import { ROUTES } from '@/router/paths'
 import { User, Search, ChatDotRound } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import SectionTitle from '@/components/common/SectionTitle.vue'

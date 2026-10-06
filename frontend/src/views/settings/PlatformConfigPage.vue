@@ -109,6 +109,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Connection, Edit, Delete } from '@element-plus/icons-vue'
 import {
@@ -223,7 +224,7 @@ async function handleSave() {
     providerStore.invalidate()
     loadProviders()
   } catch (e: any) {
-    ElMessage.error((editingId.value ? '保存' : '创建') + '失败: ' + (e?.message || ''))
+    toastApiError(e, (editingId.value ? '保存' : '创建') + '失败')
   } finally {
     saving.value = false
   }
@@ -249,7 +250,7 @@ async function handleTest(p: ProviderConfigDTO) {
       ElMessage.warning('连接失败: ' + (res.message || '未知错误'))
     }
   } catch (e: any) {
-    ElMessage.error('测试失败: ' + (e?.message || ''))
+    toastApiError(e, '测试失败: ', '')
   } finally {
     testingId.value = null
   }

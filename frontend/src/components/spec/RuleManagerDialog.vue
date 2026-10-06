@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import { getLintRules, updateLintRule, createLintRule } from '@/api/modules/spec'
@@ -87,7 +88,7 @@ async function loadRules() {
 }
 
 async function handleToggleRule(rule: LintRule) {
-  try { await updateLintRule(rule.id, { enabled: rule.enabled }) } catch { ElMessage.error('更新规则失败') }
+  try { await updateLintRule(rule.id, { enabled: rule.enabled }) } catch (e) { toastApiError(e, '更新规则失败') }
 }
 
 async function handleCreateRule() {
@@ -101,7 +102,7 @@ async function handleCreateRule() {
     showCreateRuleDialog.value = false
     newRule.value = { id: '', name: '', description: '', category: 'custom' as const, severity: 'warning' as const, pattern: '', enabled: true }
     await loadRules()
-  } catch { ElMessage.error('创建规则失败') }
+  } catch (e) { toastApiError(e, '创建规则失败') }
   finally { creatingRule.value = false }
 }
 </script>

@@ -42,7 +42,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { toastApiError } from '@/composables/useNotification'
 import { Plus } from '@element-plus/icons-vue'
 import {
   listDBSSHKeys,
@@ -100,8 +100,8 @@ async function fetchSSHKeys() {
   loading.value = true
   try {
     sshKeys.value = await listDBSSHKeys() || []
-  } catch {
-    ElMessage.error('获取 SSH 密钥列表失败')
+  } catch (e) {
+    toastApiError(e, '获取 SSH 密钥列表失败')
     sshKeys.value = []
   } finally {
     loading.value = false

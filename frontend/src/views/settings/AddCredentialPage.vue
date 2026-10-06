@@ -95,7 +95,7 @@
       </div>
 
       <template #footer>
-        <ActionPill variant="outline" @click="router.push('/settings/credentials')">取消</ActionPill>
+        <ActionPill variant="outline" @click="router.push(ROUTES.Credentials)">取消</ActionPill>
         <ActionPill variant="primary" :icon="Plus" :disabled="saving" @click="handleSave">
           {{ saving ? '保存中...' : (isEdit ? '保存凭证' : '创建凭证') }}
         </ActionPill>
@@ -108,6 +108,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Key, Lock, Ticket } from '@element-plus/icons-vue'
@@ -196,9 +198,9 @@ async function handleSave() {
       await createCredential(data as any)
       ElMessage.success('凭证已创建')
     }
-    router.push('/settings/credentials')
+    router.push(ROUTES.Credentials)
   } catch (e: any) {
-    ElMessage.error('保存失败: ' + (e?.message || '未知错误'))
+    toastApiError(e, '保存失败: ', '未知错误')
   } finally {
     saving.value = false
   }
@@ -213,7 +215,7 @@ onMounted(async () => {
     pageLoading.value = true
     try {
       const cred = await getCredential(editingId.value)
-      if (!cred) { ElMessage.error('凭证不存在'); router.push('/settings/credentials'); return }
+      if (!cred) { ElMessage.error('凭证不存在'); router.push(ROUTES.Credentials); return }
       form.name = cred.name
       form.type = cred.type
       form.description = cred.description || ''
@@ -224,8 +226,8 @@ onMounted(async () => {
       form.url_pattern = cred.url_pattern || ''
       sshSource.value = cred.ssh_key_id ? 'database' : 'local'
     } catch (e: any) {
-      ElMessage.error('加载凭证失败: ' + (e?.message || ''))
-      router.push('/settings/credentials')
+      toastApiError(e, '加载凭证失败: ', '')
+      router.push(ROUTES.Credentials)
     } finally {
       pageLoading.value = false
     }

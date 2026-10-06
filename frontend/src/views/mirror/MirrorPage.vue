@@ -1,6 +1,6 @@
 <template>
   <div class="mirror-page">
-    <PageHeader :title="'镜像同步 - ' + repo_name" :show-back="true" :back-route="`/local-repos/${repo_key}`" />
+    <PageHeader :title="'镜像同步 - ' + repo_name" :show-back="true" :back-route="ROUTES.RepoDetail(repo_key)" />
 
     <div class="mirror-content">
       <div class="toolbar">
@@ -160,6 +160,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -227,7 +229,7 @@ async function loadMirrors() {
   try {
     mirrors.value = await mirrorApi.getMirrors()
   } catch (e: any) {
-    ElMessage.error('加载镜像列表失败: ' + e.message)
+    toastApiError(e, '加载镜像列表失败: ')
   } finally {
     loading.value = false
   }
@@ -305,7 +307,7 @@ async function submitForm() {
     dialogVisible.value = false
     loadMirrors()
   } catch (e: any) {
-    ElMessage.error('操作失败: ' + e.message)
+    toastApiError(e, '操作失败: ')
   }
 }
 
@@ -324,7 +326,7 @@ async function triggerSync(mirror: MirrorDTO) {
     ElMessage.success('同步已触发')
     setTimeout(loadMirrors, 2000)
   } catch (e: any) {
-    ElMessage.error('触发失败: ' + e.message)
+    toastApiError(e, '触发失败: ')
   }
 }
 
@@ -334,7 +336,7 @@ async function batchTriggerSync() {
     ElMessage.success(`已触发 ${selectedMirrors.value.length} 个同步任务`)
     setTimeout(loadMirrors, 2000)
   } catch (e: any) {
-    ElMessage.error('批量触发失败: ' + e.message)
+    toastApiError(e, '批量触发失败: ')
   }
 }
 
@@ -350,7 +352,7 @@ async function toggleEnabled(mirror: MirrorDTO) {
     ElMessage.success('状态已更新')
     loadMirrors()
   } catch (e: any) {
-    ElMessage.error('更新失败: ' + e.message)
+    toastApiError(e, '更新失败: ')
     mirror.enabled = !mirror.enabled
   }
 }
@@ -361,9 +363,7 @@ async function showLogs(mirror: MirrorDTO) {
   logLoading.value = true
   try {
     syncLogs.value = await mirrorApi.getMirrorSyncLogs(mirror.id, 50)
-  } catch (e: any) {
-    ElMessage.error('加载日志失败')
-  } finally {
+  } catch (e) { toastApiError(e, '加载日志失败') } finally {
     logLoading.value = false
   }
 }

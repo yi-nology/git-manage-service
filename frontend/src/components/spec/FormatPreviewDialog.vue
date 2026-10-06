@@ -168,6 +168,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { Close, CircleCheck } from '@element-plus/icons-vue'
 import { formatSpec } from '@/api/modules/spec'
@@ -219,7 +220,7 @@ async function handleFormat() {
     }
     previewVisible.value = true
   } catch (e: any) {
-    ElMessage.error('格式化失败: ' + (e?.message || ''))
+    toastApiError(e, '格式化失败: ', '')
   }
 }
 

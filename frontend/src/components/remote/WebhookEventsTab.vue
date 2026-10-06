@@ -30,6 +30,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { Refresh, Share } from '@element-plus/icons-vue'
 import { listWebhookEvents, retryWebhookEvent } from '@/api/modules/webhook-event'
@@ -91,7 +92,7 @@ async function handleRetryEvent(ev: WebhookEventDTO) {
     await retryWebhookEvent(ev.id)
     ElMessage.success('已重试')
     loadWebhookEvents()
-  } catch (e: any) { ElMessage.error('重试失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, '重试失败: ', '') }
 }
 
 watch(() => props.active, (val) => {

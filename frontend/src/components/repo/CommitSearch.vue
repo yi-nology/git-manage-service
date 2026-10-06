@@ -106,6 +106,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { searchCommits, getCommitDetail, getCommitDiff } from '@/api/modules/commit'
@@ -152,9 +153,7 @@ async function loadCommits() {
     })
     commits.value = res.commits || []
     total.value = res.total || 0
-  } catch {
-    ElMessage.error('搜索提交失败')
-  } finally {
+  } catch (e) { toastApiError(e, '搜索提交失败') } finally {
     loading.value = false
   }
 }
@@ -177,9 +176,7 @@ async function viewCommitDetail(row: CommitDetail) {
     fileChanges.value = detail.files || []
     
     diffContent.value = await getCommitDiff(props.repoKey, row.hash)
-  } catch {
-    ElMessage.error('加载提交详情失败')
-  } finally {
+  } catch (e) { toastApiError(e, '加载提交详情失败') } finally {
     diffLoading.value = false
   }
 }

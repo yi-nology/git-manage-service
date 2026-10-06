@@ -186,6 +186,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -227,7 +228,7 @@ async function loadSettings() {
 async function saveSettings() {
   settingsSaving.value = true
   try { await updateCodeReviewSettings(settings.value); ElMessage.success('设置已保存') }
-  catch (e: any) { ElMessage.error('保存失败: ' + (e?.message || '')) }
+  catch (e: any) { toastApiError(e, '保存失败: ', '') }
   finally { settingsSaving.value = false }
 }
 
@@ -258,19 +259,19 @@ async function handleSaveRule() {
     ElMessage.success(editingRule.value ? '更新成功' : '添加成功')
     showRuleDialog.value = false
     loadRules()
-  } catch (e: any) { ElMessage.error((editingRule.value ? '更新' : '添加') + '失败: ' + (e?.message || '')) }
+  } catch (e: any) { toastApiError(e, (editingRule.value ? '更新' : '添加') + '失败') }
   finally { ruleSaving.value = false }
 }
 
 async function handleRuleToggle(rule: ReviewRuleDTO) {
   try { await updateReviewRule(rule.id, { enabled: rule.enabled }) }
-  catch (e: any) { rule.enabled = !rule.enabled; ElMessage.error('更新失败: ' + (e?.message || '')) }
+  catch (e: any) { rule.enabled = !rule.enabled; toastApiError(e, '更新失败: ', '') }
 }
 
 async function handleDeleteRule(rule: ReviewRuleDTO) {
   try { await ElMessageBox.confirm(`确定删除规则 "${rule.name}"？`, '确认删除', { type: 'warning' }) } catch { return }
   try { await deleteReviewRule(rule.id); ElMessage.success('已删除'); loadRules() }
-  catch (e: any) { ElMessage.error('删除失败: ' + (e?.message || '')) }
+  catch (e: any) { toastApiError(e, '删除失败: ', '') }
 }
 
 const promptPreview = ref<{ prefix: string; intent: string; suffix: string; customRules: string }>({

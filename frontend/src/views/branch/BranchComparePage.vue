@@ -99,6 +99,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Right, Switch, Connection, Download } from '@element-plus/icons-vue'
@@ -117,7 +119,7 @@ import MergeDialog from '@/components/branch/MergeDialog.vue'
 const route = useRoute()
 const repo_key = route.params.repo_key as string
 
-const branchBackRoute = computed(() => `/local-repos/${repo_key}/branches`)
+const branchBackRoute = computed(() => ROUTES.BranchList(repo_key))
 
 const allBranches = ref<BranchInfo[]>([])
 const source_branch = ref('')
@@ -223,7 +225,7 @@ async function handleDownloadPatch() {
     window.URL.revokeObjectURL(url)
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('导出 Patch 失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '导出 Patch 失败: ', '未知错误')
   }
 }
 </script>

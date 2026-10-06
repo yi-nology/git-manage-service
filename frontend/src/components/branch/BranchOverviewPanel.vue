@@ -4,7 +4,7 @@
       <ActionPill variant="outline" :icon="Refresh" @click="loadBranches" :disabled="loading">刷新</ActionPill>
       <ActionPill variant="outline" :icon="Download" @click="handleFetchAll" :disabled="fetchLoading">Fetch All</ActionPill>
       <ActionPill variant="primary" :icon="Plus" @click="showCreateDialog = true">新建分支</ActionPill>
-      <ActionPill variant="green" :icon="Share" @click="$router.push(`/local-repos/${repoKey}/branches`)">
+      <ActionPill variant="green" :icon="Share" @click="$router.push(ROUTES.BranchList(repoKey))">
         完整管理
       </ActionPill>
     </div>
@@ -71,6 +71,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { Refresh, Plus, Download, Share, CircleCheck, MoreFilled, Select, Top, Bottom } from '@element-plus/icons-vue'
 import { getBranchList, createBranch, checkoutBranch, pushBranch, pullBranch } from '@/api/modules/branch'
@@ -117,9 +119,7 @@ async function handleFetchAll() {
     await fetchRepo(props.repoKey)
     ElMessage.success('Fetch 完成')
     await loadBranches()
-  } catch {
-    ElMessage.error('Fetch 失败')
-  } finally {
+  } catch (e) { toastApiError(e, 'Fetch 失败') } finally {
     fetchLoading.value = false
   }
 }
@@ -136,9 +136,7 @@ async function handleCreate() {
     showCreateDialog.value = false
     createForm.value = { name: '', base_ref: 'main' }
     await loadBranches()
-  } catch {
-    ElMessage.error('创建失败')
-  }
+  } catch (e) { toastApiError(e, '创建失败') }
 }
 
 async function handleCheckout(name: string) {
@@ -146,18 +144,14 @@ async function handleCheckout(name: string) {
     await checkoutBranch(props.repoKey, name)
     ElMessage.success(`已切换到 ${name}`)
     await loadBranches()
-  } catch {
-    ElMessage.error('切换失败')
-  }
+  } catch (e) { toastApiError(e, '切换失败') }
 }
 
 async function handlePush(name: string) {
   try {
     await pushBranch(props.repoKey, name, remoteNames.value)
     ElMessage.success('推送成功')
-  } catch {
-    ElMessage.error('推送失败')
-  }
+  } catch (e) { toastApiError(e, '推送失败') }
 }
 
 async function handlePull(name: string) {
@@ -165,9 +159,7 @@ async function handlePull(name: string) {
     await pullBranch(props.repoKey, name)
     ElMessage.success('拉取成功')
     await loadBranches()
-  } catch {
-    ElMessage.error('拉取失败')
-  }
+  } catch (e) { toastApiError(e, '拉取失败') }
 }
 </script>
 

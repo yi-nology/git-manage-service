@@ -41,6 +41,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { getSpecConfig, saveSpecConfig } from '@/api/modules/spec'
 
@@ -67,7 +68,7 @@ async function saveAIConfig() {
     await saveSpecConfig({ aiConfig: { ...aiConfig } })
     ElMessage.success('AI 配置已保存')
   } catch (e: any) {
-    ElMessage.error('保存失败: ' + (e?.message || ''))
+    toastApiError(e, '保存失败: ', '')
   } finally { saving.value = false }
 }
 

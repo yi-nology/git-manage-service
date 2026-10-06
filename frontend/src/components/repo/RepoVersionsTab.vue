@@ -106,6 +106,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Plus, Refresh, Top, Delete, CopyDocument } from '@element-plus/icons-vue'
 import { fetchRepo } from '@/api/modules/repo'
@@ -149,9 +150,7 @@ async function handleFetchTags() {
     await fetchRepo(props.repoKey)
     ElMessage.success('远端 Tags 拉取成功')
     emit('reload')
-  } catch {
-    ElMessage.error('拉取远端 Tags 失败')
-  } finally {
+  } catch (e) { toastApiError(e, '拉取远端 Tags 失败') } finally {
     fetchTagsLoading.value = false
   }
 }
@@ -204,7 +203,7 @@ async function handleCreateTag() {
     emit('versionChanged')
   } catch (e: unknown) {
     const err = e as { message?: string }
-    ElMessage.error('创建标签失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '创建标签失败: ', '未知错误')
   } finally {
     createTagLoading.value = false
   }
@@ -244,7 +243,7 @@ async function handleDeleteTag(tagName: string) {
   } catch (action) {
     if (action === 'cancel' || action === 'close') return
     const err = action as { message?: string }
-    ElMessage.error('删除标签失败: ' + (err.message || '未知错误'))
+    toastApiError(err, '删除标签失败: ', '未知错误')
   }
 }
 

@@ -230,7 +230,7 @@
       </div>
 
       <template #footer v-if="form.type">
-        <ActionPill variant="outline" @click="router.push('/settings/notification-channels')">取消</ActionPill>
+        <ActionPill variant="outline" @click="router.push(ROUTES.NotificationChannels)">取消</ActionPill>
         <ActionPill variant="primary" :icon="Check" :disabled="saving" @click="handleSave">{{ saving ? '保存中...' : '保存渠道' }}</ActionPill>
       </template>
     </FormCard>
@@ -241,6 +241,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Check, ChatDotRound, Message, Link } from '@element-plus/icons-vue'
@@ -339,7 +341,7 @@ onMounted(async () => {
     pageLoading.value = true
     try {
       const channel = await getChannel(editingId.value)
-      if (!channel) { ElMessage.error('渠道不存在'); router.push('/settings/notification-channels'); return }
+      if (!channel) { ElMessage.error('渠道不存在'); router.push(ROUTES.NotificationChannels); return }
       form.name = channel.name
       form.type = channel.type
       form.enabled = channel.enabled
@@ -362,8 +364,8 @@ onMounted(async () => {
         else configForm.security_type = 'none'
       }
     } catch (e: any) {
-      ElMessage.error('加载渠道失败: ' + (e?.message || ''))
-      router.push('/settings/notification-channels')
+      toastApiError(e, '加载渠道失败: ', '')
+      router.push(ROUTES.NotificationChannels)
     } finally {
       pageLoading.value = false
     }
@@ -422,9 +424,9 @@ async function handleSave() {
       await createChannel(params)
       ElMessage.success('渠道创建成功')
     }
-    router.push('/settings/notification-channels')
+    router.push(ROUTES.NotificationChannels)
   } catch (e: any) {
-    ElMessage.error('保存失败: ' + (e?.message || '未知错误'))
+    toastApiError(e, '保存失败: ', '未知错误')
   } finally {
     saving.value = false
   }

@@ -1,6 +1,6 @@
 <template>
   <div class="cr-page-wrapper">
-    <PageHeader :title="repo_name || '仓库'" showBack :backRoute="`/local-repos/${repo_key}`">
+    <PageHeader :title="repo_name || '仓库'" showBack :backRoute="ROUTES.RepoDetail(repo_key)">
       <template #title-suffix>
         <span v-if="currentVersion" class="version-tag">{{ currentVersion }}</span>
       </template>
@@ -59,7 +59,7 @@
             <template #cell-actions="{ row }">
               <router-link
                 v-if="getReviewStatus(row.cr_number)"
-                :to="`/local-repos/${repo_key}/review/tasks/${getReviewStatus(row.cr_number)!.id}`"
+                :to="ROUTES.ReviewTaskDetail(repo_key, getReviewStatus(row.cr_number)!.id)"
                 class="action-link"
               >
                 详情
@@ -84,6 +84,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { ROUTES } from '@/router/paths'
+import { toastApiError } from '@/composables/useNotification'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
@@ -170,7 +172,7 @@ async function triggerReview(cr: CRDTO) {
     ElMessage.success(`已触发 MR #${cr.cr_number} 的代码审查`)
     loadReviewTasks()
   } catch (e: any) {
-    ElMessage.error('触发审查失败: ' + (e?.message || ''))
+    toastApiError(e, '触发审查失败: ', '')
   } finally {
     triggering.value = false
   }
@@ -215,7 +217,7 @@ async function handleSync() {
     ElMessage.success(`同步完成，共 ${res?.synced_count || 0} 个 CR`)
     loadCRs()
   } catch (e: any) {
-    ElMessage.error('同步失败: ' + (e?.message || ''))
+    toastApiError(e, '同步失败: ', '')
   } finally {
     syncing.value = false
   }
