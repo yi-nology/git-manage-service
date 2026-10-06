@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/yi-nology/git-manage-service/pkg/httputil"
 )
 
 type Ollama struct {
@@ -23,9 +25,9 @@ func NewOllama(baseURL, model string, maxTokens int) *Ollama {
 		baseURL:   strings.TrimRight(baseURL, "/"),
 		model:     model,
 		maxTokens: maxTokens,
-		httpClient: &http.Client{
-			Timeout: 300 * time.Second,
-		},
+		// Ollama 是用户自托管服务：只允许本机/内网地址，防止配置被当成
+		// SSRF 跳板（详细约束见 httputil 包注释）。
+		httpClient: httputil.NewLocalServiceClient(300 * time.Second),
 	}
 }
 

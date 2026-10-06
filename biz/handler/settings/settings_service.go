@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	settings "github.com/yi-nology/git-manage-service/biz/model/settings"
@@ -16,6 +17,7 @@ import (
 	settingssvc "github.com/yi-nology/git-manage-service/biz/service/settings"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
+	"github.com/yi-nology/git-manage-service/pkg/httputil"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 )
 
@@ -251,10 +253,17 @@ func UpdateRemoteRepoBranchRules(ctx context.Context, c *app.RequestContext) {
 	})
 }
 
+// ollamaClient 只连本机/内网（防 SSRF），探测模型列表不需要长超时。
+var ollamaClient = httputil.NewLocalServiceClient(15 * time.Second)
+
 func FetchOllamaModels(ctx context.Context, c *app.RequestContext) {
 	baseURL := c.Query("base_url")
 	if baseURL == "" {
 		baseURL = "http://localhost:11434"
+	}
+	if err := httputil.ValidateLocalServiceURL(baseURL); err != nil {
+		pkgresponse.BadRequest(c, "base_url 不可用: "+err.Error())
+		return
 	}
 	url := strings.TrimRight(baseURL, "/") + "/api/tags"
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -262,13 +271,14 @@ func FetchOllamaModels(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "invalid base_url: "+err.Error())
 		return
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := ollamaClient.Do(req)
 	if err != nil {
 		pkgresponse.BadRequest(c, "无法连接 Ollama: "+err.Error())
 		return
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	// 响应上限 1MB：模型列表不该更大，防止异常响应吃内存。
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	var result struct {
 		Models []struct {
 			Name string `json:"name"`
