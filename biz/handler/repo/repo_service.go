@@ -17,6 +17,7 @@ import (
 	repoModel "github.com/yi-nology/git-manage-service/biz/model/repo"
 	"github.com/yi-nology/git-manage-service/biz/service/auth"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
+	mirrorSvc "github.com/yi-nology/git-manage-service/biz/service/mirror"
 	"github.com/yi-nology/git-manage-service/biz/service/stats"
 	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
@@ -245,7 +246,7 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 	handler.DoWithRepo(c,
 		func(req *DeleteRepoReq) string { return req.Key },
 		func(repo *po.Repo, req *DeleteRepoReq) (map[string]string, error) {
-			// git-sync-service is the source of truth for sync tasks (the local
+			// git-ferry-core is the source of truth for sync tasks (the local
 			// sync_tasks table is an abandoned orphan that's never populated). Only
 			// enforce the guard when the sync service is initialized to avoid nil calls.
 			if syncSvc := syncv2.GetService(); syncSvc.GetCore() != nil {
@@ -254,8 +255,16 @@ func Delete(ctx context.Context, c *app.RequestContext) {
 				}
 			}
 
+			// 先取镜像列表（删除后就查不到了），删除成功后摘掉 scheduler
+			// 里挂着的 cron，防止对已删仓库继续同步。
+			mirrors, _ := db.NewMirrorDAO().FindByRepoID(repo.ID)
+
 			if err := db.NewRepoDAO().DeleteWithBindings(repo); err != nil {
 				return nil, handler.ErrInternal(err.Error())
+			}
+
+			for i := range mirrors {
+				mirrorSvc.GlobalScheduler.RemoveCronMirror(mirrors[i].ID)
 			}
 
 			return map[string]string{"message": "deleted"}, nil

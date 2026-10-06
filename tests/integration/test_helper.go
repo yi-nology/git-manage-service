@@ -100,6 +100,8 @@ func SetupSuite(t *testing.T) *APITestSuite {
 		&po.ReviewRule{},
 		&po.MaintenanceRecord{},
 		&po.AuthorIdentity{},
+		&po.Mirror{},
+		&po.MirrorSyncLog{},
 	}
 	if err := gormDB.AutoMigrate(setupModels...); err != nil {
 		t.Fatalf("migrate: %v", err)

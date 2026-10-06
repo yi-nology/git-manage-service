@@ -4,10 +4,48 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"regexp"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
+
+// Key names carry a v2 suffix: the pre-v2 implementation released the dedupe
+// slot in a separate SRem after LPop, so a crash in between left orphaned set
+// members that permanently blocked that mirror from ever re-enqueueing. The
+// new namespace starts every deployment from a clean slate.
+const redisQueueKey = "gms:mirror_sync_queue:v2"
+
+// pushScript enqueues atomically: the SISMEMBER dedupe check and the SADD+RPUSH
+// happen in one script, so two concurrent Push calls can never both pass the
+// check and enqueue the same mirror twice.
+var pushScript = redis.NewScript(`
+if redis.call('SISMEMBER', KEYS[1], ARGV[1]) == 1 then
+	return 0
+end
+redis.call('SADD', KEYS[1], ARGV[1])
+redis.call('RPUSH', KEYS[2], ARGV[2])
+return 1
+`)
+
+// popScript pops atomically: LPOP and the slot release (SREM) are one unit, so
+// a crash can no longer leave the slot behind with the item already consumed.
+// If the payload is corrupt, the best-effort MirrorID still releases the slot
+// so the mirror can re-enqueue on its next trigger.
+var popScript = redis.NewScript(`
+local v = redis.call('LPOP', KEYS[1])
+if not v then
+	return false
+end
+local ok, obj = pcall(cjson.decode, v)
+if ok and type(obj) == 'table' and obj["MirrorID"] then
+	redis.call('SREM', KEYS[2], obj["MirrorID"])
+end
+return v
+`)
+
+var corruptMirrorIDRe = regexp.MustCompile(`"MirrorID"\s*:\s*(\d+)`)
 
 type RedisQueue struct {
 	client *redis.Client
@@ -30,7 +68,7 @@ func NewRedisQueue(addr, password string, db int) (*RedisQueue, error) {
 
 	return &RedisQueue{
 		client: client,
-		key:    "gms:mirror_sync_queue",
+		key:    redisQueueKey,
 	}, nil
 }
 
@@ -41,54 +79,49 @@ func (q *RedisQueue) Push(req SyncRequest) error {
 		req.RequestedAt = time.Now()
 	}
 
-	// Dedupe: skip if already enqueued (matches the MemoryQueue contract that
-	// the UniqueQueue interface promises — previously this backend pushed
-	// duplicates unconditionally).
-	if q.Has(req.MirrorID) {
-		return nil
-	}
-
 	member, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("marshal sync request: %w", err)
 	}
 
-	pipe := q.client.Pipeline()
-	pipe.SAdd(ctx, q.key+":set", req.MirrorID)
-	pipe.RPush(ctx, q.key+":list", member)
-	_, err = pipe.Exec(ctx)
-	return err
+	_, err = pushScript.Run(ctx, q.client,
+		[]string{q.key + ":set", q.key + ":list"},
+		req.MirrorID, member,
+	).Int64()
+	if err != nil {
+		return fmt.Errorf("enqueue sync request: %w", err)
+	}
+	return nil
 }
 
 func (q *RedisQueue) Pop() (SyncRequest, bool) {
 	ctx := context.Background()
 
-	result, err := q.client.LPop(ctx, q.key+":list").Result()
+	result, err := popScript.Run(ctx, q.client,
+		[]string{q.key + ":list", q.key + ":set"},
+	).Text()
 	if err != nil {
 		// redis.Nil means empty queue (normal); anything else is a real error
-		// we must not swallow as "empty".
+		// we must not swallow as "empty" — the item was NOT popped, so the
+		// next tick retries it.
 		if err != redis.Nil {
-			// Log-worthy but the interface has no error return; treat as empty
-			// but don't lose the item (it was NOT popped on connection errors).
+			log.Printf("[queue] pop sync request failed (will retry): %v", err)
 		}
 		return SyncRequest{}, false
 	}
 
 	var req SyncRequest
 	if err := json.Unmarshal([]byte(result), &req); err != nil {
-		// The item was popped but is corrupt — best-effort extract the
-		// MirrorID so we can release its dedupe slot and let it re-enqueue.
-		var partial struct {
-			MirrorID uint `json:"MirrorID"`
+		// The script releases the slot only when cjson can parse the payload;
+		// syntactically broken JSON lands here, so extract the MirrorID
+		// best-effort and release the slot anyway. A dropped item must never
+		// leave its mirror permanently stuck.
+		if m := corruptMirrorIDRe.FindStringSubmatch(result); m != nil {
+			q.client.SRem(ctx, q.key+":set", m[1])
 		}
-		_ = json.Unmarshal([]byte(result), &partial)
-		if partial.MirrorID != 0 {
-			q.client.SRem(ctx, q.key+":set", partial.MirrorID)
-		}
+		log.Printf("[queue] dropping corrupt sync request payload: %v", err)
 		return SyncRequest{}, false
 	}
-
-	q.client.SRem(ctx, q.key+":set", req.MirrorID)
 	return req, true
 }
 

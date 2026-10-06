@@ -14,6 +14,26 @@ import (
 
 var GlobalScheduler *Scheduler
 
+// GlobalWorkerPool / GlobalQueue 由装配方（cmd/server/main.go 的
+// initMirrorSystem）赋值，供 Shutdown 统一停机。
+var (
+	GlobalWorkerPool *queue.WorkerPool
+	GlobalQueue      queue.UniqueQueue
+)
+
+// Shutdown 依序停止镜像子系统：先停调度器（不再入队），再排空 worker
+// （等待在跑的同步完成），最后关闭队列连接。
+func Shutdown() {
+	StopScheduler()
+	if GlobalWorkerPool != nil {
+		GlobalWorkerPool.Stop()
+	}
+	if GlobalQueue != nil {
+		GlobalQueue.Close()
+	}
+	log.Println("[Mirror] system shut down")
+}
+
 type Scheduler struct {
 	mirrorDAO *db.MirrorDAO
 	queue     queue.UniqueQueue
@@ -71,7 +91,12 @@ func (s *Scheduler) Stop() {
 	log.Println("[MirrorScheduler] stopped")
 }
 
+// AddCronMirror / RemoveCronMirror 对 nil 接收者安全：desktop 等未装配
+// scheduler 的入口调用时不 panic。
 func (s *Scheduler) AddCronMirror(mirror *po.Mirror) {
+	if s == nil {
+		return
+	}
 	if mirror.CronExpr == "" || !mirror.Enabled {
 		return
 	}
@@ -101,6 +126,9 @@ func (s *Scheduler) AddCronMirror(mirror *po.Mirror) {
 }
 
 func (s *Scheduler) RemoveCronMirror(mirrorID uint) {
+	if s == nil {
+		return
+	}
 	s.cronMu.Lock()
 	defer s.cronMu.Unlock()
 	if entryID, exists := s.cronMap[mirrorID]; exists {

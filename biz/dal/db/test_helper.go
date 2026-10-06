@@ -47,6 +47,8 @@ func SetupTestDB(t *testing.T) {
 		&po.ReviewRule{},
 		&po.MaintenanceRecord{},
 		&po.AuthorIdentity{},
+		&po.Mirror{},
+		&po.MirrorSyncLog{},
 		&po.AIInvocation{},
 	)
 	if err != nil {

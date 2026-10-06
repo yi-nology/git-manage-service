@@ -35,8 +35,8 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/lock"
 	"github.com/yi-nology/git-manage-service/pkg/metrics"
 	pkgqueue "github.com/yi-nology/git-manage-service/pkg/queue"
-	_ "github.com/yi-nology/git-platform-sdk/backends/all"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	_ "github.com/yi-nology/go-git-platform/backends/all"
+	"github.com/yi-nology/go-git-platform/gitbackend"
 )
 
 // @title Git Manage Service API
@@ -121,7 +121,11 @@ func main() {
 
 	audit.AuditSvc.Stop()
 
-	mirrorSvc.StopScheduler()
+	// 依序停掉后台子系统：HTTP/RPC 已停（不再有新请求），先停同步引擎，
+	// 再停镜像调度→排空 worker→关队列。
+	syncv2.GetService().Stop()
+
+	mirrorSvc.Shutdown()
 
 	log.Println("All servers stopped. Exiting.")
 }
@@ -159,9 +163,9 @@ func initResources() {
 	log.Println("Resources initialized successfully")
 }
 
-// initSyncV2Service 初始化 V2 同步服务 (git-sync-service)
+// initSyncV2Service 初始化 V2 同步服务 (git-ferry-core)
 func initSyncV2Service() {
-	log.Println("[SyncV2] Initializing git-sync-service...")
+	log.Println("[SyncV2] Initializing git-ferry-core...")
 	if err := syncv2.GetService().Initialize(&configs.GlobalConfig); err != nil {
 		log.Printf("[SyncV2] Warning: failed to initialize: %v\n", err)
 		return
@@ -209,11 +213,13 @@ func initMirrorSystem() {
 
 	svc := mirrorSvc.NewMirrorService(mirrorDAO, syncLogDAO, lockSvc, backend, q, cfg.Mirror)
 	mirrorSvc.GlobalMirrorService = svc
+	mirrorSvc.GlobalQueue = q
 
 	wp := pkgqueue.NewWorkerPool(q, func(req pkgqueue.SyncRequest) {
 		svc.ProcessSyncRequest(req)
 	}, cfg.Mirror.MaxWorkers)
 	wp.Start()
+	mirrorSvc.GlobalWorkerPool = wp
 
 	mirrorSvc.InitScheduler(mirrorDAO, q, cfg.Mirror)
 

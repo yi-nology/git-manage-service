@@ -11,8 +11,11 @@ type DistLock interface {
 	// 返回 true 表示成功获取锁，false 表示锁已被其他持有者占用
 	Up(ctx context.Context, key string, ttl time.Duration) (bool, error)
 
-	// Down 释放锁
+	// Down 释放锁（仅释放本实例持有的锁；过期后被他人抢走的锁不受影响）
 	Down(ctx context.Context, key string) error
+
+	// Refresh 给仍由本实例持有的锁续期；锁已丢失时返回 false
+	Refresh(ctx context.Context, key string, ttl time.Duration) (bool, error)
 
 	// UpWait 等待获取锁（阻塞）
 	// 如果锁被其他持有者占用，会等待直到获取成功或超时

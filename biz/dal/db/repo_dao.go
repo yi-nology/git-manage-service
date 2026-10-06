@@ -26,13 +26,29 @@ func (d *RepoDAO) Delete(repo *po.Repo) error {
 	return DB.Delete(repo).Error
 }
 
-// DeleteWithBindings 事务删除仓库并标记关联绑定为 deleted
+// DeleteWithBindings 事务删除仓库并级联清理：绑定点位 deleted、软删该仓库的
+// 镜像、硬删镜像同步日志。不级联的话 scheduler/队列会对已删仓库继续同步。
 func (d *RepoDAO) DeleteWithBindings(repo *po.Repo) error {
 	return DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&po.RepoProviderBinding{}).Where("repo_id = ? AND status = ?", repo.ID, "active").
 			Update("status", "deleted").Error; err != nil {
 			return err
 		}
+
+		// 先收集镜像 ID：镜像软删后按 repo_id 就查不到了。
+		var mirrorIDs []uint
+		if err := tx.Model(new(po.Mirror)).Where("repo_id = ?", repo.ID).Pluck("id", &mirrorIDs).Error; err != nil {
+			return err
+		}
+		if len(mirrorIDs) > 0 {
+			if err := tx.Where("mirror_id IN ?", mirrorIDs).Delete(new(po.MirrorSyncLog)).Error; err != nil {
+				return err
+			}
+		}
+		if err := tx.Where("repo_id = ?", repo.ID).Delete(new(po.Mirror)).Error; err != nil {
+			return err
+		}
+
 		return tx.Delete(repo).Error
 	})
 }

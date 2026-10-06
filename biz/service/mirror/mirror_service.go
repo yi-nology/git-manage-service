@@ -3,6 +3,7 @@ package mirror
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -12,8 +13,12 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/lock"
 	"github.com/yi-nology/git-manage-service/pkg/queue"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	"github.com/yi-nology/go-git-platform/gitbackend"
 )
+
+// mirrorLockTTL 单次镜像同步的互斥锁时长；ProcessSyncRequest 里的看门狗按
+// TTL/3 周期续期，正常退出时由 Down 释放。
+const mirrorLockTTL = 10 * time.Minute
 
 var GlobalMirrorService *MirrorService
 
@@ -135,10 +140,30 @@ func (s *MirrorService) ProcessSyncRequest(req queue.SyncRequest) {
 
 	lockKey := fmt.Sprintf("mirror:sync:%d", mirror.ID)
 	if s.lockSvc != nil {
-		if ok, _ := s.lockSvc.Up(ctx, lockKey, 10*time.Minute); !ok {
+		if ok, _ := s.lockSvc.Up(ctx, lockKey, mirrorLockTTL); !ok {
 			return
 		}
 		defer s.lockSvc.Down(ctx, lockKey)
+		// 大仓库同步可能超过单个 TTL；锁在任务结束前过期会让其他实例并发
+		// 操作同一个本地仓库。看门狗按 TTL/3 周期续期，Down 前先停。
+		stopRenew := make(chan struct{})
+		defer close(stopRenew)
+		go func() {
+			ticker := time.NewTicker(mirrorLockTTL / 3)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-stopRenew:
+					return
+				case <-ticker.C:
+					if ok, err := s.lockSvc.Refresh(ctx, lockKey, mirrorLockTTL); err != nil {
+						log.Printf("[Mirror] lock renew failed for mirror %d: %v", mirror.ID, err)
+					} else if !ok {
+						log.Printf("[Mirror] lock for mirror %d was lost, sync may run concurrently", mirror.ID)
+					}
+				}
+			}
+		}()
 	}
 
 	status := NewMirrorStatus(mirror.Status)

@@ -10,13 +10,17 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	hserver "github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/router"
 	"github.com/yi-nology/git-manage-service/biz/service/audit"
+	"github.com/yi-nology/git-manage-service/biz/service/git"
+	"github.com/yi-nology/git-manage-service/biz/service/llm"
+	mirrorSvc "github.com/yi-nology/git-manage-service/biz/service/mirror"
+	settingssvc "github.com/yi-nology/git-manage-service/biz/service/settings"
 	"github.com/yi-nology/git-manage-service/biz/service/stats"
+	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
 	"github.com/yi-nology/git-manage-service/biz/utils"
 	"github.com/yi-nology/git-manage-service/pkg/appinfo"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
@@ -59,17 +63,15 @@ func Startup(ctx context.Context) {
 	app := GetApp()
 	app.ctx = ctx
 
-	// 在后台异步启动后端服务（延迟 1 秒以确保 Wails 完成初始化）
-	time.AfterFunc(1*time.Second, func() {
-		go app.startBackend()
-	})
+	// 立即后台启动后端：人为的延迟只会让前端更早撞上连接拒绝，不会消除竞态；
+	// 未就绪窗口由前端的请求重试兜底。
+	go app.startBackend()
 }
 
 // Shutdown 应用关闭时调用
 func Shutdown(ctx context.Context) {
 	log.Println("Application shutting down...")
 
-	// 停止 HTTP 服务器
 	app := GetApp()
 	if app.hServer != nil {
 		log.Println("Stopping HTTP server...")
@@ -79,6 +81,11 @@ func Shutdown(ctx context.Context) {
 			log.Println("HTTP server stopped successfully")
 		}
 	}
+
+	// 与 server 模式对齐：停掉后台子系统（mirror 子系统未装配时为 nil 安全）。
+	syncv2.GetService().Stop()
+	audit.AuditSvc.Stop()
+	mirrorSvc.Shutdown()
 }
 
 // isPortInUse 检测端口是否被占用
@@ -112,9 +119,14 @@ func (a *App) startBackend() {
 	db.InitLintRules()
 	db.InitBindingMigration()
 
-	// 初始化业务服务
+	// 初始化业务服务（与 server 模式保持一致，桌面端同样提供完整功能）
+	settingssvc.LoadCodeReviewSettingsFromDB()
+	settingssvc.InitDefaultReviewRules()
+	initSyncV2()
 	stats.InitStatsService()
 	audit.InitAuditService()
+	git.GlobalTaskManager.Init()
+	initLLMProviders()
 
 	// 设置嵌入的文件系统（供 API 路由使用）
 	router.SetEmbedFS(embed.GetPublicFS(), embed.GetDocsFS())
@@ -144,6 +156,25 @@ func (a *App) startBackend() {
 	if err := a.hServer.Run(); err != nil {
 		log.Printf("HTTP server error: %v\n", err)
 	}
+}
+
+// initSyncV2 初始化同步引擎；失败只降级告警（同步页会提示未初始化），不阻断启动。
+func initSyncV2() {
+	if err := syncv2.GetService().Initialize(&configs.GlobalConfig); err != nil {
+		log.Printf("[SyncV2] Warning: failed to initialize: %v\n", err)
+		return
+	}
+	log.Println("[SyncV2] Initialized successfully")
+}
+
+// initLLMProviders 与 server 模式的 initQueue 相同：代码评审关闭时不初始化。
+func initLLMProviders() {
+	if !configs.GetCodeReviewConfig().Enabled {
+		log.Println("[LLM] Code review disabled, skipping provider init")
+		return
+	}
+	llm.InitProviders()
+	llm.InitProvidersFromDB()
 }
 
 // setupDesktopDataDir 设置桌面应用的数据目录
