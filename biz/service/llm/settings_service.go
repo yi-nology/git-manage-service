@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strconv"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
@@ -42,50 +41,35 @@ func CreateProvider(req *settingsModel.LLMProviderInfo) (*settingsModel.LLMProvi
 		maxTokens = 4096
 	}
 
-	p := &po.LLMProvider{
-		Name:           req.Name,
-		Type:           req.Type,
-		BaseURL:        req.BaseUrl,
-		APIKey:         req.ApiKey,
-		AIModel:        req.Model,
-		MaxTokens:      maxTokens,
-		IsDefault:      req.IsDefault,
-		IsEmbedding:    req.IsEmbedding,
-		EmbeddingModel: req.EmbeddingModel,
-		PresetID:       req.PresetId,
-		Protocol:       req.Protocol,
+	apply := func(p *po.LLMProvider) {
+		p.Name = req.Name
+		p.Type = req.Type
+		p.BaseURL = req.BaseUrl
+		p.APIKey = req.ApiKey
+		p.AIModel = req.Model
+		p.MaxTokens = maxTokens
+		p.IsDefault = req.IsDefault
+		p.IsEmbedding = req.IsEmbedding
+		p.EmbeddingModel = req.EmbeddingModel
+		p.PresetID = req.PresetId
+		p.Protocol = req.Protocol
 	}
 
-	if p.IsDefault {
-		dao.ClearAllDefault()
-	}
-
-	existing, err := dao.FindByNameUnscoped(req.Name)
-	if err == nil && existing != nil {
-		existing.Type = p.Type
-		existing.BaseURL = p.BaseURL
-		existing.APIKey = p.APIKey
-		existing.AIModel = p.AIModel
-		existing.MaxTokens = p.MaxTokens
-		existing.IsDefault = p.IsDefault
-		existing.IsEmbedding = p.IsEmbedding
-		existing.EmbeddingModel = p.EmbeddingModel
-		existing.PresetID = p.PresetID
-		existing.Protocol = p.Protocol
+	// 同名记录曾被软删：原地复活而不是再建一条，避免唯一名冲突。
+	if existing, err := dao.FindByNameUnscoped(req.Name); err == nil && existing != nil {
+		apply(existing)
 		existing.DeletedAt = gorm.DeletedAt{}
-		if err := dao.Save(existing); err != nil {
+		if err := dao.UpsertWithDefault(existing); err != nil {
 			return nil, fmt.Errorf("failed to restore provider: %w", err)
 		}
+		RegisterProvider(existing)
 		return convertToProtoLLMProvider(existing), nil
 	}
 
-	if err := dao.Create(p); err != nil {
+	p := &po.LLMProvider{}
+	apply(p)
+	if err := dao.UpsertWithDefault(p); err != nil {
 		return nil, fmt.Errorf("failed to create provider: %w", err)
-	}
-
-	if p.IsDefault || isFirstProvider(p.ID) {
-		dao.SetDefault(p.ID)
-		p.IsDefault = true
 	}
 
 	RegisterProvider(p)
@@ -118,11 +102,9 @@ func UpdateProvider(id uint, req *settingsModel.LLMProviderInfo) (*settingsModel
 		p.APIKey = req.ApiKey
 	}
 
-	if p.IsDefault {
-		dao.ClearAllDefault()
-	}
-
-	if err := dao.Save(p); err != nil {
+	// 保存与默认切换在同一个事务里：旧的实现先 ClearAllDefault 再 Save，
+	// Save 失败会让全库没有任何默认 provider。
+	if err := dao.UpsertWithDefault(p); err != nil {
 		return nil, fmt.Errorf("failed to save provider: %w", err)
 	}
 
@@ -186,14 +168,6 @@ func TestProvider(ctx context.Context, id uint) error {
 		return fmt.Errorf("connection test failed: %w", err)
 	}
 	return nil
-}
-
-func isFirstProvider(id uint) bool {
-	all, err := db.NewLLMProviderDAO().FindAll()
-	if err != nil || len(all) == 0 {
-		return false
-	}
-	return len(all) == 1 && all[0].ID == id
 }
 
 func convertToProtoLLMProvider(p *po.LLMProvider) *settingsModel.LLMProviderInfo {
@@ -262,8 +236,4 @@ func GetProviderNames() []string {
 		names = append(names, k)
 	}
 	return names
-}
-
-func init() {
-	_ = strconv.Itoa
 }

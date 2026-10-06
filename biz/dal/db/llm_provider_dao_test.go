@@ -70,16 +70,44 @@ func TestLLMProviderDAO_SetDefault(t *testing.T) {
 	}
 }
 
-func TestLLMProviderDAO_ClearAllDefault(t *testing.T) {
+func TestLLMProviderDAO_UpsertWithDefault(t *testing.T) {
 	SetupTestDB(t)
 	dao := NewLLMProviderDAO()
-	p := &po.LLMProvider{Name: "p1", Type: "openai", IsDefault: true}
-	dao.Create(p)
 
-	dao.ClearAllDefault()
-	_, err := dao.FindDefault()
-	if err == nil {
-		t.Error("expected error when no default")
+	// 首个 provider 未声明默认：零默认时自动提升，保证不变量。
+	p1 := &po.LLMProvider{Name: "up1", Type: "openai", IsDefault: false}
+	if err := dao.UpsertWithDefault(p1); err != nil {
+		t.Fatalf("UpsertWithDefault failed: %v", err)
+	}
+	if !p1.IsDefault {
+		t.Error("sole provider should be promoted to default")
+	}
+
+	// 已有默认时保存非默认 provider：默认保持不变。
+	p2 := &po.LLMProvider{Name: "up2", Type: "anthropic", IsDefault: false}
+	if err := dao.UpsertWithDefault(p2); err != nil {
+		t.Fatalf("UpsertWithDefault failed: %v", err)
+	}
+	if p2.IsDefault {
+		t.Error("should not steal default when one exists")
+	}
+	def, _ := dao.FindDefault()
+	if def.ID != p1.ID {
+		t.Errorf("default changed unexpectedly: got ID %d", def.ID)
+	}
+
+	// 设 p2 为默认：p1 的默认被清除，全库仍有且仅有一个默认。
+	p2.IsDefault = true
+	if err := dao.UpsertWithDefault(p2); err != nil {
+		t.Fatalf("UpsertWithDefault failed: %v", err)
+	}
+	def, _ = dao.FindDefault()
+	if def.ID != p2.ID {
+		t.Errorf("expected p2 as default, got ID %d", def.ID)
+	}
+	p1b, _ := dao.FindByID(p1.ID)
+	if p1b.IsDefault {
+		t.Error("old default should be cleared")
 	}
 }
 

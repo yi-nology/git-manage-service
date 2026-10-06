@@ -33,9 +33,32 @@ func (d *LLMProviderDAO) FindDefault() (*po.LLMProvider, error) {
 	return &p, DB.Where("is_default = ?", true).First(&p).Error
 }
 
-// ClearAllDefault 取消所有默认设置
-func (d *LLMProviderDAO) ClearAllDefault() error {
-	return DB.Model(new(po.LLMProvider)).Where("is_default = ?", true).Update("is_default", false).Error
+// UpsertWithDefault 在单个事务内保存 provider 并维护「存在 provider 时
+// 有且仅有一个默认」：p 为默认则清掉其余；保存后全库没有默认（用户取消
+// 默认、或这是首个 provider）则提升 p。p.IsDefault 回写为最终值。
+func (d *LLMProviderDAO) UpsertWithDefault(p *po.LLMProvider) error {
+	return DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(p).Error; err != nil {
+			return err
+		}
+		if p.IsDefault {
+			return tx.Model(new(po.LLMProvider)).
+				Where("is_default = ? AND id <> ?", true, p.ID).
+				Update("is_default", false).Error
+		}
+		var defaults int64
+		if err := tx.Model(new(po.LLMProvider)).Where("is_default = ?", true).Count(&defaults).Error; err != nil {
+			return err
+		}
+		if defaults == 0 {
+			if err := tx.Model(new(po.LLMProvider)).Where("id = ?", p.ID).
+				Update("is_default", true).Error; err != nil {
+				return err
+			}
+			p.IsDefault = true
+		}
+		return nil
+	})
 }
 
 // SetDefault 设为默认（事务：先清旧再设新）
