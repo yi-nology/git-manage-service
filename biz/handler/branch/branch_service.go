@@ -18,7 +18,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	"github.com/yi-nology/go-git-platform/gitbackend"
 )
 
 // List .

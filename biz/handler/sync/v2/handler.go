@@ -6,10 +6,10 @@ import (
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	gitsyncmodel "github.com/yi-nology/git-ferry-core/model"
 	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
-	gitsyncmodel "github.com/yi-nology/git-sync-core/model"
 )
 
 var svc = syncv2.GetService()

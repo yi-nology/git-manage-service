@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	"github.com/yi-nology/go-git-platform/gitbackend"
 )
 
 func parsePushOptions(options []string) (force bool, mirror bool, insecure bool) {

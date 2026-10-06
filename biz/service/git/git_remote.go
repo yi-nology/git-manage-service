@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	"github.com/yi-nology/go-git-platform/gitbackend"
 )
 
 // GetRemotes 获取所有远程仓库名称

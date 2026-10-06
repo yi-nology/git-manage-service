@@ -16,7 +16,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/llm"
 	"github.com/yi-nology/git-manage-service/biz/service/rag"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
-	"github.com/yi-nology/git-platform-sdk/provider"
+	"github.com/yi-nology/go-git-platform/provider"
 )
 
 func persistFindings(taskID uint, findings []*Finding) (map[string]uint, error) {

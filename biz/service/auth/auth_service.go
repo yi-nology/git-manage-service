@@ -10,7 +10,7 @@ import (
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/domain"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	"github.com/yi-nology/go-git-platform/gitbackend"
 )
 
 // AuthService 统一认证解析服务

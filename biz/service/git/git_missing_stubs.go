@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	"github.com/yi-nology/go-git-platform/gitbackend"
 )
 
 type SearchCommitsOptions struct {

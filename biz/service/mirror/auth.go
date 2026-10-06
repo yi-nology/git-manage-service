@@ -2,7 +2,7 @@ package mirror
 
 import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
+	"github.com/yi-nology/go-git-platform/gitbackend"
 )
 
 func resolveAuth(mirror *po.Mirror) gitbackend.AuthConfig {

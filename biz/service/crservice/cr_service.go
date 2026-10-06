@@ -12,7 +12,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
 	servicePkg "github.com/yi-nology/git-manage-service/pkg/service"
-	"github.com/yi-nology/git-platform-sdk/provider"
+	"github.com/yi-nology/go-git-platform/provider"
 )
 
 func CreateCR(ctx context.Context, req *api.CreateCRReq) (*api.CRDTO, error) {

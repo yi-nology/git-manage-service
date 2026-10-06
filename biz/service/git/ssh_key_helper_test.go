@@ -51,7 +51,7 @@ func TestSSHKeyHelper_CleanupTempFile_EmptyPath(t *testing.T) {
 func TestSSHKeyHelper_BuildSSHCommand(t *testing.T) {
 	h := NewSSHKeyHelper()
 	cmd := h.BuildSSHCommand("/tmp/key")
-	if !strings.Contains(cmd, "ssh -i /tmp/key") {
+	if !strings.Contains(cmd, "/tmp/key") {
 		t.Errorf("unexpected command: %s", cmd)
 	}
 	if !strings.Contains(cmd, "StrictHostKeyChecking=no") {

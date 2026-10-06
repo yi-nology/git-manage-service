@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
+	gitsyncmodel "github.com/yi-nology/git-ferry-core/model"
+	gitsync "github.com/yi-nology/git-ferry-core/service"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
-	gitsyncmodel "github.com/yi-nology/git-sync-core/model"
-	gitsync "github.com/yi-nology/git-sync-core/service"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -35,7 +35,7 @@ type SyncConfigItem struct {
 	Description string `json:"description"`
 }
 
-// SyncServiceV2 基于 git-sync-service 的 V2 同步服务
+// SyncServiceV2 基于 git-ferry-core 的 V2 同步服务
 type SyncServiceV2 struct {
 	core *gitsync.Service
 }
@@ -50,7 +50,7 @@ func GetService() *SyncServiceV2 {
 
 // Initialize 初始化服务
 func (s *SyncServiceV2) Initialize(appCfg *configs.Config) error {
-	// 构建 git-sync-service 配置
+	// 构建 git-ferry-core 配置
 	cfg := &gitsyncmodel.Config{
 		Database: gitsyncmodel.DatabaseConfig{
 			Driver:       gitsyncmodel.DriverSQLite, // sync service uses its own sqlite DB
@@ -76,14 +76,14 @@ func (s *SyncServiceV2) Initialize(appCfg *configs.Config) error {
 	// 初始化核心服务
 	core, err := gitsync.NewService(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to create git-sync-service: %w", err)
+		return fmt.Errorf("failed to create git-ferry-core: %w", err)
 	}
 
 	s.core = core
 
 	// 启动核心服务
 	if err := s.core.Start(); err != nil {
-		return fmt.Errorf("failed to start git-sync-service: %w", err)
+		return fmt.Errorf("failed to start git-ferry-core: %w", err)
 	}
 
 	return nil
@@ -130,7 +130,7 @@ func (s *SyncServiceV2) GetTask(ctx context.Context, key string) (*gitsyncmodel.
 }
 
 // FindTaskByWebhookToken finds a sync task by its auto-generated webhook trigger
-// token. git-sync-service mints a unique WebhookToken per task but exposes no
+// token. git-ferry-core mints a unique WebhookToken per task but exposes no
 // direct lookup, so this scans the task list. Returns (nil, nil) when nothing
 // matches; returns an error only when the service is uninitialized or the list
 // call fails.

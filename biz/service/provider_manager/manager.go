@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	sdkprov "github.com/yi-nology/git-platform-sdk/provider"
+	sdkprov "github.com/yi-nology/go-git-platform/provider"
 
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"

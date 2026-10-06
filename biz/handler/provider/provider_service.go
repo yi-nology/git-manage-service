@@ -14,7 +14,7 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	pkgresponse "github.com/yi-nology/git-manage-service/pkg/response"
 	"github.com/yi-nology/git-manage-service/pkg/timefmt"
-	"github.com/yi-nology/git-platform-sdk/provider"
+	"github.com/yi-nology/go-git-platform/provider"
 )
 
 func toProtoProviderConfig(cfg *po.ProviderConfig) *providerModel.ProviderConfig {

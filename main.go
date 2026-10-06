@@ -10,7 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/yi-nology/git-manage-service/cmd/desktop"
-	_ "github.com/yi-nology/git-platform-sdk/backends/all"
+	_ "github.com/yi-nology/go-git-platform/backends/all"
 )
 
 //go:embed frontend/dist

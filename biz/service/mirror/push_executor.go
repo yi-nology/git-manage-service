@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/yi-nology/git-manage-service/biz/model/po"
-	"github.com/yi-nology/git-platform-sdk/gitbackend"
-	"github.com/yi-nology/git-platform-sdk/pkg/branchfilter"
+	"github.com/yi-nology/go-git-platform/gitbackend"
+	"github.com/yi-nology/go-git-platform/pkg/branchfilter"
 )
 
 type PushExecutor struct {
@@ -33,7 +33,10 @@ func (e *PushExecutor) Execute(ctx context.Context, mirror *po.Mirror, logf func
 		remoteName = "origin"
 	}
 
-	filter := branchfilter.New(mirror.BranchFilter)
+	filter, err := branchfilter.New(mirror.BranchFilter)
+	if err != nil {
+		return nil, fmt.Errorf("invalid branch filter %q: %w", mirror.BranchFilter, err)
+	}
 
 	logf("Starting push mirror for repo %s to %s", mirror.Repo.Name, mirror.RemoteURL)
 
@@ -91,7 +94,11 @@ func PreviewPush(ctx context.Context, backend gitbackend.GitBackend, mirror *po.
 	preview.WriteString(fmt.Sprintf("Tags: %v\n", mirror.GitTags))
 
 	if mirror.BranchFilter != "" {
-		filter := branchfilter.New(mirror.BranchFilter)
+		filter, err := branchfilter.New(mirror.BranchFilter)
+		if err != nil {
+			preview.WriteString(fmt.Sprintf("Branch filter: %s (invalid: %v)\n", mirror.BranchFilter, err))
+			return preview.String(), nil
+		}
 		branches, err := backend.ListRemoteBranches(ctx, mirror.Repo.Path, remoteName)
 		if err != nil {
 			return preview.String(), nil

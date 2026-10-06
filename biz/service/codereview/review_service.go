@@ -17,7 +17,7 @@ import (
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 	"github.com/yi-nology/git-manage-service/pkg/logger"
 	servicePkg "github.com/yi-nology/git-manage-service/pkg/service"
-	"github.com/yi-nology/git-platform-sdk/provider"
+	"github.com/yi-nology/go-git-platform/provider"
 )
 
 var runningTasks sync.Map

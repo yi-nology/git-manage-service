@@ -19,7 +19,7 @@ func Register(r *server.Hertz) {
 	{
 		_api := root.Group("/api", _apiMw()...)
 		{
-			// V2 - git-sync-service based
+			// V2 - git-ferry-core based
 			_v2 := _api.Group("/v2", _v1Mw()...)
 			{
 				_sync := _v2.Group("/sync", _syncMw()...)

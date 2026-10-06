@@ -19,7 +19,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/webhookevent"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
-	"github.com/yi-nology/git-platform-sdk/provider"
+	"github.com/yi-nology/go-git-platform/provider"
 )
 
 // TriggerSync .
@@ -75,7 +75,7 @@ func TriggerSyncByToken(ctx context.Context, c *app.RequestContext) {
 			return nil, handler.ErrBadRequest("token is required")
 		}
 
-		// 通过 token 查找任务（git-sync-service 是任务的真正来源）
+		// 通过 token 查找任务（git-ferry-core 是任务的真正来源）
 		svc := syncv2.GetService()
 		task, err := svc.FindTaskByWebhookToken(ctx, token)
 		if err != nil || task == nil {

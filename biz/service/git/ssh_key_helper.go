@@ -3,7 +3,7 @@ package git
 import (
 	"net"
 
-	"github.com/yi-nology/git-platform-sdk/pkg/credential"
+	"github.com/yi-nology/go-git-platform/pkg/credential"
 	ssh2 "golang.org/x/crypto/ssh"
 )
 
@@ -32,7 +32,7 @@ func (h *SSHKeyHelper) CreateTempKeyFile(keyContent string) (string, error) {
 // disabled. Suitable for CI/server environments where known_hosts cannot be
 // populated.
 //
-// Note: git-platform-sdk v0.35+ made secure checking the default, so the SDK's
+// Note: go-git-platform (formerly git-platform-sdk) v0.35+ made secure checking the default, so the SDK's
 // BuildSSHCommand is now secure. This wrapper preserves the historical
 // insecure behavior this codebase relied on by delegating to BuildSSHCommandInsecure.
 func (h *SSHKeyHelper) BuildSSHCommand(keyPath string) string {

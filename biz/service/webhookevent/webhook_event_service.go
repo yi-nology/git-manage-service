@@ -16,7 +16,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/codereview"
 	syncv2 "github.com/yi-nology/git-manage-service/biz/service/sync/v2"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
-	"github.com/yi-nology/git-platform-sdk/provider"
+	"github.com/yi-nology/go-git-platform/provider"
 )
 
 func List(eventType, source, status string, page, pageSize int) ([]api.WebhookEventDTO, int, error) {
@@ -164,7 +164,7 @@ func applyRules(event *po.WebhookEvent) {
 	}
 }
 
-// triggerSync runs the configured sync task via git-sync-service. Previously
+// triggerSync runs the configured sync task via git-ferry-core. Previously
 // this was a log-only stub, so the "触发同步任务" webhook rule action was
 // silently broken; it now delegates to syncv2.RunTask (the real engine).
 func triggerSync(config map[string]interface{}) {

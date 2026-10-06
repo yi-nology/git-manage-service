@@ -13,7 +13,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/service/git"
 	"github.com/yi-nology/git-manage-service/biz/service/provider_manager"
 	"github.com/yi-nology/git-manage-service/pkg/configs"
-	"github.com/yi-nology/git-platform-sdk/provider"
+	"github.com/yi-nology/go-git-platform/provider"
 )
 
 func ListBindings(repoKey string, providerConfigID uint) ([]api.RepoProviderBindingDTO, error) {
