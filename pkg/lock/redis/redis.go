@@ -13,12 +13,13 @@ import (
 
 // RedisLock Redis 分布式锁实现
 //
-// 每把锁写入随机属主 token，释放时用 Lua 比对后删除：锁因 TTL 过期被其他
-// 实例抢走后，原持有者的 Down 不会再误删新持有者的锁。
+// 属主语义：每把锁写入随机属主 token，释放时用 Lua 比对后删除。同一实例内
+// 先后多次获取按 FIFO 跟踪——Down 只释放本实例最早未释放的那次获取；跨实例
+// 场景下 TTL 过期后被其他实例抢走的锁不会被原持有者的 Down 误删。
 type RedisLock struct {
 	client *redis.Client
 	mu     sync.Mutex
-	tokens map[string]string // key → 本实例最后一次成功获取的属主 token
+	tokens map[string][]string // key → 本实例未释放的属主 token，按获取顺序
 }
 
 // NewRedisLock 创建 Redis 锁实例
@@ -36,7 +37,7 @@ func NewRedisLock(addr, password string, db int) (*RedisLock, error) {
 		return nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
 
-	return &RedisLock{client: client, tokens: make(map[string]string)}, nil
+	return &RedisLock{client: client, tokens: make(map[string][]string)}, nil
 }
 
 func newToken() string {
@@ -73,23 +74,26 @@ func (r *RedisLock) Up(ctx context.Context, key string, ttl time.Duration) (bool
 	}
 	if success {
 		r.mu.Lock()
-		r.tokens[key] = token
+		r.tokens[key] = append(r.tokens[key], token)
 		r.mu.Unlock()
 	}
 	return success, nil
 }
 
-// Down 释放锁（仅释放本实例持有的锁）
+// Down 释放锁（仅释放本实例最早未释放的那次获取）
 func (r *RedisLock) Down(ctx context.Context, key string) error {
 	r.mu.Lock()
-	token, held := r.tokens[key]
-	delete(r.tokens, key)
-	r.mu.Unlock()
-
-	if !held {
-		// 本实例从未持有（或已释放过）；删除会破坏其他持有者的锁，直接跳过。
+	queue := r.tokens[key]
+	if len(queue) == 0 {
+		r.mu.Unlock()
 		return nil
 	}
+	token := queue[0]
+	r.tokens[key] = queue[1:]
+	if len(r.tokens[key]) == 0 {
+		delete(r.tokens, key)
+	}
+	r.mu.Unlock()
 
 	if err := releaseScript.Run(ctx, r.client, []string{key}, token).Err(); err != nil {
 		return fmt.Errorf("failed to release lock: %w", err)
@@ -97,14 +101,16 @@ func (r *RedisLock) Down(ctx context.Context, key string) error {
 	return nil
 }
 
-// Refresh 续期（仅当锁仍由本实例持有时生效）
+// Refresh 续期（仅当锁仍由本实例持有时生效；以最新一次获取为准）
 func (r *RedisLock) Refresh(ctx context.Context, key string, ttl time.Duration) (bool, error) {
 	r.mu.Lock()
-	token, held := r.tokens[key]
-	r.mu.Unlock()
-	if !held {
+	queue := r.tokens[key]
+	if len(queue) == 0 {
+		r.mu.Unlock()
 		return false, nil
 	}
+	token := queue[len(queue)-1]
+	r.mu.Unlock()
 
 	n, err := refreshScript.Run(ctx, r.client, []string{key}, token, ttl.Milliseconds()).Int64()
 	if err != nil {

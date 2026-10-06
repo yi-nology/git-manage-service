@@ -17,12 +17,13 @@ type lockInfo struct {
 
 // MemoryLock 本地内存锁实现
 //
-// Down 只删除本实例最后一次获取的锁：TTL 过期后锁被同进程其他 goroutine
-// 抢走时，先持有者的 defer Down 不会误删新持有者的锁。
+// 属主语义：同一实例内先后多次获取同一把锁时按 FIFO 跟踪——Down 只释放
+// 最早尚未释放的那次获取（匹配 defer Down 的调用模式），TTL 过期后被他人
+// 抢走的锁不会被先持有者的 Down 误删。
 type MemoryLock struct {
 	mu     sync.Mutex
 	locks  map[string]*lockInfo
-	mine   map[string]string // key → 本实例最后一次成功获取的属主 token
+	mine   map[string][]string // key → 本实例未释放的属主 token，按获取顺序
 	stopCh chan struct{}
 }
 
@@ -30,7 +31,7 @@ type MemoryLock struct {
 func NewMemoryLock() *MemoryLock {
 	m := &MemoryLock{
 		locks:  make(map[string]*lockInfo),
-		mine:   make(map[string]string),
+		mine:   make(map[string][]string),
 		stopCh: make(chan struct{}),
 	}
 	// 启动后台清理过期锁的 goroutine
@@ -88,19 +89,23 @@ func (m *MemoryLock) Up(ctx context.Context, key string, ttl time.Duration) (boo
 		expireAt: now.Add(ttl),
 		owner:    token,
 	}
-	m.mine[key] = token
+	m.mine[key] = append(m.mine[key], token)
 	return true, nil
 }
 
-// Down 释放锁（仅释放本实例持有的锁）
+// Down 释放锁（仅释放本实例最早未释放的那次获取）
 func (m *MemoryLock) Down(ctx context.Context, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	token, held := m.mine[key]
-	delete(m.mine, key)
-	if !held {
+	queue := m.mine[key]
+	if len(queue) == 0 {
 		return nil
+	}
+	token := queue[0]
+	m.mine[key] = queue[1:]
+	if len(m.mine[key]) == 0 {
+		delete(m.mine, key)
 	}
 	if info, exists := m.locks[key]; exists && info.owner == token {
 		delete(m.locks, key)
@@ -108,17 +113,17 @@ func (m *MemoryLock) Down(ctx context.Context, key string) error {
 	return nil
 }
 
-// Refresh 续期（仅当锁仍由本实例持有时生效）
+// Refresh 续期（仅当锁仍由本实例持有时生效；以最新一次获取为准）
 func (m *MemoryLock) Refresh(ctx context.Context, key string, ttl time.Duration) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	token, held := m.mine[key]
-	if !held {
+	queue := m.mine[key]
+	if len(queue) == 0 {
 		return false, nil
 	}
 	info, exists := m.locks[key]
-	if !exists || info.owner != token {
+	if !exists || info.owner != queue[len(queue)-1] {
 		return false, nil
 	}
 	info.expireAt = time.Now().Add(ttl)
