@@ -26,10 +26,13 @@ func (r *RetryStrategy) GetNextRetryDelay(retryCount int) time.Duration {
 	case 4:
 		return 2 * time.Hour
 	default:
-		// 保留原有小时级指数阶梯；封顶 7 天并限制移位位数，
-		// 防止大 retryCount 时溢出为负的 Duration。
+		// 小时级指数阶梯；retryCount≥8 时已超 7 天封顶，直接返回。
+		// 不能只 clamp 移位位数——(1<<30)*time.Hour 仍会溢出为负的 Duration。
 		const maxDelay = 168 * time.Hour
-		return min((1<<uint(min(retryCount, 30)))*time.Hour, maxDelay)
+		if retryCount >= 8 {
+			return maxDelay
+		}
+		return (1 << uint(retryCount)) * time.Hour
 	}
 }
 
