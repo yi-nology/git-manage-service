@@ -16,7 +16,7 @@
           <el-input
             v-model="editForm.remote_url"
             :placeholder="editUrlMode === 'ssh' ? 'git@github.com:user/repo.git' : 'https://github.com/user/repo.git'"
-            @blur="validateEditUrl"
+            @blur="validateMainUrl"
             :class="{ 'is-error-input': editUrlError }"
           />
         </div>
@@ -82,19 +82,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { watch } from 'vue'
 import { Delete, Connection } from '@element-plus/icons-vue'
-import { scanRepo, updateRepo } from '@/api/modules/repo'
-import { testConnection } from '@/api/modules/system'
-import { testCredential } from '@/api/modules/credential'
-import type { RepoDTO, GitRemote, TrackingBranch } from '@/types/repo'
-import { validateGitRemoteUrl, detectGitProtocol, convertGitUrl } from '@/utils/git'
+import type { RepoDTO } from '@/types/repo'
 import CredentialSelector from '@/components/credential/CredentialSelector.vue'
-
-interface EditRemoteRow extends GitRemote {
-  _testing?: boolean
-}
+import { useRepoEditForm } from '@/composables/useRepoEditForm'
 
 const props = defineProps<{
   visible: boolean
@@ -107,214 +99,25 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-const editSaving = ref(false)
-const editForm = ref({ name: '', path: '', remote_url: '' })
-const editRemotes = ref<EditRemoteRow[]>([])
-const editTrackingBranches = ref<TrackingBranch[]>([])
-const editDefaultCredentialId = ref<number | undefined>()
-const editRemoteCredentials = ref<Record<string, number | undefined>>()
-const editUrlError = ref('')
-const remoteUrlErrors = ref<Record<number, string>>({})
-const editUrlMode = ref<'ssh' | 'https'>('ssh')
-const remoteUrlModes = ref<Record<number, 'ssh' | 'https'>>({})
+// 表单状态与远端 URL 编辑逻辑统一来自 useRepoEditForm（与 EditRepoPage 共享）
+const {
+  editSaving, editForm, editUrlError, editRemotes, editTrackingBranches,
+  editDefaultCredentialId, editRemoteCredentials, editUrlMode,
+  remoteUrlModes, remoteUrlErrors,
+  validateMainUrl, validateRemoteUrl,
+  addEditRemote, removeEditRemote, updateEditRemoteCred, testEditRemote,
+  fillFromRepo, save,
+} = useRepoEditForm(() => props.repoKey)
 
 watch(() => props.visible, (val) => {
   if (!val || !props.repo) return
-  editForm.value = {
-    name: props.repo.name,
-    path: props.repo.path,
-    remote_url: props.repo.remote_url || '',
-  }
-  editRemotes.value = []
-  editTrackingBranches.value = []
-  editDefaultCredentialId.value = props.repo.default_credential_id
-  editRemoteCredentials.value = { ...(props.repo.remote_credentials || {}) }
-  editUrlError.value = ''
-  remoteUrlErrors.value = {}
-  remoteUrlModes.value = {}
-  const mainProto = detectGitProtocol(props.repo.remote_url || '')
-  editUrlMode.value = mainProto === 'http' ? 'https' : 'ssh'
-
-  if (props.repo.path) {
-    scanRepo(props.repo.path).then(result => {
-      editRemotes.value = (result.remotes || []).map(r => ({
-        ...r,
-        _testing: false,
-      }))
-      editTrackingBranches.value = result.branches || []
-      editRemotes.value.forEach((r, i) => {
-        const p = detectGitProtocol(r.fetch_url || '')
-        remoteUrlModes.value[i] = p === 'http' ? 'https' : 'ssh'
-      })
-      if (!editForm.value.remote_url && editRemotes.value.length > 0) {
-        editForm.value.remote_url = editRemotes.value[0]!.fetch_url
-        const p = detectGitProtocol(editForm.value.remote_url)
-        editUrlMode.value = p === 'http' ? 'https' : 'ssh'
-      }
-    }).catch(() => {})
-  }
+  fillFromRepo(props.repo)
 })
-
-watch(editUrlMode, (newMode, oldMode) => {
-  if (oldMode && newMode !== oldMode && editForm.value.remote_url) {
-    editForm.value.remote_url = convertGitUrl(editForm.value.remote_url, newMode)
-  }
-})
-
-watch(remoteUrlModes, (newModes, oldModes) => {
-  if (!oldModes) return
-  for (const [idxStr, newMode] of Object.entries(newModes)) {
-    const idx = parseInt(idxStr)
-    const oldMode = oldModes[idx]
-    if (oldMode && newMode !== oldMode && editRemotes.value[idx]?.fetch_url) {
-      editRemotes.value[idx]!.fetch_url = convertGitUrl(editRemotes.value[idx]!.fetch_url, newMode)
-    }
-  }
-}, { deep: true })
 
 async function handleSaveEdit() {
-  if (!editForm.value.name || !editForm.value.path) {
-    ElMessage.warning('名称和路径不能为空')
-    return
-  }
-  if (editForm.value.remote_url) {
-    const err = validateGitRemoteUrl(editForm.value.remote_url)
-    if (err) {
-      editUrlError.value = err
-      return
-    }
-  }
-  for (let i = 0; i < editRemotes.value.length; i++) {
-    const r = editRemotes.value[i]!
-    if (r.fetch_url) {
-      const err = validateGitRemoteUrl(r.fetch_url)
-      if (err) {
-        remoteUrlErrors.value[i] = err
-        ElMessage.warning(`远程 "${r.name || 'unnamed'}" 的 URL 格式不正确`)
-        return
-      }
-    }
-  }
-  editSaving.value = true
-  try {
-    const remotes: GitRemote[] = editRemotes.value
-      .filter(r => r.name && r.fetch_url)
-      .map(r => ({
-        name: r.name,
-        fetch_url: r.fetch_url,
-        push_url: r.push_url || r.fetch_url,
-        is_mirror: r.is_mirror,
-      }))
-    const rc: Record<string, number> = {}
-    for (const [k, v] of Object.entries(editRemoteCredentials.value ?? {})) {
-      if (v) rc[k] = v
-    }
-    await updateRepo({
-      key: props.repoKey,
-      name: editForm.value.name,
-      path: editForm.value.path,
-      remote_url: editForm.value.remote_url || undefined,
-      remotes,
-      default_credential_id: editDefaultCredentialId.value,
-      remote_credentials: Object.keys(rc).length > 0 ? rc : undefined,
-    })
-    ElMessage.success('保存成功')
+  if (await save()) {
     emit('update:visible', false)
     emit('saved')
-  } finally {
-    editSaving.value = false
-  }
-}
-
-function addEditRemote() {
-  editRemotes.value.push({
-    name: '',
-    fetch_url: '',
-    push_url: '',
-    is_mirror: false,
-    _testing: false,
-  })
-}
-
-function updateEditRemoteCred(name: string, val: number | undefined) {
-  if (val) {
-    editRemoteCredentials.value![name] = val
-  } else {
-    delete editRemoteCredentials.value![name]
-  }
-}
-
-function validateEditUrl() {
-  const url = editForm.value.remote_url
-  if (!url) {
-    editUrlError.value = ''
-    return
-  }
-  const proto = detectGitProtocol(url)
-  if (proto === 'ssh') editUrlMode.value = 'ssh'
-  else if (proto === 'http') editUrlMode.value = 'https'
-  editUrlError.value = validateGitRemoteUrl(url)
-}
-
-function validateRemoteUrl(index: number) {
-  const remote = editRemotes.value[index]
-  if (!remote) return
-  if (!remote.fetch_url) {
-    delete remoteUrlErrors.value[index]
-    return
-  }
-  const proto = detectGitProtocol(remote.fetch_url)
-  if (proto === 'ssh') remoteUrlModes.value[index] = 'ssh'
-  else if (proto === 'http') remoteUrlModes.value[index] = 'https'
-  const err = validateGitRemoteUrl(remote.fetch_url)
-  if (err) {
-    remoteUrlErrors.value[index] = err
-  } else {
-    delete remoteUrlErrors.value[index]
-  }
-}
-
-function removeEditRemote(index: number) {
-  editRemotes.value.splice(index, 1)
-  delete remoteUrlErrors.value[index]
-  delete remoteUrlModes.value[index]
-}
-
-async function testEditRemote(index: number) {
-  const row = editRemotes.value[index]
-  if (!row || !row.fetch_url) {
-    ElMessage.warning('请输入 Fetch URL')
-    return
-  }
-  row._testing = true
-  try {
-    const credential_id = editRemoteCredentials.value?.[row.name]
-    if (credential_id) {
-      const result = await testCredential(credential_id, row.fetch_url)
-      if (result.success) {
-        ElMessage.success(`${row.name || 'Remote'} 连接成功`)
-      } else {
-        ElMessage.error('连接失败: ' + (result.message || '未知错误'))
-      }
-    } else if (editDefaultCredentialId.value) {
-      const result = await testCredential(editDefaultCredentialId.value, row.fetch_url)
-      if (result.success) {
-        ElMessage.success(`${row.name || 'Remote'} 连接成功`)
-      } else {
-        ElMessage.error('连接失败: ' + (result.message || '未知错误'))
-      }
-    } else {
-      const result = await testConnection(row.fetch_url)
-      if (result.status === 'success') {
-        ElMessage.success(`${row.name || 'Remote'} 连接成功`)
-      } else {
-        ElMessage.error('连接失败: ' + (result.error || '未知错误'))
-      }
-    }
-  } catch (e: any) {
-    ElMessage.error('连接测试请求失败: ' + (e?.message || ''))
-  } finally {
-    row._testing = false
   }
 }
 </script>
