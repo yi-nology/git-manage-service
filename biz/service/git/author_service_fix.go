@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/oekit/pkg/shellx"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 )
@@ -200,10 +201,10 @@ func (s *AuthorService) fixAuthor(repoPath string, commitHashes []string, pushRe
 
 	var filterParts []string
 	for _, m := range mappings {
-		oE := shellEscape(m.oldEmail)
-		oN := shellEscape(m.oldName)
-		nN := shellEscape(m.newName)
-		nE := shellEscape(m.newEmail)
+		oE := shellx.Quote(m.oldEmail)
+		oN := shellx.Quote(m.oldName)
+		nN := shellx.Quote(m.newName)
+		nE := shellx.Quote(m.newEmail)
 		filterParts = append(filterParts,
 			fmt.Sprintf(`if [ "$GIT_AUTHOR_EMAIL" = %s ] && [ "$GIT_AUTHOR_NAME" = %s ]; then export GIT_AUTHOR_NAME=%s; export GIT_AUTHOR_EMAIL=%s; fi`, oE, oN, nN, nE),
 			fmt.Sprintf(`if [ "$GIT_AUTHOR_EMAIL" = %s ]; then export GIT_AUTHOR_NAME=%s; export GIT_AUTHOR_EMAIL=%s; fi`, oE, nN, nE),
@@ -219,7 +220,7 @@ func (s *AuthorService) fixAuthor(repoPath string, commitHashes []string, pushRe
 		appendLog(fmt.Sprintf("选择性修复模式: 仅修改 %d 个提交", len(commitHashes)))
 		var hashConditions []string
 		for _, h := range commitHashes {
-			hashConditions = append(hashConditions, fmt.Sprintf(`[ "$GIT_COMMIT" = %s ]`, shellEscape(h)))
+			hashConditions = append(hashConditions, fmt.Sprintf(`[ "$GIT_COMMIT" = %s ]`, shellx.Quote(h)))
 		}
 		hashGuard := strings.Join(hashConditions, " || ")
 		envFilter = fmt.Sprintf(`if %s; then

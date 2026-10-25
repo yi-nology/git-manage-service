@@ -24,10 +24,6 @@ func NewAuthorService() *AuthorService {
 	return &AuthorService{}
 }
 
-func shellEscape(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
-}
-
 func runGit(repoPath string, args ...string) *exec.Cmd {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = repoPath

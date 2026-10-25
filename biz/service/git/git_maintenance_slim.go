@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/oekit/pkg/shellx"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 )
 
@@ -74,12 +75,8 @@ func (s *MaintenanceService) SlimHistory(repoPath string, paths []string, addGit
 	appendLog("执行 filter-branch 清除历史文件...")
 	// 每个路径单独单引号包裹：filter-branch 内部会 eval filter 脚本，
 	// 不加引号时路径中的元字符会被当作命令执行。
-	quoted := make([]string, len(paths))
-	for i, p := range paths {
-		quoted[i] = "'" + strings.ReplaceAll(p, "'", "'\\''") + "'"
-	}
-	indexFilter := "git rm --cached --ignore-unmatch -- " + strings.Join(quoted, " ")
-	cmdStr := "git filter-branch --force --index-filter '" + strings.ReplaceAll(indexFilter, "'", "'\\''") + "' --prune-empty -- --all"
+	indexFilter := "git rm --cached --ignore-unmatch -- " + shellx.QuoteArgv(paths...)
+	cmdStr := "git filter-branch --force --index-filter " + shellx.Quote(indexFilter) + " --prune-empty -- --all"
 	cmd := exec.Command("bash", "-c", cmdStr)
 	cmd.Dir = repoPath
 	cmd.Env = append(os.Environ(), "FILTER_BRANCH_SQUELCH_WARNING=1", "GIT_ASKPASS=", "GIT_TERMINAL_PROMPT=0")
