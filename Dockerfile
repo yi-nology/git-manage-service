@@ -100,11 +100,11 @@ COPY --from=backend-builder /app/conf/config.yaml ./conf/config.yaml
 
 # Set environment variables
 ENV GIN_MODE=release \
-    PORT=8080 \
+    SERVER_PORT=8080 \
+    RPC_PORT=9090 \
     DB_PATH=/app/data/git_sync.db
 
 # Expose port
-EXPOSE 8080
 EXPOSE 8080 9090
 
 # Create volume directories
