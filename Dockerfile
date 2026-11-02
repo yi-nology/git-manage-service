@@ -105,7 +105,7 @@ ENV GIN_MODE=release \
 
 # Expose port
 EXPOSE 8080
-EXPOSE 8888
+EXPOSE 8080 9090
 
 # Create volume directories
 RUN mkdir -p /app/data /root/.ssh && chmod 700 /root/.ssh
