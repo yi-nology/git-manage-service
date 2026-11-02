@@ -50,5 +50,5 @@ debug: false
 # 5. RPC Configuration
 rpc:
   # RPC service listening port
-  # Default: 8888
-  port: 8888
+  # Default: 9090
+  port: 9090

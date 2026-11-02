@@ -26,7 +26,7 @@ services:
     # 只暴露内部端口，外部通过 nginx 访问
     expose:
       - "8080"
-      - "8888"
+      - "9090"
     environment:
       - WEBHOOK_SECRET=${WEBHOOK_SECRET:-my-secret-key}
       - DB_TYPE=postgres

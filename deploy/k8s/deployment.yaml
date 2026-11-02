@@ -27,8 +27,8 @@ spec:
           ports:
             - containerPort: 8080
               name: http
-            - containerPort: 8888
-              name: debug
+            - containerPort: 9090
+              name: rpc
           env:
             # 版本信息（可选，如果构建时已注入）
             - name: VERSION
