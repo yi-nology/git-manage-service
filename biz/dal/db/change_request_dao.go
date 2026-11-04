@@ -30,6 +30,7 @@ func (d *ChangeRequestDAO) BatchCreate(crs []po.ChangeRequest) error {
 
 // FindByRepo 分页带筛选查询
 func (d *ChangeRequestDAO) FindByRepo(repoID uint, state, sourceBranch, targetBranch string, page, pageSize int) ([]po.ChangeRequest, int64, error) {
+	offset, limit := Paginate(page, pageSize)
 	q := DB.Model(new(po.ChangeRequest)).Where("repo_id = ?", repoID)
 	if state != "" {
 		q = q.Where("state = ?", state)
@@ -45,7 +46,7 @@ func (d *ChangeRequestDAO) FindByRepo(repoID uint, state, sourceBranch, targetBr
 		return nil, 0, err
 	}
 	var crs []po.ChangeRequest
-	err := q.Order("updated_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&crs).Error
+	err := q.Order("updated_at DESC").Offset(offset).Limit(limit).Find(&crs).Error
 	return crs, total, err
 }
 

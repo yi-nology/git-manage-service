@@ -23,11 +23,12 @@ func (d *MaintenanceDAO) FindByTaskID(taskID string) (*po.MaintenanceRecord, err
 
 // ListByRepoID 分页查询指定仓库的维护记录
 func (d *MaintenanceDAO) ListByRepoID(repoID uint, page, pageSize int) ([]po.MaintenanceRecord, int64, error) {
+	offset, limit := Paginate(page, pageSize)
 	var records []po.MaintenanceRecord
 	var total int64
 	db := DB.Where("repo_id = ?", repoID)
 	db.Model(new(po.MaintenanceRecord)).Count(&total)
-	err := db.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&records).Error
+	err := db.Order("created_at DESC").Offset(offset).Limit(limit).Find(&records).Error
 	return records, total, err
 }
 

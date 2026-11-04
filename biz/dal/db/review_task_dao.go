@@ -12,6 +12,7 @@ func NewReviewTaskDAO() *ReviewTaskDAO { return &ReviewTaskDAO{} }
 
 // FindByRepoID 分页查询仓库的审查任务
 func (d *ReviewTaskDAO) FindByRepoID(repoID uint, status string, page, pageSize int) ([]po.ReviewTask, int64, error) {
+	offset, limit := Paginate(page, pageSize)
 	var tasks []po.ReviewTask
 	var total int64
 	q := DB.Model(new(po.ReviewTask)).Where("repo_id = ?", repoID)
@@ -19,16 +20,17 @@ func (d *ReviewTaskDAO) FindByRepoID(repoID uint, status string, page, pageSize 
 		q = q.Where("status = ?", status)
 	}
 	q.Count(&total)
-	return tasks, total, q.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&tasks).Error
+	return tasks, total, q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&tasks).Error
 }
 
 // FindByProviderConfigID 查询 MR 的审查任务
 func (d *ReviewTaskDAO) FindByProviderConfigID(providerConfigID uint, mrIID string, page, pageSize int) ([]po.ReviewTask, int64, error) {
+	offset, limit := Paginate(page, pageSize)
 	var tasks []po.ReviewTask
 	var total int64
 	q := DB.Model(new(po.ReviewTask)).Where("provider_config_id = ? AND mri_id = ?", providerConfigID, mrIID)
 	q.Count(&total)
-	return tasks, total, q.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&tasks).Error
+	return tasks, total, q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&tasks).Error
 }
 
 // UpdateStatus 更新任务状态

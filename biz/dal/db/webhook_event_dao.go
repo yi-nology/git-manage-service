@@ -16,6 +16,7 @@ func (d *WebhookEventDAO) FindByEventID(eventID string) (*po.WebhookEvent, error
 
 // List 分页带筛选查询
 func (d *WebhookEventDAO) List(eventType, source, status string, page, pageSize int) ([]po.WebhookEvent, int64, error) {
+	offset, limit := Paginate(page, pageSize)
 	q := DB.Model(new(po.WebhookEvent))
 	if eventType != "" {
 		q = q.Where("event_type = ?", eventType)
@@ -31,7 +32,7 @@ func (d *WebhookEventDAO) List(eventType, source, status string, page, pageSize 
 		return nil, 0, err
 	}
 	var events []po.WebhookEvent
-	return events, total, q.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&events).Error
+	return events, total, q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&events).Error
 }
 
 // WebhookRuleDAO webhook 规则

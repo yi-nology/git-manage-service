@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/oekit/pkg/pagination"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
@@ -215,6 +216,8 @@ func ListRemoteRepos(ctx context.Context, c *app.RequestContext) {
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "50"))
+	// 归一化：page>=1、per_page<=0 回退 50、超 500 钳制——原实现裸传外部参数
+	page, perPage = pagination.Policy{DefaultPageSize: 50}.Normalize(page, perPage)
 	owner := c.Query("owner")
 
 	opts := provider.ListRepoOptions{

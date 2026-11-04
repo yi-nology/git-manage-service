@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/oekit/pkg/pagination"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/api"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
@@ -165,12 +166,8 @@ func ListTasks(ctx context.Context, c *app.RequestContext) {
 	_ = c.Query("mr_iid")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
+	// 口径与原手写钳制逐字一致：默认 1/20、页长上限 100、超限回退默认
+	page, pageSize = pagination.Policy{DefaultPage: 1, DefaultPageSize: 20, MaxPageSize: 100, OverMax: pagination.OverMaxFallback}.Normalize(page, pageSize)
 
 	if repoKey == "" {
 		pkgresponse.BadRequest(c, "repo_key is required")
@@ -458,12 +455,8 @@ func ListTasksByProvider(ctx context.Context, c *app.RequestContext) {
 	status := c.Query("status")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
+	// 口径与原手写钳制逐字一致：默认 1/20、页长上限 100、超限回退默认
+	page, pageSize = pagination.Policy{DefaultPage: 1, DefaultPageSize: 20, MaxPageSize: 100, OverMax: pagination.OverMaxFallback}.Normalize(page, pageSize)
 
 	tasks, total, err := db.NewReviewTaskDAO().FindByProviderConfigID(uint(providerID), mrIID, page, pageSize)
 	if err != nil {
