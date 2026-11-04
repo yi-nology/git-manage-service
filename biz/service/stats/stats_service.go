@@ -299,13 +299,14 @@ func (s *StatsService) updateCache(key string, update func(*StatsCacheItem)) {
 
 // calculateStatsFast computes stats using git log --numstat (Fast, No Blame)
 func (s *StatsService) calculateStatsFast(path, branch, since, until, cacheKey string) (*api.StatsResponse, error) {
-	// Parse dates
+	// Parse dates — 用本地时区：用户给的「日期」按本地天理解，commit 时间戳
+	// 转 time.Unix 后也是本地表示，UTC 解析会让 end-of-day 差一个时区偏移。
 	var sinceTime, untilTime time.Time
 	if since != "" {
-		sinceTime, _ = time.Parse(timefmt.LayoutDate, since)
+		sinceTime, _ = time.ParseInLocation(timefmt.LayoutDate, since, time.Local)
 	}
 	if until != "" {
-		untilTime, _ = time.Parse(timefmt.LayoutDate, until)
+		untilTime, _ = time.ParseInLocation(timefmt.LayoutDate, until, time.Local)
 		// Set until to end of day
 		untilTime = untilTime.Add(24*time.Hour - time.Nanosecond)
 	}
@@ -347,7 +348,9 @@ func (s *StatsService) calculateStatsFast(path, branch, since, until, cacheKey s
 				lastUpdate = time.Now()
 			}
 
-			parts := strings.Split(line, "|")
+			// SplitN 而非 Split：作者名/邮箱可能含 '|'，Split 会把
+			// 时间戳挤到错误的下标（与 SyncRepoStats 的解析保持一致）
+			parts := strings.SplitN(line, "|", 5)
 			if len(parts) >= 5 {
 				// COMMIT|Hash|Name|Email|Timestamp
 				currentName = parts[2]
