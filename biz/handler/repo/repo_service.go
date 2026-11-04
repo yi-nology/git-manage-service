@@ -460,7 +460,17 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 			git.GlobalTaskManager.AddTask(taskID)
 
 			go func() {
+				// panic 兜底：克隆在后台 goroutine 里跑，panic 若不接住，
+				// 任务会永远停在 running、进度读取 goroutine 永久泄漏。
+				defer func() {
+					if r := recover(); r != nil {
+						git.GlobalTaskManager.UpdateStatus(taskID, "failed", fmt.Sprintf("clone task panicked: %v", r))
+					}
+				}()
 				progressChan := make(chan string)
+				// 统一由 defer 关闭：覆盖凭据加载失败的提前返回与 panic 路径，
+				// 否则 range 读取 goroutine 会永久阻塞泄漏。
+				defer close(progressChan)
 
 				go func() {
 					for msg := range progressChan {
@@ -483,7 +493,6 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 						privateKey, passphrase, keyErr := authSvc.GetCredentialKeyContent(req.CredentialID)
 						if keyErr != nil {
 							git.GlobalTaskManager.UpdateStatus(taskID, "failed", "Failed to load credential key: "+keyErr.Error())
-							close(progressChan)
 							return
 						}
 						git.GlobalTaskManager.AppendLog(taskID, "Using credential (DB SSH key) for clone...")
@@ -500,7 +509,6 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 					privateKey, passphrase, keyErr := authSvc.GetDBSSHKeyContent(req.SSHKeyID)
 					if keyErr != nil {
 						git.GlobalTaskManager.UpdateStatus(taskID, "failed", "Failed to load SSH key: "+keyErr.Error())
-						close(progressChan)
 						return
 					}
 					git.GlobalTaskManager.AppendLog(taskID, "Using database SSH key for clone...")
@@ -512,7 +520,6 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 					}
 					err = gitSvc.CloneWithAuthMethod(req.RemoteURL, req.LocalPath, authMethod, progressChan, skipTLS)
 				}
-				close(progressChan)
 
 				if err != nil {
 					git.GlobalTaskManager.UpdateStatus(taskID, "failed", err.Error())
