@@ -308,7 +308,13 @@ func ListCRsByProvider(ctx context.Context, providerIDStr, owner, repoName, stat
 	for _, cr := range crs {
 		dtos = append(dtos, *platformCRToAPI(cr))
 	}
-	return dtos, total, nil
+	// v0.99.7 起 total 为 *int：平台未报告总数时为 nil，回退到本页条数
+	// 供前端分页兜底
+	if total == nil {
+		n := len(dtos)
+		total = &n
+	}
+	return dtos, *total, nil
 }
 
 func CreateCRByProvider(ctx context.Context, req *api.CreateCRByProviderReq) (*api.CRDTO, error) {
