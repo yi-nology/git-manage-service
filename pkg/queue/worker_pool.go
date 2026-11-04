@@ -3,19 +3,17 @@ package queue
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
 type WorkerPool struct {
-	maxWorkers  int32
-	queue       UniqueQueue
-	handler     func(SyncRequest)
-	activeCount int32
-	wg          sync.WaitGroup
-	stop        chan struct{}
+	maxWorkers int32
+	queue      UniqueQueue
+	handler    func(SyncRequest)
+	wg         sync.WaitGroup
+	stop       chan struct{}
 }
 
 func NewWorkerPool(queue UniqueQueue, handler func(SyncRequest), maxWorkers int) *WorkerPool {
@@ -59,9 +57,7 @@ func (p *WorkerPool) worker() {
 			continue
 		}
 
-		atomic.AddInt32(&p.activeCount, 1)
 		p.handler(req)
-		atomic.AddInt32(&p.activeCount, -1)
 	}
 }
 
