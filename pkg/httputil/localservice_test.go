@@ -56,6 +56,27 @@ func TestValidateLocalServiceURL(t *testing.T) {
 	if err := ValidateLocalServiceURL("http://"); err == nil {
 		t.Error("empty host must be rejected")
 	}
+
+	// urlguard v0.33.0 引擎的增强防护（手写引擎此前不覆盖的形态）：
+	// IPv6 zone 后缀——旧引擎 net.ParseIP 不认 zone 会整段跳过判定；新引擎
+	// 剥 zone 按地址判定：回环的 zone 变体照常放行，链路本地的 zone 变体照常拒绝
+	if err := ValidateLocalServiceURL("http://[::1%25lo]/"); err != nil {
+		t.Errorf("zone form of loopback should be allowed (address is ::1): %v", err)
+	}
+	if err := ValidateLocalServiceURL("http://[fe80::1%25eth0]/"); err == nil {
+		t.Error("zone form of link-local must be rejected")
+	}
+	// exotic IPv4 字面量：八进制/十进制整型等宽松解析形态（0x7f.1 == 127.0.0.1）
+	if err := ValidateLocalServiceURL("http://2130706433/"); err == nil {
+		t.Error("decimal-integer IPv4 literal must be rejected")
+	}
+	if err := ValidateLocalServiceURL("http://0177.0.0.1/"); err == nil {
+		t.Error("octal IPv4 literal must be rejected")
+	}
+	// NAT64 well-known prefix 内嵌 IPv4（64:ff9b::7f00:1 即 127.0.0.1 的 IPv6 写法）
+	if err := ValidateLocalServiceURL("http://[64:ff9b::7f00:1]/"); err == nil {
+		t.Error("NAT64-embedded IPv4 must be rejected")
+	}
 }
 
 func TestNewLocalServiceClientDial(t *testing.T) {
