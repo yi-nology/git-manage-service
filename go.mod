@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hertz-contrib/monitor-prometheus v0.1.3
 	github.com/minio/minio-go/v7 v7.2.0
-	github.com/oekit/pkg v0.28.0
+	github.com/oekit/pkg v0.33.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/robfig/cron/v3 v3.0.1
