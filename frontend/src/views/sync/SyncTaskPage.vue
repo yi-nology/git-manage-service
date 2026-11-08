@@ -16,44 +16,7 @@
       </div>
     </div>
 
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon total">
-          <el-icon :size="24"><List /></el-icon>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.total_tasks }}</div>
-          <div class="stat-label">总任务数</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon running">
-          <el-icon :size="24"><VideoPlay /></el-icon>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.running_tasks }}</div>
-          <div class="stat-label">运行中</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon success">
-          <el-icon :size="24"><CircleCheck /></el-icon>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.today_runs }}</div>
-          <div class="stat-label">今日执行</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon failed">
-          <el-icon :size="24"><WarningFilled /></el-icon>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.failed_runs }}</div>
-          <div class="stat-label">执行失败</div>
-        </div>
-      </div>
-    </div>
+    <SyncStatsCards :stats="stats" />
 
     <div class="toolbar">
       <div class="toolbar-left">
@@ -77,133 +40,23 @@
       </div>
     </div>
 
-    <el-card class="task-list-card">
-      <template #header>
-        <span class="list-title">任务列表</span>
-        <span class="list-count">({{ filteredTasks.length }})</span>
-      </template>
+    <SyncTaskTable
+      :tasks="filteredTasks"
+      :loading="loading"
+      :running-keys="runningKeys"
+      @run="run_task"
+      @edit="editTask"
+      @delete="delete_task"
+      @create="openCreateModal"
+    />
 
-      <el-table :data="filteredTasks" v-loading="loading" stripe>
-        <el-table-column prop="name" label="任务名称" min-width="180">
-          <template #default="{ row }">
-            <div class="task-name-cell">
-              <span class="task-name">{{ row.name }}</span>
-              <el-tag :type="row.enabled ? 'success' : 'info'" size="small">
-                {{ row.enabled ? '已启用' : '已禁用' }}
-              </el-tag>
-            </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="同步配置" min-width="300">
-          <template #default="{ row }">
-            <div class="sync-config-cell">
-              <div class="repo-badge source">
-                <el-icon><Bottom /></el-icon>
-                {{ row.source_repo_key }}:{{ row.source_branch }}
-              </div>
-              <el-icon class="arrow-icon"><Right /></el-icon>
-              <div class="repo-badge target">
-                <el-icon><Top /></el-icon>
-                {{ row.target_repo_key }}:{{ row.target_branch }}
-              </div>
-            </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="sync_mode" label="同步模式" width="100">
-          <template #default="{ row }">
-            <el-tag type="primary" size="small">
-              {{ row.sync_mode === 'single' ? '单向' : '双向' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="cron" label="定时规则" width="160">
-          <template #default="{ row }">
-            <span v-if="row.cron" class="cron-text">
-              <el-icon class="cron-icon"><Clock /></el-icon>
-              {{ row.cron }}
-            </span>
-            <span v-else class="no-cron">手动触发</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="上次执行" width="180">
-          <template #default="{ row }">
-            <div v-if="row.last_run_at" class="last-run-cell">
-              <span :class="['status-dot', row.last_status]"></span>
-              <span class="run-time">{{ formatTime(row.last_run_at) }}</span>
-            </div>
-            <span v-else class="no-run">未执行</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="操作" width="220" fixed="right">
-          <template #default="{ row }">
-            <el-button size="small" type="primary" @click="run_task(row)" :loading="runningKeys.has(row.key)">
-              <el-icon><VideoPlay /></el-icon>
-              运行
-            </el-button>
-            <el-button size="small" @click="editTask(row)">
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
-            <el-button size="small" type="danger" @click="delete_task(row)">
-              <el-icon><Delete /></el-icon>
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <el-empty v-if="!loading && filteredTasks.length === 0" description="暂无同步任务">
-        <el-button type="primary" @click="openCreateModal">创建第一个任务</el-button>
-      </el-empty>
-    </el-card>
-
-    <el-dialog
-      v-model="modalVisible"
-      :title="isEditMode ? '编辑同步任务' : '新建同步任务'"
-      width="600px"
-      @close="handleClose"
-    >
-      <el-form :model="taskForm" :rules="formRules" label-width="100px" ref="formRef">
-        <el-form-item label="任务名称" prop="name">
-          <el-input v-model="taskForm.name" placeholder="输入任务名称" />
-        </el-form-item>
-        <el-form-item label="源仓库" prop="source_repo_key">
-          <el-input v-model="taskForm.source_repo_key" placeholder="源仓库标识" />
-        </el-form-item>
-        <el-form-item label="源分支" prop="source_branch">
-          <el-input v-model="taskForm.source_branch" placeholder="如: main, develop" />
-        </el-form-item>
-        <el-form-item label="目标仓库" prop="target_repo_key">
-          <el-input v-model="taskForm.target_repo_key" placeholder="目标仓库标识" />
-        </el-form-item>
-        <el-form-item label="目标分支" prop="target_branch">
-          <el-input v-model="taskForm.target_branch" placeholder="如: master, main" />
-        </el-form-item>
-        <el-form-item label="同步模式" prop="sync_mode">
-          <el-radio-group v-model="taskForm.sync_mode">
-            <el-radio value="single">单向同步</el-radio>
-            <el-radio value="bidirectional">双向同步</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="定时规则" prop="cron">
-          <el-input v-model="taskForm.cron" placeholder="Cron 表达式，如: 0 * * * *" />
-          <div class="form-tip">留空则仅支持手动触发</div>
-        </el-form-item>
-        <el-form-item label="同步选项">
-          <el-checkbox v-model="taskForm.git_tags">同步标签</el-checkbox>
-          <el-checkbox v-model="taskForm.git_force">强制推送</el-checkbox>
-          <el-checkbox v-model="taskForm.git_prune">清理远程已删除分支</el-checkbox>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="modalVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitTask" :loading="submitting">确定</el-button>
-      </template>
-    </el-dialog>
+    <SyncTaskFormDialog
+      v-model:visible="modalVisible"
+      :is-edit="isEditMode"
+      :form="taskForm"
+      :submitting="submitting"
+      @submit="submitTask"
+    />
   </div>
 </template>
 
@@ -211,9 +64,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { toastApiError } from '@/composables/useNotification'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Plus, Edit, Delete, VideoPlay, Clock, Right, Top, Bottom } from '@element-plus/icons-vue'
+import { Search, Refresh, Plus, RefreshRight } from '@element-plus/icons-vue'
 import { syncV2Api } from '@/api/modules/sync_v2'
 import type { SyncTask, SyncStats } from '@/types/sync_v2'
+import SyncStatsCards from '@/components/sync/SyncStatsCards.vue'
+import SyncTaskTable from '@/components/sync/SyncTaskTable.vue'
+import SyncTaskFormDialog from '@/components/sync/SyncTaskFormDialog.vue'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -222,7 +78,6 @@ const isEditMode = ref(false)
 const searchKeyword = ref('')
 const statusFilter = ref<string | undefined>()
 const runningKeys = ref<Set<string>>(new Set())
-const formRef = ref()
 
 const stats = reactive<SyncStats>({
   total_tasks: 0,
@@ -260,25 +115,6 @@ const taskForm = reactive<Partial<SyncTask>>({
   git_no_verify: false,
   push_options: '',
 })
-
-const formRules = {
-  name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
-  source_repo_key: [{ required: true, message: '请输入源仓库标识', trigger: 'blur' }],
-  source_branch: [{ required: true, message: '请输入源分支', trigger: 'blur' }],
-  target_repo_key: [{ required: true, message: '请输入目标仓库标识', trigger: 'blur' }],
-  target_branch: [{ required: true, message: '请输入目标分支', trigger: 'blur' }],
-}
-
-function formatTime(timeStr: string) {
-  if (!timeStr) return '-'
-  const date = new Date(timeStr)
-  return date.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 async function loadStats() {
   try {
@@ -326,17 +162,7 @@ function editTask(row: SyncTask) {
   modalVisible.value = true
 }
 
-function handleClose() {
-  formRef.value?.resetFields()
-}
-
 async function submitTask() {
-  try {
-    await formRef.value?.validate()
-  } catch {
-    return
-  }
-
   submitting.value = true
   try {
     if (isEditMode.value) {
@@ -424,73 +250,6 @@ onMounted(() => {
   }
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
-
-  .stat-card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    transition: all 0.2s;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    }
-
-    .stat-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 16px;
-
-      &.total {
-        background: linear-gradient(135deg, #ecf5ff 0%, #d9ecff 100%);
-        color: #409eff;
-      }
-
-      &.running {
-        background: linear-gradient(135deg, #f0f9eb 0%, #e1f3d8 100%);
-        color: #67c23a;
-      }
-
-      &.success {
-        background: linear-gradient(135deg, #fdf6ec 0%, #faecd8 100%);
-        color: #e6a23c;
-      }
-
-      &.failed {
-        background: linear-gradient(135deg, #fef0f0 0%, #fde2e2 100%);
-        color: #f56c6c;
-      }
-    }
-
-    .stat-content {
-      .stat-value {
-        font-size: 28px;
-        font-weight: 600;
-        color: #303133;
-        line-height: 1.2;
-      }
-
-      .stat-label {
-        font-size: 14px;
-        color: #909399;
-        margin-top: 4px;
-      }
-    }
-  }
-}
-
 .toolbar {
   display: flex;
   justify-content: space-between;
@@ -501,135 +260,6 @@ onMounted(() => {
     display: flex;
     gap: 12px;
     align-items: center;
-  }
-}
-
-.task-list-card {
-  background: #fff;
-  border-radius: 12px;
-
-  :deep(.el-card__header) {
-    border-bottom: 1px solid #ebeef5;
-    padding: 16px 20px;
-
-    .list-title {
-      font-weight: 600;
-      font-size: 16px;
-      color: #303133;
-    }
-
-    .list-count {
-      font-size: 14px;
-      color: #909399;
-      margin-left: 8px;
-    }
-  }
-
-  .task-name-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .task-name {
-      font-weight: 500;
-      color: #303133;
-    }
-  }
-
-  .sync-config-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .repo-badge {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-
-      &.source {
-        background: #ecf5ff;
-        color: #409eff;
-      }
-
-      &.target {
-        background: #f0f9eb;
-        color: #67c23a;
-      }
-    }
-
-    .arrow-icon {
-      color: #909399;
-    }
-  }
-
-  .cron-text {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: #606266;
-    font-size: 13px;
-
-    .cron-icon {
-      color: #909399;
-    }
-  }
-
-  .no-cron {
-    color: #909399;
-    font-size: 13px;
-  }
-
-  .last-run-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-
-      &.success {
-        background: #67c23a;
-      }
-
-      &.failed {
-        background: #f56c6c;
-      }
-
-      &.running {
-        background: #409eff;
-        animation: pulse 1.5s infinite;
-      }
-    }
-
-    .run-time {
-      font-size: 13px;
-      color: #606266;
-    }
-  }
-
-  .no-run {
-    color: #909399;
-    font-size: 13px;
-  }
-}
-
-.form-tip {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
   }
 }
 </style>
