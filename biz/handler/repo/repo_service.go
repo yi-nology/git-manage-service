@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/google/uuid"
@@ -114,6 +115,20 @@ func repoNameFromURL(remoteURL string) string {
 	}
 	name = strings.TrimSuffix(name, ".git")
 	name = strings.TrimSpace(name)
+
+	// 路径逃逸消毒（issue #20）：name 会 Join 进用户选的 LocalPath——
+	// ".." 把目标抬到选目录的父目录，"." 直接命中选目录本身，分隔符/
+	// 控制字符可构造任意子路径，URL 结尾的 `?`/空段会掏出空名。后续
+	// 「已是 git 仓库则拒绝」的守卫拦不住这些形态（父目录通常不是仓库）。
+	// 不合格名一律回退时间戳名，目录逃逸从根上闭合。
+	if name == "" || name == "." || name == ".." || name == "?" {
+		return fmt.Sprintf("repo-%s", time.Now().Format("20060102150405"))
+	}
+	for _, r := range name {
+		if r < 0x20 || r == 0x7f || r == '/' || r == '\\' || r == '?' {
+			return fmt.Sprintf("repo-%s", time.Now().Format("20060102150405"))
+		}
+	}
 	return name
 }
 

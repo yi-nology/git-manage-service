@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { marked } from 'marked'
+import { renderMarkdownSafe } from '@/utils/markdown'
 import type { ReviewTaskDTO, ReviewFindingDTO } from '@/api/modules/review'
 import SectionTitle from '@/components/common/SectionTitle.vue'
 
@@ -36,7 +36,7 @@ const props = defineProps<{
 
 const renderedSummary = computed(() => {
   if (!props.task.summary) return ''
-  return marked.parse(props.task.summary) as string
+  return renderMarkdownSafe(props.task.summary) as string
 })
 
 function countBySeverity(s: string) {

@@ -66,6 +66,25 @@ func NewRedisQueue(addr, password string, db int) (*RedisQueue, error) {
 		return nil, fmt.Errorf("connect to redis: %w", err)
 	}
 
+	// 旧队列键清扫（issue #17）：v2 之前的 Pop 是 LPOP+SREM 两步，进程在
+	// 中间崩溃会留下永久卡死槽位——v2 命名空间已绕开它们，但键无 TTL 会
+	// 一直躺着，误读旧键排查问题会被误导。启动时检测到即记告警并删除
+	// （键只属于旧实现，v2 不读它们，删了无副作用）。
+	legacyKeys := []string{
+		"gms:mirror_sync_queue:set",
+		"gms:mirror_sync_queue:list",
+	}
+	for _, k := range legacyKeys {
+		n, err := client.Del(ctx, k).Result()
+		if err != nil {
+			log.Printf("[queue] 旧队列键 %s 清扫失败（不影响 v2 运行）: %v", k, err)
+			continue
+		}
+		if n > 0 {
+			log.Printf("[queue] 已清扫旧队列键 %s（v2 前卡死槽位残留）", k)
+		}
+	}
+
 	return &RedisQueue{
 		client: client,
 		key:    redisQueueKey,

@@ -19,6 +19,7 @@ func LoadConfig(configPaths []string, configName string, configType string) (Con
 
 	// Set defaults
 	v.SetDefault("server.port", 12345)
+	v.SetDefault("server.auth_token", "")
 	v.SetDefault("rpc.port", 8888)
 	v.SetDefault("database.type", "sqlite")
 	v.SetDefault("database.path", "git_sync.db")

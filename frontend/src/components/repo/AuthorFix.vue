@@ -161,6 +161,7 @@
 </template>
 
 <script setup lang="ts">
+import { escapeAI } from '@/utils/markdown'
 import { ref, onMounted, nextTick } from 'vue'
 import { ROUTES } from '@/router/paths'
 import { User, Search, ChatDotRound } from '@element-plus/icons-vue'
@@ -260,7 +261,8 @@ async function doSendChat() {
 }
 
 function formatAI(text: string) {
-  return text.replace(/\n/g, '<br>')
+  // 先转义再换行（issue #19）：此前零转义，AI 分析文本直达 innerHTML。
+  return escapeAI(text)
 }
 
 onMounted(async () => {

@@ -1,3 +1,4 @@
+import { escapeAI } from '@/utils/markdown'
 import { ref, computed, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/api/request'
@@ -52,11 +53,12 @@ export function useAIChat(getContent: () => string) {
   })
 
   function renderMarkdown(t: string): string {
-    return t
+    // 先转义再做格式替换（issue #19）：手写正则管线此前零转义，LLM 输出
+    // 里任何 <tag> 都直达 innerHTML。escapeAI 是 utils/markdown 的单源。
+    return escapeAI(t)
       .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>')
   }
 
   function scrollAIToBottom() {

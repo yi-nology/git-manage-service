@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"time"
+
+	"github.com/oekit/pkg/httpjson"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	settings "github.com/yi-nology/git-manage-service/biz/model/settings"
@@ -265,26 +265,20 @@ func FetchOllamaModels(ctx context.Context, c *app.RequestContext) {
 		pkgresponse.BadRequest(c, "base_url 不可用: "+err.Error())
 		return
 	}
+	// 迁 oekit/httpjson 单源（issue #18）：DoRaw 保 1MB 响应上限口径
+	// （模型列表不该更大），超限/非 2xx 的错误面由单源统一表述。
 	url := strings.TrimRight(baseURL, "/") + "/api/tags"
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		pkgresponse.BadRequest(c, "invalid base_url: "+err.Error())
-		return
-	}
-	resp, err := ollamaClient.Do(req)
+	raw, err := httpjson.DoRaw(ctx, ollamaClient, httpjson.Request{URL: url}, 1<<20)
 	if err != nil {
 		pkgresponse.BadRequest(c, "无法连接 Ollama: "+err.Error())
 		return
 	}
-	defer resp.Body.Close()
-	// 响应上限 1MB：模型列表不该更大，防止异常响应吃内存。
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	var result struct {
 		Models []struct {
 			Name string `json:"name"`
 		} `json:"models"`
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
+	if err := json.Unmarshal(raw.Body, &result); err != nil {
 		pkgresponse.InternalServerError(c, "解析 Ollama 响应失败")
 		return
 	}

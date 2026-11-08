@@ -107,6 +107,7 @@ import { Right, Switch, Connection, Download } from '@element-plus/icons-vue'
 import { getBranchList, compareBranches, getBranchDiff, getBranchPatch } from '@/api/modules/branch'
 import type { BranchInfo } from '@/types/branch'
 import * as Diff2Html from 'diff2html'
+import DOMPurify from 'dompurify'
 import 'diff2html/bundles/css/diff2html.min.css'
 import PageHeader from '@/components/common/PageHeader.vue'
 import ActionPill from '@/components/common/ActionPill.vue'
@@ -203,11 +204,13 @@ async function selectFile(path: string) {
   current_file.value = path
   try {
     const res = await getBranchDiff(repo_key, source_branch.value, target_branch.value, path)
-    diffHtml.value = Diff2Html.html(res.diff || '', {
+    // diff2html 默认转义 diff 内容（issue #19 审计结论：风险较低）；这里
+    // 再过一道 DOMPurify 兜底——库升级若改变转义行为，消毒层不变红。
+    diffHtml.value = DOMPurify.sanitize(Diff2Html.html(res.diff || '', {
       drawFileList: false,
       matching: 'lines',
       outputFormat: diffViewMode.value,
-    })
+    }))
   } catch {
     diffHtml.value = '<p>加载差异失败</p>'
   }
