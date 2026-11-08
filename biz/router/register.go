@@ -40,6 +40,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/router/webhook"
 	"github.com/yi-nology/git-manage-service/biz/router/webhook_event"
 	workspace "github.com/yi-nology/git-manage-service/biz/router/workspace"
+	"github.com/yi-nology/git-manage-service/pkg/configs"
 )
 
 // 嵌入的文件系统变量
@@ -58,6 +59,9 @@ func SetEmbedFS(public, docs fs.FS) {
 func GeneratedRegister(h *server.Hertz) {
 	h.Use(middleware.CORS())
 	h.Use(middleware.AuditMiddleware())
+	// 静态 Bearer 鉴权门（issue #14）：token 非空才挂；为空时由 main 的
+	// 绑定收口兜底（只绑回环 + 启动告警）。
+	middleware.RegisterAuth(h, configs.GlobalConfig.Server.AuthToken)
 
 	//INSERT_POINT: DO NOT DELETE THIS LINE!
 	workspace.Register(h)

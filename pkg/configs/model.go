@@ -17,6 +17,11 @@ type Config struct {
 type ServerConfig struct {
 	Port        int    `mapstructure:"port"`
 	ExternalURL string `mapstructure:"external_url"`
+	// AuthToken 静态 Bearer token（issue #14 最小代价方案）：非空时所有
+	// /api 路由要求 `Authorization: Bearer <token>`；为空时 HTTP 只绑
+	// 回环（127.0.0.1）并打启动告警——server 模式此前绑 0.0.0.0 且全部
+	// API 无鉴权，写操作/文件读写对可达端口者完全开放。
+	AuthToken string `mapstructure:"auth_token"`
 }
 
 type RpcConfig struct {

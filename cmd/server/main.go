@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -229,7 +230,22 @@ func initMirrorSystem() {
 // startHTTPServer 启动 HTTP 服务器
 func startHTTPServer() *hserver.Hertz {
 
-	addr := fmt.Sprintf(":%d", configs.GlobalConfig.Server.Port)
+	// 绑定收口（issue #14）：无 token ⇒ 只绑回环（本机形态仍可用）+ 启动
+	// 告警——此前 server 模式恒绑 0.0.0.0 且全 API 无鉴权，局域网任意主机
+	// 可删仓库、触发 filter-branch、读凭据。配 token 后才放开外卡。
+	hasAuth := strings.TrimSpace(configs.GlobalConfig.Server.AuthToken) != ""
+	if !hasAuth {
+		log.Println("[SECURITY] server.auth_token 未配置：HTTP 只绑定 127.0.0.1（回环）。" +
+			"如需局域网访问，请在 conf/config.yaml 配置 server.auth_token 后重启——" +
+			"所有 API 将要求 Authorization: Bearer <token>")
+	} else {
+		log.Println("[SECURITY] server.auth_token 已配置：所有 /api 路由启用 Bearer 鉴权")
+	}
+	bindHost := "127.0.0.1"
+	if hasAuth {
+		bindHost = "0.0.0.0"
+	}
+	addr := fmt.Sprintf("%s:%d", bindHost, configs.GlobalConfig.Server.Port)
 
 	opts := []config.Option{
 		hserver.WithHostPorts(addr),

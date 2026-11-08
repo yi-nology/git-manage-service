@@ -1,11 +1,10 @@
 package llm
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	"github.com/oekit/pkg/httpjson"
 	"net/http"
 	"strings"
 	"time"
@@ -53,32 +52,25 @@ func (p *Ollama) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, err
 			"num_predict": maxTokens,
 		},
 	}
+	// 迁 oekit/httpjson 单源（issue #18）：手工构造/判状态码/解码三段式
+	// 与 httpjson.DoJSON 的纪律单源重复；SSRF 防护用的本地客户端原样
+	// 传入，防护不降级。
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
-	}
-	url := p.baseURL + "/api/chat"
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonBody))
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	resp, err := p.httpClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("ollama chat error: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("ollama returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 	var ollamaResp struct {
 		Message struct {
 			Content string `json:"content"`
 		} `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err != nil {
-		return nil, fmt.Errorf("failed to decode ollama chat response: %w", err)
+	if err := httpjson.DoJSON(ctx, p.httpClient, httpjson.Request{
+		Method: "POST",
+		URL:    p.baseURL + "/api/chat",
+		Body:   jsonBody,
+		Header: func(h http.Header) { h.Set("Content-Type", "application/json") },
+	}, &ollamaResp); err != nil {
+		return nil, fmt.Errorf("ollama chat error: %w", err)
 	}
 	return &ChatResponse{Content: ollamaResp.Message.Content, Raw: ollamaResp.Message.Content}, nil
 }

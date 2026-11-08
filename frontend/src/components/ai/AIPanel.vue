@@ -109,7 +109,7 @@ import { ref, computed, nextTick, type VNodeRef } from 'vue'
 import { toastApiError } from '@/composables/useNotification'
 import { ElMessage } from 'element-plus'
 import { MagicStick, User, Delete, Close, Link } from '@element-plus/icons-vue'
-import { marked } from 'marked'
+import { renderMarkdownSafe } from '@/utils/markdown'
 import { aiApi } from '@/api/modules/ai'
 
 export interface AIRef {
@@ -184,7 +184,7 @@ const setMessagesRef: VNodeRef = (el) => {
 }
 
 const renderMarkdown = (content: string) => {
-  return marked.parse(content)
+  return renderMarkdownSafe(content)
 }
 
 const scrollToBottom = () => {

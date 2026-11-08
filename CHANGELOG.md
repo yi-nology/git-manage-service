@@ -2,7 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2026-03-08
+## [Unreleased]
+
+## [0.12.0] - 2026-11-08
+
+「全部 API 无鉴权」的 P0 缺口按最小代价方案收口（静态 Bearer token +
+回环绑定回落），叠加 XSS 消毒与目录逃逸消毒——#14 单 issue 描述的
+「XSS 即全权」攻击链三面同时闭合。
+
+### 新增
+
+- **静态 Bearer 鉴权门（#14）**：`server.auth_token` 配置后所有 /api 路由
+  要求 `Authorization: Bearer <token>`（crypto/subtle 常量时间比较，探针
+  /CORS 预检放行）；**为空时 HTTP 只绑 127.0.0.1 并打启动告警**——此前
+  server 模式恒绑 0.0.0.0 且全 API 无鉴权（多轮审计的最大开放风险）。
+
+### 修复
+
+- **XSS：五处 v-html 全部收口消毒（#19）**：新增 `utils/markdown.ts`
+  `renderMarkdownSafe`（escape → marked → DOMPurify 白名单）为唯一渲染
+  出口，ReviewSummary/AIPanel 换用；`useAIChat.renderMarkdown` 与
+  `AuthorFix.formatAI` 两个手写管线先转义再做格式替换；diff2html 输出加
+  DOMPurify 兜底；`marked`/`dompurify` 声明为直接依赖（幽灵依赖消除）。
+  AI/远端 CR 内容不再直达 innerHTML。
+- **Clone 目录逃逸消毒（#20）**：`repoNameFromURL` 的 `..`/`.`/`?`/空段/
+  分隔符/控制字符形态一律回退时间戳名——URL 结尾带 `..` 可把克隆目标抬到
+  选目录父目录，且「已是 git 仓库则拒」守卫拦不住这些形态。
+- **旧镜像队列键启动清扫（#17）**：v2 前卡死槽位残留键
+  （`gms:mirror_sync_queue:set/list`）启动时检测即删并告警——v2 不读它们，
+  删了无副作用。
+- **Ollama 调用迁 httpjson 单源（#18）**：`Chat` 走 `httpjson.DoJSON`
+  （SSRF 防护客户端原样传入，防护不降级）；`FetchOllamaModels` 走
+  `DoRaw`（保 1MB 响应上限口径）。
+
+ - 2026-03-08
 
 ### Added
 - **UI/UX 优化**
