@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-09
+
+### Changed
+
+- AddChannelPage 通知渠道表单拆分为 ChannelFormFields/ChannelTriggerEvents 组件，686→304 行（#15）
+- Top3 大页面拆分：RemoteRepoDetail/SyncTask 组件化拆分，行为保持，vue-tsc+vite build 全绿，浏览器截图对照验收（#16）
+
 ## [0.12.0] - 2026-11-08
 
 「全部 API 无鉴权」的 P0 缺口按最小代价方案收口（静态 Bearer token +
