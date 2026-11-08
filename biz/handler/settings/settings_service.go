@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/oekit/pkg/httpjson"
 	"strings"
 	"time"
+
+	"github.com/oekit/pkg/httpjson"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	settings "github.com/yi-nology/git-manage-service/biz/model/settings"
