@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
+	"slices"
+	"strings"
+	"time"
 
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 	"github.com/yi-nology/go-git-platform/gitbackend"
 )
 
@@ -104,8 +107,18 @@ func (s *GitService) GetBranches(path string) ([]string, error) {
 	return s.backend.ListLocalBranches(context.Background(), path)
 }
 
+// GetCommits 输出提交列表（%H|%aN|%aE|%ad|%s，author date）。
+// since/until 为 YYYY-MM-DD 本地日期窗口，口径与统计侧（calculateStatsFast）一致：
+// since 取当日零点、until 取当日末尾（见 timefmt.ParseDateWindow）。
+//
+// 时间过滤在 Go 侧按 author date（%ad）进行：git log --since/--until 过滤的是
+// committer date，与本服务的统计口径（%ad/%at = author date）不一致，rebase /
+// amend 过的提交两个日期会分叉，故不用 --since/--until 直接下推。
 func (s *GitService) GetCommits(path, branch, since, until string) (string, error) {
-	log.Printf("[DEBUG] GetCommits path=%s branch=%s since=%s until=%s", path, branch, since, until)
+	sinceTime, untilTime, err := timefmt.ParseDateWindow(since, until)
+	if err != nil {
+		return "", err
+	}
 
 	args := []string{"-C", path, "log", "--pretty=format:%H|%aN|%aE|%ad|%s", "--date=format:%Y-%m-%d %H:%M:%S %z"}
 	if branch != "" {
@@ -117,7 +130,39 @@ func (s *GitService) GetCommits(path, branch, since, until string) (string, erro
 	if err != nil {
 		return "", fmt.Errorf("git log failed: %v", err)
 	}
-	return string(output), nil
+	return filterCommitsByWindow(string(output), sinceTime, untilTime), nil
+}
+
+// filterCommitsByWindow 逐行按提交时间（author date）过滤 git log 输出。
+// 无窗口时原样返回；有窗口时解析不了提交时间的行一律丢弃（fail-closed，
+// 无法证明落在窗口内的行不应混入结果）。
+func filterCommitsByWindow(raw string, sinceTime, untilTime time.Time) string {
+	if sinceTime.IsZero() && untilTime.IsZero() {
+		return raw
+	}
+	lines := strings.Split(raw, "\n")
+	lines = slices.DeleteFunc(lines, func(line string) bool {
+		date, ok := commitAuthorDate(line)
+		if !ok {
+			return true
+		}
+		return !timefmt.InDateWindow(date, sinceTime, untilTime)
+	})
+	return strings.Join(lines, "\n")
+}
+
+// commitAuthorDate 从 GetCommits 输出的一行（hash|name|email|date|message）
+// 中解析 author date；解析失败返回 ok=false。
+func commitAuthorDate(line string) (time.Time, bool) {
+	parts := strings.SplitN(line, "|", 5)
+	if len(parts) < 5 {
+		return time.Time{}, false
+	}
+	t, err := time.Parse(timefmt.LayoutGitLog, parts[3])
+	if err != nil {
+		return time.Time{}, false
+	}
+	return t, true
 }
 
 func (s *GitService) ResolveRevision(path, rev string) (string, error) {

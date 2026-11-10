@@ -22,6 +22,7 @@ import (
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
 	"github.com/yi-nology/git-manage-service/biz/model/po"
 	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 // BizError 业务错误，携带 HTTP 语义状态码。
@@ -47,6 +48,12 @@ func respondError(c *app.RequestContext, err error) {
 		default:
 			response.InternalServerError(c, biz.msg)
 		}
+		return
+	}
+	// 非法的 since/until 日期是调用方入参问题，按 400 而非 500 回应。
+	var dwe *timefmt.DateWindowError
+	if errors.As(err, &dwe) {
+		response.BadRequest(c, err.Error())
 		return
 	}
 	response.InternalError(c, err)

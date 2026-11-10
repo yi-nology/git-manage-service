@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-11-11
+
+### 修复
+
+- **/api/v1/stats/commits 时间窗静默失效（#24）**：GetCommits 此前把 since/until
+  只打进一行 DEBUG 日志、从未参与过滤，接口对任意窗口都返回全量历史。现与同服务
+  /analyze、/export/csv 三端点同源：新增 `pkg/timefmt.ParseDateWindow` /
+  `InDateWindow` 作为窗口口径的单一真相源（本地时区，since 取当日零点、until 取
+  当日末尾），commits 端点在 Go 侧按 author date（%ad）过滤——git log
+  `--since/--until` 过滤的是 committer date，与本服务统计口径（%ad/%at）不符，
+  rebase/amend 过的提交两个日期分叉，故不下推。同时把 stats 侧「time.ParseInLocation
+  忽略错误、非法日期静默退化成不过滤」显式化为 `*timefmt.DateWindowError`，三端点
+  统一按 400 回应。
+
+### Changed
+
+- `go get -u ./...` 全量依赖升级：go-git-platform v0.124.0、git-ferry-core
+  v0.35.1、oekit/pkg v0.42.0、hertz v0.10.6、gorm/driver/postgres v1.6.3 等，
+  `go test -race` 全量通过，无破坏性升级需要钉回。
+
 ## [0.12.1] - 2026-11-09
 
 ### Changed

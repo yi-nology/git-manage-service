@@ -4,6 +4,7 @@ package stats
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 	statsSvc "github.com/yi-nology/git-manage-service/biz/service/stats"
 	"github.com/yi-nology/git-manage-service/pkg/handler"
 	"github.com/yi-nology/git-manage-service/pkg/response"
+	"github.com/yi-nology/git-manage-service/pkg/timefmt"
 )
 
 // ListBranches .
@@ -81,6 +83,12 @@ func GetStats(ctx context.Context, c *app.RequestContext) {
 	}
 
 	if err != nil {
+		// 非法的 since/until 日期是入参问题，按 400 回应（与 /stats/commits 一致）。
+		var dwe *timefmt.DateWindowError
+		if errors.As(err, &dwe) {
+			response.BadRequest(c, err.Error())
+			return
+		}
 		response.InternalServerError(c, err.Error())
 		return
 	}
@@ -130,6 +138,12 @@ func ExportCSV(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	if err != nil {
+		// 非法的 since/until 日期是入参问题，按 400 回应（与 /stats/commits 一致）。
+		var dwe *timefmt.DateWindowError
+		if errors.As(err, &dwe) {
+			c.JSON(consts.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
 		c.JSON(consts.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
