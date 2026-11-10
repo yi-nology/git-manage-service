@@ -211,7 +211,7 @@ func (s *StatsService) ParseCommits(raw string) []domain.Commit {
 			continue
 		}
 
-		t, _ := time.Parse("2006-01-02 15:04:05 -0700", parts[3])
+		t, _ := time.Parse(timefmt.LayoutGitLog, parts[3])
 
 		commits = append(commits, domain.Commit{
 			Hash:      parts[0],
@@ -238,6 +238,12 @@ type ActivityStat struct {
 
 // GetStats retrieves stats from cache or triggers calculation
 func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsResponse, StatsStatus, error, string) {
+	// 窗口解析前置且同步：非法日期立即报错，不进入异步计算后静默退化成「不过滤」。
+	sinceTime, untilTime, err := timefmt.ParseDateWindow(since, until)
+	if err != nil {
+		return nil, StatusFailed, err, ""
+	}
+
 	key := fmt.Sprintf("%s:%s:%s:%s", path, branch, since, until)
 
 	// 1. Check cache
@@ -270,7 +276,7 @@ func (s *StatsService) GetStats(path, branch, since, until string) (*api.StatsRe
 
 	// 3. Start async calculation
 	go func() {
-		data, err := s.calculateStatsFast(path, branch, since, until, key)
+		data, err := s.calculateStatsFast(path, branch, sinceTime, untilTime, key)
 		if err != nil {
 			s.updateCache(key, func(item *StatsCacheItem) {
 				item.Status = StatusFailed
@@ -297,20 +303,10 @@ func (s *StatsService) updateCache(key string, update func(*StatsCacheItem)) {
 	}
 }
 
-// calculateStatsFast computes stats using git log --numstat (Fast, No Blame)
-func (s *StatsService) calculateStatsFast(path, branch, since, until, cacheKey string) (*api.StatsResponse, error) {
-	// Parse dates — 用本地时区：用户给的「日期」按本地天理解，commit 时间戳
-	// 转 time.Unix 后也是本地表示，UTC 解析会让 end-of-day 差一个时区偏移。
-	var sinceTime, untilTime time.Time
-	if since != "" {
-		sinceTime, _ = time.ParseInLocation(timefmt.LayoutDate, since, time.Local)
-	}
-	if until != "" {
-		untilTime, _ = time.ParseInLocation(timefmt.LayoutDate, until, time.Local)
-		// Set until to end of day
-		untilTime = untilTime.Add(24*time.Hour - time.Nanosecond)
-	}
-
+// calculateStatsFast computes stats using git log --numstat (Fast, No Blame)。
+// sinceTime/untilTime 由 GetStats 经 timefmt.ParseDateWindow 同步解析后传入
+// （本地时区，until 为当日末尾）——与 /stats/commits 端点的窗口口径同源。
+func (s *StatsService) calculateStatsFast(path, branch string, sinceTime, untilTime time.Time, cacheKey string) (*api.StatsResponse, error) {
 	// 1. Get raw log stats stream
 	stream, err := s.Git.GetLogStatsStream(path, branch)
 	if err != nil {
@@ -363,11 +359,8 @@ func (s *StatsService) calculateStatsFast(path, branch, since, until, cacheKey s
 
 		// ... (rest of the loop)
 
-		// Date Filter
-		if !sinceTime.IsZero() && currentDate.Before(sinceTime) {
-			continue
-		}
-		if !untilTime.IsZero() && currentDate.After(untilTime) {
+		// Date Filter —— 判据与 /stats/commits 端点同源（timefmt.InDateWindow）
+		if !timefmt.InDateWindow(currentDate, sinceTime, untilTime) {
 			continue
 		}
 

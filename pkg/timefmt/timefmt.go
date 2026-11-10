@@ -11,4 +11,8 @@ const (
 	// LayoutAPITime 项目历史沿用的 ISO 风格布局。注意末尾 Z 是字面量而非时区占位：
 	// Format 时本地时间也会被输出成 "Z" 结尾；如需真实 RFC3339 时区请用 time.RFC3339。
 	LayoutAPITime = "2006-01-02T15:04:05Z"
+
+	// LayoutGitLog 与 git log --date=format:%Y-%m-%d %H:%M:%S %z 输出对应的
+	// 解析布局（%ad 字段），供解析 GetCommits 的原始输出使用。
+	LayoutGitLog = "2006-01-02 15:04:05 -0700"
 )
