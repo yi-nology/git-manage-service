@@ -53,24 +53,6 @@ func (s *AuthService) ResolveAuth(authInfo domain.AuthInfo) (gitbackend.AuthConf
 	return gitbackend.AuthConfig{Type: gitbackend.AuthNone}, nil
 }
 
-// ResolveAuthFromParams 从基础参数解析（兼容旧接口）
-// 当 sshKeyID > 0 时使用数据库密钥，否则使用本地文件路径
-func (s *AuthService) ResolveAuthFromParams(authType, authKey, authSecret string, sshKeyID uint) (gitbackend.AuthConfig, error) {
-	// 优先使用数据库SSH密钥
-	if authType == "ssh" && sshKeyID > 0 {
-		return s.resolveDBSSHKey(sshKeyID)
-	}
-
-	// 构建AuthInfo并解析
-	authInfo := domain.AuthInfo{
-		Type:   authType,
-		Key:    authKey,
-		Secret: authSecret,
-		Source: "local",
-	}
-	return s.ResolveAuth(authInfo)
-}
-
 // resolveDBSSHKey 从数据库加载SSH密钥并创建认证方法
 func (s *AuthService) resolveDBSSHKey(sshKeyID uint) (gitbackend.AuthConfig, error) {
 	// 使用 GetDBSSHKeyContent 获取解密归一化后的私钥

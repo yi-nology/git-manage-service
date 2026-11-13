@@ -317,7 +317,7 @@ func StartAuthorFixTask(repoID uint, repoPath string, commitHashes []string, pus
 	}
 	dao := db.NewMaintenanceDAO()
 	record.TaskID = taskID
-	dao.Update(record)
+	dao.Save(record)
 
 	svc := NewAuthorService()
 	go func() {
@@ -335,7 +335,7 @@ func StartAuthorFixTask(repoID uint, repoPath string, commitHashes []string, pus
 				rec.Status = "failed"
 				rec.ErrorMessage = fixErr.Error()
 				rec.FinishedAt = &now
-				dao.Update(rec)
+				dao.Save(rec)
 			}
 		} else {
 			GlobalTaskManager.UpdateStatus(taskID, "success", "")
@@ -343,7 +343,7 @@ func StartAuthorFixTask(repoID uint, repoPath string, commitHashes []string, pus
 			if rec != nil {
 				rec.Status = "success"
 				rec.FinishedAt = &now
-				dao.Update(rec)
+				dao.Save(rec)
 			}
 		}
 	}()

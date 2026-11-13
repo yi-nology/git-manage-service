@@ -108,7 +108,7 @@ func (s *AuthorService) UpdateIdentity(id uint, req api.UpdateIdentityRequest) (
 		return nil, fmt.Errorf("序列化别名失败: %w", err)
 	}
 	identity.AliasesJSON = string(aliasesJSON)
-	if err := dao.Update(identity); err != nil {
+	if err := dao.Save(identity); err != nil {
 		return nil, err
 	}
 	dto := IdentityToDTO(identity)
