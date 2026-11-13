@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-13
+
+仓级兼容垫片清仓（**BREAKING**）。**下游要做什么**：仓外若有引用下列符号的代码，
+按下表迁移——
+
+| 删除的符号 | 迁移方式 |
+| --- | --- |
+| `errno.AuthorizationFailedErr` | `errno.Unauthorized` |
+| `errno.RecordNotFound` | `errno.NotFound` |
+| `authSvc.ResolveAuthFromParams(t, k, s, 0)` | `authSvc.ResolveAuth(domain.AuthInfo{Type: t, Key: k, Secret: s, Source: "local"})`；需要数据库密钥时先查 key 再 `Source: "database", SSHKeyID: id` |
+| `MaintenanceDAO.Update` / `AuthorIdentityDAO.Update` / `SSHKeyDAO.Update` | `BaseDAO.Save`（同实现同语义，upsert 整行） |
+
+### Removed
+
+- **`pkg/errno` 兼容旧错误码死别名**：`AuthorizationFailedErr = Unauthorized`、
+  `RecordNotFound = NotFound`（仓内零引用）。
+- **`AuthService.ResolveAuthFromParams`（兼容旧接口）**：散参 + sshKeyID 的旧签名。
+  两处调用点（handler/system、handler/repo）改直接组 `domain.AuthInfo` 调 `ResolveAuth`。
+- **三个 DAO 的 `Update` 转发**（与 `BaseDAO.Save` 同实现「保持向后兼容」）：
+  调用点 maintenance_service（3 处）、author_service_fix（3 处）、sshkey_service、
+  author_service 及两个 DAO 测试全部改用 `Save`。
+
+### 保留（明确不动）
+
+- `biz/service/git/git_service.go` 的 `RunCommand`：活跃原生 git 逃生门（20+ 调用），
+  本版不删；后续仅标 Deprecated 观察。
+- 生成层 `.pb.go` / handler 生成物未动。
+
 ## [0.12.2] - 2026-11-11
 
 ### 修复
