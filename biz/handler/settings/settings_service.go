@@ -261,7 +261,7 @@ func FetchOllamaModels(ctx context.Context, c *app.RequestContext) {
 	if baseURL == "" {
 		baseURL = "http://localhost:11434"
 	}
-	if err := httputil.ValidateLocalServiceURL(baseURL); err != nil {
+	if err := httputil.ValidateLocalServiceURL(ctx, baseURL); err != nil {
 		pkgresponse.BadRequest(c, "base_url 不可用: "+err.Error())
 		return
 	}

@@ -1,32 +1,19 @@
 package ai
 
 import (
-	"regexp"
 	"strings"
+
+	"github.com/oagentkit/guardx/logredact"
 )
 
-var assignmentSecretPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)(api[_-]?key\s*[:=]\s*)[^\s"'` + "`" + `]+`),
-	regexp.MustCompile(`(?i)(secret\s*[:=]\s*)[^\s"'` + "`" + `]+`),
-	regexp.MustCompile(`(?i)(password\s*[:=]\s*)[^\s"'` + "`" + `]+`),
-	regexp.MustCompile(`(?i)(token\s*[:=]\s*)[^\s"'` + "`" + `]+`),
-	regexp.MustCompile(`(?i)(authorization:\s*bearer\s+)[^\s"'` + "`" + `]+`),
-}
-
-var standaloneSecretPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)AKIA[0-9A-Z]{16}`),
-	regexp.MustCompile(`(?i)sk-[a-z0-9]{20,}`),
-}
-
+// RedactSecrets 在把文本送进 LLM 前脱敏（prompt 输入卫生）。
+//
+// 规则表委托 guardx/logredact（tier0 零第三方依赖）：内置规则覆盖赋值型
+// 凭据（api_key/secret/password/token/bearer）、裸凭据（AWS AKIA/OpenAI sk-）、
+// URL 凭据、JSON 值与 IP 掩码，且有截断凭据/幂等性的契约测试钉住——本包
+// 原先手写的 7 条正则是其子集，收敛到上游单一口径。
 func RedactSecrets(text string) string {
-	redacted := text
-	for _, pattern := range assignmentSecretPatterns {
-		redacted = pattern.ReplaceAllString(redacted, "${1}[REDACTED]")
-	}
-	for _, pattern := range standaloneSecretPatterns {
-		redacted = pattern.ReplaceAllString(redacted, "[REDACTED]")
-	}
-	return redacted
+	return logredact.Redact(text)
 }
 
 func ClampText(text string, maxChars int) string {
