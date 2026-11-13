@@ -83,7 +83,7 @@ func (s *DingTalkSender) Send(msg *NotificationMessage) error {
 		return err
 	}
 
-	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(body))
+	resp, err := notifyClient.Post(webhookURL, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		return err
 	}

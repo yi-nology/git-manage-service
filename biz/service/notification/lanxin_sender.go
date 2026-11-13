@@ -108,7 +108,7 @@ func (s *LanxinSender) doSend(webhookURL string, req *lanxinRequest) error {
 
 	log.Printf("[Notification] Lanxin sending (%s): %s", req.MsgType, string(body))
 
-	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(body))
+	resp, err := notifyClient.Post(webhookURL, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		return err
 	}

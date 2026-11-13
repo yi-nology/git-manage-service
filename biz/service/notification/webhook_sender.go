@@ -69,8 +69,7 @@ func (s *WebhookSender) Send(msg *NotificationMessage) error {
 		req.Header.Set(k, v)
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := notifyClient.Do(req)
 	if err != nil {
 		return err
 	}

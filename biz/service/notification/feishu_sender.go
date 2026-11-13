@@ -108,7 +108,7 @@ func (s *FeishuSender) Send(msg *NotificationMessage) error {
 		return err
 	}
 
-	resp, err := http.Post(s.config.WebhookURL, "application/json", bytes.NewBuffer(body))
+	resp, err := notifyClient.Post(s.config.WebhookURL, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		return err
 	}
