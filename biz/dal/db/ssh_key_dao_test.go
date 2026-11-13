@@ -32,7 +32,7 @@ func TestSSHKeyDAO_CRUD(t *testing.T) {
 	}
 
 	found.Description = "Updated"
-	dao.Update(found)
+	dao.Save(found)
 	updated, _ := dao.FindByID(key.ID)
 	if updated.Description != "Updated" {
 		t.Errorf("description mismatch: got %s", updated.Description)

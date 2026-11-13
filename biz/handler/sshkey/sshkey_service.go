@@ -161,7 +161,7 @@ func UpdateDBSSHKey(ctx context.Context, c *app.RequestContext) {
 			key.Passphrase = req.Passphrase
 		}
 
-		if err := sshKeyDAO.Update(key); err != nil {
+		if err := sshKeyDAO.Save(key); err != nil {
 			return nil, handler.ErrInternal("Failed to update SSH key: " + err.Error())
 		}
 

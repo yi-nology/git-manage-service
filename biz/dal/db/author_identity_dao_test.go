@@ -31,7 +31,7 @@ func TestAuthorIdentityDAO_CRUD(t *testing.T) {
 	}
 
 	found.CanonicalName = "Jane Doe"
-	dao.Update(found)
+	dao.Save(found)
 
 	if err := dao.Delete(identity.ID); err != nil {
 		t.Fatalf("Delete failed: %v", err)

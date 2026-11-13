@@ -78,7 +78,7 @@ func markMaintenanceFailed(dao *db.MaintenanceDAO, taskID, paramsJSON, errMsg st
 		rec.ParamsJSON = paramsJSON
 	}
 	rec.FinishedAt = &now
-	dao.Update(rec)
+	dao.Save(rec)
 }
 
 // runMaintenanceTask is the shared lifecycle for async maintenance ops: it
@@ -103,7 +103,7 @@ func runMaintenanceTask(repo *po.Repo, taskID, kind, paramsJSON string, op func(
 		record.ParamsJSON = paramsJSON
 	}
 	dao := db.NewMaintenanceDAO()
-	dao.Update(record)
+	dao.Save(record)
 	dao.UpdateStatus(taskID, "running", "", "")
 
 	go func() {
@@ -457,7 +457,7 @@ func ForcePushRemotes(ctx context.Context, c *app.RequestContext) {
 	dao := db.NewMaintenanceDAO()
 	record.TaskID = taskID
 	record.ParamsJSON = string(paramsJSON)
-	dao.Update(record)
+	dao.Save(record)
 	dao.UpdateStatus(taskID, "running", "", "")
 
 	go func() {

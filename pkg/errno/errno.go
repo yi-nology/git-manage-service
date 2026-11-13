@@ -108,14 +108,6 @@ var (
 	FileOperationError = NewErrNo(15005, "file operation error")
 )
 
-// ==================== 兼容旧错误码 ====================
-
-var (
-	// 保持向后兼容
-	AuthorizationFailedErr = Unauthorized
-	RecordNotFound         = NotFound
-)
-
 // ConvertErr 将 error 转换为 ErrNo
 func ConvertErr(err error) ErrNo {
 	if err == nil {

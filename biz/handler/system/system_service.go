@@ -14,6 +14,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yi-nology/git-manage-service/biz/dal/db"
+	"github.com/yi-nology/git-manage-service/biz/model/domain"
 	systemModel "github.com/yi-nology/git-manage-service/biz/model/system"
 	"github.com/yi-nology/git-manage-service/biz/service/auth"
 	"github.com/yi-nology/git-manage-service/biz/service/git"
@@ -188,7 +189,12 @@ func TestConnection(ctx context.Context, c *app.RequestContext) {
 	} else {
 		// Fallback: resolve auth through auth service (which handles
 		// the deprecated AuthType/AuthKey/AuthSecret fields internally)
-		authConfig, resolveErr := authSvc.ResolveAuthFromParams(req.AuthType, req.AuthKey, req.AuthSecret, 0)
+		authConfig, resolveErr := authSvc.ResolveAuth(domain.AuthInfo{
+			Type:   req.AuthType,
+			Key:    req.AuthKey,
+			Secret: req.AuthSecret,
+			Source: "local",
+		})
 		if resolveErr != nil {
 			response.Success(c, map[string]string{"status": "failed", "error": "failed to resolve auth: " + resolveErr.Error()})
 			return

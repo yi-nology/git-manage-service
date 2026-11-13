@@ -529,7 +529,12 @@ func Clone(ctx context.Context, c *app.RequestContext) {
 					git.GlobalTaskManager.AppendLog(taskID, "Using database SSH key for clone...")
 					err = gitSvc.CloneWithDBKey(req.RemoteURL, req.LocalPath, privateKey, passphrase, progressChan)
 				} else {
-					authMethod, authErr := authSvc.ResolveAuthFromParams(req.AuthType, req.AuthKey, req.AuthSecret, 0)
+					authMethod, authErr := authSvc.ResolveAuth(domain.AuthInfo{
+						Type:   req.AuthType,
+						Key:    req.AuthKey,
+						Secret: req.AuthSecret,
+						Source: "local",
+					})
 					if authErr != nil {
 						git.GlobalTaskManager.AppendLog(taskID, "Warning: auth resolution failed: "+authErr.Error())
 					}

@@ -9,11 +9,6 @@ type AuthorIdentityDAO struct{ BaseDAO[po.AuthorIdentity] }
 
 func NewAuthorIdentityDAO() *AuthorIdentityDAO { return &AuthorIdentityDAO{} }
 
-// Update 更新身份（与 Save 相同，保持向后兼容）
-func (d *AuthorIdentityDAO) Update(identity *po.AuthorIdentity) error {
-	return DB.Save(identity).Error
-}
-
 // ListAll 按默认优先、创建时间正序列出
 func (d *AuthorIdentityDAO) ListAll() ([]po.AuthorIdentity, error) {
 	var identities []po.AuthorIdentity

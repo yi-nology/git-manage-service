@@ -10,11 +10,6 @@ type MaintenanceDAO struct{ BaseDAO[po.MaintenanceRecord] }
 
 func NewMaintenanceDAO() *MaintenanceDAO { return &MaintenanceDAO{} }
 
-// Update 更新记录（与 Save 相同，保持向后兼容）
-func (d *MaintenanceDAO) Update(record *po.MaintenanceRecord) error {
-	return DB.Save(record).Error
-}
-
 // FindByTaskID 根据 task_id 查询
 func (d *MaintenanceDAO) FindByTaskID(taskID string) (*po.MaintenanceRecord, error) {
 	var record po.MaintenanceRecord
