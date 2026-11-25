@@ -1,6 +1,6 @@
 module github.com/yi-nology/git-manage-service
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/alicebob/miniredis/v2 v2.40.0
@@ -11,8 +11,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hertz-contrib/monitor-prometheus v0.1.3
 	github.com/minio/minio-go/v7 v7.4.1
-	github.com/oagentkit/guardx v0.24.4
-	github.com/oekit/pkg v0.44.0
+	github.com/oagentkit/guardx v0.30.0
+	github.com/oekit/pkg v0.61.5
 	github.com/prometheus/client_golang v1.25.0
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/robfig/cron/v3 v3.0.1
@@ -21,8 +21,8 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/wailsapp/wails/v2 v2.17.1
 	github.com/yi-nology/git-ferry-core v0.35.1
-	github.com/yi-nology/go-git-platform v0.124.0
-	golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2
+	github.com/yi-nology/go-git-platform v0.140.0
+	golang.org/x/crypto v0.59.0
 	golang.org/x/sync v0.25.0
 	google.golang.org/protobuf v1.36.12
 	gorm.io/driver/mysql v1.6.0
@@ -57,7 +57,7 @@ require (
 	github.com/cloudwego/runtimex v0.1.2 // indirect
 	github.com/cloudwego/thriftgo v0.4.5 // indirect
 	github.com/cyphar/filepath-securejoin v0.7.0 // indirect
-	github.com/davidmz/go-pageant v1.0.2 // indirect
+	github.com/davidmz/go-pageant v1.1.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
@@ -127,8 +127,8 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/next-bin/go-gitee v0.0.0-20260521141902-36ce436eee18 // indirect
-	github.com/oekit/concurrency v0.32.0 // indirect
-	github.com/oekit/logx v0.9.2 // indirect
+	github.com/oekit/concurrency v0.40.0 // indirect
+	github.com/oekit/logx v0.12.0 // indirect
 	github.com/oekit/redisx v0.13.2 // indirect
 	github.com/oklog/ulid/v2 v2.1.2 // indirect
 	github.com/pandatix/go-abnf v0.5.5 // indirect
@@ -164,11 +164,11 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/wailsapp/go-webview2 v1.0.22 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	github.com/yi-nology/go-gitcode v0.15.0 // indirect
-	github.com/yi-nology/go-gongfeng v0.3.0 // indirect
+	github.com/yi-nology/go-gitcode v0.17.0 // indirect
+	github.com/yi-nology/go-gongfeng v0.5.0 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
-	gitlab.com/gitlab-org/api/client-go/v3 v3.46.1 // indirect
+	gitlab.com/gitlab-org/api/client-go/v3 v3.48.0 // indirect
 	go.uber.org/atomic v1.12.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/arch v0.33.0 // indirect
