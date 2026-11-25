@@ -12,7 +12,7 @@ require (
 	github.com/hertz-contrib/monitor-prometheus v0.1.3
 	github.com/minio/minio-go/v7 v7.4.1
 	github.com/oagentkit/guardx v0.24.4
-	github.com/oekit/pkg v0.44.0
+	github.com/oekit/pkg v0.61.5
 	github.com/prometheus/client_golang v1.25.0
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/robfig/cron/v3 v3.0.1
